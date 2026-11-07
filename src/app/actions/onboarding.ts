@@ -2,14 +2,16 @@
 
 import { Prisma } from "@prisma/client"
 import bcrypt from "bcryptjs"
-import { auth, unstable_update } from "@/lib/auth/auth"
+import { auth, unstable_update, resolveUsername } from "@/lib/auth/auth"
 import { prisma } from "@/lib/prisma"
 import { isReservedSlug, isSlugAvailable, slugify } from "@/lib/tenant"
 import { PALETTES, seedOrganizationCatalog, verticalSiteContent, getVertical, presetStaffImage } from "@/lib/verticals"
 import { listProfileOptions, getProfile, isCapabilityEnabled, GENERIC_PROFILE_ID } from "@/lib/profiles/registry"
-import { validateSecondaryVertical } from "@/lib/profiles/secondary"
+import { validateSecondaryVertical, applySecondaryProfile } from "@/lib/profiles/secondary"
 import { materializeProfileAssets } from "@/lib/profiles/materialize"
 import { sanitizeSkdInput } from "@/lib/skd/catalog"
+import { MODULE_IDS } from "@/lib/modules/catalog"
+import { OVERRIDES_VERSION } from "@/lib/profiles/overrides"
 import { PALETTE_OPTIONS } from "@/lib/palettes-client"
 
 export interface CreateSalonInput {
@@ -49,6 +51,13 @@ export interface CreateSalonInput {
   skdCodes?: string[]
   customTags?: string[]
   verticalSkipped?: boolean
+  /**
+   * #OBOJE — izklopni moduli (capability ključi) iz koraka 4 čarovnika.
+   * Strežnik jih filtrira na NEOBVEZNE capability-je profila; zahtevani
+   * moduli se nikoli ne izklopijo. Zapišejo se kot profileOverrides
+   * (capabilityStates = "disabled").
+   */
+  disabledModules?: string[]
 }
 
 export interface CreateSalonResult {
@@ -227,6 +236,27 @@ export async function createSalonOrganization(input: CreateSalonInput): Promise<
     // vrednosti tiho izpustimo, omejitve števila/dolžine proti zlorabi).
     const skd = sanitizeSkdInput(input.skdCodes, input.customTags)
 
+    // #OBOJE — seed izklopnih modulov iz koraka 4 čarovnika. Samo NEOBVEZNI
+    // capability-ji profila se lahko izklopijo (strežnik zaščiti zahtevane
+    // in profilno-onemogočene capability-je — ista pravila kot
+    // updateOrgOverrides). Piše se kot profileOverrides, da javna stran in
+    // dashboard takoj odražata izbiro lastnika.
+    const baseProfile = applySecondaryProfile(getProfile(profile.id), secondaryVertical)
+    const caps = baseProfile.capabilities as Record<string, string>
+    const optionalCaps = new Set(Object.keys(caps).filter((k) => caps[k] === "optional"))
+    const capabilityStates: Record<string, "optional" | "disabled"> = {}
+    if (Array.isArray(input.disabledModules)) {
+      for (const id of input.disabledModules) {
+        if (MODULE_IDS.has(id) && optionalCaps.has(id)) {
+          capabilityStates[id] = "disabled"
+        }
+      }
+    }
+    const profileOverrides =
+      Object.keys(capabilityStates).length > 0
+        ? { v: OVERRIDES_VERSION, capabilityStates }
+        : undefined
+
     const org = await prisma.organization.create({
       data: {
         slug,
@@ -242,6 +272,8 @@ export async function createSalonOrganization(input: CreateSalonInput): Promise<
         ...(skd.codes.length > 0 ? { skdCodes: skd.codes } : {}),
         ...(skd.tags.length > 0 ? { customTags: skd.tags } : {}),
         ...(onboardingAnswers ? { onboardingAnswers } : {}),
+        // #OBOJE: izklopni moduli iz koraka 4.
+        ...(profileOverrides ? { profileOverrides } : {}),
       },
     })
 
@@ -298,10 +330,13 @@ export async function createSalonOrganization(input: CreateSalonInput): Promise<
       } else {
         // Anonimen obiskovalec — nov lastniški račun (staff profil samo, ko
         // profil omogoča osebje — P2 #47).
+        // #OBOJE: izpelji uporabniško ime za lastnika (prijava z imenom).
+        const ownerUsername = await resolveUsername(null, email)
         const user = await prisma.user.create({
           data: {
             name: ownerName,
             email,
+            username: ownerUsername,
             password: passwordHash!,
             role: "ADMIN",
             emailVerified: new Date(),

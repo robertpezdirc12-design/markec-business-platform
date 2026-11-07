@@ -1,7 +1,11 @@
 import { z } from "zod"
 
 export const loginSchema = z.object({
-  email: z.string().min(1, "E-poštni naslov je obvezen").email("Neveljaven e-poštni naslov"),
+  // #OBOJE: e-pošta ALI uporabniško ime (prijava z geslom + uporabniškim imenom).
+  login: z
+    .string()
+    .min(1, "Vnesite e-pošto ali uporabniško ime")
+    .min(2, "Vnesite e-pošto ali uporabniško ime"),
   password: z
     .string()
     .min(1, "Geslo je obvezno")
@@ -27,6 +31,22 @@ export const registerSchema = z
         "Geslo mora vsebovati vsaj eno veliko črko, eno malo črko in eno številko"
       ),
     confirmPassword: z.string().min(1, "Potrdite svoje geslo"),
+    // #OBOJE: uporabniško ime je neobvezno — če ni podano, ga strežnik
+    // izpelje iz e-pošte. Dovoljeni znaki: črke, številke, pika, podčrtaj,
+    // vezaj (3–20 znakov).
+    username: z
+      .union([
+        z.literal(""),
+        z
+          .string()
+          .min(3, "Uporabniško ime mora imeti vsaj 3 znake")
+          .max(20, "Uporabniško ime je lahko dolgo največ 20 znakov")
+          .regex(
+            /^[a-zA-Z0-9_.-]+$/,
+            "Dovoljeni so le črke, številke, pika, podčrtaj in vezaj"
+          ),
+      ])
+      .optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Gesli se ne ujemata",

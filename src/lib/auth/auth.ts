@@ -21,6 +21,7 @@ declare module "next-auth" {
   interface User {
     role: UserRole
     organizationId?: string | null
+    username?: string | null
   }
 }
 
@@ -40,18 +41,23 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
     Credentials({
       name: "credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        // #OBOJE: en vnos sprejme e-pošto ALI uporabniško ime (prijava z
+        // geslom + uporabniškim imenom). Strežnik razlikuje po prisotnosti
+        // "@" — e-pošto išče case-insensitive, sicer po username.
+        login: { label: "E-pošta ali uporabniško ime", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        const login = (credentials?.login ?? "").trim().toLowerCase()
+        if (!login || !credentials?.password) {
           throw new Error("Invalid credentials")
         }
 
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email as string,
-          },
+        const isEmail = login.includes("@")
+        const user = await prisma.user.findFirst({
+          where: isEmail
+            ? { email: { equals: login, mode: "insensitive" } }
+            : { username: login },
         })
 
         if (!user || !user.password) {
@@ -75,6 +81,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         return {
           id: user.id,
           email: user.email,
+          username: user.username,
           name: user.name,
           role: user.role,
           organizationId: user.organizationId,

@@ -312,6 +312,10 @@ model User {
   email            String    @unique
   emailVerified    DateTime?
   image            String?
+  // #OBOJE: uporabniško ime — alternativa e-pošti pri prijavi
+  // (geslo + uporabniško ime). Neobvezno (stari računi ga nimajo),
+  // vendar edinstveno med ne-praznimi vrednostmi.
+  username         String?   @unique
   password         String?
   role             UserRole  @default(CLIENTE)
   createdAt        DateTime  @default(now())
@@ -351,6 +355,7 @@ model User {
   customRole   CustomRole? @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
 
   @@index([email])
+  @@index([username])
   @@index([role])
   @@index([customRoleId])
 }

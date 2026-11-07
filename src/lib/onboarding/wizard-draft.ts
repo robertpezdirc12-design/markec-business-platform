@@ -29,6 +29,7 @@ export const WIZARD_DRAFT_VERSION = 1
 const CLOCK_SKEW_MS = 5 * 60 * 1000
 
 import { SKD_AREA_KEYS, SKD_SECTION_CODES } from "@/lib/skd/catalog"
+import { MODULE_IDS } from "@/lib/modules/catalog"
 
 // F1 #100 — SKD katalog je čista podatkovna datoteka (varna na odjemalcu);
 // draft preslikuje izbire prek istih allowlist kot panoge.
@@ -66,6 +67,13 @@ export interface WizardDraftData {
   skdCodes: string[]
   customTags: string[]
   verticalSkipped: boolean
+  /**
+   * #OBOJE — izklopni moduli (capability ključi) iz koraka 4 čarovnika.
+   * Lastnik izklopi neobvezne module; seed pri kreaciji organizacije
+   * nastavi pripadajoče capability-je na "disabled". Zahtevani moduli
+   * niso nikoli tu (strežnik jih tudi zaščiti).
+   */
+  disabledModules: string[]
 }
 
 export interface WizardDraftEnvelope {
@@ -86,7 +94,7 @@ export type WizardDraftParseResult =
 
 /** Field caps mirror the wizard inputs (maxLength) — storage never grows unbounded. */
 const CAPS = {
-  step: 3,
+  step: 4,
   name: 60,
   slug: 40,
   ownerName: 80,
@@ -96,6 +104,8 @@ const CAPS = {
   skdCode: 20, // sekcija "A".."V" oz. "area:<key>" (najdaljši ključ 17)
   customTags: 10,
   customTag: 40,
+  disabledModules: 16, // največ izklopnih modulov (katalog jih ima 14)
+  disabledModule: 30, // capability ključ (najdaljši "delivery"/"workflows")
 } as const
 
 export interface WizardDraftContext {
@@ -144,6 +154,16 @@ export function sanitizeWizardDraftData(
   // F1 #100 — SKD izbire: whitelist proti katalogu, cap števila/dolžine.
   const skdCodes = clampCodeList(obj.skdCodes, CAPS.skdCodes, CAPS.skdCode, ALLOWED_SKD_CODES)
   const customTags = clampStringList(obj.customTags, CAPS.customTags, CAPS.customTag)
+  // #OBOJE — izklopni moduli: whitelist proti katalogu modulov (cap
+  // števila/dolžine), neznane/tuje vrednosti strukturno padejo.
+  const disabledModules = Array.isArray(obj.disabledModules)
+    ? (obj.disabledModules as unknown[])
+        .filter((x): x is string => typeof x === "string")
+        .map((x) => x.slice(0, CAPS.disabledModule))
+        .filter((x) => MODULE_IDS.has(x))
+        .filter((x, i, a) => a.indexOf(x) === i)
+        .slice(0, CAPS.disabledModules)
+    : []
   return {
     step,
     vertical,
@@ -162,6 +182,7 @@ export function sanitizeWizardDraftData(
     skdCodes,
     customTags,
     verticalSkipped: obj.verticalSkipped === true && vertical === null,
+    disabledModules,
   }
 }
 
@@ -204,7 +225,9 @@ export function isDraftSubstantial(data: WizardDraftData): boolean {
       // F1 #100 — preskok in SKD izbira sta tudi pravi napredek.
       data.verticalSkipped ||
       data.skdCodes.length > 0 ||
-      data.customTags.length > 0
+      data.customTags.length > 0 ||
+      // #OBOJE — izklop modulov je tudi pravi napredek (lahko reši osnutek).
+      data.disabledModules.length > 0
   )
 }
 

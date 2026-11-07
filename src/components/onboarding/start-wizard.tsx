@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { signIn } from "next-auth/react"
@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Logo } from "@/components/ui/logo"
+import { Switch } from "@/components/ui/switch"
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -34,6 +35,14 @@ import {
   SKD_SECTIONS,
   suggestModulesForSkd,
 } from "@/lib/skd/catalog"
+import {
+  MODULES,
+  getModule,
+  dependentsOf,
+  missingDependencies,
+} from "@/lib/modules/catalog"
+import { getProfile, GENERIC_PROFILE_ID } from "@/lib/profiles/registry"
+import { applySecondaryProfile } from "@/lib/profiles/secondary"
 import { checkSlugAvailability, createSalonOrganization } from "@/app/actions/onboarding"
 import {
   WIZARD_DRAFT_KEY,
@@ -75,6 +84,7 @@ const STEPS = [
   { id: 1, label: "Dejavnost" },
   { id: 2, label: "Podjetje" },
   { id: 3, label: "Lastnik" },
+  { id: 4, label: "Moduli" },
 ] as const
 
 // P1 #40 (onboarding audit 2026-11): ko je uporabnik že prijavljen,
@@ -135,6 +145,107 @@ export function StartWizard({
   const [skdSearch, setSkdSearch] = useState("")
   const [tagInput, setTagInput] = useState("")
   const [skippedVertical, setSkippedVertical] = useState(false)
+
+  // #OBOJE — korak 4: lastnik izklopi neobvezne module (capability ključi).
+  // Vsi neobvezni moduli so privzeto VKLOPLJENI; tukaj hranimo SAMO
+  // izklopnene. Zahtevani moduli niso ponujeni (strežnik jih zaščiti).
+  const [disabledModules, setDisabledModules] = useState<string[]>([])
+
+  // Učinkovit profil (primarna + morebitna sekundarna dejavnost) — za
+  // razvrstitev modulov na "zahtevan" (zaklenjen) / "neobvezen" (preklop).
+  const effectiveProfile = useMemo(() => {
+    const pid = skippedVertical ? GENERIC_PROFILE_ID : vertical ?? null
+    if (!pid) return null
+    return applySecondaryProfile(getProfile(pid), secondary)
+  }, [vertical, secondary, skippedVertical])
+
+  // #OBOJE — preklop modula v koraku 4. Izklop modula, od katerega so
+  // odvisni drugi moduli, samodejno izklopi tudi odvisne (prepreči
+  // neveljavno stanje na javni strani). Zahtevani moduli niso preklopni.
+  const toggleModule = useCallback(
+    (id: string, value: boolean) => {
+      setDisabledModules((prev) => {
+        let next = value
+          ? prev.filter((x) => x !== id)
+          : Array.from(new Set([...prev, id]))
+        if (!value) {
+          for (const dep of dependentsOf(id)) {
+            const depState = effectiveProfile?.capabilities[dep.id]
+            if (depState === "optional" && !next.includes(dep.id)) {
+              next = [...next, dep.id]
+            }
+          }
+        }
+        return next
+      })
+    },
+    [effectiveProfile]
+  )
+
+  // #OBOJE — seznam modulov za korak 4 (odvisen od profila + izbire).
+  const moduleCards = useMemo(() => {
+    if (!effectiveProfile) return null
+    const stateMap: Record<string, "ACTIVE" | "DEACTIVATED"> = {}
+    for (const m of MODULES) {
+      stateMap[m.id] = disabledModules.includes(m.id) ? "DEACTIVATED" : "ACTIVE"
+    }
+    const visible = MODULES.filter((m) => {
+      const s = effectiveProfile.capabilities[m.id]
+      return s === "required" || s === "optional"
+    })
+    if (visible.length === 0) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          Za izbrano dejavnost ni dodatnih modulov za izbiro.
+        </p>
+      )
+    }
+    return (
+      <div className="space-y-3">
+        {visible.map((m) => {
+          const s = effectiveProfile.capabilities[m.id]
+          const isRequired = s === "required"
+          const blockedDeps = missingDependencies(m.id, stateMap)
+          const blockedOn = blockedDeps.length > 0
+          const isOn = isRequired ? true : !disabledModules.includes(m.id)
+          const depNames = m.dependsOn
+            .map((d) => getModule(d)?.nameSl)
+            .filter(Boolean)
+            .join(", ")
+          return (
+            <div
+              key={m.id}
+              className="flex items-start justify-between gap-4 rounded-lg border p-4"
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{m.nameSl}</p>
+                  {isRequired && (
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary-text">
+                      Obvezen
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-sm text-muted-foreground">{m.descriptionSl}</p>
+                {blockedOn && (
+                  <p className="mt-1 text-xs text-destructive">
+                    Zahteva vklop: {depNames}
+                  </p>
+                )}
+              </div>
+              <Switch
+                id={`mod-${m.id}`}
+                checked={isOn}
+                disabled={isRequired || blockedOn || creating}
+                onCheckedChange={(v) => toggleModule(m.id, v)}
+                aria-label={m.nameSl}
+              />
+            </div>
+          )
+        })}
+      </div>
+    )
+  }, [effectiveProfile, disabledModules, creating, toggleModule])
 
   const skdSuggestions = useMemo(
     () => suggestModulesForSkd(skdCodes),
@@ -265,6 +376,7 @@ export function StartWizard({
       skdCodes,
       customTags,
       verticalSkipped: skippedVertical,
+      disabledModules,
     }
     const pristine = pristineRef.current
     if (pristine === null) {
@@ -288,7 +400,9 @@ export function StartWizard({
       pristine.skdCodes.every((c, i) => c === data.skdCodes[i]) &&
       pristine.customTags.length === data.customTags.length &&
       pristine.customTags.every((c, i) => c === data.customTags[i]) &&
-      pristine.verticalSkipped === data.verticalSkipped
+      pristine.verticalSkipped === data.verticalSkipped &&
+      pristine.disabledModules.length === data.disabledModules.length &&
+      pristine.disabledModules.every((c, i) => c === data.disabledModules[i])
     ) {
       return
     }
@@ -308,7 +422,7 @@ export function StartWizard({
     } else {
       clearDraftRaw(window.localStorage, WIZARD_DRAFT_KEY)
     }
-  }, [step, vertical, secondary, palette, name, slug, slugTouched, ownerName, email, contactPhone, teamSize, onlineBooking, skdCodes, customTags, skippedVertical, resumeOffer])
+  }, [step, vertical, secondary, palette, name, slug, slugTouched, ownerName, email, contactPhone, teamSize, onlineBooking, skdCodes, customTags, skippedVertical, disabledModules, resumeOffer])
 
   // E4-4 — honest resume: restore the saved draft, but never land
   // further than the data actually allows (safeResumeStep). The slug
@@ -336,6 +450,8 @@ export function StartWizard({
     // F1 #100: SKD izbira in preskok se obnovita z osnutkom.
     setSkdCodes(d.skdCodes)
     setCustomTags(d.customTags)
+    // #OBOJE: izklopni moduli se obnovijo z osnutkom (korak 4).
+    setDisabledModules(d.disabledModules)
     setSkippedVertical(d.verticalSkipped)
     setResumeOffer(null)
   }
@@ -411,6 +527,8 @@ export function StartWizard({
       }
       return true
     }
+    // Step 4 — izbira modulov nikoli ne blokira (vsi so veljavni capability-ji).
+    if (current === 4) return true
     // Step 3
     if (ownerName.trim().length < 2) {
       toast.error("Vnesite ime in priimek.")
@@ -436,7 +554,7 @@ export function StartWizard({
 
   function goNext() {
     if (!validateStep(step)) return
-    setStep((s) => Math.min(3, s + 1))
+    setStep((s) => Math.min(4, s + 1))
   }
 
   function goBack() {
@@ -456,7 +574,7 @@ export function StartWizard({
   })()
 
   async function handleSubmit() {
-    if (!validateStep(3)) return
+    if (!validateStep(step)) return
     setCreating(true)
     try {
       const res = await createSalonOrganization({
@@ -480,6 +598,8 @@ export function StartWizard({
         skdCodes,
         customTags,
         verticalSkipped: skippedVertical,
+        // #OBOJE: izklopni moduli (neobvezni capability-ji) iz koraka 4.
+        disabledModules,
       })
 
       if (!res.success) {
@@ -496,7 +616,7 @@ export function StartWizard({
       // sejo z novo vlogo/organizacijo) — prijava se ne ponavlja.
       if (!authed) {
         const login = await signIn("credentials", {
-          email: email.trim(),
+          login: email.trim(),
           password,
           redirect: false,
         })
@@ -1204,6 +1324,25 @@ export function StartWizard({
             </div>
           </section>
         )}
+
+        {step === 4 && (
+          <section aria-labelledby="step-4-title">
+            <h1 id="step-4-title" className="text-2xl font-bold tracking-tight sm:text-3xl">
+              Izberite module
+            </h1>
+            <p className="mt-2 text-muted-foreground">
+              Vaša spletna stran in osnovna vsebina sta vedno vključena. Izklopite module,
+              ki jih ne potrebujete — vsak module lahko kadarkoli vklopite pozneje v nastavitvah.
+            </p>
+            <div className="mt-6">
+              {moduleCards ?? (
+                <p className="text-sm text-muted-foreground">
+                  Izberite dejavnost v prvem koraku, da se pokažejo ustrezni moduli.
+                </p>
+              )}
+            </div>
+          </section>
+        )}
       </main>
 
       {/* Sticky footer */}
@@ -1218,7 +1357,7 @@ export function StartWizard({
             <span aria-hidden="true" />
           )}
 
-          {step < 3 ? (
+          {step < 4 ? (
             <Button onClick={goNext} className="min-h-11">
               Naprej
               <ArrowRightIcon size={16} weight="bold" className="ml-1.5" />

@@ -18,6 +18,41 @@ import { sendVerificationEmail } from "@/lib/email/email-verification"
 import { sendAccountActivatedEmail } from "@/lib/email/account-activated"
 import { isEmailServiceConfigured } from "@/lib/email/config"
 
+// #OBOJE: razreši uporabniško ime za nov račun.
+//  - če je `provided` podan, preveri edinstvenost (case-insensitive);
+//  - sicer izpelje osnovo iz e-pošte in doda niz (ali naključni sufiks),
+//    da je vrednost edinstvena;
+//  - vrne `null`, če podano ime ni na voljo (klicatelj vrne napako).
+// Javno (ponovno uporablja onboarding pri anonimni kreaciji lastnika).
+export async function resolveUsername(provided: string | null, email: string): Promise<string | null> {
+  if (provided) {
+    const candidate = provided.toLowerCase()
+    const clash = await prisma.user.findFirst({
+      where: { username: { equals: candidate, mode: "insensitive" } },
+      select: { id: true },
+    })
+    return clash ? null : candidate
+  }
+
+  const base = email
+    .split("@")[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]/g, "_")
+    .slice(0, 18)
+  if (!base) return null
+
+  let candidate = base
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const clash = await prisma.user.findFirst({
+      where: { username: { equals: candidate, mode: "insensitive" } },
+      select: { id: true },
+    })
+    if (!clash) return candidate
+    candidate = `${base}${Math.floor(1000 + Math.random() * 9000)}`
+  }
+  return null
+}
+
 // Server action to handle user registration
 export async function registerUser(data: RegisterInput) {
   const validatedData = registerSchema.safeParse(data)
@@ -27,7 +62,7 @@ export async function registerUser(data: RegisterInput) {
   }
 
   try {
-    const { name, email, password } = validatedData.data
+    const { name, email, password, username: rawUsername } = validatedData.data
     const hashedPassword = await bcrypt.hash(password, 10)
 
     const existingUser = await prisma.user.findUnique({
@@ -38,6 +73,20 @@ export async function registerUser(data: RegisterInput) {
       return {
         success: false,
         errors: [{ message: "E-poštni naslov je že registriran." }],
+      }
+    }
+
+    // #OBOJE: uporabniško ime (neobvezno). Če je podano, preverimo
+    // edinstvenost; če ni, ga izpeljemo iz e-pošte in zagotovimo
+    // edinstveno vrednost.
+    const username = await resolveUsername(
+      rawUsername && rawUsername.length > 0 ? rawUsername : null,
+      email
+    )
+    if (username === null) {
+      return {
+        success: false,
+        errors: [{ message: "Uporabniško ime je že zasedeno. Izberite drugega." }],
       }
     }
 
@@ -57,6 +106,7 @@ export async function registerUser(data: RegisterInput) {
         data: {
           name,
           email,
+          username,
           password: hashedPassword,
           customer: {
             connect: { id: existingCustomer.id },
@@ -75,6 +125,7 @@ export async function registerUser(data: RegisterInput) {
         data: {
           name,
           email,
+          username,
           password: hashedPassword,
           customer: {
             create: {

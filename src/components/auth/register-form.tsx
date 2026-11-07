@@ -170,6 +170,23 @@ export function RegisterForm() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="username">{t.auth.register.username}</Label>
+              <Input
+                id="username"
+                type="text"
+                placeholder="john_doe (neobvezno)"
+                disabled={isSubmitting}
+                autoComplete="username"
+                {...register("username")}
+              />
+              {errors.username && (
+                <p className="text-destructive text-sm">
+                  {errors.username.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="password">{t.auth.register.password}</Label>
               <Input
                 id="password"
