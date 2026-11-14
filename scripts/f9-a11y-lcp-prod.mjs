@@ -70,19 +70,21 @@ console.log("=== A11Y (axe, wcag2a+wcag2aa, namizni 1280×720) ===")
 //    kontekstu brez predpomnilnika (no cache) — Realni pogoji stranke.
 // ------------------------------------------------------------
 console.log("\n=== LCP (mobilna emulacija: 390×844, Fast 3G ~1.6 Mbps, 4× CPU) ===")
+// T9 (2026-11-14): HLADNI load — vsaka stran v SVEŽEM kontekstu, sicer deljeni
+// HTTP cache ovrednoti poznejše strani (warm ≈ 0,5–1,2 s, hladne ≈ 2,3–2,8 s).
 {
-  const browser = await chromium.launch()
-  const ctx = await browser.newContext({
-    viewport: { width: 390, height: 844 },
-    deviceScaleFactor: 3,
-    isMobile: true,
-    hasTouch: true,
-    userAgent:
-      "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
-  })
   let allPass = true
 
   for (const route of PAGES) {
+    const browser = await chromium.launch()
+    const ctx = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      deviceScaleFactor: 3,
+      isMobile: true,
+      hasTouch: true,
+      userAgent:
+        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
+    })
     const page = await ctx.newPage()
     await page.addInitScript(() => {
       window.__lcp = 0
@@ -117,8 +119,9 @@ console.log("\n=== LCP (mobilna emulacija: 390×844, Fast 3G ~1.6 Mbps, 4× CPU)
       console.log(`${route} — NAPAKA: ${String(err).slice(0, 200)}`)
     } finally {
       await page.close()
+      await ctx.close()
+      await browser.close()
     }
   }
-  console.log(`\nLCP SKUPAJ: ${allPass ? "vse strani < 2,5 s ✓" : "vsaj ena strani presega 2,5 s ✗"}`)
-  await browser.close()
+  console.log(`\nLCP SKUPAJ (hladni load, svež kontekst per stran): ${allPass ? "vse strani < 2,5 s ✓" : "vsaj ena strani presega 2,5 s ✗"}`)
 }

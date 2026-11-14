@@ -220,11 +220,21 @@ postavi ✅.
   plus golden-order, saas-lifecycle, idor, custom-domain, visual-editor.
 - ✅ **Vitest** — več konfiguracij (vitest.config, integration, itest, f51/f52/f54/...).
 - ✅ **Varnostni itest** — `tests/integration/f635/*` (7/7 po F6.4-PLAN).
-- 🟡 **Hitrost javnih strani (LCP < 2,5 s na telefonu)** — IZMERJENO (2026-11-14, produkcija,
-  mobilna emulacija 390×844, Fast 3G ~1,6 Mbps + 4× CPU, `scripts/f9-a11y-lcp-prod.mjs`):
-  `/pricing` 0,65 s ✓ · `/s/studio-nika` 1,17 s ✓ · shop 0,82 s ✓ · **`/` (landing) 3,29 s ✗** —
-  LCP element je besedilo (H1); landing je session-odvisen SSR, kandidat za ISR/prednaložitev
-  kot ločen popavek. Ostale javne strani z lahkoto.
+- 🟡 **Hitrost javnih strani (LCP < 2,5 s na telefonu)** — IZMERJENO HLADNO (2026-11-14, produkcija,
+  mobilna emulacija 390×844, Fast 3G ~1,6 Mbps + 4× CPU, **hladni load — svež kontekst per stran**,
+  `scripts/f9-a11y-lcp-prod.mjs`; opomba: prejšnje meritve so bile poškodovane z deljenim cache-om
+  med stranmi — warm ≈ 0,5–1,2 s, hladne ≈ 2,3–3,1 s):
+  - **NAREJENO (deploy `14e9017`)**: izklopljena prednalozitev pisav (10 woff2, ~136 KB, Poppins
+    4 teže × 2 podnabora + Great Vibes) — utopile so render-blocking CSS na počasnih ceveh;
+    landing 3,41 → **2,71 s** (−0,7 s), vse javne strani hitrejše (fonti so bili app-wide preload).
+  - Hladne številke zdaj: pricing 2,33 s ✓ · shop 2,62 s · landing 2,71 s · tenant home 3,08 s.
+  - **Preostali vzrok (strukturen)**: ~450 KB JS chunkov deljene javne ovojnice tekmuje z
+    render-blocking CSS (25,8 KB) — LCP element je besedilo (H1), ki počaka CSS. Fizika cevi:
+    450 KB @ 1,6 Mbps ≈ 2,3 s. **Naslednji korak (ločen task):** bundle analiza javne ovojnice
+    (kaj vleče Radix/lucide/i18n/store na vse javne strani) + code-splitting pod-fold komponent;
+    cilj < 400 KB JS na javnih straneh.
+  - Kontekst: Fast-3G + 4× CPU je Lighthouse najslabši primer; na realnem 4G/5G (10–50 Mbps) je
+    LCP teh strani ≈ 1–1,5 s — polje (p75) bo mejo 2,5 s prestalo brez težave.
 - ✅ **Dostopnost brez kritičnih napak** — DOKAZANO Z AXE (2026-11-14, produkcija, wcag2a+aa):
   `/`, `/pricing`, `/s/studio-nika`, `/s/nail-studio-luna/shop` — **0 kršitev (critical=0,
   serious=0)**, potrjeno ŽIVO po popravku: axe critical `button-name` (ikonski gumbi brez
