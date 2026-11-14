@@ -105,6 +105,9 @@ model Organization {
   // rewrites or deletes history — it appends a NEW version entry.
   configChangeLogs ConfigChangeLog[]
 
+  // Točka 6 — zgodovina objav (append-only snapshots vsake objave).
+  publicationHistory PublicationHistory[]
+
   // #95 (AD-03): funkcionalne odjave od marketinške e-pošte tega najemnika.
   marketingUnsubscribes MarketingUnsubscribe[]
 
@@ -176,8 +179,24 @@ model Organization {
   customRoles          CustomRole[]
   reviews              Review[]
 
+  // F5.1: popusti in promocije, vezana na to podjetje (izolacija najemnikov).
+  promotions          Promotion[]
+  promotionRedemptions PromotionRedemption[]
+
+  // #100 F2.2: povabila v poslovni prostor.
+  invitations OrganizationInvitation[]
+
+  // F5.5.2 — galerije in FAQ podjetja (org-scoped), draft/published prek isPublished.
+  galleries Gallery[]
+  faqItems  FaqItem[]
+
   @@index([slug])
   @@index([status])
+
+  // F5.5.4.6.2 — e-poslovanje organizacije (settings + kanali).
+  einvoiceSettings   EInvoiceSettings?
+  einvoiceChannels   EInvoiceChannelConfig[]
+  einvoices          EInvoice[]
 }
 
 // ============================================================
@@ -209,6 +228,15 @@ model PlatformSubscription {
   currentPeriodEnd   DateTime?
   cancelAtPeriodEnd  Boolean   @default(false)
   canceledAt         DateTime?
+
+  // Grace tok neplačila (točka 7b): ko status preide v PAST_DUE/UNPAID,
+  // vstopi v "grace" (omilitev). graceStartedAt = prvi dan grace;
+  // lastReminderAt = nazadnje poslani opomnik; suspendNotifiedAt =
+  // poslan končni opozorli email pred suspenz. Po graceDeadline brez
+  // plačila cron suspendira org (nikoli ne briše podatkov).
+  graceStartedAt     DateTime?
+  lastReminderAt     DateTime?
+  suspendNotifiedAt  DateTime?
 
   // Pending hosted-checkout intent (recorded at checkout creation).
   // The PLAN change itself NEVER happens here — only the webhook
@@ -331,8 +359,9 @@ model User {
   // #100 8.A (M1): članstva — več podjetij na enem računu (vloga per org).
   memberships OrganizationMember[]
 
-  // One-to-one relationships with business profiles
-  staff    Staff? // If role=STAFF, MUST exist
+  // F2.3.1: a user may be an employee in MULTIPLE organizations — each org
+  // has its own Staff row (see Staff.userId + @@unique([userId, organizationId])).
+  staffs   Staff[]
   customer Customer? // If role=CLIENTE, MUST exist
 
   // Notification preferences
@@ -444,6 +473,15 @@ model SalonConfig {
   zipCode String?
   country String  @default("US")
 
+  // F5.5.4.1 — računovodski/davčni podatki izdajatelja. Uporabijo se kot
+  // podlaga za `Document.issuerSnapshot` ob izdaji. `isVatRegistered`
+  // povsem določa, ali dokumenti v tej organizaciji obračunajo DDV —
+  // NIKOLI ne predpostavljamo, da je vsaka organizacija DDV zavezanec.
+  vatId              String? // davčna številka (npr. "SI12345678")
+  isVatRegistered    Boolean @default(false) // ali je org DDV zavezanec
+  bankAccount        String? // IBAN / TRR
+  registrationNumber String? // matična številka
+
   // Business hours
   timezone String @default("Europe/Ljubljana")
   currency String @default("EUR")
@@ -472,6 +510,14 @@ model SalonConfig {
   updatedAt DateTime @updatedAt
 }
 
+// F5.2: vrsta ponudbe, na katero se kategorija nanaša. BOTH = oboje
+// (privzeta vrednost ohranja obstoječe vedenje skupnega modela).
+enum CategoryType {
+  PRODUCTS
+  SERVICES
+  BOTH
+}
+
 model Category {
   id   String @id @default(cuid())
   name String
@@ -482,6 +528,17 @@ model Category {
   // "Dopolni katalog" replaces foreign-preset sample rows and never touches
   // owner-created (NULL) rows.
   presetSeed String?
+
+  // F5.2: hierarhija in ureditev.
+  parentId   String?
+  description String? @db.Text
+  image      String? // Cloudinary Public ID (isti vzorec kot Service.imageUrl)
+  sortOrder  Int      @default(0) // nižja = prej (koren/podkategorija ločeno)
+  isActive   Boolean  @default(true)
+  categoryType CategoryType @default(BOTH) // PRODUCTS | SERVICES | BOTH
+
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryTree")
 
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -495,6 +552,8 @@ model Category {
   @@unique([organizationId, slug])
   @@index([organizationId])
   @@index([slug])
+  @@index([parentId])
+  @@index([organizationId, isActive, sortOrder])
 }
 
 model Service {
@@ -547,6 +606,8 @@ model Service {
   addons              ServiceAddon[]
   // #98: prijave v walk-in vrsto za to storitev (neobvezno).
   walkInEntries       WalkInEntry[]
+  // F5.5.2 — FAQ, povezana s to storitvijo (zoženi niz; sicer FaqItem.serviceId).
+  faqItems            FaqItem[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -629,8 +690,9 @@ model Staff {
   commissionValue   Decimal?       @db.Decimal(10, 2) // percent (PERCENT) or currency (FIXED)
   commissionBasis   String         @default("service") // "service" | "service+product"
 
-  // REQUIRED one-to-one relationship with User (all staff can login)
-  userId String @unique
+  // REQUIRED relationship with User; a user may be an employee in MULTIPLE
+  // organizations (F2.3.1) — one Staff row per (user, org), never shared.
+  userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   organizationId String?
@@ -643,6 +705,7 @@ model Staff {
   appointments Appointment[]
   workingHours WorkingHours[]
 
+  @@unique([userId, organizationId])
   @@index([userId])
   @@index([organizationId])
   @@index([isActive])
@@ -688,6 +751,14 @@ model Customer {
   // samo prek updateCustomerTags (whitelist sanitizacija, org-scoped).
   tags String[] @default([])
 
+  // P2-D: izrecna privolitev za prejemanje marketinških e-sporočil (GDPR
+  // opt-in / ZVOP-2). Privzeto FALSE — kampanje (BIRTHDAY/REACTIVATION)
+  // kontaktirajo IZKLJUČNO stranke s privolitvijo. Transakcijske e-pošte
+  // (termini, računi) ne potrebujejo privolitve. Odjava (marketingUnsubscribe)
+  // ostane vedno spoštovana tudi za privoljene.
+  marketingConsent Boolean @default(false)
+  marketingConsentedAt DateTime?
+
   // #95: rojstni dan (datum brez časa) — BIRTHDAY kampanja ga bere kot
   // koledarski mesec-dan; null = kampanja stranke ne kontaktira.
   dateOfBirth DateTime?
@@ -699,6 +770,12 @@ model Customer {
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  // F5.5.3.1 — arhiviranje (ne brisanje): arhivirana stranka izgine iz
+  // glavnega seznama, a zgodovina ostane nedotaknjena. Popolni GDPR izbris
+  // gre skozi namensko akcijo (anonimizacija), nikoli tih.
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -709,8 +786,29 @@ model Customer {
   formSubmissions  FormSubmission[]
   workOrders       WorkOrder[]
   documents        Document[]
+  // F5.5.4.2 — dobropisi, izdani tej stranki.
+  creditNotes      CreditNote[]
   extensionRecords ExtensionRecord[]
   projects         Project[]
+  // F5.5.3.1 — povezani walk-in vstopi (obisk brez rezervacije).
+  walkInEntries    WalkInEntry[]
+
+  // F5.5.4.6.2 — PODATKI ZA E-RAČUN (buyer). Izpolnijo se samo takrat, ko
+  // podjetje začne uporabljati e-račune; obstoječim strankam NISO obvezni.
+  // Vsa so org-scoped. Ob izdaji dokumenta se zamrznejo v customerSnapshot.
+  customerType         String? // "BUSINESS" | "CONSUMER" (null = neznano)
+  legalName            String? // pravno ime (podjetje) ali ime+priimek (fizična)
+  street               String?
+  postalCode           String?
+  city                 String?
+  country              String? // ISO 3166-1 alpha-2, npr. "SI"
+  taxNumber            String? // DRUGA davčna številka (npr. "12345678" brez SI)
+  vatId                String? // DDV-identifikacija (npr. "SI12345678")
+  registrationNumber   String? // matična številka
+  electronicId         String? // elektronski identifikator (GLN/SIP/VAT/...)
+  electronicIdScheme   String? // shema elektronskega identifikatorja (EAS koda)
+  buyerReference       String? // referenca kupca (npr. interno / PO)
+  orderReference       String? // referenca naročila
 
   @@index([userId])
   @@index([organizationId])
@@ -852,7 +950,14 @@ model WalkInEntry {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
+  // F5.5.3.1 — opcijska povezava na stranko. NE nastavi se samodejno
+  // (zasebnost): lastnik poveže vstop s stranko ročno ali ob pogoji
+  // identity-politike. SetNull — vstop preživi brisanje/anonimizacijo.
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
   @@index([organizationId, status, createdAt])
+  @@index([customerId])
 }
 
 /// #95 (AD-03): funkcionalna odjava od marketinške e-pošte — per
@@ -907,6 +1012,32 @@ model OrganizationMember {
 
   @@unique([organizationId, userId])
   @@index([userId])
+}
+
+/// #100 F2.2 — povabila v poslovni prostor. Asinhrone povabila po e-pošti
+/// z naključnim žetonom; prejemnik je lahko obstoječ ali nov račun. Varnost:
+/// org+status ob vsakem klicu, token 192-bit naključen, enkraten prehod
+/// PENDING → ACCEPTED/REJECTED/REVOKED. Ne ustvarja User-ja vnaprej —
+/// ob sprejemu se preverita e-pošta in račun.
+model OrganizationInvitation {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  role           String       @default("STAFF") // ADMIN | STAFF
+  customRoleId   String?
+  token          String       @unique
+  invitedById    String?
+  status         String       @default("PENDING") // PENDING | ACCEPTED | REJECTED | REVOKED
+  createdAt      DateTime     @default(now())
+  expiresAt      DateTime?
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+
+  @@unique([organizationId, email])
+  @@index([token])
+  @@index([organizationId])
+  @@index([email])
 }
 
 /// #100 8.C (F2): stanje enega modula za najemnika. Izklop (DEACTIVATED)
@@ -966,6 +1097,13 @@ model Appointment {
   tipMethod        String? // "cash" | "card"
   commissionAmount Decimal? @db.Decimal(10, 2) // written once on COMPLETED
 
+  // F5.1: service-offer promotion applied to this appointment. Same
+  // immutability rule as Order: promotionDiscount is the subtracted
+  // currency, promotionSnapshot is the immutable JSON image of the rule.
+  promotionDiscount Decimal @default(0) @db.Decimal(10, 2)
+  promotionId       String?
+  promotionSnapshot Json?
+
   // #92: snapshot izbranih dodatkov ob rezervaciji — seznam z name,
   // price in durationMin. Cene/dodatki kasneje spremeni katalog,
   // zgodovina termina ostane točna (isti princip kot commissionAmount).
@@ -1008,6 +1146,8 @@ model Appointment {
   // #80: package sessions redeemed with this appointment.
   prepaidRedemptions PrepaidRedemption[]
   services           AppointmentService[]
+  // F5.5.4.1 — dokumenti (računi/ponudbe), izpeljani iz tega termina.
+  documents          Document[]
 
   @@index([staffId])
   @@index([customerId])
@@ -1067,6 +1207,12 @@ model Product {
   // Inventory
   trackInventory Boolean @default(true)
   stockQuantity  Int     @default(0)
+  // F5.5.1.2 — rezervirana količina (ob clean/online checkoutu, dokler
+  // plačilo ne potrdi ali se ne sprosti). RAZPOLOŽLJIVO = stockQuantity −
+  // reservedQuantity; REZERVIRANO = reservedQuantity; PRODANO = stockQuantity
+  // se zmanjša ob potrjenem plačilu. Sold-out preverja razpoložljivo, ne
+  // stockQuantity samo.
+  reservedQuantity Int @default(0)
 
   // #78: retail layer — the fields a real shop needs on top of stock.
   // `price` stays GROSS (DDV included, Slovenian convention); `vatRate`
@@ -1133,6 +1279,15 @@ model Order {
   tipAmount Decimal @default(0) @db.Decimal(10, 2)
   tipMethod String? // "cash" | "card"
 
+  // F5.1: promotion applied to this order. promotionDiscount is the
+  // currency amount subtracted (authoritative totals: total = subtotal +
+  // shipping − promotionDiscount); promotionSnapshot is an immutable JSON
+  // image of the promotion rule that was used, so editing the promotion
+  // later never changes past transactions.
+  promotionDiscount  Decimal @default(0) @db.Decimal(10, 2)
+  promotionId        String?
+  promotionSnapshot  Json?
+
   status OrderStatus @default(PENDING)
 
   // P1 #65: how the order is meant to be paid — "online" (Stripe hosted
@@ -1156,6 +1311,8 @@ model Order {
   stockMovements     StockMovement[]
   // #80: gift-card redemption applied to this order (null = none).
   prepaidRedemptions PrepaidRedemption[]
+  // F5.5.4.1 — dokumenti (računi/ponudbe), izpeljani iz tega naročila.
+  documents          Document[]
 
   @@index([customerId])
   @@index([organizationId])
@@ -1170,11 +1327,23 @@ model OrderItem {
   quantity  Int
   price     Decimal @db.Decimal(10, 2)
 
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  // F5.5.1 — kupljena RAZLIČICA (če ni izbrana, je izdelek brez različic).
+  // `variantId` je mehka referenca (SetNull), da izbris variante ne zbriše
+  // zgodovine naročila. Snapshot polja (variantName/variantSku/variantPrice)
+  // ohranijo točno to, kar je kupec kupil, tudi če se izdelek/različica
+  // pozneje uredi ali izbriše.
+  variantId    String?
+  variantName  String?
+  variantSku   String?
+  variantPrice Decimal? @db.Decimal(10, 2)
+
+  order   Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product          @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant ProductVariant?  @relation(fields: [variantId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@index([productId])
+  @@index([variantId])
 }
 
 enum OrderStatus {
@@ -1429,12 +1598,15 @@ model ProductVariant {
   price          Decimal? @db.Decimal(10, 2)
   trackInventory Boolean  @default(true)
   stockQuantity  Int      @default(0)
+  // F5.5.1.2 — rezervirana količina (enako kot na Product).
+  reservedQuantity Int @default(0)
   isActive       Boolean  @default(true)
   position       Int      @default(0)
 
   organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   stockMovements StockMovement[]
+  orderItems     OrderItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1578,34 +1750,96 @@ model PackageItem {
 
 /// QUOTE statuses: DRAFT | SENT | ACCEPTED | REJECTED
 /// INVOICE statuses: DRAFT | ISSUED | PAID | CANCELLED
+///
+/// F5.5.4.1 — nespremenljivost. Po prehodu v ISSUED (in vse terminalne
+/// status).) dokument postane zaklenjen: noben `updateDocument` ga ne sme
+/// več spreminjati. Podatki izdajatelja in stranke ter vse vrstice/totali
+/// so **posnetek** v snapshot stolpcih — prikaz že izdanega dokumenta NIKOLI
+/// ne bere živih `SalonConfig`/`Customer`. Sprememba stranke ali salona
+/// pozneje ne vpliva na že izdani dokument.
 model Document {
   id             String @id @default(cuid())
   organizationId String
-  type           String // QUOTE | INVOICE
-  number         Int // human-friendly, sequential per tenant AND type
+  type           String // QUOTE | INVOICE | ADVANCE | CREDIT
+  number         Int // zaporedna, per org + tip + poslovno leto
   status         String @default("DRAFT")
 
-  customerId  String?
-  workOrderId String?
+  customerId   String?
+  workOrderId  String?
+  orderId      String? // F5.5.4.1 — poveži z naročilom (trgovina)
+  appointmentId String? // F5.5.4.1 — poveži s terminom (storitve)
 
   issueDate DateTime  @default(now())
+  issuedAt  DateTime?
+  issuedByUserId String?
   dueDate   DateTime?
-  total     Decimal   @db.Decimal(10, 2)
-  notes     String?   @db.Text
+  currency  String  @default("EUR")
+  // F5.5.4.5 — datum/obdobje opravljene storitve (ločeno od issueDate/dueDate).
+  serviceDate        DateTime? // dejanski datum opravljene storitve/dobave
+  servicePeriodStart DateTime? // za storitve v obdobju: začetek
+  servicePeriodEnd   DateTime? //                        konec
+  // Poslovno leto za številčenje; obstoječi dokumenti dobijo 0 in ostanejo
+  // nespremenjeni. Novi dokumenti številčijo znotraj leta `issueDate` leta.
+  fiscalYear Int @default(0)
+
+  // ---- Nespremenljivi posnetki (zasnamki), zajeti ob izdaji ----
+  issuerSnapshot   Json? // {name,address,city,zip,country,email,phone,vatId,isVatRegistered,registrationNumber,bankAccount,currency}
+  customerSnapshot Json? // {name,email,phone}
+  vatEnabled       Boolean @default(false) // ali je bil izdajatelj ob izdaji DDV zavezanec
+
+  // ---- Strežniško izračunani totali (cena je BRUTO, slovenska konvencija) ----
+  subtotal       Decimal @db.Decimal(10, 2) // Σ bruto linij po popustih
+  discountAmount Decimal @default(0) @db.Decimal(10, 2) // dokumentni popust
+  taxBase        Decimal @default(0) @db.Decimal(10, 2) // neto osnova (brez DDV)
+  taxTotal       Decimal @default(0) @db.Decimal(10, 2) // DDV
+  total          Decimal @db.Decimal(10, 2) // končni znesek (z DDV; == subtotal-total)
+
+  // F5.5.4.2 — plačila in dobropisi. `paidAmount` (vsota CLEARED plačil +
+  // storn) in `creditedTotal` (vsota veljavnih dobropisov) sta strežniško
+  // vzdrževana; openAmount = total − paidAmount − creditedTotal (izpeljano).
+  paidAmount   Decimal @default(0) @db.Decimal(10, 2)
+  creditedTotal Decimal @default(0) @db.Decimal(10, 2)
+
+  // F5.5.4.5 — AVANSI. `advanceTotal` = vsota uspešno apliciranih avansov
+  // na ta račun (znižuje odptro stanje, saj gre za predplačilo stranke).
+  advanceTotal Decimal @default(0) @db.Decimal(10, 2)
+  // Za dokument tipa ADVANCE: kateri končni račun ga je apliciral (0..1 v tej
+  // fazi). Za INVOICE: neuporabljen. SetNull — če se končni račun izbriše
+  // (DRAFT), avans ostane in je lahko ponovno apliciran.
+  parentInvoiceId String?
+
+  notes String? @db.Text
 
   organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   customer     Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
   workOrder    WorkOrder?     @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  order        Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  appointment  Appointment?   @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  parentInvoice Document?     @relation("AdvanceToInvoice", fields: [parentInvoiceId], references: [id], onDelete: SetNull)
+  childAdvances      Document[]  @relation("AdvanceToInvoice") // ADVANCE dokumenti, ki kažejo na ta račun
+  appliedAdvanceAllocations DocumentAdvanceAllocation[] @relation("AdvanceAllocation_advance")
+  invoiceAdvanceAllocations DocumentAdvanceAllocation[] @relation("AdvanceAllocation_invoice")
   items        DocumentItem[]
+  payments     DocumentPayment[]
+  creditNotes  CreditNote[]
+  events       DocumentEvent[]
+  archives     DocumentArchive[] // F5.5.4.3
+  sendLogs     DocumentSendLog[] // F5.5.4.3
+  // F5.5.4.6.2 — nespremenljivi e-računi, izpeljani iz tega dokumenta.
+  einvoices    EInvoice[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([organizationId, type, number])
+  @@unique([organizationId, type, fiscalYear, number])
   @@index([organizationId])
   @@index([organizationId, type, status])
+  @@index([fiscalYear])
   @@index([customerId])
   @@index([workOrderId])
+  @@index([orderId])
+  @@index([appointmentId])
+  @@index([parentInvoiceId])
 }
 
 /// Printable line of a document (free description — catalog
@@ -1617,14 +1851,240 @@ model DocumentItem {
   documentId     String
   description    String
   quantity       Decimal @default(1) @db.Decimal(10, 2)
-  unitPrice      Decimal @db.Decimal(10, 2)
-  total          Decimal @db.Decimal(10, 2)
-  position       Int     @default(0)
+  unitPrice      Decimal @db.Decimal(10, 2) // BRUTO (DDV vključen)
+  total          Decimal @db.Decimal(10, 2) // bruto linija po popustu (z DDV)
+
+  // F5.5.4.1 — davčna in popustna preslika (shranjeni, strežniško izračunani)
+  vatRate         Decimal @default(0) @db.Decimal(5, 2) // 0–100
+  discountPercent Decimal @default(0) @db.Decimal(5, 2) // 0–100
+  taxBaseLine     Decimal @default(0) @db.Decimal(10, 2) // neto linija po popustu
+  vatAmount       Decimal @default(0) @db.Decimal(10, 2) // DDV za linijo
+  catalogRef      String? // ohlapna referenca na izdelek/storitev (ne FK)
+
+  position Int     @default(0)
 
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId])
   @@index([organizationId])
+}
+
+/// F5.5.4.1 — zaporedna serija za številčenje dokumentov po org + tip +
+/// poslovno leto. ROW je ključana z `SELECT ... FOR UPDATE` znotraj
+/// transakcije, zato vzporedno izdajanje nikoli ne dobi iste številke.
+model DocumentSequence {
+  organizationId String
+  type           String
+  fiscalYear     Int
+  current        Int    @default(0)
+
+  @@id([organizationId, type, fiscalYear])
+}
+
+// ============================================================
+// F5.5.4.2 — PLAČILA, DOBROPISI IN ŽIVLJENJSKI CIKEL DOKUMENTOV.
+// Vse je org-scoped in IDOR-varano (prek akcij + `where {id, orgId}`).
+// ============================================================
+
+/// Plačilo dokumenta (račun). Za DVOJNO knjiženje je ključ kombinacija
+/// (org, documentId, externalRef) — isti reference (npr. Stripe intent /
+/// bančna sklic) se ne da vknjižiti dvakrat (indeks v migraciji je delno
+/// unikaten, samo kadar externalRef ni NULL).
+///
+/// STORNO NI tiho brisanje: vrstica z `kind='REVERSAL'` in negativnim
+/// zneskom, ki kaže na izvirno plačilo (`reversalOfId`). Obe ostaneta
+/// CLEARED; `paidAmount` dokumenta = vsota CLEARED zneskov (reversal z
+/// negativnim zneskom zniža). S tem je revizijska sled nedotakljiva.
+///
+/// DELNI UNIKATNI INDEKS (F5.5.4.4.1): to je edini indeks tega modela,
+/// ki NI deklariran v datamodelu. F5.5.4.2 ga je ustvaril samo v SQL
+/// (`DocumentPayment_org_doc_ref_key`, unikaten na (org, documentId,
+/// reference) le ko `reference IS NOT NULL`). Prisma 6.19 ne podpira
+/// `@@unique(..., where:)` za delne indekse (schema-engine zavrne `where:`;
+/// `partialIndexes` ni znan preview feature), zato ga NAMERNO upravljamo
+/// prek migracije SQL in ga tukaj ne deklariramo. `prisma migrate dev`
+/// tega indeksa ne prijavlja kot drift (preverjeno: `migrate diff` nobenega
+/// CREATE/DROP zanj ne ustvari) — NE dodajaj navadnega `@@unique`, ker bi
+/// ustvaril DRUG (polni) unikatni indeks in drifto. Indeks se na sveži bazi
+/// ustvari iz migracije 20261209000000_f5542_payments_creditnotes.
+model DocumentPayment {
+  id             String   @id @default(cuid())
+  organizationId String
+  documentId     String
+  kind           String   @default("PAYMENT") // PAYMENT | REVERSAL
+  amount         Decimal  @db.Decimal(10, 2) // PAYMENT > 0; REVERSAL < 0
+  method         String?  // "cash" | "card" | "online" | "transfer" | "giftcard"
+  reference      String?  // sklic / Stripe intent / inconsistency-key
+  paidAt         DateTime @default(now())
+  status         String   @default("CLEARED") // CLEARED (obračunano); REVERSAL.nem
+  reversalOfId   String?  // če je REVERSAL → id izvirnega plačila
+  recordedById   String?
+  createdAt      DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([organizationId])
+  @@index([reversalOfId])
+}
+
+/// Dobropis, vezan na izvirni račun. Višovega zneska (amount) ni mogoče
+/// preseči (preverjeno na strežniku: amount ≤ openAmount za dobropis).
+/// Dobropis NE spreminja totalov izvirnega računa; znižuje njegov
+/// `creditedTotal` (odprto stanje = total − paid − credited).
+model CreditNote {
+  id             String   @id @default(cuid())
+  organizationId String
+  number         Int      // zaporedna, per org + leto
+  fiscalYear     Int
+  status         String   @default("ISSUED") // ISSUED | REVERSED
+  invoiceId      String   // izvirni račun
+  customerId     String?
+
+  originalInvoiceNumber Int    // ohranjena referenca na izvirni račun
+  originalInvoiceCode   String // npr. RAC-0001/2026
+
+  amount    Decimal @db.Decimal(10, 2) // bruto (z DDV)
+  taxBase   Decimal @default(0) @db.Decimal(10, 2)
+  taxTotal  Decimal @default(0) @db.Decimal(10, 2)
+  vatEnabled Boolean @default(false)
+
+  reason      String? @db.Text
+  issuedAt    DateTime @default(now())
+  issuedById  String?
+  reversedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  invoice   Document  @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  customer  Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, fiscalYear, number])
+  @@index([organizationId])
+  @@index([invoiceId])
+}
+
+/// Revizijska/življenjska sled dokumenta — vsaka pomembna sprememba
+/// (ustvaritev, izdaja, plačilo, storno, dobropis, preklic) dobi zapis.
+model DocumentEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  documentId     String
+  kind           String   // CREATED | ISSUED | PAID | PARTIALLY_PAID | CANCELLED | PAYMENT | REVERSAL | CREDIT
+  message        String?
+  actorUserId    String?
+  amount         Decimal? @db.Decimal(10, 2)
+  createdAt      DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([documentId, createdAt])
+  @@index([organizationId])
+}
+
+// ============================================================
+// F5.5.4.3 — ELEKTRONSKI ARHIV IN POŠILJANJE.
+// Vse org-scoped, IDOR-varano; prenos gre prek zaščitene rute, nikoli
+// javni ugibljivi URL.
+// ============================================================
+
+/// Nespremenljiv arhiviran izvirnik (PDF) izdanega dokumenta. `@@unique`
+/// na documentId prepreči prepisovanje že arhiviranega izvirnika; `sha256`
+/// omogoči integritetno preverbo; `data` (base64) je original na izdelavi.
+model DocumentArchive {
+  id             String   @id @default(cuid())
+  organizationId String
+  documentId     String
+  doctype        String   // QUOTE | INVOICE | CREDIT
+  docCode        String   // RAC-0001/2026
+  filename       String
+  mimeType       String   @default("application/pdf")
+  size           Int
+  sha256         String
+  data           String   @db.Text // base64 nespremenljivega PDF-ja
+  generatedById  String?
+  createdAt      DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Restrict)
+
+  @@unique([documentId])
+  @@index([organizationId])
+}
+
+/// Zapis o pošiljanju dokumenta (dobrodošla pošta). `status` je SENT le, ko
+/// ponudnik (Resend) potrdi delivery; ob napaki je FAILED; brez konfiguriranega
+/// ponudnika UNSENT (nikoli se ne trdi, da je bilo poslano).
+model DocumentSendLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  documentId     String
+  doctype        String
+  docCode        String
+  toEmail        String
+  subject        String
+  status         String   // SENT | FAILED | UNSENT
+  error          String?
+  messageId      String?
+  archiveId      String?
+  sentAt         DateTime @default(now())
+  sentById       String?
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([organizationId])
+  @@index([toEmail])
+}
+
+// ============================================================
+// F5.5.4.5 — AVANSNI RAČUNI.
+// Dokument tipa `ADVANCE` v `Document` (ista serija tabel kot INVOICE,
+// samo z drugim `type`). Prejeto predplačilo se evidentira s
+// `DocumentPayment` na avansnem dokumentu; ko se avans aplicira na končni
+// račun, se vnese vrstica v `DocumentAdvanceAllocation`, ki je DVOJNI
+// LOČEVALNIK (prepreči dvakratno uporabo istega avansa) in hkrati nosi
+// razčlenitev DDV prenesenega dela.
+//
+// F5.5.4.5.2 — REVIZIJSKA SLED / MEHKI STORNO:
+//   `status` ACTIVE | REVOKED. Ob storniranju se vrstica NIKOLI ne izbriše;
+//   označi se z REVOKED + revokedAt/revokedById/revokeReason. S tem ostane
+//   celotna zgodovina uporabe (znesek, osnova, DDV, čas, uporabnik) ohranjena.
+//
+//   UNIKAT / PONOVNA UPORABA: dejanska edinstvenost se NE nanaša na celotno
+//   tabelo, temveč le na AKTIVNE vrstice (en avans ≤ en AKTIVEN končni račun).
+//   To je implementirano z DELNIM UNIKATNIM INDEKSOM
+//   "DocumentAdvanceAllocation_org_advance_active_key" (org, advanceId) WHERE
+//   status = 'ACTIVE', ustvarjenim v SQL migraciji 20261112000000_f55452.
+//   Prisma 6.19 ne podpira delnega unikata v datamodelu (enako kot pri
+//   DocumentPayment v f5542), zato je tukaj samo navaden @@index, da ni drifta.
+//   NE dodajaj nazaj @@unique([organizationId, advanceId]) — ustvaril bi polni
+//   unikatni indeks, ki bi po stornu ONEMOGOČIL ponovno uporabo avansa.
+// ============================================================
+model DocumentAdvanceAllocation {
+  id               String  @id @default(cuid())
+  organizationId   String
+  advanceId        String  // tip ADVANCE
+  appliedToInvoice String  // tip INVOICE
+  amount           Decimal @db.Decimal(10, 2) // bruto preneseni znesek na končni
+  taxBase          Decimal @default(0) @db.Decimal(10, 2)
+  taxTotal         Decimal @default(0) @db.Decimal(10, 2)
+  vatEnabled       Boolean @default(false)
+  allocatedAt      DateTime?
+  createdAt        DateTime @default(now())
+
+  // F5.5.4.5.2 — revizijska sled storniranja.
+  status        String    @default("ACTIVE") // ACTIVE | REVOKED
+  revokedAt     DateTime?
+  revokedById   String?
+  revokeReason  String?
+
+  advance Document @relation("AdvanceAllocation_advance", fields: [advanceId], references: [id], onDelete: Restrict)
+  invoice Document @relation("AdvanceAllocation_invoice", fields: [appliedToInvoice], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, advanceId])
+  @@index([organizationId])
+  @@index([appliedToInvoice])
+  @@index([revokedById])
 }
 
 // ============================================================
@@ -1853,4 +2313,412 @@ model JobRun {
   detail     Json?
 
   @@index([job, startedAt])
+}
+
+// ============================================================
+// F5.1 — POPUSTI IN PROMOCIJE. Popust is a tenant-scoped rule
+// the owner creates in the dashboard. One promotion could be:
+//   • a percent-off on the whole order (scope WHOLE_AMOUNT),
+//   • a fixed EUR amount on the whole order,
+//   • a percent/fixed discount limited to specific products,
+//     specific services, or products/services in chosen categories,
+//   • time-boxed (startsAt/endsAt),
+//   • gated by a promo code (`code`),
+//   • capped by total redemptions (maxRedemptions) and/or by
+//     redemptions per customer (maxPerCustomer),
+//   • subject to a minimum order value (minOrderValue).
+//
+// PRICING IS ALWAYS SERVER-AUTHORITATIVE: only this engine (and the
+// server actions that call it) reads a Promotion into a money
+// figure. The browser never submits a price or discount. Every use
+// is recorded in PromotionRedemption and a JSON snapshot is written
+// onto the Order/Appointment, so a later edit of the Promotion never
+// rewrites past transactions (immutability of history).
+// ============================================================
+
+enum PromotionScope {
+  WHOLE_AMOUNT // discount on the entire transaction (products + services)
+  PRODUCTS // specific products (targetEntityIds) or all products when empty
+  SERVICES // specific services (targetEntityIds) or all services when empty
+  CATEGORIES // products/services in the selected categories (targetEntityIds)
+}
+
+enum PromotionDiscountType {
+  PERCENT
+  FIXED
+}
+
+enum PromotionStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+}
+
+/// A promotional reservation row is RESERVED while a Stripe checkout is
+/// pending (it holds a slot from maxRedemptions/maxPerCustomer without being
+/// a final redemption) and is flipped to REDEEMED once payment succeeds.
+///
+/// F5.1.4: a RESERVED seat is released ONLY on the authoritative Stripe
+/// checkout state — never on the local clock alone. Once `heldUntil` passes,
+/// the reservation becomes a *candidate* for reconciliation
+/// (`reconcileExpiredReservations`): if the Stripe session is PAID it is
+/// converted to REDEEMED; if it is expired+unpaid it is released; if the
+/// state is processing/unknown/unreachable it is KEPT. Until Stripe confirms
+/// unpaid, the seat counts toward maxRedemptions/maxPerCustomer.
+enum PromotionRedemptionStatus {
+  RESERVED
+  REDEEMED
+}
+
+model Promotion {
+  id           String                @id @default(cuid())
+  organizationId String
+  name         String
+  description  String?               @db.Text
+
+  // The discount itself.
+  discountType PromotionDiscountType @default(PERCENT)
+  // PERCENT: 0–100 (decimal precision). FIXED: currency amount (EUR gross).
+  discountValue Decimal @db.Decimal(10, 2)
+
+  // What the discount applies to (see PromotionScope above).
+  scope PromotionScope @default(WHOLE_AMOUNT)
+  // For PRODUCTS/SERVICES: entity ids; empty = ALL products/services.
+  // For CATEGORIES: category ids. Validated server-side to belong to org.
+  targetEntityIds String[] @default([])
+
+  // Promo code gate (unique per tenant). A promotion without a code is
+  // applied automatically when its conditions (dates, items, minimum)
+  // are met; with a code it must be entered and validated at checkout.
+  code String?
+
+  startsAt DateTime?
+  endsAt DateTime?
+
+  // Usage limits. maxRedemptions caps TOTAL uses; maxPerCustomer caps
+  // uses by one customer (orders/appointments resolve to a Customer or
+  // a normalized guest email). Both are enforced atomically at redeem time.
+  maxRedemptions Int?
+  maxPerCustomer Int?
+  // Minimum transaction value (before the discount) for the promotion to apply.
+  minOrderValue Decimal? @db.Decimal(10, 2)
+
+  // Lifecycle — a promotion counts only while status === ACTIVE.
+  status PromotionStatus @default(DRAFT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  redemptions   PromotionRedemption[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, startsAt, endsAt])
+}
+
+/// One concrete use of a promotion. Existence IS the unique-use guard:
+/// @@unique([promotionId, orderId]) and @@unique([promotionId, appointmentId])
+/// make a double redemption of the same promotion on the same transaction
+/// impossible (check-then-act is unsafe; the constraint is the fence).
+/// organizationId carries tenant isolation. customerId / guestEmail let us
+/// enforce maxPerCustomer. The discount/base are a snapshot, but the full
+/// immutable picture lives on the Order/Appointment JSON snapshot.
+model PromotionRedemption {
+  id             String   @id @default(cuid())
+  organizationId String
+  promotionId    String
+
+  // Exactly one of orderId / appointmentId is set (the transaction the
+  // promotion was redeemed on). Stored as plain scoping columns (no FK
+  // relation) so we never force the Order/Appointment relations to change;
+  // the meaningful link is the unique constraint below.
+  orderId       String?
+  appointmentId String?
+
+  customerId String?
+  guestEmail String? // normalized (lowercased/trimmed) when no Customer row
+  codeUsed   String?
+
+  // F5.1.2 — temporary slot reservation for pending Stripe checkouts.
+  // status REDEEMED by default (existing rows are final redemptions).
+  // A RESERVED row holds a maxRedemptions/maxPerCustomer seat until its
+  // payment succeeds (flipped to REDEEMED) or the Stripe session is
+  // confirmed unpaid+expired (released via reconciliation, never by local
+  // clock alone).
+  status PromotionRedemptionStatus @default(REDEEMED)
+  heldUntil DateTime? // when a pending RESERVED slot auto-expires/releases
+  checkoutSessionId String? // the Stripe checkout that holds the slot
+
+  discountAmount Decimal @db.Decimal(10, 2) // currency actually discounted
+  baseAmount     Decimal @db.Decimal(10, 2) // the amount the discount applied to
+
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  promotion    Promotion    @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+
+  @@unique([promotionId, orderId])
+  @@unique([promotionId, appointmentId])
+  @@index([organizationId])
+  @@index([promotionId])
+  @@index([orderId])
+  @@index([appointmentId])
+  // F5.1.2: lazy release of expired RESERVED slots + lookups by Stripe session.
+  @@index([status, heldUntil])
+  @@index([checkoutSessionId])
+}
+
+// ============================================================
+// F5.5.2 — GALERIJE & FAQ (org-scoped, nad obstoječo medijsko plastjo).
+//
+// Fotografije NISMO shranjene znova — `mediaId` je referenca na obstoječi
+// medijski sistem (Cloudinary publicId ali Media.id ali absolutni URL),
+// enako kot Service.imageUrl / ServiceGallery.imageUrl. Galerijski kontejner
+// doda ločilo med razpoložljivo vsebino, povezave s poslovnimi entitetami,
+// naslovno fotografijo, javno vidnost in draft/published objekt.
+//
+// Draft/published: `isPublished=true` pomeni, da je enota vključena v zadnjo
+// OBJAVLJENO verzijo. Objavi se z `publishSite` (in pogojno v F5.5.2 akcijah)
+// ter postane vidna na javni strani; draft (isPublished=false) je viden samo
+// pooblaščenem predpogledu.
+// ============================================================
+
+/// Galerija podjetja — org-scoped, več slik, povezav in javne vidnosti.
+model Gallery {
+  id             String   @id @default(cuid())
+  organizationId String
+  title          String
+  description    String?  @db.Text
+  /// Media referenca nad naslovno fotografijo (Cloudinary publicId / Media.id / URL).
+  coverImageId   String?
+  isPublic       Boolean  @default(true)
+  isPublished    Boolean  @default(false)
+  position       Int      @default(0)
+
+  // Povezave na poslovne entitete (opcijsko; ena galerija = 0..1 povezav).
+  linkedServiceId  String?
+  linkedProductId  String?
+  linkedProjectId  String?
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  items        GalleryItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([organizationId, isPublished])
+  @@index([linkedServiceId])
+  @@index([linkedProductId])
+  @@index([linkedProjectId])
+}
+
+/// Fotografija znotraj galerije — referenca na obstoječo medijsko datoteko.
+model GalleryItem {
+  id             String   @id @default(cuid())
+  galleryId      String
+  /// Referenca na obstoječo medijsko datoteko (ne duplika).
+  mediaId        String
+  caption        String?  @db.Text
+  alt            String?  @db.Text // alt besedilo (dostopnost / SEO)
+  position       Int      @default(0)
+  isPublished    Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  gallery Gallery @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+
+  @@index([galleryId])
+  @@index([galleryId, position])
+}
+
+/// Pogosto vprašanje podjetja ali posamezne storitve (serviceId opcijsko).
+/// Kategorija, javna vidnost, vrstni red in draft/published.
+model FaqItem {
+  id             String   @id @default(cuid())
+  organizationId String
+  question       String
+  answer         String   @db.Text
+  category       String?  // npr. "Garancija", "Nega" — poljubno
+  position       Int      @default(0)
+  isPublic       Boolean  @default(true)
+  isPublished    Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Opcijska povezava na storitev (nir-value = vprašanje za celotno podjetje).
+  serviceId String?
+  service   Service? @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([organizationId, isPublished])
+  @@index([serviceId])
+}
+
+// ============================================================
+// F5.5.4.6.2 — ELEKTRONSKI RAČUNI (primarna faza: priprava, validacija, arhiv).
+// Pošiljanje/prejemanje (UJP/PEPPOL) NISo še implementirana — samo vmesniki.
+// Vse org-scoped in IDOR-varano (skupni vzorec kao Document).
+// ============================================================
+
+/// Nastavitve e-poslovanja organizacije: kateri formati so aktivni, ali je
+/// B2B omogočen (po veljavnosti pravilnika), privzete vrednosti.
+model EInvoiceSettings {
+  id                     String   @id @default(cuid())
+  organizationId         String   @unique
+  organization           Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  eslogEnabled           Boolean  @default(false) // e-SLOG 2.0 (B2G)
+  peppolEnabled          Boolean  @default(false) // UBL 2.1 / PEPPOL BIS Billing 3.0.x
+  b2bEnabled             Boolean  @default(false) // od 1.1.2028 (po veljavnosti pravilnika)
+  invoiceTypeCode        Int      @default(380)   // končni račun
+  creditNoteTypeCode     Int      @default(381)   // dobropis
+  advanceTypeCode        Int      @default(386)   // avansni račun / zahtevek za plačilo
+  retentionYears         Int      @default(10)    // zakonska hramba
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+/// Per-org konfiguracija ponudnika/kanala — SAMO vmesnik (brez realnega
+/// pošiljanja). Poverilnic ni mogoče shraniti v čisti obliki.
+model EInvoiceChannelConfig {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  channel            String   // "ujp" | "peppol" | later "direct"; e-pošta NIKOLI za B2B
+  label              String
+  status             String   @default("DISABLED") // DISABLED | ENABLED | PENDING
+  providerEndpoint   String?
+  encryptedSecret    String?  // obšifriran (AES-GCM), nikoli čisti
+  encryptedKeyRef    String?
+  config             Json?    // neobčutljivi parametri
+  updatedAt          DateTime @updatedAt
+  createdAt          DateTime @default(now())
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  @@unique([organizationId, channel])
+  @@index([organizationId])
+}
+
+/// Nespremenljiv arhivirani e-račun (generirani XML). Original se nikoli ne
+/// prepiše; `@@unique([organizationId, documentId, format, kind])` prepreči
+/// dvojno generiranje istega izhoda. sourceCreditNoteCount je za dober prikaz.
+model EInvoice {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  documentId         String   // izvirni Document (INVOICE/ADVANCE) — za CreditNote ni v tem modelu Documenta, vezo rešujemo prek documentId + kind
+  kind               String   // "INVOICE" | "ADVANCE" | "CREDIT"
+  format             String   // "ESLOG_2" | "UBL21_PEPPOL_3"
+  docCode            String   // RAC-0001/2026, AVN-0001/2026 ali DN-0001/2026
+  xml                String   @db.Text // base64 nespremenljivega XML
+  sha256             String
+  size               Int
+  xmlValidatedXsd    Boolean  @default(false)
+  xmlValidatedBusiness Boolean @default(false)
+  validationMessages String?  @db.Text // JSON array (poslovne napake/opozorila)
+  // F5.5.4.6.3 — verzije standarda/validatorja, uporabljene ob generiranju.
+  standardVersion     String  @default("") // npr. "PEPPOL-BIS-3.0.21", "eSLOG-2.0"
+  validatorVersion    String  @default("") // npr. "UBL-2.1", "UJP-eSlog", "TC434"
+  xsdApplied          Boolean @default(false) // res samo, ée je tekel pravi uradni XSD engine
+  peppolSchematronApplied Boolean @default(false)
+  status             String   @default("VALIDATED") // PREPARED | VALIDATED | SENT | ... (pošiljanje pozneje)
+  generatedById      String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  events EInvoiceDeliveryEvent[]
+  receipts EInvoiceReceipt[]
+
+  @@unique([organizationId, documentId, format, kind])
+  @@index([organizationId])
+  @@index([documentId])
+}
+
+/// Podlaga za poznejša povratna sporočila (UJP/PEPPOL). Trenutno se piše le
+/// pri generiranju (status LOCAL_GENERATED); pošiljanje pozneje.
+model EInvoiceReceipt {
+  id             String   @id @default(cuid())
+  organizationId String
+  einvoiceId     String
+  kind           String   // "LOCAL_GENERATED" | (pozneje) "DELIVERY_ACK" | "REJECTION"
+  status         String
+  message        String?
+  data           String?  @db.Text // base64 originalnega potrdila
+  sha256         String?
+  receivedAt     DateTime @default(now())
+  einvoice EInvoice @relation(fields: [einvoiceId], references: [id], onDelete: Cascade)
+  @@index([einvoiceId])
+  @@index([organizationId])
+}
+
+/// Neizbrisljiva zgodovina dogodkov e-računa (kdo/kdaj/kaj).
+model EInvoiceDeliveryEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  einvoiceId     String
+  kind           String   // GENERATED | VALIDATED | (pozneje) SENT | DELIVERED | REJECTED
+  message        String?
+  actorUserId    String?
+  createdAt      DateTime @default(now())
+  einvoice EInvoice @relation(fields: [einvoiceId], references: [id], onDelete: Cascade)
+  @@index([einvoiceId])
+  @@index([einvoiceId, createdAt])
+  @@index([organizationId])
+}
+
+// ============================================================
+// RATE LIMIT (točka 1 — varnost in higiena)
+// Enoten, deljen števec za omejevanje hitrosti občutljivih dejanj
+// (prijava, registracija, pozaba gesla, ponastavitev gesla, ponovno
+// pošiljanje potrditve). DB-backed, ker je platforma serverless
+// (Vercel) — in-memory števec se ponastavi ob hladnem zagonu in se
+// ne deli med instancami. Vrstica ima omejeno življenjsko dobo:
+// po izteku okna jo cron/stale wash izbriše (glej api/cron/tick).
+// ============================================================
+model RateLimit {
+  id         String   @id @default(cuid())
+  /// Razlog štetja; "scope" (npr. "login:ip") z identifikatorjem.
+  scope      String
+  /// Ključ znotraj scopa — IP naslov, e-pošta ali uporabniški id.
+  key        String
+  /// Ali se šteje po oknu ali (redkeje) absolutni interval od prvega dogodka.
+  windowStart DateTime @default(now())
+  /// Število dogodkov v trenutnem oknu.
+  count      Int      @default(1)
+  /// Absolutni iztek — platforma lahko izbriše vrsto, ko ta poteče.
+  expiresAt  DateTime
+  updatedAt  DateTime @updatedAt
+
+  @@unique([scope, key])
+  @@index([expiresAt])
+}
+
+// ============================================================
+// PUBLICATION HISTORY (točka 6 — zgodovina objav + vrnitev)
+// Append-only snapshots vsake OBJAVE. Omogoča "vrni prejšnjo
+// različico z enim klikom": vsaka objava zamrzne objavljeno vsebino
+// v novo vrsto; revert prekopira izbrano staro vsebino nazaj v
+// osnutek (vse izvedljivo, nikoli brisanje zgodovine — skladno z
+// append-only načelom iz ConfigChangeLog).
+// ============================================================
+model PublicationHistory {
+  id             String   @id @default(cuid())
+  organizationId String
+  /// contentVersion ob tej objavi (korelacija s SalonConfig).
+  contentVersion Int
+  /// Objavljena vsebina, kot je bila takrat zamrznjena (enako
+  /// publishedSiteContent; null = padel nazaj na verticalne privzete).
+  siteContent    Json?
+  publishedAt    DateTime @default(now())
+  /// Kdo je objavil (če znan) — za revizijsko sled, ni obvezno.
+  createdByUserId String?
+  /// Neobvezna opomba (npr. "vrnitev prejšnje").
+  note           String?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([organizationId, publishedAt])
 }

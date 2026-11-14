@@ -7,36 +7,73 @@ import { DEFAULT_CATALOG_IMAGES, DEFAULT_DEMO_MEDIA } from '../src/lib/default-a
 const prisma = new PrismaClient()
 
 /**
- * Legacy demo seed helper — seeded services have no organization and the
- * Service slug is now unique PER ORGANIZATION (EPIC #1: same-vertical tenants
- * must not collide), so upsert manually by the nullable-org + slug pair.
+ * Demo seed helper — seeded services belong to the demo organization
+ * (F2.2.2). If the Service slug is unique PER ORGANIZATION (EPIC #1), so
+ * upsert by the (organizationId, slug) pair through the compound unique
+ * key — idempotent and never duplicates across tenants.
  */
 async function serviceUpsert(args: {
+  organizationId: string
   where: { slug: string }
   update: Prisma.ServiceUncheckedUpdateInput
   create: Prisma.ServiceUncheckedCreateInput
 }) {
-  const existing = await prisma.service.findFirst({
-    where: { slug: args.where.slug, organizationId: null },
+  const { organizationId, where, update, create } = args
+  const existing = await prisma.service.findUnique({
+    where: { organizationId_slug: { organizationId, slug: where.slug } },
   })
   if (existing) {
-    return prisma.service.update({ where: { id: existing.id }, data: args.update })
+    return prisma.service.update({
+      where: { id: existing.id },
+      data: { ...update, organizationId },
+    })
   }
-  return prisma.service.create({ data: args.create })
+  return prisma.service.create({ data: { ...create, organizationId, slug: where.slug } })
 }
 
 async function main() {
   console.log('🌱 Seeding database...')
 
   // ============================================
-  // 1. SALON CONFIGURATION
+  // 1. DEMO ORGANIZATION (tenant)
+  // ============================================
+  // F2.2.2 P0: the demo admin/staff must resolve an ACTIVE organization
+  // through an OrganizationMember row (F2.1 resolver has NO legacy
+  // "first active org" fallback). We create ONE deterministic demo org
+  // (`demo-salon` — the same slug the reviews already used) and scope
+  // every seeded entity to it so the demo is coherent end-to-end.
+  // Idempotent: upsert by the fixed slug; never creates duplicates.
+  console.log('Creating demo organization...')
+  const demoOrg = await prisma.organization.upsert({
+    where: { slug: 'demo-salon' },
+    update: {
+      name: 'Salon harmonija (demo)',
+      status: 'ACTIVE',
+      publishState: 'PUBLISHED',
+      vertical: 'beauty',
+      plan: 'free',
+    },
+    create: {
+      slug: 'demo-salon',
+      name: 'Salon harmonija (demo)',
+      status: 'ACTIVE',
+      publishState: 'PUBLISHED',
+      vertical: 'beauty',
+      plan: 'free',
+    },
+    select: { id: true },
+  })
+  console.log(`✅ Demo organization: ${demoOrg.id}`)
+
+  // ============================================
+  // 2. SALON CONFIGURATION (per organization)
   // ============================================
   console.log('Creating salon configuration...')
   const salonConfig = await prisma.salonConfig.upsert({
-    where: { id: 'salon_config' },
+    where: { organizationId: demoOrg.id },
     update: {},
     create: {
-      id: 'salon_config',
+      organizationId: demoOrg.id,
       name: 'Salon harmonija (demo)',
       email: 'info@rcbeautysalon.org',
       phone: '+386 40 123 456',
@@ -72,12 +109,15 @@ async function main() {
   const adminPassword = await hash(adminPlain, 12)
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@rcbeautysalon.org' },
-    update: {},
+    update: { organizationId: demoOrg.id },
     create: {
       name: 'Admin (demo)',
       email: 'admin@rcbeautysalon.org',
       password: adminPassword,
       role: 'ADMIN',
+      // legacy default-org pointer (M2 dual-read) → the same demo org the
+      // ADMIN membership (section 2b) is scoped to.
+      organizationId: demoOrg.id,
       emailVerified: new Date(),
     },
   })
@@ -89,52 +129,84 @@ async function main() {
 
   const lauraUser = await prisma.user.upsert({
     where: { email: 'laura@rcbeautysalon.org' },
-    update: {},
+    update: { organizationId: demoOrg.id },
     create: {
       name: 'Maja Kovač',
       email: 'laura@rcbeautysalon.org',
       password: staffPassword,
       role: 'STAFF',
+      organizationId: demoOrg.id,
       emailVerified: new Date(),
     },
   })
 
   const mariaUser = await prisma.user.upsert({
     where: { email: 'maria@rcbeautysalon.org' },
-    update: {},
+    update: { organizationId: demoOrg.id },
     create: {
       name: 'Sara Horvat',
       email: 'maria@rcbeautysalon.org',
       password: staffPassword,
       role: 'STAFF',
+      organizationId: demoOrg.id,
       emailVerified: new Date(),
     },
   })
 
   const sofiaUser = await prisma.user.upsert({
     where: { email: 'sofia@rcbeautysalon.org' },
-    update: {},
+    update: { organizationId: demoOrg.id },
     create: {
       name: 'Nina Zupan',
       email: 'sofia@rcbeautysalon.org',
       password: staffPassword,
       role: 'STAFF',
+      organizationId: demoOrg.id,
       emailVerified: new Date(),
     },
   })
 
   const anaUser = await prisma.user.upsert({
     where: { email: 'ana@rcbeautysalon.org' },
-    update: {},
+    update: { organizationId: demoOrg.id },
     create: {
       name: 'Ana Novak',
       email: 'ana@rcbeautysalon.org',
       password: staffPassword,
       role: 'STAFF',
+      organizationId: demoOrg.id,
       emailVerified: new Date(),
     },
   })
   console.log(`✅ Staff Users: 4`)
+
+  // ============================================
+  // 2b. DEMO ORGANIZACIJA + ČLANSTVA (F2.2.2 P0-1)
+  // ============================================
+  // Prej je demo nastal BREZ OrganizationMember vrstic → requireSessionOrg
+  // (fail-closed) ni moglo razrešiti orga in demo administrator ni mogel
+  // odpreti administracije. Zdaj: dejavna demo organizacija + ADMIN članstvo
+  // za admin računa + STAFF članstva za zaposlene. Upsert na unikatnem
+  // @@unique([organizationId, userId]) je idempotenten — ponovni zagon ne
+  // ustvari podvojenih članstev. `demoOrg` je definiran v sekciji 1 zgoraj
+  // (demo organizacija), tukaj pa ustvarimo samo članstva.
+  await prisma.organizationMember.upsert({
+    where: {
+      organizationId_userId: { organizationId: demoOrg.id, userId: adminUser.id },
+    },
+    update: { role: 'ADMIN', isDefault: true },
+    create: { organizationId: demoOrg.id, userId: adminUser.id, role: 'ADMIN', isDefault: true },
+  })
+  for (const staffUser of [lauraUser, mariaUser, sofiaUser, anaUser]) {
+    await prisma.organizationMember.upsert({
+      where: {
+        organizationId_userId: { organizationId: demoOrg.id, userId: staffUser.id },
+      },
+      update: { role: 'STAFF' },
+      create: { organizationId: demoOrg.id, userId: staffUser.id, role: 'STAFF', isDefault: true },
+    })
+  }
+  console.log(`✅ Demo organizacija (${demoOrg.id}) + članstva: 1× ADMIN, 4× STAFF`)
 
   // CLIENT USERS (with Customer profiles)
   const clientPlain = process.env.SEED_CLIENTE_PASSWORD ?? 'cliente123'
@@ -181,33 +253,33 @@ async function main() {
   // ============================================
   console.log('\nCreating categories...')
   const hairCategory = await prisma.category.upsert({
-    where: { id: 'seed-category-hair' },
+    where: { organizationId_slug: { organizationId: demoOrg.id, slug: 'hair' } },
     update: {},
-    create: { id: 'seed-category-hair', name: 'Frizerske storitve', slug: 'hair' },
+    create: { name: 'Frizerske storitve', slug: 'hair', organizationId: demoOrg.id },
   })
 
   const nailsCategory = await prisma.category.upsert({
-    where: { id: 'seed-category-nails' },
+    where: { organizationId_slug: { organizationId: demoOrg.id, slug: 'nails' } },
     update: {},
-    create: { id: 'seed-category-nails', name: 'Nohti', slug: 'nails' },
+    create: { name: 'Nohti', slug: 'nails', organizationId: demoOrg.id },
   })
 
   const facialCategory = await prisma.category.upsert({
-    where: { id: 'seed-category-facial' },
+    where: { organizationId_slug: { organizationId: demoOrg.id, slug: 'facial' } },
     update: {},
-    create: { id: 'seed-category-facial', name: 'Obraz in koža', slug: 'facial' },
+    create: { name: 'Obraz in koža', slug: 'facial', organizationId: demoOrg.id },
   })
 
   const massageCategory = await prisma.category.upsert({
-    where: { id: 'seed-category-massage' },
+    where: { organizationId_slug: { organizationId: demoOrg.id, slug: 'massage' } },
     update: {},
-    create: { id: 'seed-category-massage', name: 'Masaža in spa', slug: 'massage' },
+    create: { name: 'Masaža in spa', slug: 'massage', organizationId: demoOrg.id },
   })
 
   const productsCategory = await prisma.category.upsert({
-    where: { id: 'seed-category-products' },
+    where: { organizationId_slug: { organizationId: demoOrg.id, slug: 'products' } },
     update: {},
-    create: { id: 'seed-category-products', name: 'Kozmetični izdelki', slug: 'products' },
+    create: { name: 'Kozmetični izdelki', slug: 'products', organizationId: demoOrg.id },
   })
   console.log('✅ Categories: 5')
 
@@ -216,6 +288,7 @@ async function main() {
   // ============================================
   console.log('\nCreating services...')
   const haircut = await serviceUpsert({
+    organizationId: demoOrg.id,
     where: { slug: 'haircut-style' },
     update: {
       imageUrl: DEFAULT_CATALOG_IMAGES.haircut,
@@ -235,6 +308,7 @@ async function main() {
   })
 
   const coloring = await serviceUpsert({
+    organizationId: demoOrg.id,
     where: { slug: 'hair-coloring' },
     update: {
       imageUrl: DEFAULT_CATALOG_IMAGES.coloring,
@@ -254,6 +328,7 @@ async function main() {
   })
 
   const highlights = await serviceUpsert({
+    organizationId: demoOrg.id,
     where: { slug: 'highlights' },
     update: {
       imageUrl: DEFAULT_CATALOG_IMAGES.highlights,
@@ -272,6 +347,7 @@ async function main() {
   })
 
   const keratin = await serviceUpsert({
+    organizationId: demoOrg.id,
     where: { slug: 'keratin-treatment' },
     update: {
       imageUrl: DEFAULT_CATALOG_IMAGES.hairTreatment,
@@ -290,6 +366,7 @@ async function main() {
   })
 
   const manicure = await serviceUpsert({
+    organizationId: demoOrg.id,
     where: { slug: 'manicure' },
     update: {
       imageUrl: DEFAULT_CATALOG_IMAGES.manicure,
@@ -309,6 +386,7 @@ async function main() {
   })
 
   const pedicure = await serviceUpsert({
+    organizationId: demoOrg.id,
     where: { slug: 'pedicure' },
     update: {
       imageUrl: DEFAULT_CATALOG_IMAGES.spaPedicure,
@@ -328,6 +406,7 @@ async function main() {
   })
 
   const gelNails = await serviceUpsert({
+    organizationId: demoOrg.id,
     where: { slug: 'gel-nails' },
     update: {
       imageUrl: DEFAULT_CATALOG_IMAGES.gelManicure,
@@ -346,6 +425,7 @@ async function main() {
   })
 
   const facial = await serviceUpsert({
+    organizationId: demoOrg.id,
     where: { slug: 'facial-treatment' },
     update: {
       imageUrl: DEFAULT_CATALOG_IMAGES.deepClean,
@@ -365,6 +445,7 @@ async function main() {
   })
 
   const antiAging = await serviceUpsert({
+    organizationId: demoOrg.id,
     where: { slug: 'anti-aging-facial' },
     update: {
       imageUrl: DEFAULT_CATALOG_IMAGES.antiAging,
@@ -383,6 +464,7 @@ async function main() {
   })
 
   const microdermabrasion = await serviceUpsert({
+    organizationId: demoOrg.id,
     where: { slug: 'microdermabrasion' },
     update: {
       imageUrl: DEFAULT_CATALOG_IMAGES.facial,
@@ -401,6 +483,7 @@ async function main() {
   })
 
   const massage = await serviceUpsert({
+    organizationId: demoOrg.id,
     where: { slug: 'relaxing-massage' },
     update: {
       imageUrl: DEFAULT_CATALOG_IMAGES.massage,
@@ -419,6 +502,7 @@ async function main() {
   })
 
   const hotStone = await serviceUpsert({
+    organizationId: demoOrg.id,
     where: { slug: 'hot-stone-massage' },
     update: {
       imageUrl: DEFAULT_CATALOG_IMAGES.hotStone,
@@ -443,10 +527,11 @@ async function main() {
   console.log('\nCreating staff profiles...')
 
   const staffLaura = await prisma.staff.upsert({
-    where: { userId: lauraUser.id },
+    where: { userId_organizationId: { userId: lauraUser.id, organizationId: demoOrg.id } },
     update: {
       name: 'Maja Kovač',
       image: DEFAULT_DEMO_MEDIA.staffLaura,
+      organizationId: demoOrg.id,
     },
     create: {
       name: 'Maja Kovač',
@@ -456,14 +541,16 @@ async function main() {
       image: DEFAULT_DEMO_MEDIA.staffLaura,
       isActive: true,
       userId: lauraUser.id,
+      organizationId: demoOrg.id,
     },
   })
 
   const staffMaria = await prisma.staff.upsert({
-    where: { userId: mariaUser.id },
+    where: { userId_organizationId: { userId: mariaUser.id, organizationId: demoOrg.id } },
     update: {
       name: 'Sara Horvat',
       image: DEFAULT_DEMO_MEDIA.staffMaria,
+      organizationId: demoOrg.id,
     },
     create: {
       name: 'Sara Horvat',
@@ -473,14 +560,16 @@ async function main() {
       image: DEFAULT_DEMO_MEDIA.staffMaria,
       isActive: true,
       userId: mariaUser.id,
+      organizationId: demoOrg.id,
     },
   })
 
   const staffSofia = await prisma.staff.upsert({
-    where: { userId: sofiaUser.id },
+    where: { userId_organizationId: { userId: sofiaUser.id, organizationId: demoOrg.id } },
     update: {
       name: 'Nina Zupan',
       image: DEFAULT_DEMO_MEDIA.staffSofia,
+      organizationId: demoOrg.id,
     },
     create: {
       name: 'Nina Zupan',
@@ -490,14 +579,16 @@ async function main() {
       image: DEFAULT_DEMO_MEDIA.staffSofia,
       isActive: true,
       userId: sofiaUser.id,
+      organizationId: demoOrg.id,
     },
   })
 
   const staffAna = await prisma.staff.upsert({
-    where: { userId: anaUser.id },
+    where: { userId_organizationId: { userId: anaUser.id, organizationId: demoOrg.id } },
     update: {
       name: 'Ana Novak',
       image: DEFAULT_DEMO_MEDIA.staffAna,
+      organizationId: demoOrg.id,
     },
     create: {
       name: 'Ana Novak',
@@ -507,6 +598,7 @@ async function main() {
       image: DEFAULT_DEMO_MEDIA.staffAna,
       isActive: true,
       userId: anaUser.id,
+      organizationId: demoOrg.id,
     },
   })
   console.log('✅ Staff: 4 (all with login access)')
@@ -518,49 +610,53 @@ async function main() {
 
   const customerJohn = await prisma.customer.upsert({
     where: { userId: clientUser.id },
-    update: {},
+    update: { organizationId: demoOrg.id },
     create: {
       name: 'John Doe',
       email: 'cliente@rcbeautysalon.org',
       phone: '+386 40 200 202',
       notes: 'Redna stranka, za striženje raje izbere Laro',
       userId: clientUser.id,
+      organizationId: demoOrg.id,
     },
   })
 
   const customerEmily = await prisma.customer.upsert({
     where: { userId: emilyUser.id },
-    update: {},
+    update: { organizationId: demoOrg.id },
     create: {
       name: 'Emily Johnson',
       email: 'emily@example.com',
       phone: '+386 40 300 303',
       notes: 'Obožuje tretmaje obraza in spa tretmaje',
       userId: emilyUser.id,
+      organizationId: demoOrg.id,
     },
   })
 
   const customerMichael = await prisma.customer.upsert({
     where: { userId: michaelUser.id },
-    update: {},
+    update: { organizationId: demoOrg.id },
     create: {
       name: 'Michael Chen',
       email: 'michael@example.com',
       phone: '+386 40 400 404',
       userId: michaelUser.id,
+      organizationId: demoOrg.id,
     },
   })
 
   // Walk-in customer (no account)
   const customerJessica = await prisma.customer.upsert({
     where: { id: 'customer_jessica' },
-    update: {},
+    update: { organizationId: demoOrg.id },
     create: {
       id: 'customer_jessica',
       name: 'Jessica Smith',
       email: 'jessica@example.com',
       phone: '+386 40 777 888',
       notes: 'Stranka brez predhodne prijave, raje pride zjutraj',
+      organizationId: demoOrg.id,
     },
   })
   console.log('✅ Customers: 4 (3 with accounts, 1 walk-in)')
@@ -630,18 +726,10 @@ async function main() {
   // ============================================
   console.log('\nCreating service reviews...')
 
-  await prisma.review.deleteMany({})
+  await prisma.review.deleteMany({ where: { organizationId: demoOrg.id } })
 
-  // P2 #75: ocene zdaj pripadajo najemniku (organizationId NOT NULL).
-  // Legacy demo vrstice nimajo najemnika — demo- predpona je notranji
-  // najemnik (izključen iz sitemap/SEO), podatki pa ostanejo dekorativni.
-  const demoReviewOrg = await prisma.organization.upsert({
-    where: { slug: 'demo-salon' },
-    update: {},
-    create: { slug: 'demo-salon', name: 'Demo Salon', vertical: 'beauty', plan: 'free' },
-    select: { id: true },
-  })
-
+  // P2 #75: ocene pripadajo demo najemniku (organizationId NOT NULL).
+  // `demoOrg` (sekcija 1) je isti najemnik — ocene so del istega dema.
   await prisma.review.createMany({
     data: [
       {
@@ -649,7 +737,7 @@ async function main() {
         comment: 'Lara mi je naredila najboljše striženje, kar ga imam! Resnično je prisluhnila, kar sem želela, rezultat pa je popoln. Toplo priporočam!',
         serviceId: haircut.id,
         userId: customerJohn.userId!,
-        organizationId: demoReviewOrg.id,
+        organizationId: demoOrg.id,
         isActive: true,
       },
       {
@@ -657,7 +745,7 @@ async function main() {
         comment: 'Marija je čudežna z barvo! Moj balayage izgleda tako naravno in lepo. Pohvale dobim na vseh straneh.',
         serviceId: coloring.id,
         userId: customerEmily.userId!,
-        organizationId: demoReviewOrg.id,
+        organizationId: demoOrg.id,
         isActive: true,
       },
       {
@@ -665,7 +753,7 @@ async function main() {
         comment: 'Tretmaj obraza je bil neverjeten! Moja koža je neverjetno mehka in osvežena. Ana res zna svoje.',
         serviceId: facial.id,
         userId: customerMichael.userId!,
-        organizationId: demoReviewOrg.id,
+        organizationId: demoOrg.id,
         isActive: true,
       },
       {
@@ -673,7 +761,7 @@ async function main() {
         comment: 'Najboljša pedikura, kar sem jih imela! Sofija je izjemno natančna, masaža pa je bila nebeška. Zagotovo se vračam!',
         serviceId: pedicure.id,
         userId: customerEmily.userId!,
-        organizationId: demoReviewOrg.id,
+        organizationId: demoOrg.id,
         isActive: true,
       },
       {
@@ -681,7 +769,7 @@ async function main() {
         comment: 'Odlična storitev in prijazno osebje. Gel manikira je zdržala 3 tedne brez razpok!',
         serviceId: gelNails.id,
         userId: customerJohn.userId!,
-        organizationId: demoReviewOrg.id,
+        organizationId: demoOrg.id,
         isActive: true,
       },
     ],
@@ -754,7 +842,7 @@ async function main() {
   // ============================================
   console.log('\nCreating sample appointments...')
 
-  await prisma.appointment.deleteMany({})
+  await prisma.appointment.deleteMany({ where: { organizationId: demoOrg.id } })
 
   const today = new Date()
   const tomorrow = addDays(today, 1)
@@ -770,6 +858,7 @@ async function main() {
   // Tomorrow - Confirmed (paid)
   await prisma.appointment.create({
     data: {
+      organizationId: demoOrg.id,
       staffId: staffLaura.id,
       customerId: customerJohn.id,
       startTime: setMinutes(setHours(tomorrow, 10), 0),
@@ -788,6 +877,7 @@ async function main() {
   // Tomorrow - Confirmed (paid) - Another client
   await prisma.appointment.create({
     data: {
+      organizationId: demoOrg.id,
       staffId: staffSofia.id,
       customerId: customerEmily.id,
       startTime: setMinutes(setHours(tomorrow, 14), 0),
@@ -805,6 +895,7 @@ async function main() {
   // Day after tomorrow - Pending payment
   await prisma.appointment.create({
     data: {
+      organizationId: demoOrg.id,
       staffId: staffAna.id,
       customerId: customerMichael.id,
       startTime: setMinutes(setHours(dayAfterTomorrow, 11), 0),
@@ -822,6 +913,7 @@ async function main() {
   // Next week - Confirmed (multiple services)
   await prisma.appointment.create({
     data: {
+      organizationId: demoOrg.id,
       staffId: staffMaria.id,
       customerId: customerEmily.id,
       startTime: setMinutes(setHours(nextWeek, 10), 0),
@@ -845,6 +937,7 @@ async function main() {
   // 2 days ago - Completed
   await prisma.appointment.create({
     data: {
+      organizationId: demoOrg.id,
       staffId: staffSofia.id,
       customerId: customerEmily.id,
       startTime: setMinutes(setHours(twoDaysAgo, 11), 0),
@@ -862,6 +955,7 @@ async function main() {
   // 3 days ago - Completed
   await prisma.appointment.create({
     data: {
+      organizationId: demoOrg.id,
       staffId: staffLaura.id,
       customerId: customerMichael.id,
       startTime: setMinutes(setHours(threeDaysAgo, 15), 0),
@@ -879,6 +973,7 @@ async function main() {
   // Last week - NO_SHOW (client didn't show up, lost deposit)
   await prisma.appointment.create({
     data: {
+      organizationId: demoOrg.id,
       staffId: staffAna.id,
       customerId: customerJessica.id,
       startTime: setMinutes(setHours(lastWeek, 14), 0),
@@ -897,6 +992,7 @@ async function main() {
   // Last week - CANCELLED by client
   await prisma.appointment.create({
     data: {
+      organizationId: demoOrg.id,
       staffId: staffMaria.id,
       customerId: customerJohn.id,
       startTime: setMinutes(setHours(lastWeek, 10), 0),
@@ -915,6 +1011,7 @@ async function main() {
   // 2 weeks ago - Completed
   await prisma.appointment.create({
     data: {
+      organizationId: demoOrg.id,
       staffId: staffSofia.id,
       customerId: customerJohn.id,
       startTime: setMinutes(setHours(twoWeeksAgo, 16), 0),
@@ -932,6 +1029,7 @@ async function main() {
   // 2 weeks ago - Completed (walk-in guest)
   await prisma.appointment.create({
     data: {
+      organizationId: demoOrg.id,
       staffId: staffAna.id,
       guestName: 'Sarah Williams',
       guestEmail: 'sarah.w@example.com',
@@ -957,7 +1055,14 @@ async function main() {
   // ============================================
   console.log('\nCreating products...')
 
-  await prisma.product.deleteMany({})
+  // F2.2.2 P0 (idempotencna nečesa): sample naročila (sekcija 14) nosijo
+  // FK na izdelke, a se brišejo ŠELE v kasnejši sekciji → drugi zagon seeda
+  // je pri product.deleteMany([]) padel s P2003 (FK orderItem→product).
+  // Stara naročila (cascade pobere tudi orderItem vrstice) zato počistimo
+  // PRV, šele tedaj izdelki — sekcija 14 jih zato vedno znova ustvari.
+  await prisma.order.deleteMany({ where: { organizationId: demoOrg.id } })
+
+  await prisma.product.deleteMany({ where: { organizationId: demoOrg.id } })
 
   await prisma.product.createMany({
     data: [
@@ -970,6 +1075,7 @@ async function main() {
         stockQuantity: 50,
         images: [DEFAULT_DEMO_MEDIA.productShampoo],
         categoryId: productsCategory.id,
+        organizationId: demoOrg.id,
         isActive: true,
         isFeatured: true,
       },
@@ -982,6 +1088,7 @@ async function main() {
         stockQuantity: 45,
         images: [DEFAULT_DEMO_MEDIA.productConditioner],
         categoryId: productsCategory.id,
+        organizationId: demoOrg.id,
         isActive: true,
         isFeatured: true,
       },
@@ -994,6 +1101,7 @@ async function main() {
         stockQuantity: 30,
         images: [DEFAULT_DEMO_MEDIA.productFacialSerum],
         categoryId: productsCategory.id,
+        organizationId: demoOrg.id,
         isActive: true,
         isFeatured: true,
       },
@@ -1005,6 +1113,7 @@ async function main() {
         stockQuantity: 25,
         images: [DEFAULT_DEMO_MEDIA.productNailPolish],
         categoryId: productsCategory.id,
+        organizationId: demoOrg.id,
         isActive: true,
         isFeatured: false,
       },
@@ -1017,6 +1126,7 @@ async function main() {
         stockQuantity: 35,
         images: [DEFAULT_DEMO_MEDIA.productFaceCream],
         categoryId: productsCategory.id,
+        organizationId: demoOrg.id,
         isActive: true,
         isFeatured: false,
       },
@@ -1028,6 +1138,7 @@ async function main() {
         stockQuantity: 20,
         images: [DEFAULT_DEMO_MEDIA.productHairSerum],
         categoryId: productsCategory.id,
+        organizationId: demoOrg.id,
         isActive: true,
         isFeatured: false,
       },
@@ -1036,7 +1147,9 @@ async function main() {
   console.log('✅ Products: 6 (3 featured)')
 
   // Get products for orders
-  const products = await prisma.product.findMany()
+  const products = await prisma.product.findMany({
+    where: { organizationId: demoOrg.id },
+  })
   const shampoo = products.find(p => p.sku === 'SHP-001')!
   const conditioner = products.find(p => p.sku === 'CND-001')!
   const serum = products.find(p => p.sku === 'SRM-001')!
@@ -1049,11 +1162,12 @@ async function main() {
   // ============================================
   console.log('\nCreating sample orders...')
 
-  await prisma.order.deleteMany({})
+  await prisma.order.deleteMany({ where: { organizationId: demoOrg.id } })
 
   // Order 1 - COMPLETED (picked up) - 1 week ago
   await prisma.order.create({
     data: {
+      organizationId: demoOrg.id,
       customerId: customerJohn.id,
       subtotal: 60.0,
       tax: 4.95,
@@ -1073,6 +1187,7 @@ async function main() {
   // Order 2 - COMPLETED - 2 weeks ago
   await prisma.order.create({
     data: {
+      organizationId: demoOrg.id,
       customerId: customerEmily.id,
       subtotal: 107.0,
       tax: 8.83,
@@ -1093,6 +1208,7 @@ async function main() {
   const yesterday = addDays(today, -1)
   await prisma.order.create({
     data: {
+      organizationId: demoOrg.id,
       customerId: customerMichael.id,
       subtotal: 58.0,
       tax: 4.79,
@@ -1111,6 +1227,7 @@ async function main() {
   // Order 4 - PENDING (not paid yet) - today
   await prisma.order.create({
     data: {
+      organizationId: demoOrg.id,
       customerId: customerEmily.id,
       subtotal: 73.0,
       tax: 6.02,
@@ -1129,6 +1246,7 @@ async function main() {
   // Order 5 - CANCELLED - 3 days ago
   await prisma.order.create({
     data: {
+      organizationId: demoOrg.id,
       customerId: customerJohn.id,
       subtotal: 65.0,
       tax: 5.36,
@@ -1148,6 +1266,7 @@ async function main() {
   const fiveDaysAgo = addDays(today, -5)
   await prisma.order.create({
     data: {
+      organizationId: demoOrg.id,
       guestName: 'Amanda Wilson',
       guestEmail: 'amanda.w@example.com',
       guestPhone: '+386 40 888 777',
