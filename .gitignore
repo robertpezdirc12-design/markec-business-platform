@@ -20,3 +20,21 @@ playwright/.cache/
 .zcode-audit/
 prod.log
 dev.log
+.kangentic/
+.claude/settings.local.json
+kangentic.local.json
+
+# Java compiled validator output (F5.5.4.6.3)
+scripts/einvoice-validator/*.class
+docs/einvoicing/artifacts/validator/*.json
+docs/einvoicing/artifacts/validator/tmp/
+
+# AI tooling artefakti
+.adcode/
+.thinkrail/
+.freebuff/
+
+# posnetki zaslona testov + lokalne slike
+screenshots/
+slike/
+dev-*.log
