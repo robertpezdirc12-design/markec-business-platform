@@ -113,7 +113,8 @@ function SelectValueWrap({
 }) {
   return (
     <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger className="h-9 w-44 bg-background text-sm">
+      {/* a11y: trigger brez vidnega imena mora imeti aria-label (axe: button-name). */}
+      <SelectTrigger aria-label={placeholder} className="h-9 w-44 bg-background text-sm">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

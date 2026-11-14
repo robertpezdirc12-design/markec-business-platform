@@ -169,8 +169,10 @@ export function PublicNavbar({ org, cta, availableSections, walkInEnabled, nav, 
              * link. Logged-in users keep their own account menu.
              */}
             {isLoading ? (
-              <Button variant="ghost" disabled size="sm" className="w-10">
-                <SpinnerGapIcon size={18} className="animate-spin" />
+              // a11y (axe button-name): ikonski gumb brez vidnega besedila
+              // potrebuje dostopno ime, tudi ko je disabled.
+              <Button variant="ghost" disabled size="sm" className="w-10" aria-label={t.public.loading}>
+                <SpinnerGapIcon size={18} className="animate-spin" aria-hidden="true" />
               </Button>
             ) : isAuthenticated ? (
               <DropdownMenu>
