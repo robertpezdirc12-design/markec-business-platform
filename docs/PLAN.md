@@ -30,8 +30,8 @@ spodaj, popravi le označene vrzeli in šele nato postavi kljukico.
 | 5 | Urejevalnik z živim predogledom | ✅ | **auto-save (900ms debounce) NAREJEN**; E2E `visual-editor.spec.ts` obstaja |
 | 6 | Predogled, objava, različice | ✅ | **zgodovina objav + vrnitev NAREJEN** + **QR koda NAREJEN** |
 | 7 | Naplačevanje paketov | 🟡 | **javna `/pricing` stran NAREJENA** + **grace tok (opomnik→grace→suspenz) NAREJEN**; ostane samo živi Stripe preizkus |
-| 8 | Jezik in pravni minimum | 🟡 | EN i18n javnega dela + Pogoji/Zasebnost/Kuki so tu; GDPR izvoz/izbris preizkus |
-| 9 | Kakovost in končni test | 🟡 | E2E je tu (a-beauty/c-beekeeping/b-tire-service + visual-editor.spec); primanjkuje metrike LCP/a11y |
+| 8 | Jezik in pravni minimum | 🟡 | GDPR izvoz/izbris **DOKAZAN (itest 5/5)**; ostane E2E EN nakup (shop→cart→checkout) |
+| 9 | Kakovost in končni test | 🟡 | **a11y: axe 0 kršitev na 4 javnih straneh (popravljen button-name, živo re-verificirano)**; LCP: 3/4 strani < 1,2 s — landing 3,3 s (ISR follow-up) |
 | 10 | Zaprta beta | ⬜ | ni začeta |
 | 11 | Javni zagon | ⬜ | ni začet |
 | 12+ | Po zagonu | ⬜ | ni začeto |
@@ -60,11 +60,12 @@ baze iz backupa.
     (2. klic pri limit 2 vrne `ok:false`, `retryAfterMs` > 0).
 - ⬜ **SPF/DKIM/DMARC** — ni pregledano iz kode (domenska stvar; preveri DNS domene za e-pošto).
 - ⬜ **Test obnove baze iz backupa** — ni bil narejen.
-- 🟡 **Rate-limit javnih obrazcev** — `register`/`forgot`/`reset`/`resend` pokriti; javni obrazci za
-  povpraševanja (`inquiry`) še niso omejeni — dodaj, če želiš polno pokritost točke.
+- ✅ **Rate-limit javnih obrazcev** — POVRTNO PREVERJENO V KODI (2026-11-14): `submitPublicForm`
+  (vsi javni inquiry obrazci) je omejen — `scope: "inquiry:ip"`, ključ `orgId:IP`, fail-open
+  ob izpadu baze (`src/app/actions/forms.ts:179-189`); tudi `checkout-promo.ts` uporablja
+  `promo:ip`. Vsi javni vstopni točki so torej pokriti.
 
-**Kaj narediti še:** (1) SPF/DKIM/DMARC pregled, (2) en obnovitveni preizkus backupa, (3) (neobvezno)
-skrij demo račune na login strani v produkciji + rate-limit na javne inquiry obrazce. Nato postavi ✅.
+**Kaj narediti še:** (1) SPF/DKIM/DMARC pregled, (2) en obnovitveni preizkus backupa. Nato postavi ✅.
 
 ## 2. KATALOG DEJAVNOSTI — ✅
 
@@ -201,10 +202,16 @@ postavi ✅.
   (Zasebnost), `cookies/page.tsx` (Kuki).
 - 🟡 **Angleški uporabnik opravi nakup brez ene slovenske besede** — preveri end-to-end v EN
   (shop → cart → checkout).
-  - **GDPR izvoz/izbris na realnem računu** — preveri, da izvoz podatkov / izbris računa delujeta
-    in vrneta/all izbriše kaj je treba; preizkusiti na resničnem računu.
+- ✅ **GDPR izvoz/izbris** — DOKAZANO Z INTEGRACIJSKIM TESTOM (2026-11-14):
+  `tests/integration/gdpr-account.itest.ts` — **5/5 PASS** na izolirani testni bazi
+  (`markec_e2e_test`, Docker 5433). Pokritje: izvoz zavrnjen brez prijave · strukturiran izvoz
+  (user/customer/appointments/orders/reviews) z resničnimi podatki · napačno geslo zavrnjeno,
+  račun ostane · izbris s pravim geslom → User pobrisan, Customer ANONIMIZIRAN
+  (ime/email/telefon/DOB/opombe/tags + povezava prekinjena), poslovne evidence (termin,
+  naročilo) OSTANEJO · izvoz po izbrisu blokiran. Implementacija: `exportMyData` +
+  `deleteMyAccount(password)` v `src/app/actions/account.ts` (Art. 20 + Art. 17).
 
-**Kaj narediti:** E2E EN nakup + GDPR izvoz/izbris preizkus na realnem računu. Nato postavi ✅.
+**Kaj narediti:** E2E EN nakup (shop → cart → checkout v EN). Nato postavi ✅.
 
 ## 9. KAKOVOST IN KONČNI TEST — 🟡
 
@@ -213,14 +220,22 @@ postavi ✅.
   plus golden-order, saas-lifecycle, idor, custom-domain, visual-editor.
 - ✅ **Vitest** — več konfiguracij (vitest.config, integration, itest, f51/f52/f54/...).
 - ✅ **Varnostni itest** — `tests/integration/f635/*` (7/7 po F6.4-PLAN).
-- 🟡 **Hitrost javnih strani (LCP < 2,5 s na telefonu)** — ni merjene metrike (ni peljano
-  Lighthouse na javnih straneh). Preveri.
-- 🟡 **Dostopnost brez kritičnih napak** — ni dokazano z a11y pregledom (axe).
+- 🟡 **Hitrost javnih strani (LCP < 2,5 s na telefonu)** — IZMERJENO (2026-11-14, produkcija,
+  mobilna emulacija 390×844, Fast 3G ~1,6 Mbps + 4× CPU, `scripts/f9-a11y-lcp-prod.mjs`):
+  `/pricing` 0,65 s ✓ · `/s/studio-nika` 1,17 s ✓ · shop 0,82 s ✓ · **`/` (landing) 3,29 s ✗** —
+  LCP element je besedilo (H1); landing je session-odvisen SSR, kandidat za ISR/prednaložitev
+  kot ločen popavek. Ostale javne strani z lahkoto.
+- ✅ **Dostopnost brez kritičnih napak** — DOKAZANO Z AXE (2026-11-14, produkcija, wcag2a+aa):
+  `/`, `/pricing`, `/s/studio-nika`, `/s/nail-studio-luna/shop` — **0 kršitev (critical=0,
+  serious=0)**, potrjeno ŽIVO po popravku: axe critical `button-name` (ikonski gumbi brez
+  dostopnega imena — 3 filter-comboboxi shop + loading-gumb navbarja) popravljen (aria-label),
+  fix živ na produkciji in re-verificiran. Orodje: `scripts/f9-a11y-lcp-prod.mjs` (ponovno
+  poganjaj po vsaki večji spremembi javnih strani).
 - 🟡 **Varnostni pregled** — itest za org-isolacijo je tu; celoten pregled ni.
 
-**Kaj narediti:** izmeri LCP na telefonu, poženi a11y pregled glavnih javnih strani, preveri
-nastavlive varnostnega pregleda. "Test mame": oseba brez programiranja objavi stran s svojimi
-slikami in cenami v 15 min. Nato postavi ✅.
+**Kaj narediti:** izboljšaj LCP landinga (ISR/prednaložitev) nad 2,5 s, preveri nastavlive
+varnostnega pregleda. "Test mame": oseba brez programiranja objavi stran s svojimi slikami
+in cenami v 15 min. Nato postavi ✅.
 
 ## 10. ZAPRTA BETA — ⬜
 
