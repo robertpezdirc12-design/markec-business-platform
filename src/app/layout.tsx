@@ -40,23 +40,30 @@ import type { Organization } from "@prisma/client"
 // P0 #1 (walkthrough): Rouge Script NIMA latin-ext subseta (šumniki š/č/ž so
 // padali v fallback pisavo) → Great Vibes, ki ima polno latin-ext podporo.
 // CSS spremenljivka ostane --font-rouge-script (FontKey "rouge" je v DB).
+// T9 (LCP 2026-11-14): preload: false — pod Fast-3G je 10 prednaloženih
+// woff2 (~136 KB, Poppins 4 teže × 2 + GV 2) utopilo render-blocking CSS
+// (FCP/LCP 2,9–3,4 s). Z display:swap se besedilo nariše takoj s fallback
+// pisavo, font pa pride, ko ga CSS dejansko potrebuje (brskalnik ga ohrani
+// v predpomnilniku med stranežami).
 const rougeScript = Great_Vibes({
   variable: "--font-rouge-script",
   subsets: ["latin", "latin-ext"],
   weight: ["400"],
   display: "swap",
+  preload: false,
 })
 
-// P1 #10 (audit-2026-11): samo privzeti par (Poppins + Great Vibes) se
-// prednaloži. Ostale družine so na voljo najemnikom, a brez <link rel=preload>
-// — brskalnik jih prenese šele, ko jih CSS dejansko uporabi (25 prednalaganj
-// / 562 KB na stran → ≤ 6). Poppins: obteženi so samo dejansko rabljeni
-// weight-i (font-light/extrabold se ne pojavljata v src/).
+// P1 #10 (audit-2026-11): samo privzeti par (Poppins + Great Vibes) se je
+// prednaložil; ostale družine so na voljo najemnikom brez <link rel=preload>.
+// T9 (LCP 2026-11-14): tudi privzeti par NE PREDNALOŽI več — glej razlago
+// zgoraj (LCP landinga 3,3 s → cilj < 2,5 s; teže 400–700 ostanejo, ker jih
+// UI dejansko rabijo; prednaložitev je bila edina ovira, ne obseg).
 const poppins = Poppins({
   variable: "--font-poppins",
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600", "700"],
   display: "swap",
+  preload: false,
 })
 
 const playfair = Playfair_Display({ variable: "--font-playfair", subsets: ["latin", "latin-ext"], display: "swap", preload: false })
