@@ -20,6 +20,12 @@
  * Nastavitve prek env:
  *   MIGRATE_RETRY_ATTEMPTS   (privzeto 4)
  *   MIGRATE_RETRY_BACKOFF_MS (privzeto 15000; poskus n čaka n × backoff)
+ *   MIGRATE_FORCE=1          (izjemoma poženi tudi izven produkcije)
+ *
+ * VAROVALKA (14. 11. 2026): migracije tečejo SAMO v produkcijskem Vercel
+ * deployu. Preview/development deployi uporabljajo izolirano Neon vejo in
+ * ne smejo spreminjati sheme iz builda — glej shouldRunMigrations().
+ * Lokalni build (VERCEL_ENV ni nastavljen) ohrani dosedanje vedenje.
  */
 
 import { execFileSync } from "node:child_process"
@@ -47,6 +53,27 @@ export function ensureDatabaseUrl(env = process.env, log = console) {
     return false
   }
   return true
+}
+
+/**
+ * Odloči, ali build sme pognati `prisma migrate deploy`.
+ *
+ * Vercel postavi VERCEL_ENV na "production" | "preview" | "development".
+ * Shema naj se s kodo usklajuje izključno v produkcijskem deployu; preview
+ * in development imata svojo (izolirano) Neon vejo, zato bi migracija iz
+ * njunega builda spreminjala napačno bazo ali povzročala P3009/P1012.
+ *
+ * Kadar VERCEL_ENV NI nastavljen (lokalni `npm run build`, druga CI),
+ * ohranimo dosedanje vedenje — gate ne sme tiho pokvariti lokalnega razvoja.
+ * Izrecen MIGRATE_FORCE=1 omogoči kontroliran zagon v katerem koli okolju.
+ *
+ * @param {{ VERCEL_ENV?: string, MIGRATE_FORCE?: string }} [env]
+ */
+export function shouldRunMigrations(env = process.env) {
+  if (env.MIGRATE_FORCE === "1") return true
+  const target = env.VERCEL_ENV
+  if (!target) return true
+  return target === "production"
 }
 
 /**
@@ -87,6 +114,14 @@ export async function runMigrationsWithRetry({
 }
 
 async function main() {
+  if (!shouldRunMigrations(process.env)) {
+    console.log(
+      `[migrate-retry] preskočim migracije (VERCEL_ENV=${process.env.VERCEL_ENV}) — ` +
+        "shemo posodablja samo produkcijski deploy."
+    )
+    return
+  }
+
   if (!ensureDatabaseUrl(process.env)) process.exit(1)
 
   const attempts = Number(process.env.MIGRATE_RETRY_ATTEMPTS || DEFAULT_ATTEMPTS)
