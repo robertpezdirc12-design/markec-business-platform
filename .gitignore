@@ -33,6 +33,7 @@ docs/einvoicing/artifacts/validator/tmp/
 .adcode/
 .thinkrail/
 .freebuff/
+.serena/
 
 # posnetki zaslona testov + lokalne slike
 screenshots/
