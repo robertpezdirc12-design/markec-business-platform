@@ -87,8 +87,10 @@ describe("P1 #77: Product.sku is per-tenant unique", () => {
   })
 
   it("migration drops the global index", () => {
+    // F5.5.4.5.3 — p77 migracija je bila ob konsolidaciji ARHIVIRANA v
+    // migrations-archived-legacy (frozen history); njena vsebina je nespremenjena.
     const migration = read(
-      "prisma/migrations/20261128000000_p77_product_sku_per_tenant/migration.sql"
+      "prisma/migrations-archived-legacy/20261128000000_p77_product_sku_per_tenant/migration.sql"
     )
     expect(migration).toContain('DROP INDEX IF EXISTS "Product_sku_key"')
   })
@@ -162,7 +164,9 @@ describe("P2 #75: reviews are a first-class section", () => {
   it("testimonials are NO LONGER keyed on the team section", () => {
     const home = read("src/components/landing/home-content.tsx")
     expect(home).not.toContain('key === "team" && <TestimonialsSection')
-    expect(home).toContain('reviews: (\n      <TestimonialsSection')
+    // F6.3.5: reviews ostane lastna sekcija, opcijsko z enim pogojem reviewsEnabled
+    // (modul ocen DEACTIVATED → sekcija se ne renderira na javni strani).
+    expect(home).toMatch(/reviews: reviewsEnabled && \(\n\s*<TestimonialsSection/)
   })
 
   it("sectionsForProfile reads capabilities.reviews (was a dead switch) and data-gates the anchor", () => {

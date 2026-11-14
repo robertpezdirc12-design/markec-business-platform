@@ -43,6 +43,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Turbopack: določi koren projekta eksplicitno (v Windows okolju z več
+  // lockfiles je Next sprva izbral napačen koren → ni razrešil tailwindcss).
+  turbopack: {
+    root: __dirname,
+  },
   // E3-8 robustness fix: reactCompiler breaks form submit event wiring
   // in PRODUCTION builds (submit handlers never fire; the same form
   // works in dev). Correctness over memoization — re-enable only after
@@ -54,6 +59,40 @@ const nextConfig: NextConfig = {
     {
       source: "/(.*)",
       headers: securityHeaders,
+    },
+    // F5.3.1: vizualni urejevalnik vgnezdi DRAFT PREDOGLED /s/[slug]/preview
+    // v iframe (same-origin, integracija urejevalnika). Splošni P1#32 headerji
+    // (X-Frame-Options: DENY + frame-ancestors 'none') bi ta iframe blokirali,
+    // zato MORA ruta predogleda dovoliti SAMO same-origin vgnezditev
+    // (frame-ancestors 'self' / SAMEORIGIN). Skladno z odobreno arhitekturo
+    // F5.3.0 in preverjanjem origin+tip v site-editor-bridge. Vse ostale rute
+    // ostanejo DENY (zmanjšano območje vgnezdenja ni razširjeno).
+    {
+      source: "/s/:slug/preview",
+      headers: [
+        { key: "X-Frame-Options", value: "SAMEORIGIN" },
+        {
+          // Istovetno preostalo CSP kot P1#32, le frame-ancestors 'self' —
+          // omogoči same-origin vgnezdenje predogleda v urejevalnik.
+          key: "Content-Security-Policy-Report-Only",
+          value: [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: blob: https:",
+            "media-src 'self' data: blob: https:",
+            "font-src 'self' data:",
+            "connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com",
+            "frame-src 'self' https://js.stripe.com",
+            "worker-src 'self' blob:",
+            "frame-ancestors 'self'",
+            "base-uri 'self'",
+            "form-action 'self'",
+            "object-src 'none'",
+            "upgrade-insecure-requests",
+          ].join("; "),
+        },
+      ],
     },
   ],
   images: {

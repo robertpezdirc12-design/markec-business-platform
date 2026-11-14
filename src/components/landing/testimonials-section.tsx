@@ -49,18 +49,23 @@ export function TestimonialsSection({
   testimonials,
   showForm = false,
   businessName,
+  title,
+  subtitle,
 }: {
   testimonials: LandingTestimonial[]
   showForm?: boolean
   /** P2 #75: ime najemnika za naslov forme ocene podjetja. */
   businessName?: string
+  /** 2D-9: obvezen/izpisljiv naslov+podnaslov sekcije; če manjka, i18n privzeta. */
+  title?: string
+  subtitle?: string
 }) {
   const { t } = useI18n()
 
   if (testimonials.length === 0 && !showForm) return null
 
   const average = testimonials.reduce((sum, r) => sum + r.rating, 0) / testimonials.length
-  const { lead, accent } = splitLastWord(t.public.testimonialsTitle)
+  const { lead, accent } = splitLastWord(title || t.public.testimonialsTitle)
 
   return (
     <SectionWrapper id="testimonials" className="border-primary/30 border-t py-16">
@@ -69,13 +74,33 @@ export function TestimonialsSection({
           <h2 className="font-heading mb-4 text-4xl md:text-5xl">
             {lead} {accent && <AccentSpan>{accent}</AccentSpan>}
           </h2>
-          <p className="text-muted-foreground md:text-lg">{t.public.testimonialsSubtitle}</p>
+          <p className="text-muted-foreground md:text-lg">
+            {subtitle || t.public.testimonialsSubtitle}
+          </p>
           {/* P2 #75: povprečje samo z realnimi vrsticami (nikoli izmišljen
-              socialni dokaz — tudi pri showForm pri 0 ocen). */}
+              socialni dokaz — tudi pri showForm pri 0 ocen). Fresha-style:
+              5-zvezdični prikaz + povprečje + števec mnenj. */}
           {testimonials.length > 0 && (
-            <div className="mt-4 flex items-center justify-center gap-2">
-              <StarIcon size={20} weight="fill" className="text-accent-text" />
-              <span className="text-xl font-bold">{average.toFixed(1)}</span>
+            <div
+              className="mt-4 flex flex-wrap items-center justify-center gap-2"
+              aria-label={`${average.toFixed(1)} / 5`}
+            >
+              <span className="flex items-center gap-0.5" aria-hidden>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <StarIcon
+                    key={i}
+                    size={18}
+                    weight={i < Math.round(average) ? "fill" : "regular"}
+                    className={i < Math.round(average) ? "text-accent-text" : "text-muted-foreground/30"}
+                  />
+                ))}
+              </span>
+              <span className="text-xl font-bold" aria-hidden>
+                {average.toFixed(1)}
+              </span>
+              <span className="text-muted-foreground text-sm">
+                {t.public.reviewsCount(testimonials.length)}
+              </span>
             </div>
           )}
         </div>

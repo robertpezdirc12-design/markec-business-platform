@@ -14,6 +14,7 @@ import {
   PlusIcon,
   PencilIcon,
   EyeIcon,
+  ArrowLeftIcon,
 } from "@/components/icons"
 import { getAdminServices, getServiceStats } from "@/app/actions/services"
 import { formatCurrency } from "@/lib/utils/format"
@@ -55,12 +56,20 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
           </h1>
           <p className="text-muted-foreground">{withBusiness(t.services.subtitle)}</p>
         </div>
-        <Link href="/dashboard/services/new">
-          <Button>
-            <PlusIcon size={16} className="mr-2" />
-            {t.services.addService}
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          {/* 2D-11: varni povratek v WYSIWYG urejevalnik (draft je shranjen server-side). */}
+          <Link href="/dashboard/settings?tab=branding">
+            <Button variant="ghost" size="sm">
+              <ArrowLeftIcon size={16} className="mr-1" /> Urejevalnik
+            </Button>
+          </Link>
+          <Link href="/dashboard/services/new">
+            <Button>
+              <PlusIcon size={16} className="mr-2" />
+              {t.services.addService}
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Stats Cards */}

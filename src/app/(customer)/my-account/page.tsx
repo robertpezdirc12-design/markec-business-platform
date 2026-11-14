@@ -22,6 +22,7 @@ import { OrdersSummary } from "@/components/account/orders-summary"
 import { NotificationPreferences } from "@/components/account/notification-preferences"
 import { PaymentHistory } from "@/components/account/payment-history"
 import { OwnerAccountCard } from "@/components/account/owner-account-card"
+import { GdprSection } from "@/components/account/gdpr-section"
 
 export default async function MyAccountPage() {
   const session = await auth()
@@ -95,6 +96,11 @@ export default async function MyAccountPage() {
         {/* Security Section */}
         <div className="mt-6">
           <SecuritySection email={profile.email} />
+        </div>
+
+        {/* GDPR — izvoz in izbris (točka 8) */}
+        <div className="mt-6">
+          <GdprSection />
         </div>
       </div>
     </div>

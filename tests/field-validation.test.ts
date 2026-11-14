@@ -114,3 +114,74 @@ describe("deriveRecordTitle", () => {
     expect(title).toBe("Serija / lot")
   })
 })
+
+// Faza 2B — entityReference type-clean (existence/org-scope je server-side v
+// records.ts; tukaj se potrdi le, da je vrednost string id oz. null/izpust).
+describe("entityReference field (Type-clean)", () => {
+  const refFields = [
+    { key: "colony_ref", label: "Čebelja družina", type: "entityReference", required: false, referenceTo: { extensionId: "bee-apiary", entityKey: "colony" } },
+    { key: "apiary_ref", label: "Panjska postaja", type: "entityReference", required: true, referenceTo: { extensionId: "bee-apiary", entityKey: "apiary" } },
+  ] as const
+
+  it("sprejme veljaven id kot string (brez napake)", () => {
+    const { errors, clean } = validateFieldValues(refFields, {
+      colony_ref: "cmw1id000000000000000001",
+      apiary_ref: "cmw1id000000000000000002",
+    })
+    expect(errors).toEqual({})
+    expect(clean.colony_ref).toBe("cmw1id000000000000000001")
+    expect(clean.apiary_ref).toBe("cmw1id000000000000000002")
+  })
+
+  it("optional reference lahko ostane prazna/null", () => {
+    const { errors, clean } = validateFieldValues(refFields, {
+      colony_ref: null,
+      apiary_ref: "cmw1id000000000000000003",
+    })
+    expect(errors).toEqual({})
+    // Prazna neobvezna vrednost se prezre (ključ ni napisan; server ga
+    // interpretira kot "brez povezave").
+    expect(clean).not.toHaveProperty("colony_ref")
+    expect(clean.apiary_ref).toBe("cmw1id000000000000000003")
+  })
+
+  it("required reference neprazna (prazno → required error)", () => {
+    const { errors } = validateFieldValues(refFields, { apiary_ref: "" })
+    expect(errors.apiary_ref).toBe("required")
+  })
+
+  it("prečisti/omeji preveč dolg id", () => {
+    const { clean } = validateFieldValues(refFields, {
+      colony_ref: "x".repeat(500),
+      apiary_ref: "cmw1id000000000000000004",
+    })
+    // preverimo samo, da je omejena dolžina (robustnost ne sme vrči)
+    expect(clean.colony_ref).toHaveLength(200)
+  })
+
+  it("multi-target (referenceTo niz) — sprejme objekt {id, extensionId, entityKey}", () => {
+    const multi = [
+      { key: "target_ref", label: "Tarča", type: "entityReference", required: false, referenceTo: [
+        { extensionId: "bee-apiary", entityKey: "apiary" },
+        { extensionId: "bee-apiary", entityKey: "hive" },
+        { extensionId: "bee-apiary", entityKey: "colony" },
+      ] },
+    ] as const
+    const { errors, clean } = validateFieldValues(multi, {
+      target_ref: { id: "cmw1id000000000000000009", extensionId: "bee-apiary", entityKey: "colony" },
+    })
+    expect(errors).toEqual({})
+    expect(clean.target_ref).toEqual({ id: "cmw1id000000000000000009", extensionId: "bee-apiary", entityKey: "colony" })
+  })
+
+  it("multi-target — napačen format (string v multi polju) → napaka, ni tihega sprejema", () => {
+    const multi = [
+      { key: "target_ref", label: "Tarča", type: "entityReference", required: false, referenceTo: [
+        { extensionId: "bee-apiary", entityKey: "apiary" },
+        { extensionId: "bee-apiary", entityKey: "hive" },
+      ] },
+    ] as const
+    const { errors } = validateFieldValues(multi, { target_ref: "cmw1id-string-not-obj" })
+    expect(errors.target_ref).toBe("INVALID_REFERENCE")
+  })
+})

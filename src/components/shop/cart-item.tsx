@@ -10,19 +10,25 @@ import { MinusIcon, PlusIcon, TrashIcon, PackageIcon } from "@/components/icons"
 import type { CartItem as CartItemType } from "@/store/cart-store"
 import { useCartStore } from "@/store/cart-store"
 import { toast } from "sonner"
+import { useLocale, pick } from "@/lib/i18n/client-locale"
 
 interface CartItemProps {
   item: CartItemType
 }
 
 export function CartItem({ item }: CartItemProps) {
+  const locale = useLocale()
   const fmt = useFormatPrice()
   const { updateQuantity, removeItem } = useCartStore()
   const [showRemoveDialog, setShowRemoveDialog] = useState(false)
 
   const handleConfirmRemove = () => {
-    removeItem(item.productId)
-    toast.success(`${item.name} je bil odstranjen iz košarice.`)
+    removeItem(item.productId, item.variantId)
+    toast.success(
+      locale === "en"
+        ? `${item.name} was removed from the cart.`
+        : `${item.name} je bil odstranjen iz košarice.`
+    )
     setShowRemoveDialog(false)
   }
 
@@ -31,7 +37,7 @@ export function CartItem({ item }: CartItemProps) {
     if (item.quantity === 1) {
       setShowRemoveDialog(true)
     } else {
-      updateQuantity(item.productId, item.quantity - 1)
+      updateQuantity(item.productId, item.quantity - 1, item.variantId)
     }
   }
 
@@ -43,11 +49,13 @@ export function CartItem({ item }: CartItemProps) {
       item.quantity + 1 > item.stockQuantity
     ) {
       toast.error(
-        `Na zalogi je le še ${item.stockQuantity} kos izdelka ${item.name}.`
+        locale === "en"
+          ? `Only ${item.stockQuantity} ${item.stockQuantity === 1 ? "piece" : "pieces"} of ${item.name} left in stock.`
+          : `Na zalogi je le še ${item.stockQuantity} kos izdelka ${item.name}.`
       )
       return
     }
-    updateQuantity(item.productId, item.quantity + 1)
+    updateQuantity(item.productId, item.quantity + 1, item.variantId)
   }
 
   // P1 #37: količino je mogoče TIPATI (tipkovnica/bralniki zaslona),
@@ -63,10 +71,12 @@ export function CartItem({ item }: CartItemProps) {
     const clamped = Math.min(Math.max(parsed, 1), max ?? Number.MAX_SAFE_INTEGER)
     if (max !== undefined && parsed > max) {
       toast.error(
-        `Na zalogi je le še ${max} kos izdelka ${item.name}.`
+        locale === "en"
+          ? `Only ${max} ${max === 1 ? "piece" : "pieces"} of ${item.name} left in stock.`
+          : `Na zalogi je le še ${max} kos izdelka ${item.name}.`
       )
     }
-    updateQuantity(item.productId, clamped)
+    updateQuantity(item.productId, clamped, item.variantId)
   }
 
   return (
@@ -102,7 +112,7 @@ export function CartItem({ item }: CartItemProps) {
             {item.name}
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            {fmt(item.price)} na kos
+            {locale === "en" ? `${fmt(item.price)} each` : `${fmt(item.price)} na kos`}
           </p>
         </div>
 
@@ -114,7 +124,11 @@ export function CartItem({ item }: CartItemProps) {
             onClick={handleDecrease}
             variant="outline"
             size="icon"
-            aria-label={`Zmanjšaj količino izdelka ${item.name}`}
+            aria-label={
+              locale === "en"
+                ? `Decrease quantity of ${item.name}`
+                : `Zmanjšaj količino izdelka ${item.name}`
+            }
             className="border-border/50 hover:bg-primary/10 hover:text-primary-text hover:border-primary/30 h-9 w-9 rounded-lg"
           >
             <MinusIcon size={16} weight="bold" aria-hidden />
@@ -129,14 +143,22 @@ export function CartItem({ item }: CartItemProps) {
             onBlur={(e) => {
               if (e.target.value === "") updateQuantity(item.productId, 1)
             }}
-            aria-label={`Količina izdelka ${item.name}`}
+            aria-label={
+              locale === "en"
+                ? `Quantity of ${item.name}`
+                : `Količina izdelka ${item.name}`
+            }
             className="border-border/50 h-9 w-14 rounded-lg text-center text-lg font-semibold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           <Button
             onClick={handleIncrease}
             variant="outline"
             size="icon"
-            aria-label={`Povečaj količino izdelka ${item.name}`}
+            aria-label={
+              locale === "en"
+                ? `Increase quantity of ${item.name}`
+                : `Povečaj količino izdelka ${item.name}`
+            }
             className="border-border/50 hover:bg-primary/10 hover:text-primary-text hover:border-primary/30 h-9 w-9 rounded-lg"
           >
             <PlusIcon size={16} weight="bold" aria-hidden />
@@ -160,7 +182,11 @@ export function CartItem({ item }: CartItemProps) {
           onClick={() => setShowRemoveDialog(true)}
           variant="ghost"
           size="icon"
-          aria-label={`Odstrani izdelek ${item.name} iz košarice`}
+          aria-label={
+            locale === "en"
+              ? `Remove ${item.name} from cart`
+              : `Odstrani izdelek ${item.name} iz košarice`
+          }
           className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive h-9 w-9 rounded-lg"
         >
           <TrashIcon size={18} aria-hidden />
@@ -171,9 +197,13 @@ export function CartItem({ item }: CartItemProps) {
       <ConfirmDialog
         open={showRemoveDialog}
         onOpenChange={setShowRemoveDialog}
-        title="Odstrani izdelek"
-        description={`Ste prepričani, da želite odstraniti "${item.name}" iz košarice?`}
-        confirmLabel="Odstrani"
+        title={pick(locale, "Odstrani izdelek", "Remove item")}
+        description={
+          locale === "en"
+            ? `Are you sure you want to remove "${item.name}" from your cart?`
+            : `Ste prepričani, da želite odstraniti "${item.name}" iz košarice?`
+        }
+        confirmLabel={pick(locale, "Odstrani", "Remove")}
         onConfirm={handleConfirmRemove}
         variant="destructive"
       />

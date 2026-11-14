@@ -6,7 +6,11 @@ import { getAdminOrders, getOrderStats } from "@/app/actions/orders"
 import { getServerI18n } from "@/lib/i18n/server"
 import { OrderSearch } from "@/components/dashboard/order-search"
 import { ExportOrdersButton } from "@/components/dashboard/export-orders-button"
+import { DirectSaleDialog, type SellableLine, type DirectSaleCustomer, type LineBatchOption } from "@/components/dashboard/direct-sale-dialog"
+import { prisma } from "@/lib/prisma"
+import { getSessionOrg } from "@/lib/tenant"
 import { requirePagePermission } from "@/lib/auth/guards"
+import { getBatchAvailabilityForLine } from "@/app/actions/traceability"
 import { formatCurrency } from "@/lib/utils/format"
 
 const statusColors: Record<string, string> = {
@@ -30,6 +34,50 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
     getAdminOrders(search),
     getOrderStats(),
   ])
+
+  // 2D-1O — org-scoped prodajne linije (izdelki/različice) + kupci za neposredno prodajo.
+  const org = await getSessionOrg()
+  let sellable: SellableLine[] = []
+  let custs: DirectSaleCustomer[] = []
+  let batchesByLine: LineBatchOption[] = []
+  if (org) {
+    const ps = await prisma.product.findMany({
+      where: { organizationId: org.id, isActive: true, forSale: true },
+      select: { id: true, name: true, price: true, variants: { select: { id: true, name: true, price: true } } },
+      orderBy: { name: "asc" },
+    })
+    sellable = ps.flatMap((p) => {
+      const base = { productId: p.id, productName: p.name, price: Number(p.price) }
+      if (p.variants.length) {
+        return p.variants.map((v) => ({ ...base, variantId: v.id, variantName: v.name, price: Number(v.price ?? p.price) }))
+      }
+      return [base]
+    })
+    custs = await prisma.customer.findMany({
+      where: { organizationId: org.id },
+      select: { id: true, name: true, email: true },
+      orderBy: { name: "asc" },
+      take: 200,
+    })
+    // 2D-1P — razpoložljive serije za vsako prodajno linijo (org-scoped).
+    const productIds = [...new Set(sellable.map((l) => l.productId))]
+    const batchByLine = await Promise.all(
+      productIds.map(async (pid) => ({ pid, batches: await getBatchAvailabilityForLine(pid, null).catch(() => []) }))
+    )
+    const codesByProduct = new Map<string, { batchId: string; batchCode: string; available: number }[]>()
+    for (const bl of batchByLine) {
+      codesByProduct.set(
+        bl.pid,
+        bl.batches.map((b) => ({ batchId: b.batchId, batchCode: b.batchCode, available: b.available }))
+      )
+    }
+    batchesByLine = sellable.map((l) => ({
+      productId: l.productId,
+      variantId: l.variantId ?? null,
+      batches: codesByProduct.get(l.productId) ?? [],
+    }))
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -45,7 +93,12 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
             {t.orders.subtitle}
           </p>
         </div>
-        <ExportOrdersButton orders={orders} />
+        <div className="flex flex-wrap items-center gap-2">
+          {sellable.length > 0 && (
+            <DirectSaleDialog lines={sellable} customers={custs} batchesByLine={batchesByLine} />
+          )}
+          <ExportOrdersButton orders={orders} />
+        </div>
       </div>
 
       {/* Stats Cards */}

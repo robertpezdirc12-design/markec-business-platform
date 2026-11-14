@@ -1,6 +1,7 @@
 import { headers } from "next/headers"
 import { NextResponse } from "next/server"
 import { redeemGiftCardForOrder, activatePrepaidPurchase } from "@/app/actions/prepaid"
+import { convertReservationToSale, applyOrderStockDecrement, releaseStockReservation } from "@/app/actions/product-checkout"
 import { constructWebhookEvent } from "@/lib/stripe"
 import { prisma } from "@/lib/prisma"
 import { addMinutes } from "date-fns"
@@ -13,6 +14,11 @@ import { GUARANTEE_METADATA_TYPE } from "@/lib/booking/no-show-policy"
 import { generateIntakeToken, pickIntakeService } from "@/lib/forms/intake"
 import { Prisma } from "@prisma/client"
 import Stripe from "stripe"
+// F5.1: promo engine + atomsko unovčenje v webhooku (Stripe-paid path).
+import { loadActivePromotions } from "@/lib/promotions/map"
+import { bestPromotion, buildPromotionSnapshot, round2, type PricingLine } from "@/lib/promotions/engine"
+import { redeemPromotion, PromotionRedeemError } from "@/lib/promotions/redeem"
+import { redeemOrderPromotion } from "@/lib/promotions/redeem-order"
 
 /**
  * Multi-tenant webhook signature verification (E4-3b): each salon registers
@@ -72,6 +78,52 @@ export async function POST(req: Request) {
       { error: "Webhook signature verification failed" },
       { status: 400 }
     )
+  }
+
+  // F5.5.1.2 — checkout.session.expired → sprostitev inventarne rezervacije.
+  // Stripe kavelj (event pošlje sam Stripe) je zanesljivejši od lokalnega
+  // časovnega pollinga. Spustimo rezervacijo SAMO za order, ki je še PENDING
+  // (ni bil plačan) in katerega rezervacija sploh obstaja. Če je plačilo že
+  // plačano/procesirano ali API status neznan → NE sproščamo (fail-closed).
+  if (event.type === "checkout.session.expired") {
+    const session = event.data.object as Stripe.Checkout.Session
+    const orderId = session.metadata?.orderId
+    if (orderId && session.metadata?.type === "product_order") {
+      try {
+        await prisma.$transaction(async (tx) => {
+          const order = await tx.order.findUnique({
+            where: { id: orderId },
+            include: { items: true },
+          })
+          // Idempotentno + fail-closed: vzemi SAMO PENDING order in še ne
+          // plačan; sprosti rezervacijo (če je bila) za vsako postavko.
+          if (!order || order.status !== "PENDING" || order.paymentMethod === "offline") return
+          const orgId = order.organizationId ?? session.metadata?.orgId
+          for (const item of order.items) {
+            if (!orgId) continue
+            const line = {
+              productId: item.productId,
+              variantId: item.variantId ?? null,
+              variantName: item.variantName ?? null,
+              variantSku: item.variantSku ?? null,
+              quantity: item.quantity,
+              price: item.price.toNumber(),
+              name: "",
+              image: null,
+            }
+            await releaseStockReservation(tx, line)
+          }
+          await tx.order.update({
+            where: { id: orderId },
+            data: { status: "CANCELLED" },
+          })
+          console.log(`Webhook: order ${orderId} expired — reservation released`)
+        })
+      } catch (error) {
+        console.error("Webhook: error releasing expired reservation:", error)
+      }
+    }
+    return NextResponse.json({ received: true })
   }
 
   // Handle the checkout.session.completed event
@@ -183,10 +235,37 @@ export async function POST(req: Request) {
           if (updated.count === 0) return
 
           for (const item of order.items) {
-            await tx.product.update({
-              where: { id: item.productId },
-              data: { stockQuantity: { decrement: item.quantity } },
-            })
+            // F5.5.1.2 — online plačilo pretvori rezervacijo v prodajo
+            // (stockQuantity −= qty, reservedQuantity −= qty, StockMovement).
+            // Če rezervacije ni bilo (legacy / brez online rezerve) → fallback
+            // na klasično znižanje zaloge (F5.5.1).
+            const line = {
+              productId: item.productId,
+              variantId: item.variantId ?? null,
+              variantName: item.variantName ?? null,
+              variantSku: item.variantSku ?? null,
+              quantity: item.quantity,
+              price: item.price.toNumber(),
+              name: "",
+              image: null,
+            }
+            const paidOrgIdNow = order.organizationId ?? metadata.orgId
+            const converted = await convertReservationToSale(
+              tx,
+              line,
+              paidOrgIdNow,
+              order.id
+            )
+            if (!converted) {
+              await applyOrderStockDecrement(tx, line, paidOrgIdNow, order.id)
+            }
+          }
+
+          // F5.1: promocija se unovči ob potrjenem plačilu (idempotentno),
+          // ne ob kreaciji seje. Idempotence → `@@unique([promotionId, orderId])`.
+          const paidOrgId = order.organizationId ?? metadata.orgId
+          if (paidOrgId && order.promotionId) {
+            await redeemOrderPromotion(tx, order, paidOrgId)
           }
         })
 
@@ -300,7 +379,7 @@ export async function POST(req: Request) {
       // Get services for duration calculation (scoped to this organization)
       const services = await prisma.service.findMany({
         where: { id: { in: serviceIds }, organizationId: org.id },
-        select: { id: true, name: true, duration: true, price: true, intakeFormDefinitionId: true },
+        select: { id: true, name: true, duration: true, price: true, categoryId: true, intakeFormDefinitionId: true },
       })
 
       if (services.length !== new Set(serviceIds).size) {
@@ -349,6 +428,33 @@ export async function POST(req: Request) {
       const addonDuration = selectedAddons.reduce((s, a) => s + a.durationMin, 0)
 
       const endTime = addMinutes(startTime, totalDuration + addonDuration)
+
+      // F5.1: promocija iz metadate — popust na storitve (+ globalni za
+      // WHOLE_AMOUNT vključi dodatke). Cena iz klienta se NE zaupa.
+      const promoCodeRaw = metadata.promotionCode as string | undefined
+      const promoTargets: PricingLine[] = services.map((s) => ({
+        kind: "service",
+        serviceId: s.id,
+        categoryId: s.categoryId ?? undefined,
+        amount: s.price.toNumber(),
+        quantity: 1,
+      }))
+      if (addonPrice > 0) {
+        promoTargets.push({ kind: "service", amount: addonPrice, quantity: 1 })
+      }
+      const whPromotions = await loadActivePromotions(prisma, org.id)
+      const whPromo = bestPromotion(whPromotions, promoTargets, {
+        code: promoCodeRaw || null,
+      })
+      const whDiscount = whPromo ? whPromo.discountAmount : 0
+      const whSnapshot = whPromo
+        ? buildPromotionSnapshot(whPromo.rule, {
+            baseAmount: whPromo.baseAmount,
+            discountAmount: whPromo.discountAmount,
+            affectedLines: whPromo.affectedLines,
+          })
+        : null
+      const effectiveTotal = Math.max(0, round2(totalPrice + addonPrice - whDiscount))
 
       // DOUBLE-BOOKING GUARD — re-check that the slot is still free before
       // confirming. Payment received for a taken slot is logged for manual refund.
@@ -485,7 +591,7 @@ export async function POST(req: Request) {
             )
           }
 
-          return tx.appointment.create({
+          const appt = await tx.appointment.create({
             data: {
               organizationId: org.id,
               staffId,
@@ -503,7 +609,15 @@ export async function POST(req: Request) {
               endTime,
               status: "CONFIRMED", // Confirmed because payment was successful
               notes,
-              totalPrice: totalPrice + addonPrice,
+              // F5.1: total že upošteva popust (immutabilni posnetek).
+              totalPrice: effectiveTotal,
+              ...(whDiscount > 0 && whPromo
+                ? {
+                    promotionDiscount: whDiscount,
+                    promotionId: whPromo.rule.id,
+                    promotionSnapshot: whSnapshot as unknown as Prisma.InputJsonValue,
+                  }
+                : {}),
               depositAmount,
               depositPaid: true, // Payment was successful
               stripePaymentId: paymentIntentId,
@@ -520,6 +634,36 @@ export async function POST(req: Request) {
               },
             },
           })
+
+          // F5.1: atomsko unovčenje promocije v isti transakciji. Če
+          // popust v oknu ni več unovčljiv (npr. presežena omejitev),
+          // PLAČILO in termin OSTANDATA nedotaknjena — popust se tiho
+          // odpravi (nikoli ne izgubimo plačane rezervacije zaradi
+          // promocijskega pravila).
+          if (whPromo) {
+            try {
+              await redeemPromotion(tx, {
+                promotion: whPromo.rule,
+                baseAmount: whPromo.baseAmount,
+                customerId,
+                guestEmail: !customerId ? guestEmail : null,
+                appointmentId: appt.id,
+                codeUsed: whPromo.rule.code,
+              })
+            } catch (err) {
+              if (!(err instanceof PromotionRedeemError)) throw err
+              await tx.appointment.update({
+                where: { id: appt.id },
+                data: {
+                  promotionDiscount: 0,
+                  promotionId: null,
+                  promotionSnapshot: Prisma.DbNull,
+                  totalPrice: round2(totalPrice + addonPrice),
+                },
+              })
+            }
+          }
+          return appt
         })
         .catch((error) => {
           // #93: P2002 na stripePaymentId = verify path je že ustvaril

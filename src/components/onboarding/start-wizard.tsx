@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { signIn } from "next-auth/react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -37,6 +36,7 @@ import {
   suggestModulesForSkd,
 } from "@/lib/skd/catalog"
 import { ActivityDirectoryPicker } from "@/components/onboarding/activity-directory-picker"
+import { PendingVerifyScreen } from "@/components/onboarding/pending-verify-screen"
 import { checkSlugAvailability, createSalonOrganization } from "@/app/actions/onboarding"
 import {
   WIZARD_DRAFT_KEY,
@@ -154,6 +154,15 @@ export function StartWizard({
 
   const [step, setStep] = useState(1)
   const [creating, setCreating] = useState(false)
+
+  // 2D-4: po uspešnem ustvarjanju podjetja za ANONIMNEGA lastnika ni več
+  // samodejne prijave — račun mora najprej potrditi e-pošto. Ta status
+  // izriše jasen "preverite e-pošto" zaslon namesto prijave.
+  const [pendingVerify, setPendingVerify] = useState<null | {
+    slug: string
+    verificationUrl: string | null
+    email: string
+  }>(null)
 
   // Step 1 — vertical & palette
   // P1 #66: deep-link preselect — the landing's trade cards land here with
@@ -532,32 +541,54 @@ export function StartWizard({
 
       // #40: prijavljen uporabnik je ŽE prijavljen (strežnik je osvežil
       // sejo z novo vlogo/organizacijo) — prijava se ne ponavlja.
-      if (!authed) {
-        const login = await signIn("credentials", {
-          email: email.trim(),
-          password,
-          redirect: false,
+      // 2D-4: anonimni lastnik NIMA več samodejne prijave — račun mora
+      // najprej potrditi e-pošto (authorize z blokira). Pokaže se jasen
+      // "preverite e-pošto" zaslon; brez e-poštnega servisa se prikaže
+      // verifikacijska povezava neposredno (enako registerUser).
+      if (authed) {
+        toast.success("Podjetje je ustvarjeno!", {
+          description: `Vaša stran je na voljo na /s/${res.slug}`,
         })
-
-        if (login?.error) {
-          toast.error("Podjetje je ustvarjeno, avtomatska prijava pa ni uspela.", {
-            description: "Prijavite se ročno z vašo e-pošto in geslom.",
-            duration: 8000,
-          })
-          router.push("/login")
-          return
-        }
+        router.push("/dashboard?welcome=1")
+        router.refresh()
+        return
       }
 
-      toast.success("Podjetje je ustvarjeno!", {
-        description: `Vaša stran je na voljo na /s/${res.slug}`,
-      })
-      router.push("/dashboard?welcome=1")
-      router.refresh()
+      if (res.verificationUrl) {
+        // Brez e-poštnega servisa: pokažemo povezavo neposredno — iskreno,
+        // ne izmišljamo dostave (testno okolje). Uporabnik klikne povezavo,
+        // račun se potrdi, nato se prijavi v svoj poslovni prostor.
+        setPendingVerify({
+          slug: res.slug ?? "",
+          verificationUrl: res.verificationUrl,
+          email: email.trim(),
+        })
+        setCreating(false)
+        return
+      }
+
+      // E-poštni servis je konfiguriran — pošljemo potrditveno sporočilo.
+      // Uporabnik mora klikniti povezavo pred prvo prijavo.
+      setPendingVerify({ slug: res.slug ?? "", verificationUrl: null, email: email.trim() })
+      setCreating(false)
     } catch {
       toast.error("Pri ustvarjanju podjetja je prišlo do napake. Poskusite znova.")
       setCreating(false)
     }
+  }
+
+  // 2D-4: anonimni lastnik po ustvarjanju podjetja najprej potrdi e-pošto.
+  // Ta zaslon je nadomestek za samodejno prijavo — fair, nedvoumen vstop v
+  // aktivacijski tok brez račalne potrditve.
+  if (pendingVerify) {
+    return (
+      <PendingVerifyScreen
+        slug={pendingVerify.slug}
+        verificationUrl={pendingVerify.verificationUrl}
+        email={pendingVerify.email}
+        onDone={() => router.push("/login")}
+      />
+    )
   }
 
   return (

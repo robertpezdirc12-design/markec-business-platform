@@ -27,7 +27,7 @@ export function ThemeToggle() {
   // Render placeholder button during SSR to avoid hydration mismatch
   if (!mounted) {
     return (
-      <Button variant="ghost" size="icon" className="group hover:bg-primary/10">
+      <Button variant="ghost" size="icon" className="group hover:bg-primary/10" aria-label={t.common.theme.toggle}>
         <MoonIcon size={20} weight="fill" className="text-primary-text" />
         <span className="sr-only">{t.common.theme.toggle}</span>
       </Button>
@@ -46,6 +46,7 @@ export function ThemeToggle() {
           variant="ghost"
           size="icon"
           className="group hover:bg-primary/10"
+          aria-label={t.common.theme.toggle}
         >
           {isDark ? (
             <SunIcon

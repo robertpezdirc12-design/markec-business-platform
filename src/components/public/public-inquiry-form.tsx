@@ -56,6 +56,12 @@ export function PublicInquiryForm({ form }: PublicInquiryFormProps) {
       setSubmitted(true)
       return null
     }
+    if (result.error === "RATE_LIMITED") {
+      setFormError(
+        "Preveč oddaj v kratkem času. Počakajte nekaj minut in poskusite znova."
+      )
+      return null
+    }
     if (result.error === "VALIDATION" && result.fieldErrors) {
       setFieldErrors(result.fieldErrors)
       setFormError("Prosimo, preverite označena polja.")

@@ -5,24 +5,34 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { signIn, useSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
-import { SpinnerIcon } from "@/components/icons"
+import { SpinnerIcon, GoogleIcon } from "@/components/icons"
 import { toast } from "sonner"
 import { Logo } from "@/components/ui/logo"
 import { loginSchema, type LoginInput } from "@/lib/validations/auth"
 import { useI18n } from "@/lib/i18n/provider"
+import { getActiveWorkspaceCount } from "@/app/actions/workspaces"
+import { resendVerification } from "@/app/actions/auth"
 
 interface LoginFormProps {
   orgName?: string | null
   orgLogo?: string | null
   orgSlug?: string | null
+  googleEnabled?: boolean
 }
 
-export function LoginForm({ orgName, orgLogo, orgSlug }: LoginFormProps) {
+export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: LoginFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { t } = useI18n()
@@ -56,10 +66,33 @@ export function LoginForm({ orgName, orgLogo, orgSlug }: LoginFormProps) {
 
       if (result?.error) {
         // Check if error is about email verification
-        if (result.code === "EMAIL_NOT_VERIFIED" || result.error.includes("EMAIL_NOT_VERIFIED")) {
-          toast.error(t.auth.login.toast.verifyRequired, {
+        if (
+          result.code === "EMAIL_NOT_VERIFIED" ||
+          result.error.includes("EMAIL_NOT_VERIFIED")
+        ) {
+          // 2D-5: offer a resend WITHOUT revealing whether the address exists.
+          // The server always returns a neutral shape; the UI shows the same
+          // "check your inbox" message for success, cooldown or unknown email.
+          const resendAction = async () => {
+            try {
+              await resendVerification({ email: data.email.trim() })
+            } catch {
+              /* neutral — never reveal account existence */
+            }
+            toast(t.auth.login.toast.verifyRequired, {
+              description: t.auth.login.toast.verifyResent,
+              duration: 9000,
+            })
+          }
+          toast(t.auth.login.toast.verifyRequired, {
             description: t.auth.login.toast.verifyDescription,
-            duration: 8000,
+            duration: 10000,
+            action: {
+              label: t.auth.login.toast.resend,
+              onClick: () => {
+                void resendAction()
+              },
+            },
           })
           return
         }
@@ -77,8 +110,19 @@ export function LoginForm({ orgName, orgLogo, orgSlug }: LoginFormProps) {
         toast.success(t.auth.login.toast.loginSuccess, {
           description: t.auth.login.toast.redirecting,
         })
-        router.push(callbackUrl)
-        router.refresh()
+
+        // F1 #100: uporabnik z več poslovnimi prostori dobi po prijavi
+        // vstopno tablo za izbiro. Najemniška callback (trgovina) ni
+        // platformina vrata — tam gremo vedno tja, kamor je kazal kupon.
+        const isMultiWorkspace =
+          !isTenantContext && (await getActiveWorkspaceCount()) > 1
+        // NOTE: do NOT call router.refresh() here — it runs synchronously
+        // after router.push() and cancels the pending navigation, leaving the
+        // user stuck on /login even though the session is authenticated and
+        // getActiveWorkspaceCount() succeeded. update() above already
+        // re-syncs the client SessionProvider, and the pushed route re-reads
+        // the session cookie server-side.
+        router.push(isMultiWorkspace ? "/workspaces" : callbackUrl)
       }
     } catch (error) {
       console.log("Login error:", error)
@@ -93,7 +137,11 @@ export function LoginForm({ orgName, orgLogo, orgSlug }: LoginFormProps) {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="mb-6 flex flex-col items-center gap-2">
-            <Logo variant="auth" src={orgLogo ?? undefined} alt={orgName ?? undefined} />
+            <Logo
+              variant="auth"
+              src={orgLogo ?? undefined}
+              alt={orgName ?? undefined}
+            />
             {orgName && orgSlug && (
               <Link
                 href={`/s/${orgSlug}`}
@@ -103,13 +151,38 @@ export function LoginForm({ orgName, orgLogo, orgSlug }: LoginFormProps) {
               </Link>
             )}
           </div>
-          <CardTitle className="text-center text-2xl">{t.auth.login.welcomeBack}</CardTitle>
+          <CardTitle className="text-center text-2xl">
+            {t.auth.login.welcomeBack}
+          </CardTitle>
           <CardDescription className="text-center">
             {t.auth.login.signInSubtitle}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
+            {googleEnabled && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  size="lg"
+                  disabled={isSubmitting}
+                  onClick={() => {
+                    void signIn("google", { callbackUrl })
+                  }}
+                >
+                  <GoogleIcon className="mr-2 h-5 w-5" />
+                  Nadaljuj z Google
+                </Button>
+                <div className="relative my-2">
+                  <Separator />
+                  <span className="bg-card text-muted-foreground absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-2 text-xs">
+                    ali z e-pošto
+                  </span>
+                </div>
+              </>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">{t.auth.login.email}</Label>
               <Input
@@ -121,7 +194,9 @@ export function LoginForm({ orgName, orgLogo, orgSlug }: LoginFormProps) {
                 {...register("email")}
               />
               {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
+                <p className="text-destructive text-sm">
+                  {errors.email.message}
+                </p>
               )}
             </div>
 
@@ -130,7 +205,7 @@ export function LoginForm({ orgName, orgLogo, orgSlug }: LoginFormProps) {
                 <Label htmlFor="password">{t.auth.login.password}</Label>
                 <Link
                   href="/forgot-password"
-                  className="text-sm text-muted-foreground hover:text-primary-text"
+                  className="text-muted-foreground hover:text-primary-text text-sm"
                 >
                   {t.auth.login.forgotPassword}
                 </Link>
@@ -143,23 +218,37 @@ export function LoginForm({ orgName, orgLogo, orgSlug }: LoginFormProps) {
                 {...register("password")}
               />
               {errors.password && (
-                <p className="text-sm text-destructive">{errors.password.message}</p>
+                <p className="text-destructive text-sm">
+                  {errors.password.message}
+                </p>
               )}
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button className="w-full" size="lg" type="submit" disabled={isSubmitting}>
+            <Button
+              className="w-full"
+              size="lg"
+              type="submit"
+              disabled={isSubmitting}
+            >
               {isSubmitting && (
-                <SpinnerIcon size={16} weight="bold" className="mr-2 animate-spin" />
+                <SpinnerIcon
+                  size={16}
+                  weight="bold"
+                  className="mr-2 animate-spin"
+                />
               )}
               {t.auth.login.signIn}
             </Button>
 
             <Separator />
 
-            <div className="text-center text-sm text-muted-foreground">
+            <div className="text-muted-foreground text-center text-sm">
               {t.auth.login.noAccount}{" "}
-              <Link href="/register" className="font-medium text-primary-text hover:underline">
+              <Link
+                href="/register"
+                className="text-primary-text font-medium hover:underline"
+              >
                 {t.auth.login.createAccount}
               </Link>
             </div>
@@ -168,17 +257,23 @@ export function LoginForm({ orgName, orgLogo, orgSlug }: LoginFormProps) {
                 najemniška prijava ne sme vabiti gosta k ustvarjanju
                 lastnega podjetja. */}
             {!isTenantContext && (
-              <div className="text-center text-sm text-muted-foreground">
+              <div className="text-muted-foreground text-center text-sm">
                 {t.auth.login.ownSalon}{" "}
                 {/* P2 #68: nevtralni CTA — platforma najema strani vsem obrtom. */}
-                <Link href="/start" className="font-medium text-primary-text hover:underline">
+                <Link
+                  href="/start"
+                  className="text-primary-text font-medium hover:underline"
+                >
                   Ustvari svoje podjetje
                 </Link>
               </div>
             )}
 
             <div className="text-center">
-              <Link href="/" className="text-sm text-muted-foreground hover:text-primary-text">
+              <Link
+                href="/"
+                className="text-muted-foreground hover:text-primary-text text-sm"
+              >
                 {t.auth.login.backToHome}
               </Link>
             </div>
@@ -187,19 +282,27 @@ export function LoginForm({ orgName, orgLogo, orgSlug }: LoginFormProps) {
                 render in production — printed admin passwords on a public
                 login page let anyone log in (security + professionalism). */}
             {process.env.NODE_ENV !== "production" && (
-              <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-                <p className="font-semibold mb-2">{t.auth.login.demoCredentials}</p>
+              <div className="bg-muted text-muted-foreground rounded-lg p-3 text-xs">
+                <p className="mb-2 font-semibold">
+                  {t.auth.login.demoCredentials}
+                </p>
                 <div className="space-y-2">
                   <div>
-                    <p className="font-medium text-foreground">{t.auth.login.adminFullAccess}</p>
+                    <p className="text-foreground font-medium">
+                      {t.auth.login.adminFullAccess}
+                    </p>
                     <p>admin@rcbeautysalon.org / admin123</p>
                   </div>
                   <div>
-                    <p className="font-medium text-foreground">{t.auth.login.staffAccess}</p>
-                    <p>staff@rcbeautysalon.org / staff123</p>
+                    <p className="text-foreground font-medium">
+                      {t.auth.login.staffAccess}
+                    </p>
+                    <p>laura@rcbeautysalon.org / staff123</p>
                   </div>
                   <div>
-                    <p className="font-medium text-foreground">{t.auth.login.clientAccess}</p>
+                    <p className="text-foreground font-medium">
+                      {t.auth.login.clientAccess}
+                    </p>
                     <p>cliente@rcbeautysalon.org / cliente123</p>
                   </div>
                 </div>

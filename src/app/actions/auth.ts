@@ -17,6 +17,28 @@ import { sendPasswordResetEmail } from "@/lib/email/password-reset"
 import { sendVerificationEmail } from "@/lib/email/email-verification"
 import { sendAccountActivatedEmail } from "@/lib/email/account-activated"
 import { isEmailServiceConfigured } from "@/lib/email/config"
+import {
+  rateLimit,
+  getClientIp,
+  registerLimits,
+  forgotLimits,
+} from "@/lib/rate-limit"
+
+/** Pomožnik: vnese rate-limit v določeno akcijo. */
+async function blockedOrNull(
+  r: Awaited<ReturnType<typeof rateLimit>>
+): Promise<{ success: boolean; errors: { message: string }[] } | null> {
+  if (r.ok) return null
+  return {
+    success: false,
+    errors: [
+      {
+        message:
+          "Preveč poskusov. Počakajte nekaj minut in poskusite znova.",
+      },
+    ],
+  }
+}
 
 // Server action to handle user registration
 export async function registerUser(data: RegisterInput) {
@@ -25,6 +47,13 @@ export async function registerUser(data: RegisterInput) {
   if (!validatedData.success) {
     return { success: false, errors: validatedData.error.issues }
   }
+
+  // Rate-limit: registracija na IP (omeji botnete), fail-open za dostopnost.
+  const ip = await getClientIp()
+  const blocked = await blockedOrNull(
+    await rateLimit({ scope: "register:ip", key: ip, ...registerLimits() })
+  )
+  if (blocked) return blocked
 
   try {
     const { name, email, password } = validatedData.data
@@ -129,6 +158,74 @@ export async function registerUser(data: RegisterInput) {
   }
 }
 
+// Server action to send a fresh verification email to an EXISTING, unverified
+// account. 2D-4: safe resend — only existing unverified emails; never reveals
+// whether an address exists (neutral response shape); a 24h cooldown prevents
+// abuse; each resend invalidates the previous token (single-use preserved).
+export async function resendVerification(data: { email?: string }) {
+  const email = (data?.email ?? "").trim().toLowerCase()
+  if (!email) {
+    return { success: false, errors: [{ message: "E-poštni naslov je obvezen." }] }
+  }
+
+  // Rate-limit: ponovno pošiljanje na IP (poleg obstoječega 60s cooldowna).
+  const blocked = await blockedOrNull(
+    await rateLimit({ scope: "resend:ip", key: await getClientIp(), limit: 5, windowMs: 60 * 60_000 })
+  )
+  if (blocked) return blocked
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email } })
+
+    // Ne razkrij, ali e-pošta obstaja (enako forgotPassword): vedno vračaj
+    // "uspeh", ko e-pošta ne obstaja ali je že verificirana.
+    if (!user || user.emailVerified) {
+      return { success: true, emailSent: false, ignored: true }
+    }
+
+    // Cooldown: prepogoste prošnje (≤60s od zadnjega posljetka) se zavrnejo,
+    // da onemogočimo spam. Tok prestan po 60s, ko uporabnik lahko legitimno
+    // zaprosi za novo povezavo (stara se ob tem izbrise). Nove tokenje izda
+    // 24-urni enkratni mehanizem (kot registerUser).
+    const existing = await prisma.verificationToken.findFirst({
+      where: { identifier: email },
+      orderBy: { expires: "desc" },
+      select: { expires: true },
+    })
+    if (existing) {
+      // issuedAt = expires - 24h (token je izdan z 24-urnim TTL).
+      const issuedAt = existing.expires.getTime() - 86400000
+      if (issuedAt > Date.now() - 60_000) {
+        return { success: true, emailSent: false, ignored: true }
+      }
+    }
+
+    // Star (morebiten še nepretečen) token izbrišemo, tako da stara povezava
+    // ne da več dostopa in se ne kopiči.
+    await prisma.verificationToken.deleteMany({ where: { identifier: email } })
+
+    const token = crypto.randomBytes(32).toString("hex")
+    await prisma.verificationToken.create({
+      data: { identifier: email, token, expires: new Date(Date.now() + 86400000) },
+    })
+
+    after(async () => {
+      await sendVerificationEmail(email, token)
+    })
+
+    if (!isEmailServiceConfigured()) {
+      return { success: true, verificationUrl: `/verify-email?token=${token}`, emailSent: false }
+    }
+    return { success: true, emailSent: true }
+  } catch (error) {
+    console.error("Resend verification error:", error)
+    return {
+      success: false,
+      errors: [{ message: "Prišlo je do napake. Poskusite znova." }],
+    }
+  }
+}
+
 // Server action to send password reset email
 export async function forgotPassword(data: ForgotPasswordInput) {
   const validatedData = forgotPasswordSchema.safeParse(data)
@@ -136,6 +233,17 @@ export async function forgotPassword(data: ForgotPasswordInput) {
   if (!validatedData.success) {
     return { success: false, errors: validatedData.error.issues }
   }
+
+  // Rate-limit: pozaba gesla na IP in na e-pošto (prepreči zasmetenje/brute-
+  // force obstoja e-pošt). Ne razkrijemo ničesar o obstoju računa (enotna oblika).
+  const ip = await getClientIp()
+  const { limit, windowMs } = forgotLimits()
+  const blockedIp = await blockedOrNull(await rateLimit({ scope: "forgot:ip", key: ip, limit, windowMs }))
+  if (blockedIp) return blockedIp
+  const blockedEmail = await blockedOrNull(
+    await rateLimit({ scope: "forgot:email", key: validatedData.data.email, limit: 3, windowMs: 60 * 60_000 })
+  )
+  if (blockedEmail) return blockedEmail
 
   try {
     const { email } = validatedData.data
@@ -186,6 +294,12 @@ export async function resetPassword(data: ResetPasswordInput) {
   if (!validatedData.success) {
     return { success: false, errors: validatedData.error.issues }
   }
+
+  // Rate-limit: ponastavitev gesla na IP (limitira brute-force žetona).
+  const blocked = await blockedOrNull(
+    await rateLimit({ scope: "reset:ip", key: await getClientIp(), limit: 10, windowMs: 60 * 60_000 })
+  )
+  if (blocked) return blocked
 
   try {
     const { token, password } = validatedData.data

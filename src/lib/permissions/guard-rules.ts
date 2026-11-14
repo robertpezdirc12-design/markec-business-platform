@@ -16,7 +16,9 @@ export interface MemberTargetInfo {
   id: string
   role: string
   organizationId: string | null
-  staff?: { organizationId: string | null } | null
+  // F2.3.1: a user may be staff in several orgs → each Staff row carries its
+  // own organizationId; belonging is proven by ANY active row matching the org.
+  staffs?: { organizationId: string | null }[]
   customer?: { organizationId: string | null } | null
 }
 
@@ -24,7 +26,7 @@ export interface MemberTargetInfo {
 export function targetBelongsToOrg(target: MemberTargetInfo, orgId: string): boolean {
   return (
     target.organizationId === orgId ||
-    target.staff?.organizationId === orgId ||
+    target.staffs?.some((s) => s.organizationId === orgId) ||
     target.customer?.organizationId === orgId
   )
 }

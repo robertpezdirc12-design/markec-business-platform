@@ -109,7 +109,7 @@ async function findEntityOwner(
   entityKey: string
 ): Promise<{
   extension: { id: string; name: string }
-  entity: { key: string; name: string; fields: ProfileFieldDef[] }
+  entity: { key: string; name: string; fields: ProfileFieldDef[]; appendOnly?: boolean }
 } | null> {
   const { getExtension } = await import("@/lib/profiles/extensions")
   for (const id of extensionIds) {
@@ -118,11 +118,103 @@ async function findEntityOwner(
     if (ext && entity) {
       return {
         extension: { id: ext.id, name: ext.name },
-        entity: { key: entity.key, name: entity.name, fields: entity.fields },
+        entity: { key: entity.key, name: entity.name, fields: entity.fields, appendOnly: entity.appendOnly },
       }
     }
   }
   return null
+}
+
+// ------------------------------------------------------------
+// Faza 2B — pri update ohranimo legacy/ne-deklarirane ključe iz prejšnjega
+// JSON-a. `clean` je samo trenutno deklariranih polj; stara polja iz stare
+// sheme (npr. prejšnje `apiary` kot text) morajo ostati, dokler migracija.
+// ------------------------------------------------------------
+function mergeDataPreserveLegacy(
+  prev: unknown,
+  clean: Record<string, unknown>
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...clean }
+  if (prev && typeof prev === "object" && !Array.isArray(prev)) {
+    for (const [k, v] of Object.entries(prev as Record<string, unknown>)) {
+      if (k in out) continue // novo deklarirano polje ima prednost
+      out[k] = v
+    }
+  }
+  return out
+}
+
+// ------------------------------------------------------------
+// Faza 2B — org-scoped entityReference validacija.
+// Preveri, da vsak entityReference polje ne-null kaza na obstoječ
+// ExtensionRecord ISTE organizacije s PRAVIM (extensionId, entityKey).
+// Vrednosti z brskalnika (ali direktnega API klica) se NIKOLI ne
+// zaupa: neobstoječi / napačna entiteta / tuji org → INVALID_REFERENCE.
+// ------------------------------------------------------------
+async function validateRecordReferences(
+  fields: ProfileFieldDef[],
+  clean: Record<string, unknown>,
+  orgId: string
+): Promise<Record<string, string>> {
+  const errors: Record<string, string> = {}
+  for (const field of fields) {
+    if (field.type !== "entityReference" || !field.referenceTo) continue
+    const value = clean[field.key]
+    if (value === null || value === undefined || value === "") continue
+
+    // Format je IZPELJAN iz referenceTo: objekt → single (string id, 2B),
+    // niz → multi-target (objekt {id, extensionId, entityKey}).
+    const allowed: { extensionId: string; entityKey: string }[] = Array.isArray(
+      field.referenceTo
+    )
+      ? field.referenceTo
+      : [field.referenceTo]
+
+    if (allowed.length === 1 && !Array.isArray(field.referenceTo)) {
+      // --- FAZA 2B: single (string id) — nedotaknuto, kompat ---
+      const id = String(value)
+      const target = await prisma.extensionRecord.findFirst({
+        where: {
+          id,
+          organizationId: orgId,
+          extensionId: allowed[0].extensionId,
+          entityKey: allowed[0].entityKey,
+        },
+        select: { id: true },
+      })
+      if (!target) errors[field.key] = "INVALID_REFERENCE"
+      continue
+    }
+
+    // --- FAZA 2C-1: multi-target — vrednost MORA biti objekt {id, extensionId, entityKey} ---
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      errors[field.key] = "INVALID_REFERENCE"
+      continue
+    }
+    const ref = value as { id?: unknown; extensionId?: unknown; entityKey?: unknown }
+    const id = typeof ref.id === "string" ? ref.id : ""
+    const extensionId = typeof ref.extensionId === "string" ? ref.extensionId : ""
+    const entityKey = typeof ref.entityKey === "string" ? ref.entityKey : ""
+    if (!id || !extensionId || !entityKey) {
+      errors[field.key] = "INVALID_REFERENCE"
+      continue
+    }
+    // (extensionId, entityKey) mora biti v dovoljenem naboru referenceTo.
+    const isAllowed = allowed.some(
+      (a) => a.extensionId === extensionId && a.entityKey === entityKey
+    )
+    if (!isAllowed) {
+      errors[field.key] = "INVALID_REFERENCE"
+      continue
+    }
+    // id mora obstajati, biti iste org in s točno tem (extensionId, entityKey).
+    const target = await prisma.extensionRecord.findFirst({
+      where: { id, organizationId: orgId, extensionId, entityKey },
+      select: { id: true },
+    })
+    if (!target) errors[field.key] = "INVALID_REFERENCE"
+  }
+  return errors
 }
 
 export interface SaveRecordResult {
@@ -152,6 +244,9 @@ export async function createExtensionRecord(
 
   const owning = await findEntityOwner(profile.extensions, input.entityKey)
   if (!owning) return { ok: false, error: "ENTITY_NOT_ENABLED" }
+  // FAZA 2C-2: generični create je append-only entitetam (dogodkom zgodovine)
+  // ZPREPOVEDAN — ustvarjanje gre izključno prek namenske akcije.
+  if (owning.entity.appendOnly) return { ok: false, error: "APPEND_ONLY" }
 
   const { errors, clean } = validateFieldValues(owning.entity.fields, input.values)
   if (Object.keys(errors).length > 0) {
@@ -166,6 +261,13 @@ export async function createExtensionRecord(
       select: { id: true },
     })
     if (!c) return { ok: false, error: "INVALID_CUSTOMER" }
+  }
+
+  // Faza 2B: entityReference polja morajo kazati na obstoječ zapis JAZE iste org
+  // in prave (extensionId, entityKey). ID-ji iz brskalnika niso nikoli zaupanja vredni.
+  const refErrors = await validateRecordReferences(owning.entity.fields, clean, org.id)
+  if (refErrors && Object.keys(refErrors).length > 0) {
+    return { ok: false, error: "INVALID_REFERENCE", fieldErrors: refErrors }
   }
 
   const created = await prisma.extensionRecord.create({
@@ -194,12 +296,14 @@ export async function updateExtensionRecord(
 
   const record = await prisma.extensionRecord.findFirst({
     where: { id, organizationId: org.id },
-    select: { id: true, entityKey: true },
+    select: { id: true, entityKey: true, data: true },
   })
   if (!record) return { ok: false, error: "NOT_FOUND" }
 
   const owning = await findEntityOwner(profile.extensions, record.entityKey)
   if (!owning) return { ok: false, error: "ENTITY_NOT_ENABLED" }
+  // FAZA 2C-2: generični update append-only entitete je ZPREPOVEDAN (fail-closed).
+  if (owning.entity.appendOnly) return { ok: false, error: "APPEND_ONLY" }
 
   const { errors, clean } = validateFieldValues(owning.entity.fields, input.values)
   if (Object.keys(errors).length > 0) {
@@ -215,11 +319,20 @@ export async function updateExtensionRecord(
     if (!c) return { ok: false, error: "INVALID_CUSTOMER" }
   }
 
+  // Faza 2B: enaka org-scoped ref validacija kot pri create.
+  const refErrors = await validateRecordReferences(owning.entity.fields, clean, org.id)
+  if (refErrors && Object.keys(refErrors).length > 0) {
+    return { ok: false, error: "INVALID_REFERENCE", fieldErrors: refErrors }
+  }
+
   await prisma.extensionRecord.update({
     where: { id: record.id },
     data: {
       title: deriveRecordTitle(owning.entity.fields, clean, owning.entity.name),
-      data: clean as unknown as Prisma.InputJsonValue,
+      // Faza 2B: ohranimo "legacy"/ne-več-deklarirane vrednosti iz starega JSON-a,
+      // da sprememba field-scheme (npr. text → entityReference z novim ključem)
+      // nikoli ne izgubi obstoječih podatkov pred ločeno odobreno migracijo.
+      data: mergeDataPreserveLegacy(record.data, clean) as unknown as Prisma.InputJsonValue,
       customerId,
     },
   })
@@ -230,13 +343,17 @@ export async function updateExtensionRecord(
 }
 
 /** Delete an org-scoped extension record (linked work orders keep history). */
-export async function deleteExtensionRecord(id: string): Promise<{ ok: boolean }> {
+export async function deleteExtensionRecord(id: string): Promise<{ ok: boolean; error?: string }> {
   const { org } = await requirePermissionOrg("workorders.manage")
   const record = await prisma.extensionRecord.findFirst({
     where: { id, organizationId: org.id },
-    select: { id: true },
+    select: { id: true, entityKey: true, extensionId: true },
   })
   if (!record) return { ok: false }
+  // Faza 2C-2: append-only (zgodovinski) dogodki se NIKOLI ne brišejo.
+  const profile = await getSessionEffectiveProfile()
+  const owning = await findEntityOwner(profile.extensions, record.entityKey)
+  if (owning?.entity.appendOnly) return { ok: false, error: "APPEND_ONLY" }
   await prisma.extensionRecord.delete({ where: { id: record.id } })
   revalidatePath("/dashboard/records")
   revalidatePath("/dashboard/work-orders")
@@ -256,16 +373,31 @@ export async function listRecordCustomers(): Promise<
   })
 }
 
-/** Minimal record list for pickers (e.g. attach a vehicle to a work order). */
-export async function listExtensionRecordOptions(): Promise<
+/** Minimal record list for pickers (e.g. attach a vehicle to a work order,
+ *  or an entityReference field). Optionally scoped to ONE entity so the
+ *  picker can never offer records of a different kind. org-scoped always. */
+export async function listExtensionRecordOptions(filters?: {
+  extensionId?: string
+  entityKey?: string
+}): Promise<
   { id: string; entityKey: string; entityName: string; title: string; customerName: string | null }[]
 > {
   const { org } = await requirePermissionOrg("workorders.manage")
   const profile = await getSessionEffectiveProfile()
   if (profile.extensions.length === 0) return []
 
+  const where: Prisma.ExtensionRecordWhereInput = {
+    organizationId: org.id,
+  }
+  if (filters?.extensionId) {
+    where.extensionId = filters.extensionId
+  }
+  if (filters?.entityKey) {
+    where.entityKey = filters.entityKey
+  }
+
   const records = await prisma.extensionRecord.findMany({
-    where: { organizationId: org.id },
+    where,
     include: { customer: { select: { name: true } } },
     orderBy: { updatedAt: "desc" },
     take: 300,

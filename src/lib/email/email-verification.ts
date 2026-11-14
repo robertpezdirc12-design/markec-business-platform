@@ -1,12 +1,23 @@
 import { Resend } from "resend"
 import { render } from "@react-email/components"
 import { VerificationEmailTemplate } from "@/lib/email/templates/verification-email-template"
+import { isEmailServiceConfigured } from "@/lib/email/config"
 
 const resend = new Resend(
   process.env.RESEND_API_KEY || "re_placeholder_not_configured"
 )
 
 export async function sendVerificationEmail(email: string, token: string) {
+  // 2D-5 hardening: without a real API key (and a verified sender address)
+  // a Resend call is doomed to a 401 — fail fast and honestly instead of
+  // firing a placeholder-key request that only logs an error asynchronously.
+  if (!isEmailServiceConfigured()) {
+    return { success: false, notConfigured: true, error: "Email service not configured" }
+  }
+  const from = process.env.RESEND_FROM_EMAIL
+  if (!from) {
+    return { success: false, notConfigured: true, error: "RESEND_FROM_EMAIL not configured" }
+  }
   const verificationLink = `${process.env.NEXT_PUBLIC_APP_URL}/verify-email?token=${token}`
 
   try {
@@ -15,7 +26,7 @@ export async function sendVerificationEmail(email: string, token: string) {
     )
 
     const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL!,
+      from,
       to: email,
       subject: "Verify Your Email - Business Platform",
       html,

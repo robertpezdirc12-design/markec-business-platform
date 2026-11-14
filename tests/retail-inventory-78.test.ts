@@ -211,7 +211,9 @@ describe("#78 submitStockTake — only the deltas, source STOCKTAKE", () => {
   it("is reversible by a second count — state update and ledger row happen together", () => {
     const body = inventory.slice(inventory.indexOf("export async function submitStockTake"))
     expect(body).toContain("prisma.$transaction")
-    expect(body).toContain("stockQuantity: computed.nextStock")
+    // P1-D-1C: inventura piše na SVEŽEM, zaklenjenem stanju (safe.nextStock),
+    // ne na zastarelem computed.nextStock. Testni stavek usklajen z implementacijo.
+    expect(body).toContain("stockQuantity: safe.nextStock")
   })
 })
 
@@ -286,6 +288,8 @@ describe("#78 stocktake page — /dashboard/products/stocktake", () => {
   it("the client shows system vs counted with a live delta", () => {
     const client = read("src/components/dashboard/stocktake-client.tsx")
     expect(client).toContain("submitStockTake")
-    expect(client).toMatch(/n - p\.stockQuantity/)
+    // P1-D-1B variant-aware: razlika se računa na `r.system` (varianta/izdelek),
+    // ne na `p.stockQuantity` (od prejšnjega, samo-izdelčnega vmesnika).
+    expect(client).toMatch(/n - r\.system/)
   })
 })

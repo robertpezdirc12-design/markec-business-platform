@@ -17,6 +17,13 @@ export interface ExtensionEntity {
   description: string
   /** Declarative fields rendered by the universal entity UI (Phase 4+). */
   fields: ProfileFieldDef[]
+  /**
+   * Faza 2C-2: append-only zapis zgodovine (dogodki, ki spreminjajo trenutno
+   * stanje). Generični CRUD (create/update/delete) tako entiteto ZAVRNE z
+   * APPEND_ONLY; dogodki se ustvarjajo izključno prek namenske strežniške
+   * akcije. Univerzalni vzorec za zgodovinske dogodke vseh dejavnosti.
+   */
+  appendOnly?: boolean
 }
 
 export interface ExtensionDefinition {
@@ -33,15 +40,44 @@ export interface ExtensionDefinition {
 // ------------------------------------------------------------
 // Validation schema — every extension is validated at load.
 // ------------------------------------------------------------
-const fieldDefSchema = z.object({
-  key: z.string().min(1).regex(/^[a-z][a-z0-9_]*$/),
-  label: z.string().min(1),
-  type: z.enum(["text", "textarea", "number", "date", "select", "checkbox"]),
-  required: z.boolean(),
-  options: z.array(z.string()).optional(),
-  unit: z.string().optional(),
-  placeholder: z.string().optional(),
-})
+const fieldDefSchema = z
+  .object({
+    key: z.string().min(1).regex(/^[a-z][a-z0-9_]*$/),
+    label: z.string().min(1),
+    type: z.enum([
+      "text",
+      "textarea",
+      "number",
+      "date",
+      "select",
+      "checkbox",
+      "entityReference",
+    ]),
+    required: z.boolean(),
+    options: z.array(z.string()).optional(),
+    // Faza 2B/2C-1: za entityReference — dovoljeni cilj(i). Single objekt (2B) ALI niz.
+    referenceTo: z
+      .union([
+        z.object({
+          extensionId: z.string().regex(/^[a-z][a-z0-9-]*$/),
+          entityKey: z.string().regex(/^[a-z][a-z0-9_]*$/),
+        }),
+        z.array(
+          z.object({
+            extensionId: z.string().regex(/^[a-z][a-z0-9-]*$/),
+            entityKey: z.string().regex(/^[a-z][a-z0-9_]*$/),
+          })
+        ),
+      ])
+      .optional(),
+    unit: z.string().optional(),
+    placeholder: z.string().optional(),
+  })
+  // entityReference brez referenceTo je napaka — ne more se naložiti.
+  .refine((f) => f.type !== "entityReference" || !!f.referenceTo, {
+    message: "entityReference field mora definirati referenceTo",
+    path: ["referenceTo"],
+  })
 
 // ------------------------------------------------------------
 // Typed capability dependencies (E2-1): an extension's
@@ -78,6 +114,7 @@ const extensionSchema = z.object({
       name: z.string().min(1),
       description: z.string().min(1),
       fields: z.array(fieldDefSchema),
+      appendOnly: z.boolean().optional(),
     })
   ),
 })
@@ -149,7 +186,45 @@ const bodyMeasurements: ExtensionDefinition = {
   ],
 }
 
-/** Batches/lots and harvest records for producers (§21 beekeeping scenario). */
+/**
+ * ŠIVILJSTVO (2D-2B) — merilni listi z datumom, povezavo na naročilo in
+ * NEDOTAKNJLJIVO zgodovino. Vsaka nova meritev = NOV `measurement` zapis
+ * (appendOnly → create-only, brez update/delete), tako da zgodovina meritev
+ * stranke nikoli ni prepisana. Zapisi so vezani na stranko prek
+ * `ExtensionRecord.customerId` in na delovni nalog prek `order_ref` (+
+ * `__workOrderIds` na zapisu).
+ */
+const seamstressMeasurements: ExtensionDefinition = {
+  id: "seamstress-measurements",
+  name: "Meritve strank",
+  description:
+    "Merilni listi za šivanje po meri in spremembe; vsaka meritev je nov zapis z datumom (append-only zgodovina), vezan na stranko in naročilo.",
+  version: 1,
+  capabilities: ["customers", "workOrders"],
+  entities: [
+    {
+      key: "measurement",
+      name: "Merilni list",
+      description: "Ena meritev stranke (datum, mere v cm, povezava na naročilo). Append-only.",
+      appendOnly: true,
+      fields: [
+        { key: "measured_at", label: "Datum meritve", type: "date", required: true },
+        { key: "chest_cm", label: "Obseg prsi", type: "number", required: false, unit: "cm" },
+        { key: "waist_cm", label: "Obseg pasu", type: "number", required: false, unit: "cm" },
+        { key: "hips_cm", label: "Obseg bokov", type: "number", required: false, unit: "cm" },
+        { key: "shoulder_cm", label: "Širina ramen", type: "number", required: false, unit: "cm" },
+        { key: "sleeve_cm", label: "Dolžina rokava", type: "number", required: false, unit: "cm" },
+        { key: "inseam_cm", label: "Notranja dolžina hlač", type: "number", required: false, unit: "cm" },
+        { key: "height_cm", label: "Višina", type: "number", required: false, unit: "cm" },
+        { key: "order_ref", label: "Povezano naročilo / delovni nalog", type: "text", required: false },
+        { key: "by_staff", label: "Meril", type: "text", required: false },
+        { key: "notes", label: "Opombe", type: "textarea", required: false },
+      ],
+    },
+  ],
+}
+
+/** Batchs/lots and harvest records for producers (§21 beekeeping scenario). */
 const batchProduction: ExtensionDefinition = {
   id: "batch-production",
   name: "Serije in žetev",
@@ -169,6 +244,175 @@ const batchProduction: ExtensionDefinition = {
         { key: "product_type", label: "Vrsta (npr. med)", type: "select", required: true, options: ["Cvetlični med", "Lipov med", "Gozdni med", "Akačijski med", "Drug izdelek"] },
         { key: "apiary", label: "Panjska postaja / panj", type: "text", required: false },
         { key: "notes", label: "Opombe", type: "textarea", required: false },
+      ],
+    },
+  ],
+}
+
+// ------------------------------------------------------------
+// BEEKEEPING — apiary & hive management (REFERENCE PHASE 1)
+// Specialized entity registries for a beekeeper, built entirely
+// on the UNIVERSAL extension system (§13): no schema change, no
+// per-industry code. Fields/types are the universal locked set
+// (text|textarea|number|date|select|checkbox); cross-entity
+// relationships are expressed via shared label/select fields so
+// a beekeeper can relate apiary → hive → colony → records by the
+// same stable names, which the universal UI renders immediately.
+// ------------------------------------------------------------
+const beeApiary: ExtensionDefinition = {
+  id: "bee-apiary",
+  name: "Čebelnjaki in panji",
+  description:
+    "Čebelarske evidence: panjske postaje/čebelnjaki, panji, družine, pregledi, zdravljenje, hranjenje, matice/rojenje, opravila in pridelek medu — povezani z zalogami in trgovino.",
+  version: 1,
+  capabilities: ["inventory", "customers"],
+  entities: [
+    {
+      key: "apiary",
+      name: "Panjska postaja",
+      description: "Lokacija/čebelnjak s številom panjev in podatki za sledenje.",
+      fields: [
+        { key: "name", label: "Naziv postaje", type: "text", required: true },
+        { key: "location", label: "Kraj / lokacija", type: "text", required: false },
+        { key: "coordinates", label: "Koordinate (G-K / DMS)", type: "text", required: false },
+        { key: "hive_count", label: "Število panjev", type: "number", required: false, unit: "panjev" },
+        { key: "notes", label: "Opombe", type: "textarea", required: false },
+      ],
+    },
+    {
+      key: "hive",
+      name: "Panj",
+      description: "Posamezen panj z vrsto, čiščeno močjo in umestitvijo v panjsko postajo.",
+      fields: [
+        { key: "label", label: "Oznaka panja", type: "text", required: true },
+        { key: "apiary", label: "Panjska postaja", type: "text", required: false },
+        { key: "apiary_ref", label: "Panjska postaja (izberi)", type: "entityReference", required: false, referenceTo: { extensionId: "bee-apiary", entityKey: "apiary" } },
+        { key: "hive_type", label: "Vrsta panja", type: "select", required: true, options: ["AŽ", "Langstroth", "Dadant", "POŠ / Karnijski", "Drugo"] },
+        { key: "strength", label: "Moč družine", type: "select", required: false, options: ["Močna", "Srednja", "Šibka"] },
+        { key: "installed_date", label: "Datum namestitve", type: "date", required: false },
+        { key: "notes", label: "Opombe", type: "textarea", required: false },
+      ],
+    },
+    {
+      key: "colony",
+      name: "Čebelja družina",
+      description: "Družina v panju s starostjo matice in zdravstvenim stanjem.",
+      fields: [
+        { key: "label", label: "Oznaka družine", type: "text", required: true },
+        { key: "hive", label: "Panj", type: "text", required: false },
+        { key: "hive_ref", label: "Panj (izberi)", type: "entityReference", required: false, referenceTo: { extensionId: "bee-apiary", entityKey: "hive" } },
+        { key: "queen_age_years", label: "Starost matice", type: "number", required: false, unit: "leta" },
+        { key: "health_status", label: "Zdravstveno stanje", type: "select", required: false, options: ["Zdrava", "Pod nadzorom", "Oslabljena", "Bolezensko stanje"] },
+        { key: "notes", label: "Opombe", type: "textarea", required: false },
+      ],
+    },
+    {
+      key: "inspection",
+      name: "Pregled družine",
+      description: "Redni pregled z ugotovitvami, hranjenjem in znaki rojenja.",
+      fields: [
+        { key: "inspection_date", label: "Datum pregleda", type: "date", required: true },
+        { key: "colony", label: "Čebelja družina", type: "text", required: true },
+        { key: "colony_ref", label: "Čebelja družina (izberi)", type: "entityReference", required: false, referenceTo: { extensionId: "bee-apiary", entityKey: "colony" } },
+        { key: "findings", label: "Ugotovitve", type: "select", required: false, options: ["V redu", "Potrebno hranjenje", "Potrebno zdravljenje", "Znaki rojenja"] },
+        { key: "feeding", label: "Hranjenje opravljeno", type: "checkbox", required: false },
+        { key: "queen_seen", label: "Matica opažena", type: "checkbox", required: false },
+        { key: "notes", label: "Opombe", type: "textarea", required: false },
+      ],
+    },
+    {
+      key: "treatment",
+      name: "Zdravljenje",
+      description: "Zdravljenje/preventiva z navedbo sredstva in datumom — za sledenje varnostnim intervalom.",
+      fields: [
+        { key: "treatment_date", label: "Datum", type: "date", required: true },
+        { key: "colony", label: "Čebelja družina", type: "text", required: false },
+        { key: "colony_ref", label: "Čebelja družina (izberi)", type: "entityReference", required: false, referenceTo: { extensionId: "bee-apiary", entityKey: "colony" } },
+        { key: "reason", label: "Razlog", type: "select", required: false, options: ["Varooza", "Nosema", "Preventiva", "Ostalo"] },
+        { key: "treatment_type", label: "Vrsta/način", type: "text", required: false },
+        { key: "substance", label: "Sredstvo", type: "text", required: false },
+        { key: "notes", label: "Opombe", type: "textarea", required: false },
+      ],
+    },
+    {
+      key: "feeding",
+      name: "Hranjenje in oskrba",
+      description: "Zimsko/spomladansko hranjenje po družinah s količino in vrsto.",
+      fields: [
+        { key: "feed_date", label: "Datum", type: "date", required: true },
+        { key: "colony", label: "Čebelja družina", type: "text", required: false },
+        { key: "colony_ref", label: "Čebelja družina (izberi)", type: "entityReference", required: false, referenceTo: { extensionId: "bee-apiary", entityKey: "colony" } },
+        { key: "feed_type", label: "Vrsta hrane", type: "select", required: false, options: ["Sladkorni sirup", "Mošt", "Pogača", "Suhi sladkor"] },
+        { key: "amount_kg", label: "Količina", type: "number", required: false, unit: "kg" },
+        { key: "notes", label: "Opombe", type: "textarea", required: false },
+      ],
+    },
+    {
+      key: "queen_management",
+      name: "Matice in rojenje",
+      description: "Zamenjava/vzgoja matic, presajanje in evidentiranje rojenja.",
+      fields: [
+        { key: "event_date", label: "Datum", type: "date", required: true },
+        { key: "colony", label: "Čebelja družina", type: "text", required: false },
+        { key: "colony_ref", label: "Čebelja družina (izberi)", type: "entityReference", required: false, referenceTo: { extensionId: "bee-apiary", entityKey: "colony" } },
+        { key: "action", label: "Dejanje", type: "select", required: false, options: ["Zamenjava matice", "Vzgoja nove", "Presaditev", "Združitev"] },
+        { key: "queen_age_years", label: "Starost matice", type: "number", required: false, unit: "leta" },
+        { key: "swarmed", label: "Rojenje zaznano", type: "checkbox", required: false },
+        { key: "notes", label: "Opombe", type: "textarea", required: false },
+      ],
+    },
+    {
+      key: "task",
+      name: "Opravilo",
+      description: "Načrtovano ali opravljeno delo na panju/postaji (odtegovanje, čiščenje, prenos).",
+      fields: [
+        { key: "task_date", label: "Datum", type: "date", required: true },
+        { key: "task_type", label: "Vrsta", type: "select", required: false, options: ["Pregled", "Odtegovanje", "Namestitev", "Čiščenje", "Prenos", "Ostalo"] },
+        { key: "target", label: "Panj / postaja", type: "text", required: false },
+        { key: "colony_ref", label: "Čebelja družina (izberi)", type: "entityReference", required: false, referenceTo: { extensionId: "bee-apiary", entityKey: "colony" } },
+        { key: "target_ref", label: "Tarča (postaja / panj / družina)", type: "entityReference", required: false, referenceTo: [
+          { extensionId: "bee-apiary", entityKey: "apiary" },
+          { extensionId: "bee-apiary", entityKey: "hive" },
+          { extensionId: "bee-apiary", entityKey: "colony" },
+        ] },
+        { key: "completed", label: "Opravljeno", type: "checkbox", required: false },
+        { key: "notes", label: "Opombe", type: "textarea", required: false },
+      ],
+    },
+    {
+      key: "harvest",
+      name: "Pridelek medu",
+      description: "Količina pridelka po datumih, postaji in vrsti medu — povezljiva z zalogo in serijami.",
+      fields: [
+        { key: "harvest_date", label: "Datum žetve", type: "date", required: true },
+        { key: "apiary", label: "Panjska postaja", type: "text", required: false },
+        { key: "apiary_ref", label: "Panjska postaja (izberi)", type: "entityReference", required: false, referenceTo: { extensionId: "bee-apiary", entityKey: "apiary" } },
+        { key: "honey_type", label: "Vrsta medu", type: "select", required: true, options: ["Cvetlični med", "Lipov med", "Gozdni med", "Akačijski med", "Drug med"] },
+        { key: "quantity_kg", label: "Količina", type: "number", required: true, unit: "kg" },
+        { key: "hives_count", label: "Število panjev", type: "number", required: false, unit: "panjev" },
+        { key: "product_reference", label: "Serija / izdelek", type: "text", required: false },
+        { key: "notes", label: "Opombe", type: "textarea", required: false },
+      ],
+    },
+    {
+      key: "colony_move",
+      name: "Selitev družine",
+      description:
+        "Zgodovinski dogodek selitve čebelje družine med panji — append-only (zaščiten strežniško). Univerzalni vzorec: dogodek, ki spreminja trenutno stanje zapisa.",
+      appendOnly: true,
+      fields: [
+        { key: "colony_ref", label: "Čebelja družina", type: "entityReference", required: true, referenceTo: { extensionId: "bee-apiary", entityKey: "colony" } },
+        { key: "from_hive_ref", label: "Iz panja", type: "entityReference", required: false, referenceTo: { extensionId: "bee-apiary", entityKey: "hive" } },
+        { key: "to_hive_ref", label: "V panj", type: "entityReference", required: true, referenceTo: { extensionId: "bee-apiary", entityKey: "hive" } },
+        { key: "moved_at", label: "Datum selitve", type: "text", required: false },
+        { key: "recorded_at", label: "Zabeleženo", type: "text", required: false },
+        { key: "reason", label: "Razlog", type: "textarea", required: false },
+        { key: "performed_by", label: "Izvedel (id)", type: "text", required: false },
+        { key: "baseline", label: "Začetni zapis", type: "checkbox", required: false },
+        { key: "origin_unknown", label: "Izvor neznan", type: "checkbox", required: false },
+        { key: "is_correction", label: "Korekcija", type: "checkbox", required: false },
+        { key: "corrects_ref", label: "Popravlja dogodek (id)", type: "text", required: false },
+        { key: "correction_reason", label: "Razlog popravka", type: "textarea", required: false },
       ],
     },
   ],
@@ -369,10 +613,36 @@ const workspaceResources: ExtensionDefinition = {
 // Registry — validated at module load (fail fast, not silently).
 // ------------------------------------------------------------
 
+/** Quotes/invoices/documents (documents capability, Phase 4+). */
+const documents: ExtensionDefinition = {
+  id: "documents",
+  name: "Ponudbe, predračuni in računi",
+  description:
+    "Poslovni dokumenti: ponudbe, predračuni, računi in dobavnice s številčenjem, statusi in izpisom — za dejavnosti, ki delajo na dokumente (delovni nalogi, projektna dela).",
+  version: 1,
+  capabilities: ["documents"],
+  entities: [
+    {
+      key: "document",
+      name: "Poslovni dokument",
+      description: "Ponudba/predračun/račun z zneskom, statusom in številko.",
+      fields: [
+        { key: "number", label: "Številka", type: "text", required: true },
+        { key: "kind", label: "Vrsta", type: "select", required: true, options: ["Ponudba", "Predračun", "Račun", "Dobavnica"] },
+        { key: "amount_eur", label: "Znesek", type: "number", required: false, unit: "EUR" },
+        { key: "status", label: "Status", type: "select", required: true, options: ["Osnutek", "Poslano", "Potrjeno", "Plačano", "Preklicano"] },
+        { key: "notes", label: "Opombe", type: "textarea", required: false },
+      ],
+    },
+  ],
+}
+
 const EXTENSION_LIST: ExtensionDefinition[] = [
   vehicleWorkshop,
   bodyMeasurements,
+  seamstressMeasurements,
   batchProduction,
+  beeApiary,
   workspaceResources,
   // E2-1 — declared capability extensions (no profile enables them yet):
   projects,
@@ -380,6 +650,7 @@ const EXTENSION_LIST: ExtensionDefinition[] = [
   memberships,
   suppliers,
   deliveryRuntime,
+  documents,
 ]
 
 function validateExtensions(list: ExtensionDefinition[]): Record<string, ExtensionDefinition> {

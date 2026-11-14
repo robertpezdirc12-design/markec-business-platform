@@ -1,6 +1,6 @@
 "use client"
 
-import { Fragment, useEffect, type ReactNode } from "react"
+import { Fragment, useEffect, useState, type ReactNode } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,8 @@ import type { CtaLink, CustomSectionContent, SectionEntry, SectionKey, SiteConte
 import { renderableSections } from "@/lib/site-content"
 import { HeroVideo } from "@/components/landing/hero-video"
 import { HeroActions } from "@/components/landing/hero-actions"
+import { resolveLayout } from "@/lib/site-layout"
+import { SplitHero, MinimalHero } from "@/components/landing/hero-variants"
 import { FeatureCards } from "@/components/landing/feature-cards"
 import { CTAButton } from "@/components/landing/cta-button"
 import { ProductCard } from "@/components/landing/product-card"
@@ -22,12 +24,15 @@ import { useI18n } from "@/lib/i18n/provider"
 import { useNavigationStore } from "@/store/navigation-store"
 import { formatCurrency } from "@/lib/utils/format"
 import { DEFAULT_CATALOG_IMAGES } from "@/lib/default-assets"
+import { GalleriesSection, FaqSection } from "@/components/landing/content-galleries-faq"
+import type { PublicGalleryDTO } from "@/app/actions/galleries"
+import type { PublicFaqDTO } from "@/app/actions/faq"
 
 // P1 #18 (audit-2026-11): centralized default assets (single source of truth)
 const DEFAULT_ABOUT_IMAGE = DEFAULT_CATALOG_IMAGES.salonInterior
 const DEFAULT_CTA_IMAGE = DEFAULT_CATALOG_IMAGES.transform
 
-interface Service {
+export interface Service {
   id: string
   name: string
   slug: string
@@ -36,7 +41,7 @@ interface Service {
   imageUrl: string | null
 }
 
-interface Product {
+export interface Product {
   id: string
   name: string
   price: number
@@ -44,7 +49,7 @@ interface Product {
   category: { name: string } | null
 }
 
-interface Staff {
+export interface Staff {
   id: string
   name: string
   bio: string | null
@@ -54,6 +59,8 @@ interface Staff {
 interface HomeContentProps {
   org: { slug: string | null; name: string; logo: string | null }
   content: SiteContent
+  /** F6.3 — profil (vertical) za določitev layout manifesta (splošne strukture). */
+  profileId?: string
   /** Profile-resolved hero/CTA links (EPIC #1 §4) — falls back to content. */
   ctaLinks?: { primaryCta: CtaLink; secondaryCta: CtaLink | null }
   /** Profile-guarded bottom CTA target (stale /booking seeds are remapped, §21). */
@@ -72,6 +79,9 @@ interface HomeContentProps {
   staffEnabled?: boolean
   /** Real moderated reviews for the tenant — section renders only when non-empty. */
   testimonials?: LandingTestimonial[]
+  /** F6.3.5: modul ocen je aktiven (OrganizationModuleState.reviews != DEACTIVATED).
+   *  Ko je izklopljen, se sekcija „Izjave strank" NE izriše (niti forma za oceno). */
+  reviewsEnabled?: boolean
   /** True when the tenant's website CTA is real booking (not inquiry/quote)
    *  and the appointments capability is enabled — gates the "Kako deluje"
    *  trust section, which would otherwise describe a flow the tenant
@@ -86,11 +96,24 @@ interface HomeContentProps {
   /** P2 #75: profil brez storitev (npr. čebelarstvo) nima /services/[slug]
    *  strani, kjer živi forma za ocene — pokaže se v „Izjavah strank". */
   canReviewBusiness?: boolean
+  /**
+   * F5.3.1 (vizualni urejevalnik): ko je true, se okoli vsake sekcije
+   * izriše izbirljivi "urejevalni" overider s klicem `onSectionSelect`.
+   * Prevod izbere samo sekcijo; povezana besedila je treba urediti v
+   * stranskem panelu. Uporablja se izključno v predogledu `/preview?edit=1`
+   * (lastnik), nikoli na javni strani.
+   */
+  editMode?: boolean
+  onSectionSelect?: (sectionKey: string) => void
+  /** F5.5.2 — objavljene galerije in FAQ za javni prikaz (default: prazno). */
+  publicGalleries?: PublicGalleryDTO[]
+  publicFaq?: PublicFaqDTO[]
 }
 
 export function HomeContent({
   org,
   content,
+  profileId,
   ctaLinks,
   ctaSectionHref,
   serviceCtaLabel = "Rezerviraj",
@@ -104,12 +127,29 @@ export function HomeContent({
   hasServices,
   hasProducts,
   canReviewBusiness = false,
+  reviewsEnabled = true,
+  editMode = false,
+  onSectionSelect,
+  publicGalleries = [],
+  publicFaq = [],
 }: HomeContentProps) {
   const primaryCta = ctaLinks?.primaryCta ?? content.hero.primaryCta
   const secondaryCta = ctaLinks ? ctaLinks.secondaryCta : content.hero.secondaryCta
   const { setActiveSection } = useNavigationStore()
   // P1 #8/#15 (audit-2026-11): i18n for CTA labels and placeholders
   const { t } = useI18n()
+
+  // Fresha-benchmark UX (mobile): sticky CTA bar, ki se pojavi šele ko je
+  // uporabnik prescrollal hero (in se ob vrhu skrije) — primarni nakupni/
+  // rezervacijski gumb je tako vedno en dot dosegljiv. Le na mobile (<lg),
+  // vedno izven edit mode-a (ne smoti lastnikovega pregleda vsebine).
+  const [showStickyCta, setShowStickyCta] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setShowStickyCta(window.scrollY > 520)
+    onScroll()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
 
   const prefix = org.slug ? `/s/${org.slug}` : ""
   const toHref = (href: string) =>
@@ -119,6 +159,29 @@ export function HomeContent({
     content.sections.find((s) => s.key === key)?.visible ?? true
 
   const heroTitle = splitOnComma(content.hero.title)
+
+  // F6.3 — layout manifest za to dejavnost/predlogo: določi hero strukturo
+  // in primarno hierarhijo (mehanik→split, čebelar→products, itd.).
+  const layout = resolveLayout(content._templateId, profileId)
+
+  // F6.3 — za split/minimal predstavitveni pasici uporabi namenski strukturi
+  // (iste vsebinske podatke kot klasični centered hero).
+  const variantHero =
+    layout.heroVariant === "split" ? (
+      <SplitHero
+        content={content.hero}
+        primaryCta={primaryCta}
+        secondaryCta={secondaryCta}
+        toHref={toHref}
+      />
+    ) : layout.heroVariant === "minimal" ? (
+      <MinimalHero
+        content={content.hero}
+        primaryCta={primaryCta}
+        secondaryCta={secondaryCta}
+        toHref={toHref}
+      />
+    ) : null
 
   // Reset active section when leaving home page
   useEffect(() => {
@@ -131,7 +194,9 @@ export function HomeContent({
    */
   const sectionNodes: Partial<Record<SectionKey, ReactNode>> = {
     /* Hero Section */
-    hero: sectionVisible("hero") && (
+    hero: sectionVisible("hero") && (variantHero ? (
+        <Fragment>{variantHero}</Fragment>
+      ) : (
         <section className="relative overflow-hidden py-20 md:py-32">
           <HeroVideo
             imageUrl={content.hero.imageUrl}
@@ -168,6 +233,7 @@ export function HomeContent({
             </div>
           </div>
         </section>
+        )
       ),
 
     // Features
@@ -451,11 +517,13 @@ export function HomeContent({
     // izklopljena (čebelarstvo: staff "disabled" → brez ocen vendar).
     // Komponenta sama vrne null pri 0 ocen (razen showForm — forma za
     // profile brez storitev, ki morajo lahko dobiti PRVO oceno).
-    reviews: (
+    reviews: reviewsEnabled && (
       <TestimonialsSection
         testimonials={testimonials}
         showForm={canReviewBusiness}
         businessName={org.name}
+        title={content.reviews?.title}
+        subtitle={content.reviews?.subtitle}
       />
     ),
   }
@@ -470,15 +538,61 @@ export function HomeContent({
             ? renderCustomSection(meta, content.customSections, toHref)
             : sectionNodes[meta.key]
         if (!node) return null
+        const sectionId =
+          meta.key === "custom" ? `custom-${meta.id ?? "x"}` : meta.key
         return (
-          <Fragment key={meta.key === "custom" ? `custom-${meta.id}` : meta.key}>
-            {node}
-            {/* "Kako deluje" trust cluster rides right after the features
-                section — only for tenants whose CTA really is online booking. */}
+          <Fragment key={sectionId}>
+            {editMode ? (
+              <div
+                className="group/edit relative"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onSectionSelect?.(sectionId)
+                }}
+              >
+                {node}
+                {/* F5.3.1: izbrana oznaka, ko uporabnik klikne sekcijo — vedno
+                    zgolj kot plavajoča značka, nikoli na javni strani. */}
+                <div className="pointer-events-none absolute inset-0 ring-2 ring-transparent group-hover/edit:ring-primary/30 transition" />
+                <button
+                  type="button"
+                  className="absolute top-3 right-3 rounded-md border bg-background/90 px-2 py-1 text-xs font-medium shadow-sm opacity-0 transition group-hover/edit:opacity-100 focus:opacity-100"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onSectionSelect?.(sectionId)
+                  }}
+                  aria-label={`Uredi sekcijo ${sectionId}`}
+                >
+                  ✎ Uredi sekcijo
+                </button>
+              </div>
+            ) : (
+              node
+            )}
             {meta.key === "features" && bookingEnabled && <HowItWorksSection />}
           </Fragment>
         )
       })}
+
+      {/* F5.5.2 — javni prikaz galerij in FAQ (samo objavljeno). */}
+      <GalleriesSection galleries={publicGalleries} />
+      <FaqSection faq={publicFaq} />
+
+      {/* Fresha-benchmark UX (mobile): sticky CTA, ki se pojavi po prescrollu
+          heroja in je vedno en dot dosegljiv. Le < lg in zunaj edit mode-a. */}
+      {!editMode && showStickyCta && primaryCta?.label && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card/95 px-4 py-3 shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.25)] backdrop-blur-md lg:hidden">
+          <Button
+            asChild
+            size="lg"
+            className="h-12 w-full bg-primary text-primary-foreground shadow-md hover:bg-primary/90"
+          >
+            <Link href={toHref(primaryCta.href)}>{primaryCta.label}</Link>
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

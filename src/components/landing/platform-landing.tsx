@@ -12,8 +12,10 @@ import {
 } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { Button } from "@/components/ui/button"
+import { DemoTourButton } from "@/components/landing/demo-tour"
 import { PLANS } from "@/lib/plans/registry"
 import { getDictionary } from "@/lib/i18n/dictionaries"
+import { cn } from "@/lib/utils"
 import type { Locale } from "@/lib/i18n/config"
 
 // ============================================================
@@ -57,11 +59,12 @@ export function PlatformLanding({
       href={href}
       hrefLang={href === "/en" ? "en" : "sl"}
       aria-current={active ? "page" : undefined}
-      className={
+      className={cn(
+        "rounded-md px-3 py-1.5 text-[13px] leading-none transition-colors",
         active
-          ? "bg-primary text-primary-foreground rounded-full px-3 py-1.5 text-xs font-semibold"
-          : "text-muted-foreground hover:text-foreground rounded-full px-3 py-1.5 text-xs font-medium"
-      }
+          ? "bg-background text-foreground font-semibold shadow-sm"
+          : "text-muted-foreground hover:text-foreground font-medium"
+      )}
     >
       {label}
     </Link>
@@ -94,12 +97,15 @@ export function PlatformLanding({
             <Link href="#paketi" className="hover:text-foreground">
               {t.nav.plans}
             </Link>
+            <Link href="/pricing" className="hover:text-foreground">
+              Cene
+            </Link>
           </nav>
           <span className="flex-1" />
           <div
             role="group"
             aria-label={t.aria.lang}
-            className="border-border flex shrink-0 items-center gap-0.5 rounded-full border p-0.5"
+            className="bg-muted/60 flex shrink-0 items-center gap-0.5 rounded-lg p-1"
           >
             {langLink("/", t.languages.sl, !isEn)}
             {langLink("/en", t.languages.en, isEn)}
@@ -121,10 +127,9 @@ export function PlatformLanding({
       </header>
 
       <main>
-        {/* Hero — owner copy verbatim + immediate product visual. The
-            second equal-weight CTA is now a quiet text link. */}
-        <section className="container mx-auto grid items-center gap-12 px-4 py-12 md:py-16 lg:grid-cols-2">
-          <div>
+        {/* Hero — owner copy verbatim + two CTAs (start + demo tour). */}
+        <section className="container mx-auto px-4 py-16 md:py-24">
+          <div className="lg:max-w-3xl">
             <p className="text-primary-text border-border bg-background mb-5 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-medium">
               <Sparkles className="size-4" aria-hidden="true" />
               {t.hero.eyebrow}
@@ -148,119 +153,18 @@ export function PlatformLanding({
                   <ArrowRight className="ml-2 size-5" aria-hidden="true" />
                 </Link>
               </Button>
-              <Link
-                href="#primeri"
-                className="text-primary-text border-b text-sm"
-              >
-                {t.hero.secondary}
-              </Link>
+              {t.examples.demo ? (
+                <DemoTourButton
+                  vertical="cebelar"
+                  accent="#d97706"
+                  label={t.examples.demo.label}
+                  stepsRaw={t.examples.demo.steps}
+                  variant="outline"
+                  className="min-h-12"
+                />
+              ) : null}
             </div>
             <p className="text-muted-foreground mt-4 text-xs">{t.hero.micro}</p>
-          </div>
-
-          {/* Product visual — a CSS/HTML illustration of the guided setup.
-              Own artwork, no stock/licensing risk, visible without animation. */}
-          <div>
-            <div
-              role="img"
-              aria-label={t.aria.mock}
-              className="border-border bg-card overflow-hidden rounded-2xl border shadow-xl"
-            >
-              <div className="border-border bg-muted/40 flex items-center gap-2 border-b px-4 py-3">
-                <span className="bg-border size-2.5 rounded-full" />
-                <span className="bg-border size-2.5 rounded-full" />
-                <span className="bg-border size-2.5 rounded-full" />
-                <span className="text-muted-foreground border-border bg-background ml-3 truncate rounded-md border px-3 py-1 text-xs">
-                  {t.mock.url}
-                </span>
-              </div>
-              <div className="grid grid-cols-[110px_1fr] sm:grid-cols-[140px_1fr]">
-                <div className="bg-muted/30 border-border text-muted-foreground space-y-1 border-r px-3 py-5 text-xs">
-                  <p className="text-primary-text mb-3 text-[11px] font-bold tracking-wider">
-                    {t.mock.brand}
-                  </p>
-                  {t.mock.side.map((label, i) => (
-                    <span
-                      key={label}
-                      className={
-                        i === 0
-                          ? "bg-primary/10 text-primary-text block rounded-md px-2 py-1.5 font-semibold"
-                          : "block rounded-md px-2 py-1.5"
-                      }
-                    >
-                      {label}
-                    </span>
-                  ))}
-                </div>
-                <div className="p-5">
-                  <h2 className="text-sm font-semibold">{t.mock.title}</h2>
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    {t.mock.progress}
-                  </p>
-                  <div className="bg-muted mt-3 h-1.5 overflow-hidden rounded-full">
-                    <div
-                      className="bg-primary h-full rounded-full"
-                      style={{
-                        width: `${(t.mock.doneCount / t.mock.tasks.length) * 100}%`,
-                      }}
-                    />
-                  </div>
-                  <ul className="mt-3">
-                    {t.mock.tasks.map((task, i) => (
-                      <li
-                        key={task}
-                        className="border-border/60 text-muted-foreground flex items-center gap-2 border-b py-1.5 text-xs last:border-0"
-                      >
-                        <span
-                          className={
-                            i < t.mock.doneCount
-                              ? "bg-primary text-primary-foreground flex size-4 shrink-0 items-center justify-center rounded-full text-[9px]"
-                              : "border-border flex size-4 shrink-0 items-center justify-center rounded-full border"
-                          }
-                        >
-                          {i < t.mock.doneCount ? (
-                            <Check className="size-2.5" />
-                          ) : null}
-                        </span>
-                        <span
-                          className={
-                            i < t.mock.doneCount
-                              ? "text-foreground line-through"
-                              : ""
-                          }
-                        >
-                          {task}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="border-border mt-4 grid grid-cols-[88px_1fr] overflow-hidden rounded-xl border">
-                    <Image
-                      src="/img/presets/hero-barber.jpg"
-                      alt={t.mock.miniAlt}
-                      width={88}
-                      height={76}
-                      className="h-[76px] w-[88px] object-cover"
-                    />
-                    <div className="px-3 py-2 text-xs">
-                      <strong className="block text-[13px]">
-                        {t.mock.miniName}
-                      </strong>
-                      <span className="text-muted-foreground">
-                        {t.mock.mini}
-                      </span>
-                      <br />
-                      <span className="text-primary-text font-semibold">
-                        {t.mock.miniCta}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <p className="text-muted-foreground mt-2 text-right text-xs">
-              {t.mock.caption}
-            </p>
           </div>
         </section>
 
@@ -363,19 +267,12 @@ export function PlatformLanding({
                       />
                     </div>
                     <div className="flex flex-1 flex-col p-5">
-                      <span className="text-primary-text text-[11px] font-semibold tracking-wider uppercase">
-                        {t.examples.tag}
-                      </span>
                       <h3 className="mt-2 text-lg font-semibold">
                         {item.title}
                       </h3>
                       <p className="text-muted-foreground mt-2 flex-1 text-sm">
                         {item.body}
                       </p>
-                      <span className="text-primary-text mt-4 inline-flex items-center gap-1 text-sm font-medium">
-                        {t.hero.secondary}
-                        <ArrowRight className="size-4" aria-hidden="true" />
-                      </span>
                     </div>
                   </Link>
                 </li>
@@ -444,6 +341,16 @@ export function PlatformLanding({
                   <p className="text-muted-foreground mt-2 min-h-11 text-sm">
                     {plan.description[locale]}
                   </p>
+                  {plan.priceMonthly >= 0 && (
+                    <p className="text-foreground mt-3 flex items-baseline gap-1">
+                      <span className="text-2xl font-bold">
+                        {plan.priceMonthly === 0
+                          ? "0 €"
+                          : `${(plan.priceMonthly / 100).toFixed(0)} €`}
+                      </span>
+                      <span className="text-muted-foreground text-xs">/ mesec</span>
+                    </p>
+                  )}
                   <ul className="text-muted-foreground mt-4 mb-6 flex-1 space-y-2 text-sm">
                     {plan.features.slice(0, 5).map((f) => (
                       <li key={f.sl} className="flex items-start gap-2">
@@ -468,6 +375,14 @@ export function PlatformLanding({
             <p className="text-muted-foreground border-border bg-background mx-auto mt-6 max-w-3xl rounded-xl border p-4 text-center text-sm">
               {t.plans.note}
             </p>
+            <div className="mt-6 text-center">
+              <Link
+                href="/pricing"
+                className="text-primary-text text-sm font-medium hover:underline"
+              >
+                Poglej vse cene in primerjavo paketov →
+              </Link>
+            </div>
           </div>
         </section>
 

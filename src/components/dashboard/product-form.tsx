@@ -112,17 +112,16 @@ export function ProductForm({ categories, product, mode = "create" }: ProductFor
     }
     setCreatingCategory(true)
     try {
-      const res = await createCategory(valid.name)
-      if (!res.success || !res.category) {
+      const res = await createCategory({ name: valid.name })
+      if (!res.success || !res.data?.category) {
         toast.error(res.error || t.products.categoryCreateFailed)
         return
       }
+      const created = res.data.category
       setCategoryList((prev) =>
-        res.reused || prev.some((c) => c.id === res.category!.id)
-          ? prev
-          : [...prev, res.category!]
+        prev.some((c) => c.id === created.id) ? prev : [...prev, created]
       )
-      setValue("categoryId", res.category.id)
+      setValue("categoryId", created.id)
       clearErrors("categoryId")
       toast.success(t.products.categoryCreated)
       setCategoryDialogOpen(false)
@@ -148,7 +147,6 @@ export function ProductForm({ categories, product, mode = "create" }: ProductFor
       compareAtPrice: product?.compareAtPrice || undefined,
       sku: product?.sku || "",
       trackInventory: product?.trackInventory ?? true,
-      stockQuantity: product?.stockQuantity || 0,
       categoryId: product?.categoryId || "",
       isActive: product?.isActive ?? true,
       isFeatured: product?.isFeatured ?? false,
@@ -167,7 +165,6 @@ export function ProductForm({ categories, product, mode = "create" }: ProductFor
   const watchPrice = watch("price")
   const watchCompareAtPrice = watch("compareAtPrice")
   const watchSku = watch("sku")
-  const watchStockQuantity = watch("stockQuantity")
   const watchIsActive = watch("isActive")
   const watchIsFeatured = watch("isFeatured")
   const watchTrackInventory = watch("trackInventory")
@@ -281,7 +278,6 @@ export function ProductForm({ categories, product, mode = "create" }: ProductFor
         compareAtPrice: fdNum(formData, "compareAtPrice"),
         sku: fdOptStr(formData, "sku"),
         trackInventory: fdBool(formData, "trackInventory"),
-        stockQuantity: fdNum(formData, "stockQuantity") ?? 0,
         images: images.length > 0 ? images : undefined,
         categoryId: fdOptStr(formData, "categoryId"),
         isActive: fdBool(formData, "isActive"),
@@ -590,21 +586,7 @@ export function ProductForm({ categories, product, mode = "create" }: ProductFor
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="stockQuantity">{t.products.stockQuantityLabel}</Label>
-                  <Input
-                    id="stockQuantity"
-                    name="stockQuantity"
-                    type="number"
-                    placeholder="50"
-                    value={watchStockQuantity ?? ""}
-                    onChange={(e) => {
-                      setValue(
-                        "stockQuantity",
-                        numberValue(e.target.value) as unknown as number
-                      )
-                      clearErrors("stockQuantity")
-                    }}
-                    disabled={isPending}
-                  />
+                  <p className="text-sm text-muted-foreground">{product?.stockQuantity ?? 0}</p>
                 </div>
                 {/* #78: črtna koda — prejem blaga z skeniranjem. */}
                 <div className="space-y-2">

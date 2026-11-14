@@ -18,6 +18,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { SpinnerIcon } from "@/components/icons/spinner-icon"
 import { createGiftCardCheckoutSession } from "@/app/actions/prepaid"
 import { formatCurrency } from "@/lib/utils/format"
+import { useLocale, pick } from "@/lib/i18n/client-locale"
 
 // ============================================================
 // DARILNI BONI (#80) — javna sekcija trgovine. Kupi → Stripe (koda
@@ -40,6 +41,7 @@ interface GiftCardSectionProps {
 
 export function GiftCardSection({ giftCards }: GiftCardSectionProps) {
   const router = useRouter()
+  const locale = useLocale()
   const [buying, setBuying] = useState<GiftCard | null>(null)
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -49,7 +51,7 @@ export function GiftCardSection({ giftCards }: GiftCardSectionProps) {
   const handleBuy = () => {
     if (!buying) return
     if (name.trim().length < 2 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
-      toast.error("Vnesite ime in veljaven e-poštni naslov.")
+      toast.error(pick(locale, "Vnesite ime in veljaven e-poštni naslov.", "Enter a name and a valid email address."))
       return
     }
     startTransition(async () => {
@@ -58,7 +60,7 @@ export function GiftCardSection({ giftCards }: GiftCardSectionProps) {
         email: email.trim(),
       })
       if (!result.success) {
-        toast.error(result.error || "Nakup ni uspel.")
+        toast.error(result.error || pick(locale, "Nakup ni uspel.", "The purchase failed."))
         return
       }
       if (result.immediate) {
@@ -73,7 +75,7 @@ export function GiftCardSection({ giftCards }: GiftCardSectionProps) {
         window.location.href = result.checkoutUrl
         return
       }
-      toast.error("Nakup ni uspel.")
+      toast.error(pick(locale, "Nakup ni uspel.", "The purchase failed."))
     })
   }
 
@@ -96,14 +98,14 @@ export function GiftCardSection({ giftCards }: GiftCardSectionProps) {
                 </span>
                 {gc.faceValue > gc.price && (
                   <span className="text-muted-foreground ml-2 text-sm">
-                    vrednost {formatCurrency(gc.faceValue)}
+                    {pick(locale, "vrednost", "value")} {formatCurrency(gc.faceValue)}
                   </span>
                 )}
               </div>
               <p className="text-muted-foreground mt-1 text-xs">
                 {gc.validityDays
-                  ? `Velja ${gc.validityDays} dni od nakupa`
-                  : "Ne poteče"}
+                  ? pick(locale, `Velja ${gc.validityDays} dni od nakupa`, `Valid ${gc.validityDays} days from purchase`)
+                  : pick(locale, "Ne poteče", "Never expires")}
               </p>
             </CardContent>
             <CardFooter className="p-4 pt-0">
@@ -114,7 +116,7 @@ export function GiftCardSection({ giftCards }: GiftCardSectionProps) {
                   setImmediateCode(null)
                 }}
               >
-                Kupi darilni bon
+                {pick(locale, "Kupi darilni bon", "Buy gift card")}
               </Button>
             </CardFooter>
           </Card>
@@ -128,13 +130,13 @@ export function GiftCardSection({ giftCards }: GiftCardSectionProps) {
             <DialogTitle>{buying?.name}</DialogTitle>
             <DialogDescription>
               {buying
-                ? `Cena ${formatCurrency(buying.price)} · vrednost ${formatCurrency(buying.faceValue)}`
+                ? pick(locale, `Cena ${formatCurrency(buying.price)} · vrednost ${formatCurrency(buying.faceValue)}`, `Price ${formatCurrency(buying.price)} · value ${formatCurrency(buying.faceValue)}`)
                 : ""}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="gc-name">Ime prejemnika *</Label>
+              <Label htmlFor="gc-name">{pick(locale, "Ime prejemnika *", "Recipient name *")}</Label>
               <Input
                 id="gc-name"
                 value={name}
@@ -143,7 +145,7 @@ export function GiftCardSection({ giftCards }: GiftCardSectionProps) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="gc-email">E-pošta *</Label>
+              <Label htmlFor="gc-email">{pick(locale, "E-pošta *", "Email *")}</Label>
               <Input
                 id="gc-email"
                 type="email"
@@ -152,17 +154,17 @@ export function GiftCardSection({ giftCards }: GiftCardSectionProps) {
                 placeholder="ana@example.com"
               />
               <p className="text-muted-foreground text-xs">
-                Kodo bona pošljemo na ta naslov po plačilu.
+                {pick(locale, "Kodo bona pošljemo na ta naslov po plačilu.", "We will email the gift card code to this address after payment.")}
               </p>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setBuying(null)} disabled={pending}>
-              Prekliči
+              {pick(locale, "Prekliči", "Cancel")}
             </Button>
             <Button onClick={handleBuy} disabled={pending}>
               {pending && <SpinnerIcon size={16} className="mr-2 animate-spin" />}
-              Nadaljuj na plačilo
+              {pick(locale, "Nadaljuj na plačilo", "Continue to payment")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -172,16 +174,16 @@ export function GiftCardSection({ giftCards }: GiftCardSectionProps) {
       <Dialog open={!!immediateCode} onOpenChange={(o) => !o && setImmediateCode(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>🎁 Darilni bon je pripravljen</DialogTitle>
+            <DialogTitle>🎁 {pick(locale, "Darilni bon je pripravljen", "Gift card is ready")}</DialogTitle>
             <DialogDescription>
-              Poslali smo ga tudi po e-pošti. To je koda bona:
+              {pick(locale, "Poslali smo ga tudi po e-pošti. To je koda bona:", "We have also emailed it to you. Here is the gift card code:")}
             </DialogDescription>
           </DialogHeader>
           <div className="bg-muted rounded-lg p-6 text-center">
             <div
               className="text-2xl font-bold tracking-widest"
               role="text"
-              aria-label="Koda darilnega bona"
+              aria-label={pick(locale, "Koda darilnega bona", "Gift card code")}
             >
               {immediateCode}
             </div>
@@ -192,11 +194,11 @@ export function GiftCardSection({ giftCards }: GiftCardSectionProps) {
               onClick={() => {
                 if (immediateCode) {
                   void navigator.clipboard.writeText(immediateCode)
-                  toast.success("Koda kopirana.")
+                  toast.success(pick(locale, "Koda kopirana.", "Code copied."))
                 }
               }}
             >
-              Kopiraj kodo
+              {pick(locale, "Kopiraj kodo", "Copy code")}
             </Button>
             <Button
               onClick={() => {
@@ -204,7 +206,7 @@ export function GiftCardSection({ giftCards }: GiftCardSectionProps) {
                 router.refresh()
               }}
             >
-              Zapri
+              {pick(locale, "Zapri", "Close")}
             </Button>
           </DialogFooter>
         </DialogContent>

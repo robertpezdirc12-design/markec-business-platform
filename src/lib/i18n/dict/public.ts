@@ -22,6 +22,7 @@ export const publicSl = {
   testimonialsTitle: "Izjave naših strank",
   testimonialsSubtitle: "Prave izkušnje strank, ki nam zaupajo svoj videz.",
   reviewAnonym: "Stranka",
+  reviewsCount: (n: number) => (n === 1 ? "1 mnenje" : `${n} mnenj`),
   reviewsSectionTitle: "Mnenja strank",
   // P1 #8 (audit-2026-11): dostopna imena košarice/izdelkov + i18n
   cart: "Košarica",
@@ -74,6 +75,7 @@ export const publicEn: PublicDict = {
   testimonialsTitle: "What Our Clients Say",
   testimonialsSubtitle: "Real experiences from clients who trust us with their look.",
   reviewAnonym: "Client",
+  reviewsCount: (n: number) => (n === 1 ? "1 review" : `${n} reviews`),
   reviewsSectionTitle: "Customer Reviews",
   cart: "Cart",
   cartWithCount: (n: number) => `Cart (${n} items)`,

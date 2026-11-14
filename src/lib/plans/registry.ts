@@ -35,6 +35,8 @@ const planSchema = z.object({
   version: z.number().int().positive(),
   label: z.string().min(1).max(24),
   description: localizedText,
+  // Mesečna cena v EUR centih (0 = brezplačno). Prikaz za javno pricing stran.
+  priceMonthly: z.number().int().min(0),
   limits: z.object({
     services: limitValue,
     products: limitValue,
@@ -66,6 +68,7 @@ const PLAN_LIST: PlanDefinition[] = [
       sl: "Za začetek in manjša podjetja — preizkusite platformo brez obveznosti.",
       en: "For getting started and small businesses — try the platform with no commitment.",
     },
+    priceMonthly: 0,
     limits: { services: 15, products: 20, staff: 3, storageMb: 500, customDomains: 0, orders: 50 },
     features: [
       { sl: "Do 15 storitev", en: "Up to 15 services" },
@@ -85,6 +88,7 @@ const PLAN_LIST: PlanDefinition[] = [
       sl: "Za rastoča podjetja — več prostora za katalog in ekipo.",
       en: "For growing businesses — more room for your catalog and team.",
     },
+    priceMonthly: 1900,
     limits: { services: 100, products: 500, staff: 25, storageMb: 10_000, customDomains: 1, orders: 1000 },
     features: [
       { sl: "Do 100 storitev", en: "Up to 100 services" },
@@ -104,6 +108,7 @@ const PLAN_LIST: PlanDefinition[] = [
       sl: "Za večje posle — brez omejitev vsebine in ekipe.",
       en: "For larger operations — no content or team limits.",
     },
+    priceMonthly: 4900,
     limits: { services: null, products: null, staff: null, storageMb: null, customDomains: null, orders: null },
     features: [
       { sl: "Brez omejitev storitev in izdelkov", en: "Unlimited services and products" },

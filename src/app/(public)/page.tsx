@@ -13,6 +13,8 @@ import { resolvePublicEffectiveProfile } from "@/lib/profiles/resolve"
 import { isCapabilityEnabled } from "@/lib/profiles/registry"
 import { sectionsForProfile } from "@/lib/home-sections"
 import { prisma } from "@/lib/prisma"
+import { getPublicGalleries } from "@/app/actions/galleries"
+import { getPublicFaq } from "@/app/actions/faq"
 import type { Metadata } from "next"
 import { headers } from "next/headers"
 import { auth } from "@/lib/auth/auth"
@@ -100,7 +102,7 @@ export default async function HomePage() {
   const bookingEnabled =
     profile.website.ctaMode === "booking" &&
     profile.capabilities.appointments !== "disabled"
-  const [featuredServices, featuredProducts, featuredStaff, testimonials, servicesTotal] = await Promise.all([
+  const [featuredServices, featuredProducts, featuredStaff, testimonials, servicesTotal, publicGalleries, publicFaq, reviewsModule] = await Promise.all([
     getPublicFeaturedServices(org.id),
     getPublicFeaturedProducts(org.id),
     getPublicFeaturedStaff(org.id),
@@ -111,7 +113,18 @@ export default async function HomePage() {
     prisma.service
       .count({ where: { organizationId: org.id, isActive: true } })
       .catch(() => 0),
+    // F5.5.2 — objavljene galerije in FAQ (samo isPublished + isPublic).
+    getPublicGalleries(org.id),
+    getPublicFaq(org.id),
+    // F6.3.5 — efektivno stanje modula ocen (DEACTIVATED → sekcija se ne izriše).
+    prisma.organizationModuleState
+      .findUnique({
+        where: { organizationId_moduleId: { organizationId: org.id, moduleId: "reviews" } },
+        select: { state: true },
+      })
+      .catch(() => null),
   ])
+  const reviewsEnabled = reviewsModule?.state !== "DEACTIVATED"
 
   // P2 #60 + P3 #62: teles domače strani izpelje vidnost sekcij iz ISTEGA
   // odločevalnega sloja kot glava (resolveAvailableSections → header).
@@ -145,6 +158,7 @@ export default async function HomePage() {
   return (
     <HomeContent
       org={{ slug: org.slug, name: org.name, logo: org.logo }}
+      profileId={org.vertical ?? undefined}
       content={content}
       ctaLinks={heroCtaLinks}
       ctaSectionHref={resolveCtaSectionHref(org, content.cta.buttonHref)}
@@ -167,6 +181,12 @@ export default async function HomePage() {
       // P2 #75: profil brez storitev dobi formo za oceno PODJETJA na
       // domači strani (nima /services/[slug], kjer bi sicer živela).
       canReviewBusiness={!isCapabilityEnabled(profile, "services")}
+      // F6.3.5: izklopljen modul ocen skrije sekcijo/forma z javne strani.
+      reviewsEnabled={reviewsEnabled}
+      // F5.5.2 — objavljene galerije/FAQ (samo isPublished + isPublic);
+      // predajo naprej, da se prikažejo na domači strani.
+      publicGalleries={publicGalleries}
+      publicFaq={publicFaq}
     />
   )
 }

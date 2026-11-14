@@ -12,6 +12,12 @@ export interface CartItem {
    * max omejitev količine v UI (vnos po tipkovnici + client-side omejitev).
    * null/undefined = zaloga ni znana (starejši shranjeni vozički). */
   stockQuantity?: number | null
+  /** F5.5.1 — izbrana različica (optional; izdelek brez različic ga nima).
+   * Dve različici istega izdelka morata v košarici biti ločeni. */
+  variantId?: string | null
+  /** Človeku berljiv naziv različice za prikaz (npr. "Velikost M"). */
+  variantName?: string | null
+  variantSku?: string | null
 }
 
 /**
@@ -32,8 +38,8 @@ interface CartState {
   activeOrg: string
   setActiveOrg: (slug: string | null) => void
   addItem: (product: Omit<CartItem, "quantity">) => void
-  removeItem: (productId: string) => void
-  updateQuantity: (productId: string, quantity: number) => void
+  removeItem: (productId: string, variantId?: string | null) => void
+  updateQuantity: (productId: string, quantity: number, variantId?: string | null) => void
   clearCart: () => void
   getTotalItems: () => number
   getTotalPrice: () => number
@@ -55,6 +61,12 @@ const orgItems = (state: {
   activeOrg: string
 }): CartItem[] => state.cartsByOrg[state.activeOrg] ?? []
 
+/** F5.5.1 — identifikacijski ključ postavke: izdelek + različica (če obstaja).
+ * Dve različici istega izdelka se NIKOLI ne združita v eno postavko. */
+function itemKey(productId: string, variantId?: string | null): string {
+  return variantId ? `${productId}::${variantId}` : `${productId}::base`
+}
+
 export const useCartStore = create<CartState>(
   (persist as CartPersist)(
     (set, get) => ({
@@ -70,8 +82,9 @@ export const useCartStore = create<CartState>(
       addItem: (product) => {
         const state = get()
         const items = orgItems(state)
-        const existingItem = items.find(
-          (item) => item.productId === product.productId
+        const key = itemKey(product.productId, product.variantId)
+        const existingItem = items.find((item) =>
+          itemKey(item.productId, item.variantId) === key
         )
 
         // P1 #37: spoštuj zalogo — če je izčrpana, ne povečuj količine.
@@ -90,7 +103,7 @@ export const useCartStore = create<CartState>(
 
         const nextItems = existingItem
           ? items.map((item) =>
-              item.productId === product.productId
+              itemKey(item.productId, item.variantId) === key
                 ? { ...item, quantity: item.quantity + 1 }
                 : item
             )
@@ -110,10 +123,11 @@ export const useCartStore = create<CartState>(
         }
       },
 
-      removeItem: (productId) => {
+      removeItem: (productId, variantId) => {
         const state = get()
+        const key = itemKey(productId, variantId)
         const nextItems = orgItems(state).filter(
-          (item) => item.productId !== productId
+          (item) => itemKey(item.productId, item.variantId) !== key
         )
         set({
           cartsByOrg: { ...state.cartsByOrg, [state.activeOrg]: nextItems },
@@ -121,14 +135,17 @@ export const useCartStore = create<CartState>(
         })
       },
 
-      updateQuantity: (productId, quantity) => {
+      updateQuantity: (productId, quantity, variantId) => {
         if (quantity <= 0) {
-          get().removeItem(productId)
+          get().removeItem(productId, variantId)
           return
         }
         const state = get()
+        const key = itemKey(productId, variantId)
         const nextItems = orgItems(state).map((item) =>
-          item.productId === productId ? { ...item, quantity } : item
+          itemKey(item.productId, item.variantId) === key
+            ? { ...item, quantity }
+            : item
         )
         set({
           cartsByOrg: { ...state.cartsByOrg, [state.activeOrg]: nextItems },

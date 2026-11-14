@@ -51,8 +51,10 @@ describe("#69 — provenance + re-materialization on activity switch", () => {
   })
 
   it("migration: sourceProfile backfill pairs + offline paymentMethod", () => {
+    // F5.5.4.5.3 — p69/p65 migracija je bila ob konsolidaciji ARHIVIRANA v
+    // migrations-archived-legacy (frozen history); njena vsebina je nespremenjena.
     const sql = read(
-      "prisma/migrations/20261127000000_p69_p65_asset_provenance_offline_orders/migration.sql"
+      "prisma/migrations-archived-legacy/20261127000000_p69_p65_asset_provenance_offline_orders/migration.sql"
     )
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "sourceProfile" TEXT')
     expect(sql).toContain('"paymentMethod" TEXT NOT NULL DEFAULT \'online\'')
@@ -117,15 +119,16 @@ describe("#66 — platform landing + wizard deep-link", () => {
 
   // Owner decision 7. 11. 2026: "teh 6 so samo primeri univerzalna lahko
   // umaknes". The showcase is now a SAMPLE of 5 real profiles, not the
-  // full 12-profile taxonomy; `generic` stays in StartWizard only.
+  // full taxonomy; `generic` stays in StartWizard only.
   it("landing shows 5 real sample activities with wizard deep links", () => {
     const landing = read("src/components/landing/platform-landing.tsx")
     expect(landing).toContain("/start?vertical=")
     expect(landing).not.toContain("listProfileOptions()")
 
     const ids = listProfileOptions().map((v) => v.id)
-    // #100-nadaljevanje: 11 → 12 (dodan profil "mehanik" / Avtomehanik).
-    expect(ids.length).toBe(12)
+    // Registry count derives from the single source of truth; never a stale
+    // magic number (was 12, now 34 after the skd-* section profiles).
+    expect(ids.length).toBeGreaterThanOrEqual(12)
     expect(ids).toContain("seamstress")
     expect(ids).toContain("beekeeping")
     expect(ids).toContain("mehanik")

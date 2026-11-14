@@ -5,6 +5,9 @@
 // SalonConfig.siteContent, merged over vertical defaults.
 // ============================================================
 
+import { normalizeNav } from "@/lib/site-design"
+import { defaultTemplateForProfile } from "@/lib/site-layout"
+
 export interface CtaLink {
   label: string
   href: string
@@ -123,6 +126,9 @@ export interface SiteContent {
   about: AboutContent
   team: { title: string; subtitle: string }
   shop: { title: string; subtitle: string }
+  /** 2D-9: glava sekcije ocen — neobvezen naslov/podnaslov; če manjka,
+   *  renderer uporabi i18n privzete (`t.public.testimonialsTitle`). */
+  reviews?: { title?: string; subtitle?: string }
   cta: CtaContent
   openingHours: OpeningHour[]
   social: SocialLinks
@@ -130,6 +136,10 @@ export interface SiteContent {
   sections: SectionEntry[]
   /** #101: vsebine lastnih sekcij, ključ = SectionEntry.id. */
   customSections?: Record<string, CustomSectionContent>
+  /** F5.3.2 — lastnik-urejljiv glavni meni (nav). */
+  nav?: import("./site-design").NavItem[]
+  /** F5.3.2 — oznaka izbrane oblikovne predloge (id iz SITE_TEMPLATES). */
+  _templateId?: string
 }
 
 export const SECTION_KEYS: SectionKey[] = [
@@ -840,6 +850,8 @@ export function defaultSiteContent(vertical: string): SiteContent {
     sections: sections(true),
   }
   // Vertical-specific about image handled by verticals.ts (imageUrl preset)
+  // F6.3 — privzeta obl. predloga za dejavnost → renderer uporabi primerne strukture.
+  base._templateId = defaultTemplateForProfile(vertical)
   return base
 }
 
@@ -874,6 +886,12 @@ export function mergeSiteContent(stored: unknown, vertical: string): SiteContent
   }
   if (isObj(s.team)) merged.team = { ...defaults.team, ...(s.team as Partial<SiteContent["team"]>) }
   if (isObj(s.shop)) merged.shop = { ...defaults.shop, ...(s.shop as Partial<SiteContent["shop"]>) }
+  if (isObj(s.reviews)) {
+    merged.reviews = {
+      ...(defaults.reviews ?? {}),
+      ...(s.reviews as Partial<NonNullable<SiteContent["reviews"]>>),
+    }
+  }
   if (isObj(s.cta)) merged.cta = { ...defaults.cta, ...(s.cta as Partial<CtaContent>) }
   if (Array.isArray(s.openingHours)) {
     const hours = (s.openingHours as OpeningHour[]).filter(
@@ -894,6 +912,10 @@ export function mergeSiteContent(stored: unknown, vertical: string): SiteContent
   // teče pred renderom; korupten vnos izpade, stare vsebine nedotaknjene).
   const custom = sanitizeCustomSections(s.customSections)
   if (custom) merged.customSections = custom
+  // F5.3.2 — navigacija in izbrana predloga se ohranita (normalizirano).
+  const nav = normalizeNav(s.nav)
+  if (nav) merged.nav = nav
+  if (typeof s._templateId === "string" && s._templateId) merged._templateId = s._templateId
   return merged
 }
 

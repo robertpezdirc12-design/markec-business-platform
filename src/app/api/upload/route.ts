@@ -104,10 +104,18 @@ export async function POST(request: NextRequest) {
       const publicId = `${safePrefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
       void customId
 
+      // Točka 4 (samodejno rezanje velikosti): vsaka naložena slika se ob
+      // uploadu omeji na največ 2000px širine in samodejno optimizira zapis
+      // (kvaliteta + format). Cloudinary `crop: limit` nikoli NE poveča
+      // manjše slike; rezultat je manjša datoteka za download, hero, about,
+      // cta in custom sekcije — brez spremembe kode na mestu prikazovanja.
       const result = await cloudinary.uploader.upload(base64, {
         folder: org ? `${org.slug}/${config.folder}` : `Beauty Salon/${config.folder}`,
         public_id: publicId,
         overwrite: false,
+        transformation: [
+          { width: 2000, crop: "limit", quality: "auto", fetch_format: "auto" },
+        ],
       })
 
       return NextResponse.json({

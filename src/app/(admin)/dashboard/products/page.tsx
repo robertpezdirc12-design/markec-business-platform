@@ -6,6 +6,7 @@ import {
   PackageIcon,
   PlusIcon,
   PencilIcon,
+  ArrowLeftIcon,
 } from "@/components/icons"
 import {
   getAdminProducts,
@@ -128,6 +129,12 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {/* 2D-11: varni povratek v WYSIWYG urejevalnik. */}
+          <Link href="/dashboard/settings?tab=branding">
+            <Button variant="ghost" size="sm">
+              <ArrowLeftIcon size={16} className="mr-1" /> Urejevalnik
+            </Button>
+          </Link>
           <DeliveryDialogButton
             products={trackedProducts}
             suppliers={linkOptions.suppliers}

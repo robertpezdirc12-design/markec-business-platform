@@ -449,3 +449,203 @@ export async function getPaymentHistory(): Promise<Payment[]> {
     return []
   }
 }
+
+// ============================================================
+// GDPR — pravica do izvoza in izbrisa (točka 8)
+//
+// exportMyData: vrne strukturiran JSON z vsemi osebnimi podatki
+// prijavljenega uporabnika (pravico do prenosljivosti, Art. 20).
+//
+// deleteMyAccount: anonimizira osebne podatke in izbriše prijavni
+// račun (pravica do pozabe, Art. 17). Poslovne evidence (naročila,
+// termini, računi) OSTANEJO — z anonimiziranim sklicem namesto
+// osebnih podatkov, ker jih mora podjetje hraniti (davčni/računski
+// predpisi). NIKOLI tih, vedno z geslom + potrditvijo.
+// ============================================================
+
+export type MyDataExport = {
+  generatedAt: string
+  user: {
+    name: string | null
+    email: string
+    createdAt: string | null
+  }
+  customer: {
+    email: string | null
+    phone: string | null
+    dateOfBirth: string | null
+  } | null
+  appointments: {
+    id: string
+    status: string
+    startTime: string | null
+    salonName: string | null
+  }[]
+  orders: {
+    id: string
+    status: string
+    totalCents: number
+    createdAt: string
+  }[]
+  reviews: {
+    id: string
+    rating: number
+    comment: string
+    createdAt: string
+  }[]
+  formSubmissions: {
+    id: string
+    formName: string | null
+    submittedAt: string
+  }[]
+  prepaidPurchases: {
+    id: string
+    balanceObr: number
+    sessionsLeft: number | null
+    createdAt: string
+  }[]
+}
+
+export async function exportMyData(): Promise<MyDataExport | { success: false; error: string }> {
+  const session = await auth()
+  if (!session?.user?.id) return { success: false, error: "Niste prijavljeni" }
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: { customer: true },
+    })
+    if (!user) return { success: false, error: "Račun ne obstaja." }
+
+    const customerId = user.customer?.id
+
+    const [appointments, orders, reviews, formSubmissions, prepaidPurchases] =
+      await Promise.all([
+        prisma.appointment.findMany({
+          where: customerId ? { customerId } : {},
+          orderBy: { startTime: "desc" },
+          select: {
+            id: true,
+            status: true,
+            startTime: true,
+            organization: { select: { name: true } },
+          },
+        }),
+        prisma.order.findMany({
+          where: customerId ? { customerId } : {},
+          orderBy: { createdAt: "desc" },
+          select: { id: true, status: true, total: true, createdAt: true },
+        }),
+        prisma.review.findMany({
+          where: { userId: user.id },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, rating: true, comment: true, createdAt: true },
+        }),
+        prisma.formSubmission.findMany({
+          where: customerId ? { customerId } : {},
+          orderBy: { createdAt: "desc" },
+          select: { id: true, formDefinition: { select: { name: true } }, createdAt: true },
+        }),
+        prisma.prepaidPurchase.findMany({
+          where: customerId ? { customerId } : {},
+          orderBy: { purchasedAt: "desc" },
+          select: { id: true, balance: true, sessionsLeft: true, purchasedAt: true },
+        }),
+      ])
+
+    return {
+      generatedAt: new Date().toISOString(),
+      user: {
+        name: user.name,
+        email: user.email,
+        createdAt: user.createdAt.toISOString(),
+      },
+      customer: user.customer
+        ? {
+            email: user.customer.email,
+            phone: user.customer.phone,
+            dateOfBirth: user.customer.dateOfBirth?.toISOString() ?? null,
+          }
+        : null,
+      appointments: appointments.map((a) => ({
+        id: a.id,
+        status: a.status,
+        startTime: a.startTime?.toISOString() ?? null,
+        salonName: a.organization?.name ?? null,
+      })),
+      orders: orders.map((o) => ({
+        id: o.id,
+        status: o.status,
+        totalCents: o.total.toNumber() * 100,
+        createdAt: o.createdAt.toISOString(),
+      })),
+      reviews: reviews.map((r) => ({
+        id: r.id,
+        rating: r.rating,
+        comment: r.comment,
+        createdAt: r.createdAt.toISOString(),
+      })),
+      formSubmissions: formSubmissions.map((f) => ({
+        id: f.id,
+        formName: f.formDefinition?.name ?? null,
+        submittedAt: f.createdAt.toISOString(),
+      })),
+      prepaidPurchases: prepaidPurchases.map((p) => ({
+        id: p.id,
+        balanceObr: p.balance.toNumber(),
+        sessionsLeft: p.sessionsLeft,
+        createdAt: p.purchasedAt.toISOString(),
+      })),
+    }
+  } catch (error) {
+    console.error("GDPR export error:", error)
+    return { success: false, error: "Izvoza ni bilo mogoče pripraviti." }
+  }
+}
+
+export type DeleteAccountResult =
+  | { success: true }
+  | { success: false; error: string }
+
+export async function deleteMyAccount(password: string): Promise<DeleteAccountResult> {
+  const session = await auth()
+  if (!session?.user?.id) return { success: false, error: "Niste prijavljeni." }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: { customer: true },
+    })
+    if (!user) return { success: false, error: "Račun ne obstaja." }
+
+    // Zahtevaj geslo (vedno), razen če uporabnik nima gesla (Google-only) —
+    // tedaj zadostuje prijava sama (passkey), tako da ne zaklenemo ven.
+    if (user.password) {
+      const ok = await bcrypt.compare(password, user.password)
+      if (!ok) return { success: false, error: "Geslo ni pravilno." }
+    }
+
+    // 1) Anonimiziraj osebne podatke stranke (poslovne evidence ostanejo).
+    if (user.customer) {
+      await prisma.customer.update({
+        where: { id: user.customer.id },
+        data: {
+          name: "Anonimiziran",
+          email: null,
+          phone: null,
+          notes: null,
+          dateOfBirth: null,
+          tags: [],
+          userId: null, // prekinemo povezavo z (kar brišemo) odjemalčevim User
+        },
+      })
+    }
+
+    // 2) Izbriši prijavni račun (User + Account + Session kaskadirno).
+    await prisma.user.delete({ where: { id: user.id } })
+
+    return { success: true }
+  } catch (error) {
+    console.error("GDPR delete error:", error)
+    return { success: false, error: "Brisanja ni bilo mogoče dokončati." }
+  }
+}

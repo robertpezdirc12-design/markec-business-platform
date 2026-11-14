@@ -20,6 +20,8 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { PALETTE_OPTIONS } from "@/lib/palettes-client"
 import { listProfileOptions } from "@/lib/profiles/registry"
+import { resolveSkdProfile } from "@/lib/skd/profiles"
+import { SkdHierarchyBrowser } from "@/components/onboarding/skd-hierarchy-browser"
 import {
   SKD_AREAS,
   SKD_MODULE_LABELS,
@@ -81,6 +83,11 @@ export function ActivityDirectoryPicker({
 }: ActivityDirectoryPickerProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
+  // F5.0: izbran konkretni podrazred SKD 2025 (raven 5) med izbranimi kodami.
+  const selectedSubclass = useMemo(
+    () => skdCodes.find((c) => c.includes(".") && /^\D/.test(c)) ?? null,
+    [skdCodes]
+  )
   const [tagInput, setTagInput] = useState("")
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -114,7 +121,13 @@ export function ActivityDirectoryPicker({
     [q]
   )
   const areas = useMemo(
-    () => (q ? SKD_AREAS.filter((a) => normalizeHr(a.name).includes(q)) : SKD_AREAS),
+    () =>
+      q
+        ? SKD_AREAS.filter(
+            (a) =>
+              normalizeHr(a.name).includes(q) || normalizeHr(a.key).includes(q)
+          )
+        : SKD_AREAS,
     [q]
   )
   const sections = useMemo(
@@ -122,7 +135,8 @@ export function ActivityDirectoryPicker({
       q
         ? SKD_SECTIONS.filter(
             (s) =>
-              normalizeHr(s.name).includes(q) || s.code.toLowerCase() === q
+              normalizeHr(s.name).includes(q) ||
+              s.code.toLowerCase().includes(q)
           )
         : SKD_SECTIONS,
     [q]
@@ -184,6 +198,23 @@ export function ActivityDirectoryPicker({
                 className="pl-9"
               />
             </div>
+          </div>
+
+          <div className="px-2 pb-2">
+            <p className="text-muted-foreground pb-1 text-xs font-semibold uppercase tracking-wide">
+              Poiščite natančno dejavnost v celotnem SKD 2025 katalogu
+            </p>
+            <SkdHierarchyBrowser
+              value={selectedSubclass as string | null}
+              onSelectSubclass={(code) => {
+                const profile = resolveSkdProfile(code)
+                if (profile) onSelectActivity(profile.id)
+                // Zabeleži konkretni podrazred kot izbrano SKD kodo (nasvet modulov).
+                if (!skdCodes.includes(code)) onToggleSkd(code)
+                setOpen(false)
+                setQuery("")
+              }}
+            />
           </div>
 
           {preparedGroups.length > 0 && (
@@ -304,6 +335,46 @@ export function ActivityDirectoryPicker({
                   )
                 })}
               </div>
+            </>
+          )}
+
+          {customTags.length > 0 && (
+            <>
+              <p className="text-muted-foreground px-2 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide">
+                Lastne oznake
+              </p>
+              {customTags.map((tag) => {
+                const matches = q ? normalizeHr(tag).includes(q) : true
+                if (q && !matches) return null
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    role="option"
+                    onClick={() => {
+                      setOpen(false)
+                      setQuery("")
+                    }}
+                    className={cn(
+                      "hover:bg-primary/5 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors",
+                      q ? "bg-primary/10" : ""
+                    )}
+                  >
+                    <span className="border-input flex size-4 shrink-0 items-center justify-center rounded border border-primary text-xs font-medium">
+                      ⌘
+                    </span>
+                    <span className="min-w-0 truncate">{tag}</span>
+                    <span className="text-muted-foreground block text-xs">
+                      Lastna oznaka
+                    </span>
+                  </button>
+                )
+              })}
+              {q && customTags.every((t) => !normalizeHr(t).includes(q)) && (
+                <p className="text-muted-foreground px-2 py-2 text-sm">
+                  Ni zadetkov med lastnimi oznakami — dodajte novo spodaj.
+                </p>
+              )}
             </>
           )}
 

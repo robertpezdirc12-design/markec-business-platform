@@ -31,6 +31,11 @@ export default async function LoginPage({
         select: { name: true, logo: true, slug: true },
       })
     : null
+  // Google je omogočen SAMO, ko sta ID+Secret nastavljena v okolju (fail-closed):
+  // če ni konfiguriran, gumba sploh ne prikažemo (ni fake prijave).
+  const googleEnabled = Boolean(
+    process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
+  )
   return (
     <main>
       <Suspense fallback={<LoginSkeleton />}>
@@ -38,6 +43,7 @@ export default async function LoginPage({
           orgName={org?.name ?? null}
           orgLogo={org?.logo ?? null}
           orgSlug={org?.slug ?? null}
+          googleEnabled={googleEnabled}
         />
       </Suspense>
     </main>

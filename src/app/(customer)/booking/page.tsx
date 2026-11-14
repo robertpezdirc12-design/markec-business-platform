@@ -4,6 +4,7 @@ import Image from "next/image"
 import type { Metadata } from "next"
 import { auth } from "@/lib/auth/auth"
 import { getResolvedOrg } from "@/lib/tenant"
+import { prisma } from "@/lib/prisma"
 import { canonicalMetadata } from "@/lib/seo"
 import { orgPath } from "@/lib/org-path"
 import { getPublicServicesGrouped, redirectBareToTenant } from "@/lib/public-site"
@@ -46,6 +47,8 @@ export default async function BookingPage(props: BookingPageProps) {
   // Tenant-aware redirects: /s/[slug]/booking must keep its prefix
   const org = await getResolvedOrg()
   const p = (path: string) => orgPath(org?.slug, path)
+  // 2D-1W: delavnica vozil je omogočena za tire-service / mehanik.
+  const showVehicle = !!org && ["tire-service", "mehanik"].includes(org.vertical ?? "")
   // Profile guard (EPIC #1 §21) lives in booking/layout.tsx — shell faza,
   // tako da je preusmeritev pravi 307 (P0 #24).
 
@@ -53,11 +56,28 @@ export default async function BookingPage(props: BookingPageProps) {
   const session = await auth()
 
   // Prepare default values for authenticated users
+  // F2.2.2 P1-4: prefill telefona prijavljene stranke iz Customer profila.
+  // Najprej profil TEGA najemnika (rezervacije so per najemnik), sicer
+  // najnovejši profil (formular dobi podatke, ki jih salon že ima).
   const defaultValues = session?.user
     ? {
         firstName: session.user.name?.split(" ")[0] || "",
         lastName: session.user.name?.split(" ").slice(1).join(" ") || "",
         email: session.user.email || "",
+        phone:
+          (
+            (org
+              ? await prisma.customer.findFirst({
+                  where: { userId: session.user.id, organizationId: org.id },
+                  select: { phone: true },
+                })
+              : null) ??
+            (await prisma.customer.findFirst({
+              where: { userId: session.user.id },
+              orderBy: { createdAt: "desc" },
+              select: { phone: true },
+            }))
+          )?.phone ?? "",
       }
     : undefined
 
@@ -120,6 +140,7 @@ export default async function BookingPage(props: BookingPageProps) {
             isEmployee={isEmployee}
             paymentsEnabled={paymentsEnabled}
             defaultValues={defaultValues}
+            showVehicle={showVehicle}
           />
         </div>
       </div>
@@ -256,6 +277,7 @@ export default async function BookingPage(props: BookingPageProps) {
           paymentsEnabled={paymentsEnabled}
           addons={addons}
           defaultValues={defaultValues}
+          showVehicle={showVehicle}
         />
 
         {/* #90: čakalna lista — vstop za zasedene dneve (anchor iz

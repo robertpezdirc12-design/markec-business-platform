@@ -2,6 +2,7 @@
 
 import { getStripeForOrg } from "@/lib/stripe"
 import { auth } from "@/lib/auth/auth"
+import { headers } from "next/headers"
 import { prisma } from "@/lib/prisma"
 import { addMinutes } from "date-fns"
 import { after } from "next/server"
@@ -17,11 +18,59 @@ import {
 import type { ProfileFieldDef } from "@/lib/profiles/types"
 import { Prisma } from "@prisma/client"
 import { instantFromParts, formatSalonTime } from "@/lib/booking-time"
-import { getPublicOrg, getSessionOrg, getOrgById } from "@/lib/tenant"
+import {
+  getCustomDomainOrg,
+  getPublicOrg,
+  getSessionOrg,
+  getOrgById,
+  getTrustedOrgSlug,
+} from "@/lib/tenant"
+import { orgPath } from "@/lib/org-path"
 import { CreateCheckoutSessionData, CreateCheckoutSessionResult } from "@/lib/interfaces"
 import { hasResourceConflict } from "@/lib/booking/resources"
+// F5.1: promo engine + atomsko unovčenje za termin iz Stripe metadate.
+import { loadActivePromotions } from "@/lib/promotions/map"
+import { bestPromotion, buildPromotionSnapshot, round2, type PricingLine } from "@/lib/promotions/engine"
+import { redeemPromotion, PromotionRedeemError } from "@/lib/promotions/redeem"
 import { sendAppointmentConfirmationEmail } from "@/lib/email/appointment-confirmation"
 import Stripe from "stripe"
+
+// ------------------------------------------------------------
+// F2.2.2 P0-2 — osnova za Stripe success/cancel URL nazaj na najemniško
+// površino. Prej je bil vrnitveni URL vedno `${NEXT_PUBLIC_APP_URL}/booking/success`
+// (gola pot): gostova rezervacija pod najemnikom (/s/<slug>/booking ali
+// custom domeni) se je po plačilu vrnila na platformo in IZGUBILA
+// kontekst najemnika. Pravila:
+//   - izvor = dejanski izvor zahtevka (x-forwarded-host/proto) —
+//     reši prav tudi dev-port dvojici (3000/3001) brez petljanja .env;
+//   - preverjena custom domena servi najemnika na GOLIH poteh (/s/<slug>
+//     je tam po načrtu 404 — proxy V-1 host binding);
+//   - platforma servi najemnika pod /s/<slug> — to pripono dodamo;
+//   - brez request konteksta (kron/test) → staro vedenje (env URL).
+// "use server" modul sme izvažati samo async akcije — pomožnica ros
+// neizvožena.
+// ------------------------------------------------------------
+async function bookingReturnBase(): Promise<string> {
+  let origin: string | null = null
+  try {
+    const h = await headers()
+    const host = h.get("x-forwarded-host") ?? h.get("host")
+    const proto = h.get("x-forwarded-proto") ?? "http"
+    if (host) origin = `${proto}://${host}`
+  } catch {
+    // Brez request konteksta (kron/test) — pade naprej na env.
+  }
+  if (!origin) return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+  try {
+    // Preverjena custom domena: najemnikov naslov je GOLI niz poti.
+    if (await getCustomDomainOrg()) return origin
+    const slug = await getTrustedOrgSlug()
+    if (slug) return `${origin}${orgPath(slug, "")}`
+  } catch {
+    // DB ni na voljo — kar glasfulo staro vedenje (env origin).
+  }
+  return origin
+}
 
 export async function createCheckoutSession(
   data: CreateCheckoutSessionData
@@ -114,8 +163,9 @@ export async function createCheckoutSession(
     const customerEmail = session?.user?.email || data.guestEmail
     const customerName = session?.user?.name || data.guestName || "Customer"
 
-    // Get base URL for redirects
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    // Get base URL for redirects — F2.2.2 P0-2: dejanski izvor zahtevka
+    // + najemniška pripona (/s/<slug>), da izguba konteksta ne omisli.
+    const baseUrl = await bookingReturnBase()
 
     // SECURITY: employee discount is derived server-side from the session role,
     // never trusted from client arguments. Same rule as createAppointment:
@@ -184,6 +234,9 @@ export async function createCheckoutSession(
         // zaupajo). Polog ostane vezan na storitev (deposit pravilo);
         // dodatki se plačajo ob obisku.
         addonIds: JSON.stringify(data.addonIds ?? []),
+        // F5.1: promocijska koda potuje v metadata — webhook jo prenese
+        // v createAppointment ob kreaciji termina.
+        promotionCode: data.promotionCode || "",
       },
       success_url: `${baseUrl}/booking/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/booking/cancel`,
@@ -378,7 +431,7 @@ export async function verifyAndCreateAppointment(sessionId: string) {
     // Get services for duration calculation (scoped to this organization)
     const services = await prisma.service.findMany({
       where: { id: { in: serviceIds }, organizationId: org.id },
-      select: { id: true, name: true, duration: true, price: true, intakeFormDefinitionId: true },
+      select: { id: true, name: true, duration: true, price: true, categoryId: true, intakeFormDefinitionId: true },
     })
 
     if (services.length !== new Set(serviceIds).size) {
@@ -394,6 +447,30 @@ export async function verifyAndCreateAppointment(sessionId: string) {
       0
     )
     const endTime = addMinutes(startTime, totalDuration)
+
+    // F5.1: promocija (iz metadate seje — klient nikoli ne pošlje
+    // cene/popusta). Ovrednotimo jo nad izbranimi storitvami.
+    const promotionCode = (metadata.promotionCode as string) || ""
+    const promoLines: PricingLine[] = services.map((s) => ({
+      kind: "service",
+      serviceId: s.id,
+      categoryId: s.categoryId ?? undefined,
+      amount: s.price.toNumber(),
+      quantity: 1,
+    }))
+    const activePromotions = await loadActivePromotions(prisma, org.id)
+    const verifyPromo = bestPromotion(activePromotions, promoLines, {
+      code: promotionCode || null,
+    })
+    const verifyPromoDiscount = verifyPromo ? verifyPromo.discountAmount : 0
+    const verifySnapshot = verifyPromo
+      ? buildPromotionSnapshot(verifyPromo.rule, {
+          baseAmount: verifyPromo.baseAmount,
+          discountAmount: verifyPromo.discountAmount,
+          affectedLines: verifyPromo.affectedLines,
+        })
+      : null
+    const effectiveTotalPrice = Math.max(0, round2(totalPrice - verifyPromoDiscount))
 
     // SECURITY: re-check slot availability before creating the appointment.
     // Prevents double-booking when the webhook and this fallback race,
@@ -536,7 +613,7 @@ export async function verifyAndCreateAppointment(sessionId: string) {
           return null // occupied slot — handled below (localized message)
         }
 
-        return tx.appointment.create({
+        const created = await tx.appointment.create({
           data: {
             organizationId: org.id,
             staffId,
@@ -554,7 +631,15 @@ export async function verifyAndCreateAppointment(sessionId: string) {
             endTime,
             status: "CONFIRMED",
             notes,
-            totalPrice,
+            // F5.1: total že upošteva popust (immutabilni posnetek).
+            totalPrice: effectiveTotalPrice,
+            ...(verifyPromoDiscount > 0 && verifyPromo
+              ? {
+                  promotionDiscount: verifyPromoDiscount,
+                  promotionId: verifyPromo.rule.id,
+                  promotionSnapshot: verifySnapshot as unknown as Prisma.InputJsonValue,
+                }
+              : {}),
             depositAmount: bookingDeposit,
             depositPaid: true,
             stripePaymentId: paymentIntentId,
@@ -565,6 +650,35 @@ export async function verifyAndCreateAppointment(sessionId: string) {
             },
           },
         })
+
+        // F5.1: atomsko unovčenje promocije v isti transakciji. Če popust
+        // ni več unovčljiv (presežena omejitev), se PLAČILO in termin
+        // ohranita — popust se tiho odpravi (nikoli ne izgubimo plačane
+        // rezervacije zaradi promocijskega pravila).
+        if (verifyPromo) {
+          try {
+            await redeemPromotion(tx, {
+              promotion: verifyPromo.rule,
+              baseAmount: verifyPromo.baseAmount,
+              customerId,
+              guestEmail: !customerId ? guestEmail : null,
+              appointmentId: created.id,
+              codeUsed: verifyPromo.rule.code,
+            })
+          } catch (err) {
+            if (!(err instanceof PromotionRedeemError)) throw err
+            await tx.appointment.update({
+              where: { id: created.id },
+              data: {
+                promotionDiscount: 0,
+                promotionId: null,
+                promotionSnapshot: Prisma.DbNull,
+                totalPrice: round2(totalPrice),
+              },
+            })
+          }
+        }
+        return created
       })
     } catch (error) {
       // #93: P2002 na stripePaymentId = webhook je že ustvaril termin
@@ -717,7 +831,9 @@ export async function createDepositCheckoutForAppointment(appointmentId: string)
 
     // Get service names for description
     const serviceNames = appointment.services.map((s) => s.service.name).join(", ")
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    // F2.2.2 P0-2: vrnitev na dejanski izvor + najemniška pripona (klient
+    // plačuje polog pod najemnikom — app vidnost naj ostane istega slopa).
+    const baseUrl = await bookingReturnBase()
 
     // Salon currency for the deposit checkout
     const depositConfig = await prisma.salonConfig.findFirst({
@@ -801,6 +917,10 @@ export async function createGuaranteeCheckoutSession(
 
     // 2) Checkout SETUP — kartica kot garancija (brez bremenitve).
     const guestEmail = data.guestEmail ?? null
+    // F2.2.2 P0-2: vračala na dejanski izvor + najemniška pripona (isti
+    // razlog kot pri createCheckoutSession — gostova garancija pod
+    // najemnikom se mora vrniti na najemniško stran, ne na platformo).
+    const baseUrl = await bookingReturnBase()
     const session = await stripe.checkout.sessions.create({
       mode: "setup",
       ...(guestEmail ? { customer_email: guestEmail } : {}),
@@ -809,8 +929,8 @@ export async function createGuaranteeCheckoutSession(
         type: GUARANTEE_METADATA_TYPE,
         appointmentId: appointment.appointmentId,
       },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/booking/success?setup={CHECKOUT_SESSION_ID}&appointment=${appointment.appointmentId}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/booking/cancel?appointment=${appointment.appointmentId}`,
+      success_url: `${baseUrl}/booking/success?setup={CHECKOUT_SESSION_ID}&appointment=${appointment.appointmentId}`,
+      cancel_url: `${baseUrl}/booking/cancel?appointment=${appointment.appointmentId}`,
     })
 
     return {

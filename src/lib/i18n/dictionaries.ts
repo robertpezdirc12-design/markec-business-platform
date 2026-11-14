@@ -13,11 +13,14 @@ import { settingsSl, settingsEn } from "./dict/settings"
 import { authSl, authEn } from "./dict/auth"
 import { workFormsSl, workFormsEn } from "./dict/work-forms"
 import { catalogDocsSl, catalogDocsEn } from "./dict/catalog-docs"
+import { einvoicesSl, einvoicesEn } from "./dict/einvoices"
 import { recordsSl, recordsEn } from "./dict/records"
 import { inventorySl, inventoryEn } from "./dict/inventory"
 import { projectsSl, projectsEn } from "./dict/projects"
 import { bookingSl, bookingEn } from "./dict/booking"
 import { publicSl, publicEn } from "./dict/public"
+import { promotionsSl, promotionsEn } from "./dict/promotions"
+import { categoriesSl, categoriesEn } from "./dict/categories"
 // F1: URL-localised platform landing ("/" + "/en").
 import { landingSl, landingEn } from "./dict/landing"
 
@@ -41,7 +44,10 @@ const dictionaries = {
     projects: projectsSl,
     booking: bookingSl,
     public: publicSl,
+    promotions: promotionsSl,
+    categories: categoriesSl,
     landing: landingSl,
+    einvoices: einvoicesSl,
   },
   en: {
     common: commonEn,
@@ -62,7 +68,10 @@ const dictionaries = {
     projects: projectsEn,
     booking: bookingEn,
     public: publicEn,
+    promotions: promotionsEn,
+    categories: categoriesEn,
     landing: landingEn,
+    einvoices: einvoicesEn,
   },
 } as const
 

@@ -59,8 +59,9 @@ export function RegisterForm() {
 
     // E-poštni servis ni konfiguriran — povezavo za potrditev pokaži direktno,
     // sicer uporabnik ostane brez dostopa (sporočilo nikoli ne prispe).
-    if (!result.emailSent && result.verificationUrl) {
-      setFallbackVerificationUrl(result.verificationUrl)
+    const r = result as { verificationUrl?: string; emailSent?: boolean }
+    if (!r.emailSent && r.verificationUrl) {
+      setFallbackVerificationUrl(r.verificationUrl)
       return
     }
 

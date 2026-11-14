@@ -15,6 +15,7 @@ import {
 } from "@/lib/site-content"
 import { isSampleImageUrl, upgradeLegacyDefaultCopy } from "@/lib/verticals"
 import { revalidatePath } from "next/cache"
+import { Prisma } from "@prisma/client"
 
 export interface PublicationStatus {
   state: ReturnType<typeof parsePublishState>
@@ -23,6 +24,8 @@ export interface PublicationStatus {
   hasUnpublishedChanges: boolean
   /** True when a published snapshot exists (false = pre-E3-2 tenant). */
   hasPublishedSnapshot: boolean
+  /** F5.3.1: trenutna verzija osnutka (za optimistično zaščito hkratnega urejanja). */
+  contentVersion: number
   /** P2 #61: non-blocking pre-publish advisories (sample imagery, hidden legacy rows). */
   warnings: string[]
 }
@@ -80,6 +83,7 @@ export async function getPublicationStatus(): Promise<PublicationStatus> {
       config?.publishedContentVersion ?? null
     ),
     hasPublishedSnapshot: config?.publishedContentVersion != null,
+    contentVersion: org.contentVersion,
     warnings: validation.warnings,
   }
 }
@@ -98,7 +102,7 @@ export async function publishSite(): Promise<
   | { success: true; warnings: string[] }
   | { success: false; errors: string[]; mismatch: ContentActivityMismatch | null }
 > {
-  const { org } = await requirePermissionOrg("settings.manage")
+  const { org, session } = await requirePermissionOrg("settings.manage")
 
   const [config, serviceCount, productCount, activeStaffCount] = await Promise.all([
     prisma.salonConfig.findUnique({
@@ -172,6 +176,37 @@ export async function publishSite(): Promise<
         publishedContentVersion: snapshotVersion,
       },
     }),
+    // Točka 6 — append-only zgodovina objav: vsako objavo zamrzni v novo
+    // vrsto, da je "vrni prejšnjo objavo" mogoč z eno točko (nikoli brisanje).
+    prisma.publicationHistory.create({
+      data: {
+        organizationId: org.id,
+        contentVersion: snapshotVersion,
+        siteContent: (snapshotContent ?? undefined) as Prisma.InputJsonValue | undefined,
+        createdByUserId: session?.user?.id ?? null,
+        note: "objava",
+      },
+    }),
+  ])
+
+  // F5.5.2 — objavi tudi galerije in FAQ te org (draft → published).
+  // Samo ta stopnja nastavi isPublished=true; draft, ki ni bil še objavljen,
+  // se objavi tudi na spletni strani. Povratek na prejšnjo objavljeno se za
+  // galerije/FAQ izvaja z update/delete z isPublished=false (neodvisno od JSON
+  // SiteContent, ki ostane po obstoječem contentVersion sistemu).
+  await prisma.$transaction([
+    prisma.gallery.updateMany({
+      where: { organizationId: org.id, isPublished: false },
+      data: { isPublished: true },
+    }),
+    prisma.galleryItem.updateMany({
+      where: { gallery: { organizationId: org.id }, isPublished: false },
+      data: { isPublished: true },
+    }),
+    prisma.faqItem.updateMany({
+      where: { organizationId: org.id, isPublished: false },
+      data: { isPublished: true },
+    }),
   ])
 
   revalidatePath("/", "layout")
@@ -187,4 +222,119 @@ export async function unpublishSite(): Promise<{ success: true }> {
   })
   revalidatePath("/", "layout")
   return { success: true }
+}
+
+export interface PublicationHistoryEntry {
+  id: string
+  contentVersion: number
+  publishedAt: Date
+  createdByUserId: string | null
+  note: string | null
+}
+
+/**
+ * Točka 6 — zgodovina objav (append-only, najnovejša prva).
+ * Vrne lahke vrstice (brez težke vsebine) — vsebina se pri PREGLEDU
+ * posamezne vrstice naloži ločeno (historyContent).
+ */
+export async function listPublicationHistory(): Promise<PublicationHistoryEntry[]> {
+  const { org } = await requirePermissionOrg("settings.manage")
+  const rows = await prisma.publicationHistory.findMany({
+    where: { organizationId: org.id },
+    orderBy: { publishedAt: "desc" },
+    take: 50,
+    select: {
+      id: true,
+      contentVersion: true,
+      publishedAt: true,
+      createdByUserId: true,
+      note: true,
+    },
+  })
+  return rows
+}
+
+/**
+ * Točka 6 — vmetnitev prejšnje objave z enim klikom.
+ * Prekopira izbrano zgodovinsko vsebino NAZAJ v osnutek in poveča
+ * contentVersion. Ne objavi samodejno (uporabnik po preverbi OBJAVI).
+ * Zgodovine NE briše — append-only.
+ */
+export async function revertToPublication(historyId: string): Promise<
+  | { success: true; contentVersion: number }
+  | { success: false; error: string }
+> {
+  const { org } = await requirePermissionOrg("settings.manage")
+  const entry = await prisma.publicationHistory.findFirst({
+    where: { id: historyId, organizationId: org.id },
+    select: { siteContent: true, contentVersion: true },
+  })
+  if (!entry) return { success: false, error: "Objava ni najdena (ali ni vaša)." }
+
+  // Prekopiraj zgodovinsko vsebino v osnutek + dvigni verzijo (append-only;
+  // sama zgodovina ostane nespremenjena).
+  const updated = await prisma.$transaction(async (tx) => {
+    const orgNext = await tx.organization.update({
+      where: { id: org.id },
+      data: { contentVersion: { increment: 1 } },
+      select: { contentVersion: true },
+    })
+    await tx.salonConfig.upsert({
+      where: { organizationId: org.id },
+      create: {
+        organizationId: org.id,
+        name: org.name,
+        siteContent: (entry.siteContent ?? Prisma.DbNull) as Prisma.InputJsonValue,
+      },
+      update: { siteContent: (entry.siteContent ?? Prisma.DbNull) as Prisma.InputJsonValue },
+    })
+    return orgNext.contentVersion
+  })
+
+  revalidatePath("/", "layout")
+  return { success: true, contentVersion: updated }
+}
+
+export interface ShareInfo {
+  url: string
+  slug: string
+  name: string
+  customDomain: string | null
+  publishedAt: Date | null
+}
+
+/**
+ * Točka 6 — QR / deljenje po objavi. Vrne človeški javni URL podjetja:
+ * primarna (preverjena) lastna domena, če obstaja, sicer platformna
+ * pot `/s/{slug}`. Uporablja se za QR kodo in povezavo za deljenje.
+ */
+export async function getShareInfo(): Promise<ShareInfo> {
+  const { org } = await requirePermissionOrg("settings.manage")
+
+  // Primarna preverjena domena (če obstaja) → naslov izven platforme.
+  const primary = await prisma.customDomain.findFirst({
+    where: { organizationId: org.id, isPrimary: true, verifiedAt: { not: null } },
+    select: { domain: true },
+  })
+
+  // PUBLIC origin: NEXT_PUBLIC_APP_URL, z normalizacijo končnega "/".
+  const origin = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/, "")
+
+  const customDomain = primary?.domain ?? null
+  const url = customDomain
+    ? `https://${customDomain}`
+    : `${origin}/s/${org.slug}`
+
+  const config = await prisma.organization.findUnique({
+    where: { id: org.id },
+    select: { publishedAt: true },
+  })
+
+  return {
+    url,
+    slug: org.slug,
+    name: org.name,
+    customDomain,
+    publishedAt: config?.publishedAt ?? null,
+  }
 }

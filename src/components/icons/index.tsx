@@ -3,6 +3,8 @@
 // Navigation & UI
 export { ArrowLeftIcon } from "./arrow-left-icon"
 export { ArrowRightIcon } from "./arrow-right-icon"
+export { ChevronUpIcon } from "./chevron-up-icon"
+export { ChevronDownIcon } from "./chevron-down-icon"
 export { CaretLeftIcon } from "./caret-left-icon"
 export { CaretRightIcon } from "./caret-right-icon"
 export { CloseIcon } from "./close-icon"
@@ -22,11 +24,15 @@ export { LockIcon } from "./lock-icon"
 
 // Status & Feedback
 export { CheckCircleIcon } from "./check-circle-icon"
+export { CopyIcon } from "./copy-icon"
 export { XCircleIcon } from "./x-circle-icon"
 export { WarningCircleIcon } from "./warning-circle-icon"
 export { InfoIcon } from "./info-icon"
 export { SpinnerIcon } from "./spinner-icon"
 export { SpinnerGapIcon } from "./spinner-gap-icon"
+
+// Auth / providers
+export { GoogleIcon } from "./google-icon"
 
 // E-commerce & Shopping
 export { ShoppingBagIcon } from "./shopping-bag-icon"
@@ -34,6 +40,7 @@ export { ShoppingCartIcon } from "./shopping-cart-icon"
 export { PackageIcon } from "./package-icon"
 export { ToteIcon } from "./tote-icon"
 export { StorefrontIcon } from "./storefront-icon"
+export { TagIcon } from "./tag-icon"
 export { ReceiptIcon } from "./receipt-icon"
 export { FileTextIcon } from "./file-text-icon"
 export { PrinterIcon } from "./printer-icon"
@@ -68,11 +75,21 @@ export { CurrencyDollarIcon } from "./currency-dollar-icon"
 export { TrendingUpIcon } from "./trending-up-icon"
 export { ChartBarIcon } from "./chart-bar-icon"
 export { ScissorsIcon } from "./scissors-icon"
+export { WrenchIcon } from "./wrench-icon"
 
 // Theme
 export { SunIcon } from "./sun-icon"
 export { MoonIcon } from "./moon-icon"
 export { DesktopIcon } from "./desktop-icon"
+// F5.3.1 device preview
+export { SmartphoneIcon } from "./smartphone-icon"
+export { TabletIcon } from "./tablet-icon"
+// F5.3.1 visual site editor
+export { SaveIcon } from "./save-icon"
+export { RocketIcon } from "./rocket-icon"
+export { UploadIcon } from "./upload-icon"
+export { ArchiveIcon } from "./archive-icon"
+export { DownloadIcon } from "./download-icon"
 
 // Decorative
 export { StarIcon } from "./star-icon"

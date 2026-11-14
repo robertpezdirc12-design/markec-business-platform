@@ -121,8 +121,10 @@ describe("§21 acceptance scenario: SEAMSTRESS", () => {
     expect(profile.forms.length).toBeGreaterThanOrEqual(1)
   })
 
-  it("enables the body-measurements extension", () => {
-    expect(profile.extensions).toContain("body-measurements")
+  it("enables the seamstress-measurements extension (2D-2B append-only)" , () => {
+    // 2D-2B: merilni listi so append-only (zgodovina) → namenska razširitev.
+    expect(profile.extensions).toContain("seamstress-measurements")
+    expect(profile.extensions).toContain("projects")
   })
 })
 

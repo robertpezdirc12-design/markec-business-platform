@@ -128,11 +128,15 @@ describe("#80 redemption — the code reduces a later order", () => {
     expect(body).toContain("prisma.$transaction")
     expect(body).toMatch(/status: "PAID"/)
     expect(body).toMatch(/prepaidRedemption\.create/)
-    expect(body).toMatch(/source: "ORDER"/)
+    // F5.5.1: zaloga za plačano naročilo se zniža VARIANT-AWARE v isti
+    // transakciji prek applyOrderStockDecrement (ledger z source "ORDER").
+    expect(body).toMatch(/applyOrderStockDecrement\(tx/)
+    expect(checkout).toMatch(/source: "ORDER"/)
   })
 
   it("partial coverage charges the REMAINDER via Stripe and redeems on payment", () => {
-    expect(checkout).toMatch(/unit_amount: Math\.round\(\(total - giftCard\.applied\) \* 100\)/)
+    // F5.1/F5.2: remainder = finalTotal (popust že odštet) − apliciran bonus.
+    expect(checkout).toMatch(/unit_amount: Math\.round\(\s*\(finalTotal - \(giftCard \? giftCard\.applied : 0\)\) \* 100\s*\)/)
     expect(checkout).toMatch(/giftCardCode: giftCard\.code/)
   })
 

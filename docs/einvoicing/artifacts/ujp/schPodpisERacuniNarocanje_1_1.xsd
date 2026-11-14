@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- edited with XMLSpy v2008 rel. 2 (http://www.altova.com) by mazuki (darksiderg) -->
+<xs:schema xmlns="http://ujpnet.gov.si/Sheme/xsd/PodpisERacuniNarocanje_1_1.xsd" xmlns:mstns="http://ujpnet.gov.si/Sheme/xsd/PodpisERacuniNarocanje_1_1.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" targetNamespace="http://ujpnet.gov.si/Sheme/xsd/PodpisERacuniNarocanje_1_1.xsd" elementFormDefault="qualified" id="schPodpisBN02">
+	<xs:import namespace="http://www.w3.org/2000/09/xmldsig#" schemaLocation="xmldsig-core-schema_nodtd.xsd"/>
+	<xs:element name="ERacuniNarocanje">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="Dokument" type="Dokument"/>
+				<xs:element name="Prejemnik" type="Prejemnik"/>
+				<xs:element name="Izdajatelj" type="Izdajatelj"/>
+				<xs:element name="Podrobnosti" type="Podrobnosti"/>
+				<xs:element ref="ds:Signature" minOccurs="0" maxOccurs="unbounded"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:complexType name="Dokument">
+		<xs:sequence>
+			<xs:element name="Id" type="TipId"/>
+			<xs:element name="Datum" type="xs:dateTime"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="Prejemnik">
+		<xs:sequence>
+			<xs:element name="Racun" type="TipRacun"/>
+			<xs:element name="IdDDV" type="TipDavcna"/>
+			<xs:element name="Naziv" type="TipNaziv"/>
+			<xs:element name="Naslov" type="TipNaziv"/>
+			<xs:element name="Kraj" type="TipNaziv"/>
+			<xs:element name="RefOznaka" type="TipId" minOccurs="0"/>
+			<xs:element name="RefOznakaNaziv" minOccurs="0">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="250"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="Izdajatelj">
+		<xs:sequence>
+			<xs:element name="Racun" type="TipRacun"/>
+			<xs:element name="IdDDV" type="TipDavcna"/>
+			<xs:element name="Naziv" type="TipNaziv"/>
+			<xs:element name="Naslov" type="TipNaziv"/>
+			<xs:element name="Kraj" type="TipNaziv" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="Podrobnosti">
+		<xs:sequence>
+			<xs:element name="TipNarocila">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="Prijava"/>
+						<xs:enumeration value="Odjava"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="IzdajateljPogoji" type="TipPogoji" minOccurs="0"/>
+			<xs:element name="BankaPogoji" type="TipPogoji" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="TipDavcna">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="25"/>
+			<xs:pattern value="([A-Z0-9])*"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="TipRacun">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="[a-zA-Z]{2,2}[0-9]{2,2}[a-zA-Z0-9]{1,30}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="TipNaziv">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="70"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="TipPogoji">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="1000"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="TipId">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="35"/>
+		</xs:restriction>
+	</xs:simpleType>
+</xs:schema>

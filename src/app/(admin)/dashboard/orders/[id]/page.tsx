@@ -3,6 +3,8 @@ import { ArrowLeftIcon } from "@/components/icons"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getOrderById } from "@/app/actions/orders"
+import { RefundOrderButton } from "@/components/admin/refund-order-button"
+import { resolveOrderProvenance } from "@/app/actions/traceability"
 import { getServerI18n } from "@/lib/i18n/server"
 import { requirePagePermission } from "@/lib/auth/guards"
 import { formatCurrency } from "@/lib/utils/format"
@@ -20,7 +22,12 @@ export default async function OrderDetailPage({
 }) {
   await requirePagePermission("orders.manage")
   const { id } = await params
-  const [{ t }, order] = await Promise.all([getServerI18n(), getOrderById(id)])
+  // 2D-1P — izvor prodaje (serija → pridelek) v podrobnostih naročila.
+  const [{ t }, order, provenance] = await Promise.all([
+    getServerI18n(),
+    getOrderById(id),
+    resolveOrderProvenance(id).catch(() => null),
+  ])
 
   if (!order) notFound()
 
@@ -68,6 +75,12 @@ export default async function OrderDetailPage({
           ) : (
             <Badge variant="secondary">{t.orders.detail.onlineBadge}</Badge>
           )}
+          {/* P3-H: vračilo naročila — gumb samo za PAID/COMPLETED. */}
+          <RefundOrderButton
+            orderId={order.id}
+            refundable={order.status === "PAID" || order.status === "COMPLETED"}
+            amountLabel={formatCurrency(order.total)}
+          />
         </div>
       </div>
 
@@ -144,6 +157,12 @@ export default async function OrderDetailPage({
                     <tr key={item.id} className="border-b last:border-0">
                       <td className="py-3 font-medium">
                         {item.product?.name ?? "—"}
+                        {item.variantName && (
+                          <span className="ml-2 text-muted-foreground font-normal">
+                            — {item.variantName}
+                            {item.variantSku ? ` (${item.variantSku})` : ""}
+                          </span>
+                        )}
                       </td>
                       <td className="py-3">{item.quantity}</td>
                       <td className="py-3">{formatCurrency(item.price)}</td>
@@ -173,6 +192,44 @@ export default async function OrderDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      {/* 2D-1P — izvor prodaje: serija → pridelek */}
+      {provenance && provenance.anyBatch && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">{t.orders.detail.provenanceTitle}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="pb-2 font-medium">{t.orders.detail.provBatch}</th>
+                    <th className="pb-2 font-medium">{t.orders.detail.provQty}</th>
+                    <th className="pb-2 font-medium">{t.orders.detail.provOrigin}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {provenance.items.map((item, i) => (
+                    <tr key={`${item.batchId}-${i}`} className="border-b last:border-0">
+                      <td className="py-3">
+                        <span className="font-mono text-xs">{item.batchCode}</span>
+                        <span className="text-muted-foreground ml-2">{item.batchTitle}</span>
+                      </td>
+                      <td className="py-3">{item.quantity}</td>
+                      <td className="py-3 text-muted-foreground">
+                        {item.harvests.length
+                          ? item.harvests.map((h) => h.title).join(" + ")
+                          : t.orders.detail.provUnknown}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Notes (delivery address for offline orders) */}
       <Card>

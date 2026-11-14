@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- edited with XMLSpy v2008 rel. 2 (http://www.altova.com) by mazuki (darksiderg) -->
+<xs:schema xmlns="http://ujpnet.gov.si/Sheme/xsd/PEInvoicesImportRights_1_0.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://ujpnet.gov.si/Sheme/xsd/PEInvoicesImportRights_1_0.xsd" elementFormDefault="qualified">
+	<xs:element name="EInvoicesRights">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="User" type="TypeUser"/>
+				<xs:element name="Rights" type="TypeRights"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:complexType name="TypeUser">
+		<xs:sequence>
+			<xs:element name="CertSerial" type="xs:string"/>
+			<xs:element name="CertIssuer" type="xs:string"/>
+			<xs:element name="Name" type="xs:string"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="TypeRights">
+		<xs:sequence>
+			<xs:element name="Right" type="TypeRight" maxOccurs="unbounded"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="TypeRight">
+		<xs:sequence>
+			<xs:element name="TaxId" type="TypeTaxId"/>
+			<xs:element name="Name" type="TypeName"/>
+			<xs:element name="Address" type="TypeName"/>
+			<xs:element name="PostalCode" type="TypePostalCode"/>			
+			<xs:element name="City" type="TypeName"/>
+			<xs:element name="Action">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="Add"/>
+						<xs:enumeration value="Remove"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="TypeTaxId">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="25"/>
+			<xs:pattern value="([A-Z0-9])*"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="TypeName">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="70"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="TypePostalCode">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="9"/>
+		</xs:restriction>
+	</xs:simpleType>
+</xs:schema>

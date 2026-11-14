@@ -347,3 +347,74 @@ describe("trustedInternalOrigin — production rejects non-loopback HTTP (round 
     )
   })
 })
+
+// ============================================================
+// F2.2.2 P1.6 — dev port double (3000/3001). `.env` is pinned to
+// NEXT_PUBLIC_APP_URL = http://localhost:3000 while the dev server may
+// run on :3001. In dev (NOT production) BOTH the proxy's internal
+// resolver fetch target and the resolver's expected-proof origin
+// prefer the REQUEST origin when both sides are LOOPBACK — so tenant
+// resolution works on any dev port. Production NEVER changes: the
+// configured env origin stays authoritative even if an attacker sends
+// a loopback Host header (the request alone can never steer it).
+// ============================================================
+describe("dev loopback origin preference (F2.2.2 P1.6)", () => {
+  const ENV_3000 = "http://localhost:3000"
+
+  it("resolverExpectedOrigin: dev + loopback request → REQUEST origin (env pin :3000, server :3001)", () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", ENV_3000)
+    vi.stubEnv("NEXTAUTH_URL", ENV_3000)
+    expect(
+      resolverExpectedOrigin({ url: "http://localhost:3001/api/public/resolve-tenant?slug=demo" })
+    ).toBe("http://localhost:3001")
+    expect(
+      resolverExpectedOrigin({ url: "http://127.0.0.1:3001/api/public/resolve-tenant?slug=demo" })
+    ).toBe("http://127.0.0.1:3001")
+  })
+
+  it("proxyResolverOrigin: dev + loopback request → REQUEST origin (internal fetch stays on the dev port)", () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", ENV_3000)
+    vi.stubEnv("NEXTAUTH_URL", ENV_3000)
+    expect(proxyResolverOrigin({ nextUrl: new URL("http://localhost:3001/s/demo") })).toBe(
+      "http://localhost:3001"
+    )
+  })
+
+  it("production NEVER prefers the request: attacker loopback Host cannot steer the proof", () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://markec.example")
+    vi.stubEnv("NEXTAUTH_URL", "https://markec.example")
+    expect(
+      resolverExpectedOrigin({ url: "http://localhost:3001/api/public/resolve-tenant?slug=demo" })
+    ).toBe("https://markec.example")
+    expect(proxyResolverOrigin({ nextUrl: new URL("http://localhost:3001/s/demo") })).toBe(
+      "https://markec.example"
+    )
+  })
+
+  it("dev with a NON-loopback env origin keeps the configured origin (staging host preserved)", () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://staging.markec.example")
+    vi.stubEnv("NEXTAUTH_URL", "")
+    expect(
+      resolverExpectedOrigin({ url: "http://localhost:3001/api/public/resolve-tenant?slug=demo" })
+    ).toBe("https://staging.markec.example")
+    expect(proxyResolverOrigin({ nextUrl: new URL("http://localhost:3001/s/demo") })).toBe(
+      "https://staging.markec.example"
+    )
+  })
+
+  it("dev + loopback request + NO env still falls back to the request origin (no regression)", () => {
+    vi.stubEnv("NODE_ENV", "test")
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "")
+    vi.stubEnv("NEXTAUTH_URL", "")
+    expect(
+      resolverExpectedOrigin({ url: "http://localhost:3000/api/public/resolve-tenant?slug=demo" })
+    ).toBe("http://localhost:3000")
+    expect(proxyResolverOrigin({ nextUrl: new URL("http://localhost:3000/s/demo") })).toBe(
+      "http://localhost:3000"
+    )
+  })
+})

@@ -191,6 +191,33 @@ export async function sendMarketingEmails(now: Date = new Date()): Promise<JobRu
       })
     }
 
+    // P2-D (GDPR opt-in / ZVOP-2): marketinške kampanje (BIRTHDAY,
+    // REACTIVATION) kontaktirajo IZKLJUČNO stranke, ki so eksplicitno
+    // privolile (Customer.marketingConsent = true). Vsi ostali — stranke
+    // brez privolitve IN gostje (einpošta zgolj iz guestEmail, brez zapisa
+    // Customer) — NIMAJO veljavne privolitve in izpadejo PRED pošiljanjem.
+    // NO_SHOW ni marketing (je obvestilo v zvezi z ne-nastopom na
+    // rezervaciji) — se ne omejuje.
+    if (campaign.kind !== "NO_SHOW" && targets.length > 0) {
+      const consentRows = await prisma.customer.findMany({
+        where: {
+          organizationId: org.id,
+          email: { in: targets.map((t) => t.email.toLowerCase()) },
+        },
+        select: { email: true, marketingConsent: true },
+      })
+      // Allow-list: obdržimo SAMO tiste e-pošte, ki imajo Customer zapis
+      // z marketingConsent=true. (Odjava se obravnava ločeno spodaj.)
+      const consented = new Set(
+        consentRows
+          .filter((c) => c.email && c.marketingConsent === true)
+          .map((c) => c.email!.toLowerCase())
+      )
+      const beforeConsent = targets.length
+      targets = targets.filter((t) => consented.has(t.email.toLowerCase()))
+      skippedUnsubscribed += beforeConsent - targets.length
+    }
+
     // #95 (AD-03): funkcionalna odjava — odjavljeni prejemniki izpadajo
     // PRED pošiljanjem (per pošiljatelj, ne glede na kampanjo).
     if (targets.length > 0) {

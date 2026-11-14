@@ -98,32 +98,37 @@ export async function getUserStats() {
     OR: [{ organizationId: org.id }, { customer: { organizationId: org.id } }],
   }
 
-  const [totalUsers, activeThisMonth, newThisMonth, totalCustomers, leadsWithoutAccount] =
-    await Promise.all([
-      prisma.user.count({ where: orgMembership }),
-      prisma.user.count({
-        where: {
-          AND: [
-            orgMembership,
-            {
-              sessions: {
-                some: {
-                  expires: { gte: now },
-                },
+  const [
+    totalUsers,
+    activeThisMonth,
+    newThisMonth,
+    totalCustomers,
+    leadsWithoutAccount,
+  ] = await Promise.all([
+    prisma.user.count({ where: orgMembership }),
+    prisma.user.count({
+      where: {
+        AND: [
+          orgMembership,
+          {
+            sessions: {
+              some: {
+                expires: { gte: now },
               },
             },
-          ],
-        },
-      }),
-      // P2 #48: "novih ta mesec" šteje stranke (baza strank), ne račune.
-      prisma.customer.count({
-        where: { organizationId: org.id, createdAt: { gte: startOfMonth } },
-      }),
-      prisma.customer.count({ where: { organizationId: org.id } }),
-      prisma.customer.count({
-        where: { organizationId: org.id, user: null },
-      }),
-    ])
+          },
+        ],
+      },
+    }),
+    // P2 #48: "novih ta mesec" šteje stranke (baza strank), ne račune.
+    prisma.customer.count({
+      where: { organizationId: org.id, createdAt: { gte: startOfMonth } },
+    }),
+    prisma.customer.count({ where: { organizationId: org.id } }),
+    prisma.customer.count({
+      where: { organizationId: org.id, user: null },
+    }),
+  ])
 
   return {
     totalUsers,
@@ -146,10 +151,7 @@ export async function getCustomerLeads(search?: string, tag?: string) {
 
   return prisma.customer.findMany({
     where: {
-      AND: [
-        leadSearch,
-        ...(segment ? [segment] : []),
-      ],
+      AND: [leadSearch, ...(segment ? [segment] : [])],
     },
     include: {
       _count: {
@@ -206,7 +208,10 @@ export async function updateCustomerTags(
     return { success: true, tags: clean }
   } catch (error) {
     console.error("updateCustomerTags failed:", error)
-    return { success: false, error: "Shranjevanje oznak ni uspelo. Poskusite znova." }
+    return {
+      success: false,
+      error: "Shranjevanje oznak ni uspelo. Poskusite znova.",
+    }
   }
 }
 
@@ -253,7 +258,10 @@ export async function updateCustomerBirthday(
     return { success: true }
   } catch (error) {
     console.error("updateCustomerBirthday failed:", error)
-    return { success: false, error: "Shranjevanje rojstnega dne ni uspelo. Poskusite znova." }
+    return {
+      success: false,
+      error: "Shranjevanje rojstnega dne ni uspelo. Poskusite znova.",
+    }
   }
 }
 
@@ -294,17 +302,17 @@ export const getUserById = cache(async (id: string) => {
           },
         },
       },
-      staff: true,
+      staffs: { where: { organizationId: org.id } },
     },
   })
 
   // Tenant check: the user must belong to the admin's organization
-  // (directly, via their customer profile, or via their staff profile)
+  // (directly, via their customer profile, or via a staff profile here)
   if (!user) return null
   const belongsToOrg =
     user.organizationId === org.id ||
     user.customer?.organizationId === org.id ||
-    user.staff?.organizationId === org.id
+    user.staffs.some((s) => s.organizationId === org.id)
   if (!belongsToOrg) return null
 
   return user
@@ -365,7 +373,7 @@ export async function updateUserRole(userId: string, role: UserRole) {
         id: true,
         role: true,
         organizationId: true,
-        staff: { select: { organizationId: true } },
+        staffs: { select: { organizationId: true } },
         customer: { select: { organizationId: true } },
       },
     })
@@ -388,7 +396,8 @@ export async function updateUserRole(userId: string, role: UserRole) {
     // restricted admin ("admin brez financ") must never be able to
     // escalate themselves or others past their own limits.
     if (role === "ADMIN") {
-      const perms = await getEffectivePermissions(session.user.id)
+      // F0: escalate-only against the ACTIVE org's effective permissions.
+      const perms = await getEffectivePermissions(session.user.id, org.id)
       if (!hasAllPermissions(perms)) {
         return {
           success: false,
@@ -398,19 +407,20 @@ export async function updateUserRole(userId: string, role: UserRole) {
       }
     }
 
-    // If changing to STAFF, create staff profile if doesn't exist
+    // If changing to STAFF, create staff profile if doesn't exist in THIS org.
     if (role === "STAFF") {
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        include: { staff: true },
+        include: { staffs: { where: { organizationId: org.id } } },
       })
 
       if (!user) {
         return { success: false, error: "Uporabnik ni najden." }
       }
 
-      // Create staff profile if doesn't exist
-      if (!user.staff) {
+      // Create staff profile if it doesn't exist in this organization.
+      // F2.3.1: a user may be staff in several orgs → scope to the active org.
+      if (!user.staffs.length) {
         await prisma.staff.create({
           data: {
             name: user.name || "Staff Member",
@@ -475,7 +485,7 @@ export async function adminSetUserPassword(input: AdminSetPasswordInput) {
     const target = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        staff: { select: { organizationId: true } },
+        staffs: { select: { organizationId: true } },
         customer: { select: { organizationId: true } },
       },
     })
@@ -487,7 +497,7 @@ export async function adminSetUserPassword(input: AdminSetPasswordInput) {
     const belongsToOrg =
       target.organizationId === org.id ||
       target.customer?.organizationId === org.id ||
-      target.staff?.organizationId === org.id
+      target.staffs.some((s) => s.organizationId === org.id)
 
     if (!belongsToOrg) {
       return {
@@ -576,7 +586,7 @@ export async function deleteUser(userId: string) {
       where: { id: userId },
       include: {
         customer: true,
-        staff: true,
+        staffs: { where: { organizationId: org.id } },
       },
     })
 
@@ -586,7 +596,7 @@ export async function deleteUser(userId: string) {
       !(
         user.organizationId === org.id ||
         user.customer?.organizationId === org.id ||
-        user.staff?.organizationId === org.id
+        user.staffs.some((s) => s.organizationId === org.id)
       )
     ) {
       return { success: false, error: "User not found" }
@@ -605,9 +615,9 @@ export async function deleteUser(userId: string) {
               where: { customerId: user.customer.id, organizationId: org.id },
             })
           : Promise.resolve(0),
-        user.staff
+        user.staffs[0]
           ? prisma.appointment.count({
-              where: { staffId: user.staff.id, organizationId: org.id },
+              where: { staffId: user.staffs[0].id, organizationId: org.id },
             })
           : Promise.resolve(0),
       ])
@@ -623,12 +633,12 @@ export async function deleteUser(userId: string) {
       }
     }
 
-    // Delete related records first
+    // Delete related records first (staff row scoped to THIS organization).
     if (user.customer) {
       await prisma.customer.delete({ where: { id: user.customer.id } })
     }
-    if (user.staff) {
-      await prisma.staff.delete({ where: { id: user.staff.id } })
+    if (user.staffs[0]) {
+      await prisma.staff.delete({ where: { id: user.staffs[0].id } })
     }
 
     // Delete user

@@ -53,12 +53,17 @@ describe("#100 8.A shema + vrata (M1/M2)", () => {
     expect(block).toContain("@@index([userId])")
   })
 
-  it("guards + tenant: dvojno branje (članstva imajo prednost, legacy ostane)", () => {
+  // AMENDED BY F2.1: the M2 dual-read + gated legacy fallback was
+  // superseded by ONE fail-closed resolver. The pure normalisation core
+  // above is unchanged; only the source-shape assertion is updated.
+  it("F2.1: guards + tenant uporabljata enoten fail-closed razreševalnik", () => {
     const guards = read("src/lib/auth/guards.ts")
     expect(guards).toContain("resolveActiveOrganizationId(")
-    expect(guards).toContain("if (session.user.id)")
+    expect(guards).toContain("export async function resolveSessionOrganization(")
+    expect(guards).toContain("export async function requireSessionOrg()")
     const tenant = read("src/lib/tenant.ts")
-    expect(tenant).toContain("resolveActiveOrganizationId(")
+    expect(tenant).toContain("resolveSessionOrganization(session)")
+    expect(tenant).toContain("requireSessionOrg()")
   })
 
   it("preklop: članstvo obvezno, legacy kazalec + seja usklajena", () => {

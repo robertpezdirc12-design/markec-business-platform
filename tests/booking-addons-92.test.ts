@@ -81,7 +81,9 @@ describe("#92 checkout: dodatki potujejo kot ID-ji, polog ostane na storitvi", (
   it("webhook ponovno razreši dodatke org-scoped in zapiše snapshot", () => {
     expect(webhook).toContain("service: { organizationId: org.id },")
     expect(webhook).toContain("addons: selectedAddons.length > 0 ? selectedAddons : undefined,")
-    expect(webhook).toContain("totalPrice: totalPrice + addonPrice,")
+    // F5.1: total (effectiveTotal) vključi dodatke in odšteje popust.
+    expect(webhook).toMatch(/totalPrice: effectiveTotal,/)
+    expect(webhook).toMatch(/totalPrice: round2\(totalPrice \+ addonPrice\)/)
   })
 })
 

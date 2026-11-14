@@ -18,6 +18,9 @@ export const authSl = {
       verifyRequired: "Potrebna je potrditev e-pošte",
       verifyDescription:
         "Preverite mapo »Prejeto« in potrdite svoj e-poštni naslov pred prijavo. Če sporočila niste prejeli, preverite mapo »Neželena pošta«.",
+      resend: "Ponovno pošlji povezavo",
+      verifyResent:
+        "Potrditveno e-pošto smo poslali, če vaš e-poštni naslov obstaja in še ni potrjen.",
       loginFailed: "Prijava ni uspela",
       invalidCredentials:
         "Neveljaven e-poštni naslov ali geslo. Poskusite znova.",
@@ -121,6 +124,9 @@ export const authEn: AuthDict = {
       verifyRequired: "Email verification required",
       verifyDescription:
         "Please check your inbox and verify your email address before logging in. If you didn't receive the email, check your spam folder.",
+      resend: "Resend link",
+      verifyResent:
+        "We sent a verification email if this address exists and is not yet verified.",
       loginFailed: "Login failed",
       invalidCredentials: "Invalid email or password. Please try again.",
       loginSuccess: "Login successful!",

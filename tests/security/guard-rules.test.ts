@@ -24,7 +24,7 @@ function member(overrides: Partial<MemberTargetInfo> = {}): MemberTargetInfo {
     id: "user-1",
     role: "CLIENTE",
     organizationId: "org-a",
-    staff: null,
+    staffs: [],
     customer: null,
     ...overrides,
   }
@@ -36,10 +36,25 @@ describe("targetBelongsToOrg", () => {
     expect(targetBelongsToOrg(member({ organizationId: "org-b" }), "org-a")).toBe(false)
   })
 
-  it("matches via the staff profile link", () => {
-    const target = member({ organizationId: null, staff: { organizationId: "org-a" } })
+  it("matches via the staff profile link (any of the F2.3.1 staff rows)", () => {
+    const target = member({
+      organizationId: null,
+      staffs: [{ organizationId: "org-a" }],
+    })
     expect(targetBelongsToOrg(target, "org-a")).toBe(true)
     expect(targetBelongsToOrg(target, "org-b")).toBe(false)
+    // user staff in another org AND the target org → still belongs.
+    expect(
+      targetBelongsToOrg(
+        member({ organizationId: null, staffs: [{ organizationId: "org-c" }, { organizationId: "org-a" }] }),
+        "org-a"
+      )
+    ).toBe(true)
+  })
+
+  it("is false when the staff rows do not cover the target org", () => {
+    const target = member({ organizationId: null, staffs: [{ organizationId: "org-b" }] })
+    expect(targetBelongsToOrg(target, "org-a")).toBe(false)
   })
 
   it("matches via the customer profile link", () => {

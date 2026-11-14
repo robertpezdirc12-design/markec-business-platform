@@ -16,10 +16,13 @@ import { PackageIcon } from "@/components/icons"
 import { AddToCartButton } from "@/components/shop/add-to-cart-button"
 import { notFound } from "next/navigation"
 import { getPublicSiteData, getPublicShopProducts, redirectBareToTenant } from "@/lib/public-site"
+import { getPublicCategories } from "@/lib/public-site"
 import { resolveEffectiveProfile } from "@/lib/profiles/resolve"
 import { isCapabilityEnabled } from "@/lib/profiles/registry"
 import { getPublicGiftCards } from "@/app/actions/prepaid"
 import { GiftCardSection } from "@/components/shop/gift-card-section"
+import { ShopFilters } from "@/components/shop/shop-filters"
+import { computeAvailableStock } from "@/lib/inventory/stock"
 import { canonicalMetadata } from "@/lib/seo"
 import { getLocaleFromCookies } from "@/lib/i18n/server"
 import { orgPath } from "@/lib/org-path"
@@ -42,11 +45,30 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 interface ShopPageProps {
-  searchParams: Promise<{ search?: string }>
+  searchParams: Promise<{ search?: string; category?: string; inStock?: string; sort?: string }>
+}
+
+/** Razvrsti seznam izdelkov po izbiri (server-side, SEO-prijazno). */
+function sortProducts<T extends { isFeatured: boolean; name: string; price: number; createdAt: Date }>(
+  list: T[],
+  sort: string | undefined
+): T[] {
+  switch (sort) {
+    case "price-asc":
+      return [...list].sort((a, b) => a.price - b.price)
+    case "price-desc":
+      return [...list].sort((a, b) => b.price - a.price)
+    case "newest":
+      return [...list].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+    default:
+      return [...list].sort((a, b) =>
+        a.isFeatured === b.isFeatured ? a.name.localeCompare(b.name) : a.isFeatured ? -1 : 1
+      )
+  }
 }
 
 export default async function ShopPage({ searchParams }: ShopPageProps) {
-  const { search } = await searchParams
+  const { search, category, inStock, sort } = await searchParams
   // P1 #39-5: gola pot → kanonična najemniška pot.
   await redirectBareToTenant(search ? `/shop?search=${encodeURIComponent(search)}` : "/shop")
   const site = await getPublicSiteData()
@@ -71,17 +93,39 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   const pageTitle = locale === "en" ? "Shop" : "Trgovina"
   const gridTitle = locale === "en" ? "All products" : "Vsi izdelki"
   const allProducts = await getPublicShopProducts(org.id)
-  // #80: darilni boni — ločena sekcija nad izdelki (samo če obstajajo).
-  const giftCards = await getPublicGiftCards()
+  // P3-H: kategorije za filter (aktivne, org-scope).
+  const categories = await getPublicCategories(org.id)
 
-  // Filter products based on search query
-  const products = search
-    ? allProducts.filter(
-        (product) =>
-          product.name.toLowerCase().includes(search.toLowerCase()) ||
-          product.description?.toLowerCase().includes(search.toLowerCase())
-      )
-    : allProducts
+  // Filter products based on query params (server-side).
+  let products = allProducts
+  if (search) {
+    products = products.filter(
+      (product) =>
+        product.name.toLowerCase().includes(search.toLowerCase()) ||
+        product.description?.toLowerCase().includes(search.toLowerCase())
+    )
+  }
+  if (category === "none") {
+    // "Brez kategorije" — izdelki brez pripisane kategorije.
+    products = products.filter((p) => !p.categoryId)
+  } else if (category) {
+    products = products.filter((p) => p.categoryId === category)
+  }
+  if (inStock === "1") {
+    products = products.filter(
+      (p) => computeAvailableStock(p.stockQuantity, p.reservedQuantity) > 0
+    )
+  }
+  products = sortProducts(
+    products as {
+      isFeatured: boolean
+      name: string
+      price: number
+      createdAt: Date
+    }[],
+    sort
+  ) as typeof products
+  const giftCards = await getPublicGiftCards()
 
   return (
     <div className="min-h-screen">
@@ -106,8 +150,19 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <SearchInput className="flex-1 md:max-w-md" />
             <Button variant="outline" size="sm" asChild>
-              <Link href={orgPath(slug, "/shop")}>Vsi izdelki</Link>
+              <Link href={orgPath(slug, "/shop")}>
+                {locale === "en" ? "All products" : "Vsi izdelki"}
+              </Link>
             </Button>
+          </div>
+          {/* P3-H: kategorični filter + razpoložljivost + razvrstitev. */}
+          <div className="mt-3">
+            <ShopFilters
+              orgPrefix={`/s/${slug}`}
+              categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+              active={{ search, category, inStock: inStock === "1", sort }}
+              locale={locale}
+            />
           </div>
         </div>
       </div>
@@ -137,7 +192,9 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
         </h2>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {products.map((product) => {
-            const inStock = product.stockQuantity > 0
+            // F6.1: razpoložljivo upošteva rezervirano zalogo (stock − reserved).
+            const available = computeAvailableStock(product.stockQuantity, product.reservedQuantity)
+            const inStock = available > 0
             const imageUrl = product.images?.[0] || null
 
             return (
@@ -170,18 +227,20 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
                     <div className="absolute top-2 right-2 flex flex-col gap-1">
                       {product.isFeatured && (
                         <Badge className="bg-accent text-accent-foreground">
-                          Izpostavljeno
+                          {locale === "en" ? "Featured" : "Izpostavljeno"}
                         </Badge>
                       )}
                       {!inStock && (
-                        <Badge variant="destructive">Ni na zalogi</Badge>
+                        <Badge variant="destructive">
+                          {locale === "en" ? "Out of stock" : "Ni na zalogi"}
+                        </Badge>
                       )}
                       {product.compareAtPrice && inStock && (
                         <Badge
                           variant="secondary"
                           className="bg-primary text-primary-foreground"
                         >
-                          Akcija
+                          {locale === "en" ? "Sale" : "Akcija"}
                         </Badge>
                       )}
                     </div>
@@ -220,7 +279,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
                       price: product.price,
                     }}
                     inStock={inStock}
-                    stockQuantity={product.stockQuantity}
+                    stockQuantity={available}
                   />
                   <Button
                     variant="outline"
@@ -228,7 +287,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
                     asChild
                   >
                     <Link href={orgPath(slug, `/shop/${product.id}`)}>
-                      Podrobnosti
+                      {locale === "en" ? "Details" : "Podrobnosti"}
                     </Link>
                   </Button>
                 </CardFooter>

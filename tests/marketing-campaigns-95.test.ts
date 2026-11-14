@@ -198,3 +198,35 @@ describe("#95 segmenti po oznakah (ciljanje, spec: oznake #91)", () => {
     expect(actions).toContain("includes(rawTag)")
   })
 })
+
+// ============================================================
+// P2-D — GDPR opt-in: marketinške kampanje kontaktirajo zgolj
+// stranke z izrecno privolitvijo (Customer.marketingConsent=true).
+// ============================================================
+describe("P2-D GDPR privolitev (allow-list za marketing)", () => {
+  it("job NIMA blok-liste 'izloči ne-privoljene', ampak dovoli-listo obdržanih", () => {
+    const job = read("src/lib/jobs/send-marketing-emails.ts")
+    // Stara (napačna) logika: izloči zgolj tiste NEprivoljene, kar bi
+    // gostom brez Customer zapisa pustilo, da preživijo — ta marker sme
+    // v kodi BITI, a ne sme biti uporabljen kot filter v P2-D bloku.
+    expect(job).toContain('campaign.kind !== "NO_SHOW"')
+    // Nova (pravilna) logika: DOVOLILNA lista `consented` — obdržimo samo
+    // e-pošte z marketinško privolitvijo.
+    expect(job).toContain("marketingConsent === true")
+    expect(job).toContain("consented.has(t.email.toLowerCase())")
+  })
+
+  it("popravek: gostje (email brez Customer zapisa) nimajo privolitve → izločeni", () => {
+    const job = read("src/lib/jobs/send-marketing-emails.ts")
+    // Če ni najdenega Customerja za email, `consented` set nima vnosa, zato
+    // `has()` vrne false in gost izpade. Preverimo, da filter dejansko
+    // temelji na `consented.has` (dovoli-lista), ne na negaciji blok-liste.
+    expect(job).toContain("(t) => consented.has(")
+    expect(job).not.toContain("!notConsented.has(")
+  })
+
+  it("NO_SHOW ostane transakcijski opomnik (ni omejen s privolitvijo)", () => {
+    const job = read("src/lib/jobs/send-marketing-emails.ts")
+    expect(job).toContain('campaign.kind !== "NO_SHOW"')
+  })
+})

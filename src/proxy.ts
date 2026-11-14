@@ -576,6 +576,20 @@ export default auth(async (req) => {
   const isStaffPortal = pathname.startsWith("/staff-portal")
   const isClientArea = pathname.startsWith("/my-account")
   const isAuthPage = pathname === "/login" || pathname === "/register"
+  const isWorkspacesPage =
+    pathname === "/workspaces" || pathname.startsWith("/workspaces/")
+
+  // F2.0 — vstopna tabla: samo za prijavljene, brez vlogovnega pogoja.
+  // Preklop je dovoljen vsem z LASTNIMI aktivnimi članstvi (akcija sama
+  // preveri članstvo + status); vlogovna pravila za /dashboard,
+  // /staff-portal in /my-account ostanejo nespremenjena. Stran ima tudi
+  // avtoritativen server-side redirect — to je defense-in-depth.
+  if (isWorkspacesPage && !isLoggedIn) {
+    const callbackUrl = encodeURIComponent(pathname)
+    return NextResponse.redirect(
+      new URL(`/login?callbackUrl=${callbackUrl}`, req.url)
+    )
+  }
 
   // Platform Operator Console - env allowlist ONLY (EPIC #3 E3-5).
   // This is a UX redirect, not the security boundary: the layout
@@ -661,8 +675,14 @@ export default auth(async (req) => {
     }
   }
 
+  // F2.1: Server Actions se izvajajo na TRENUTNEM URL-ju. Prijavni obrazec
+  // po uspešni prijavi pokliče getActiveWorkspaceCount() kot server action,
+  // medtem ko je brskalnik še na /login. 307 na /dashboard je uničil odziv
+  // akcije, zato uporabnik z več prostori nikoli ni prišel na vstopno tablo.
+  // GET obisk /login s sejo še vedno preusmerimo (zaščita pred dvojno prijavo).
+  const isServerAction = req.method === "POST" && req.headers.has("next-action")
   // Redirect authenticated users from auth pages to their dashboard
-  if (isLoggedIn && isAuthPage) {
+  if (isLoggedIn && isAuthPage && !isServerAction) {
     // Respect a SAFE callbackUrl (e.g. the cart checkout round-trip):
     // only same-origin relative paths are honored — reject protocol-relative
     // "//host", backslash variants, and absolute URLs (open-redirect guard).

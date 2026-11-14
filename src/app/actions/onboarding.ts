@@ -2,15 +2,22 @@
 
 import { Prisma } from "@prisma/client"
 import bcrypt from "bcryptjs"
+import crypto from "crypto"
+import { after } from "next/server"
 import { auth, unstable_update } from "@/lib/auth/auth"
 import { prisma } from "@/lib/prisma"
 import { isReservedSlug, isSlugAvailable, slugify } from "@/lib/tenant"
-import { PALETTES, seedOrganizationCatalog, verticalSiteContent, getVertical, presetStaffImage } from "@/lib/verticals"
+import { PALETTES, seedOrganizationCatalog, seedProfileCategories, verticalSiteContent, getVertical, presetStaffImage } from "@/lib/verticals"
 import { listProfileOptions, getProfile, isCapabilityEnabled, GENERIC_PROFILE_ID } from "@/lib/profiles/registry"
 import { validateSecondaryVertical } from "@/lib/profiles/secondary"
 import { materializeProfileAssets } from "@/lib/profiles/materialize"
 import { sanitizeSkdInput } from "@/lib/skd/catalog"
 import { PALETTE_OPTIONS } from "@/lib/palettes-client"
+// 2D-4: self-service onboarding now requires email verification (like
+// registerUser) — a fresh business account is NOT verified in advance. The
+// org is created and the owner verifies before first login.
+import { sendVerificationEmail } from "@/lib/email/email-verification"
+import { isEmailServiceConfigured } from "@/lib/email/config"
 
 export interface CreateSalonInput {
   name: string
@@ -56,6 +63,10 @@ export interface CreateSalonResult {
   slug?: string
   salonName?: string
   error?: string
+  /** 2D-4: set for fresh anonymous owners when no email service — the UI
+   *  shows the verification link directly instead of claiming delivery. */
+  verificationUrl?: string
+  emailSent?: boolean
 }
 
 /** Public availability check used by the onboarding wizard (debounced, client-side). */
@@ -151,6 +162,9 @@ export async function createSalonOrganization(input: CreateSalonInput): Promise<
     let linkUserId: string | null = null // obstoječ uporabnik, ki dobi organizacijo
     let createdUserId: string | null = null // NOV uporabnik (počisti se ob napaki)
     let additionalOrg = false // #100 8.A (M3): dodatno podjetje istega računa
+    // 2D-4: e-poštna verifikacija novega lastniškega računa — postavi se v
+    // anonimni veji (kot registerUser), UI pa jo predstavi uporabniku.
+    let verificationUrl: string | undefined
 
     if (authed) {
       email = sessionEmail!
@@ -298,17 +312,19 @@ export async function createSalonOrganization(input: CreateSalonInput): Promise<
       } else {
         // Anonimen obiskovalec — nov lastniški račun (staff profil samo, ko
         // profil omogoča osebje — P2 #47).
+        // 2D-4: račun se ustvari BREZ emailVerified — lastnik mora e-pošto
+        // najprej potrditi (authorize blokira nepreverjene prijave), enako
+        // kot registerUser. Org je ustvarjena, dejavnost/zaloga ni izgubljena.
         const user = await prisma.user.create({
           data: {
             name: ownerName,
             email,
             password: passwordHash!,
             role: "ADMIN",
-            emailVerified: new Date(),
             organizationId: org.id,
             ...(staffEnabled
               ? {
-                  staff: {
+                  staffs: {
                     create: {
                       name: ownerName,
                       email,
@@ -335,10 +351,45 @@ export async function createSalonOrganization(input: CreateSalonInput): Promise<
                 }
               : {}),
           },
-          include: { staff: { select: { id: true } } },
+          include: { staffs: { select: { id: true } } },
         })
         createdUserId = user.id
-        staffId = user.staff?.id ?? null
+        staffId = user.staffs[0]?.id ?? null
+
+        // #100 F2.1 + 2D-1L: tudi NOV račun (anonimna registracija) dobi ADMIN
+        // članstvo takoj — brez njega uporabnik ne bi mogel vstopiti v svoj�
+        // workspace (bil bi vezan nanj le prek legacy organizationId). Enako kot
+        // v veji za obstoječi račun (zgoraj): vloga ADMIN, isDefault za prvo
+        // podjetje. Idempotentno (skipDuplicates na @@unique[organizationId,
+        // userId]) — varno ob retry, brez podvajanja.
+        await prisma.organizationMember.createMany({
+          data: {
+            organizationId: org.id,
+            userId: user.id,
+            role: "ADMIN",
+            isDefault: !additionalOrg, // v anonimni veji je vedno prvo (default)
+          },
+          skipDuplicates: true,
+        })
+
+        // 2D-4: novi lastniški račun zahteva e-poštno verifikacijo pred prvo
+        // prijavo (authorize blokira nepreverjene). Ustvarimo 24-urni, enkratni
+        // token (enako registerUser). Org/dejavnost so že ustvarjene — uporabnik
+        // po potrditvi samo logira in vstopi v svoj poslovni prostor.
+        const verificationToken = crypto.randomBytes(32).toString("hex")
+        await prisma.verificationToken.create({
+          data: {
+            identifier: email,
+            token: verificationToken,
+            expires: new Date(Date.now() + 86400000), // 24h
+          },
+        })
+        after(async () => {
+          await sendVerificationEmail(email, verificationToken)
+        })
+        if (!isEmailServiceConfigured()) {
+          verificationUrl = `/verify-email?token=${verificationToken}`
+        }
       }
 
       // Sample categories + services + products for the chosen activity.
@@ -348,6 +399,16 @@ export async function createSalonOrganization(input: CreateSalonInput): Promise<
       // terminology or definitions. The owner can add catalog items of the
       // second activity manually in the shared modules.
       await seedOrganizationCatalog(org.id, profile.id)
+
+      // F5.2.3: podjetje z več dejavnostmi ob ustvarjanju — sekundarna
+      // dejavnost prav tako prispeva svoje predloge kategorij (idempotentno).
+      if (secondaryVertical) {
+        try {
+          await seedProfileCategories(org.id, secondaryVertical)
+        } catch (err) {
+          console.error("onboarding: seedProfileCategories failed", err)
+        }
+      }
 
       // Materialize profile-owned definitions (forms + workflows) so the
       // owner can customize them per-tenant without code (EPIC #1 §4).
@@ -396,10 +457,23 @@ export async function createSalonOrganization(input: CreateSalonInput): Promise<
         await prisma.user.delete({ where: { id: createdUserId } }).catch(() => undefined)
       }
       await prisma.organization.delete({ where: { id: org.id } }).catch(() => undefined)
+      // 2D-4 (reviewer finding): če novi anonimni lastnik že dobil verification
+      // token in nato poznejši korak (katalog/assets/config) pade, pospravi
+      // osatojni token — uporabnik+org se pobrideta, token smeti pa ne sme.
+      if (email && linkUserId === null) {
+        await prisma.verificationToken.deleteMany({ where: { identifier: email } }).catch(() => undefined)
+      }
       throw innerError
     }
 
-    return { success: true, slug, salonName: name }
+    return {
+      success: true,
+      slug,
+      salonName: name,
+      // 2D-4: za sveže anonimnega lastnika UX potrebuje presekano e-pošto.
+      ...(verificationUrl ? { verificationUrl } : {}),
+      emailSent: verificationUrl ? false : undefined,
+    }
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       const target = Array.isArray(error.meta?.target)

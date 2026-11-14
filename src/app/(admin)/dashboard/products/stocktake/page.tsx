@@ -17,7 +17,19 @@ export default async function StocktakePage() {
   const products = org
     ? await prisma.product.findMany({
         where: { organizationId: org.id, trackInventory: true, isActive: true },
-        select: { id: true, name: true, sku: true, unit: true, stockQuantity: true },
+        select: {
+          id: true,
+          name: true,
+          sku: true,
+          unit: true,
+          stockQuantity: true,
+          // #78/P1-D-1B: variantled izdelek inventrira na nivoju variante.
+          variants: {
+            where: { isActive: true },
+            select: { id: true, name: true, sku: true, stockQuantity: true },
+            orderBy: { position: "asc" },
+          },
+        },
         orderBy: { name: "asc" },
         take: 500,
       })
@@ -45,6 +57,12 @@ export default async function StocktakePage() {
           sku: p.sku,
           unit: p.unit,
           stockQuantity: p.stockQuantity,
+          variants: p.variants.map((v) => ({
+            id: v.id,
+            name: v.name,
+            sku: v.sku,
+            stockQuantity: v.stockQuantity,
+          })),
         }))}
       />
     </div>

@@ -51,7 +51,6 @@ export const productServerSchema = z.object({
   forSale: z.boolean().optional(),
   reorderPoint: z.number().int().min(0).max(1_000_000).optional().nullable(),
   trackInventory: z.boolean().optional(),
-  stockQuantity: z.number().int().min(0).max(1_000_000).optional(),
   images: z.array(z.string().max(500)).max(12, "Največ 12 slik").optional(),
   categoryId: z.string().max(40).optional(),
   isActive: z.boolean().optional(),

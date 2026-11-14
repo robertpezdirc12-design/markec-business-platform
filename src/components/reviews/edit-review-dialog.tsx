@@ -103,6 +103,8 @@ export function EditReviewDialog({
                 <button
                   key={star}
                   type="button"
+                  aria-label={`Ocena ${star} od 5`}
+                  aria-pressed={star <= (hoveredRating || rating)}
                   disabled={isPending}
                   className="rounded transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   onMouseEnter={() => setHoveredRating(star)}

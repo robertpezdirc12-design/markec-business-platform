@@ -84,6 +84,8 @@ export type ProfileFieldType =
   | "date"
   | "select"
   | "checkbox"
+  // Faza 2B: ena record-referenca (hrani id univerzalnega ExtensionRecord, org-scoped).
+  | "entityReference"
 
 /** A single dynamic form field definition. */
 export interface ProfileFieldDef {
@@ -93,6 +95,22 @@ export interface ProfileFieldDef {
   required: boolean
   /** For type "select": allowed values. */
   options?: string[]
+  /** Faza 2B: za type "entityReference" — dovoljeno ciljno razširitev + entiteto.
+   *  Faza 2C-1: lahko je en sam objekt (single, 2B) ALI niz objektov (multi-target).
+   */
+  referenceTo?:
+    | {
+        /** Extension id, npr. "bee-apiary". */
+        extensionId: string
+        /** Entity key znotraj te razširitve, npr. "apiary". */
+        entityKey: string
+      }
+    | {
+        /** Extension id, npr. "bee-apiary". */
+        extensionId: string
+        /** Entity key znotraj te razširitve, npr. "apiary". */
+        entityKey: string
+      }[]
   /** Suffix unit, e.g. "cm", "kg". */
   unit?: string
   /** Placeholder / helper text. */

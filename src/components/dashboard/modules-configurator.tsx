@@ -1,9 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useState, useTransition } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -13,9 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { useI18n } from "@/lib/i18n/provider"
 import {
@@ -41,22 +38,10 @@ import {
 // react immediately.
 // ============================================================
 
-const CAPABILITY_LABELS: Record<string, { sl: string; en: string }> = {
-  appointments: { sl: "Termini in rezervacije", en: "Appointments & bookings" },
-  workOrders: { sl: "Delovna naročila", en: "Work orders" },
-  shop: { sl: "Spletna trgovina", en: "Online shop" },
-  services: { sl: "Katalog storitev", en: "Service catalog" },
-  inventory: { sl: "Zaloge", en: "Inventory" },
-  customers: { sl: "Stranke", en: "Customers" },
-  staff: { sl: "Zaposleni", en: "Staff" },
-  analytics: { sl: "Analitika", en: "Analytics" },
-  reviews: { sl: "Ocene", en: "Reviews" },
-  forms: { sl: "Dinamični obrazci", en: "Dynamic forms" },
-  workflows: { sl: "Poslovni procesi", en: "Workflows" },
-  documents: { sl: "Dokumenti (ponudbe, računi)", en: "Documents (quotes, invoices)" },
-  delivery: { sl: "Dostava", en: "Delivery" },
-  walkIn: { sl: "Walk-in vrsta (brez računa)", en: "Walk-in queue (no account)" },
-}
+// ============================================================
+// DASHBOARD WIDGETI (F5.4.1) — ModulesOverview ureja module prek
+// moduleStates; tukaj ostaja SAMO urejanje dashboard widgetov.
+// ============================================================
 
 export function ModulesConfigurator() {
   const { locale, t } = useI18n()
@@ -66,7 +51,6 @@ export function ModulesConfigurator() {
   const [loading, setLoading] = useState(true)
 
   // Draft state — applied on "save".
-  const [capDraft, setCapDraft] = useState<Record<string, boolean>>({})
   const [widgetDraft, setWidgetDraft] = useState<string[]>([])
   const [dirty, setDirty] = useState(false)
 
@@ -77,12 +61,6 @@ export function ModulesConfigurator() {
         if (cancelled) return
         setData(res)
         if (!("error" in res)) {
-          const draft: Record<string, boolean> = {}
-          for (const key of res.adjustableCapabilities) {
-            const cap = res.capabilities.find((c) => c.key === key)
-            draft[key] = cap ? cap.state !== "disabled" : true
-          }
-          setCapDraft(draft)
           setWidgetDraft(res.dashboardWidgets)
         }
       })
@@ -97,17 +75,10 @@ export function ModulesConfigurator() {
     }
   }, [])
 
-  const capLabel = (key: string) =>
-    locale === "en" ? CAPABILITY_LABELS[key]?.en ?? key : CAPABILITY_LABELS[key]?.sl ?? key
   const widgetLabel = (key: string) =>
     locale === "en"
       ? DASHBOARD_WIDGET_LABELS[key as keyof typeof DASHBOARD_WIDGET_LABELS]?.en ?? key
       : DASHBOARD_WIDGET_LABELS[key as keyof typeof DASHBOARD_WIDGET_LABELS]?.sl ?? key
-
-  const toggleCap = (key: string, value: boolean) => {
-    setCapDraft((d) => ({ ...d, [key]: value }))
-    setDirty(true)
-  }
 
   const toggleWidget = (key: string) => {
     setWidgetDraft((ws) =>
@@ -118,12 +89,9 @@ export function ModulesConfigurator() {
 
   const save = () => {
     startTransition(async () => {
-      const capabilityStates: Record<string, "optional" | "disabled"> = {}
-      for (const [key, enabled] of Object.entries(capDraft)) {
-        capabilityStates[key] = enabled ? "optional" : "disabled"
-      }
+      // F5.4.1: customizacija modulov gre skozi moduleStates (ModulesOverview);
+      // tukaj shranjujemo SAMO dashboardWidgets (widgete), ne capabilityStates.
       const result = await updateOrgOverrides({
-        capabilityStates,
         dashboardWidgets: widgetDraft,
       })
       if (result.ok) {
@@ -152,11 +120,6 @@ export function ModulesConfigurator() {
       }
     })
   }
-
-  const adjustedCount = useMemo(
-    () => (data && !("error" in data) ? data.adjustableCapabilities.length : 0),
-    [data]
-  )
 
   if (loading) {
     return (
@@ -190,46 +153,7 @@ export function ModulesConfigurator() {
 
   return (
     <div className="space-y-6">
-      {/* Modules on/off (optional capabilities) */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.settings.modules.title}</CardTitle>
-          <CardDescription>{t.settings.modules.description}</CardDescription>
-          {data.isOverridden && (
-            <Badge variant="secondary" className="mt-1 w-fit">
-              {t.settings.modules.customized}
-            </Badge>
-          )}
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {data.adjustableCapabilities.map((key) => (
-              <div
-                key={key}
-                className="flex items-center justify-between gap-3 rounded-lg border p-3"
-              >
-                <Label
-                  htmlFor={`mod-${key}`}
-                  className="cursor-pointer text-sm font-normal"
-                >
-                  {capLabel(key)}
-                </Label>
-                <Switch
-                  id={`mod-${key}`}
-                  checked={capDraft[key] ?? true}
-                  onCheckedChange={(v) => toggleCap(key, v)}
-                  aria-label={capLabel(key)}
-                />
-              </div>
-            ))}
-          </div>
-          {adjustedCount === 0 && (
-            <p className="text-muted-foreground text-sm">{t.settings.modules.noAdjustable}</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Dashboard widgets */}
+      {/* Dashboard widgets — modulske module ureja ModulesOverview (F5.4.1). */}
       <Card>
         <CardHeader>
           <CardTitle>{t.settings.modules.widgetsTitle}</CardTitle>

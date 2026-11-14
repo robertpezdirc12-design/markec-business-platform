@@ -1,6 +1,7 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
+import type { Prisma } from "@prisma/client"
 import { requirePermissionOrg } from "@/lib/auth/guards"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
@@ -40,6 +41,7 @@ export type MovementErrorCode =
   | "VALIDATION"
   | "INVALID_QUANTITY"
   | "NEGATIVE_STOCK"
+  | "RESERVED_BLOCK"
   | "NOT_FOUND"
   | "VARIANT_MISMATCH"
   | "RECORD_LINK"
@@ -70,6 +72,59 @@ export interface StockMovementItem {
 export interface StockLinkOptions {
   suppliers: { id: string; title: string }[]
   batches: { id: string; title: string }[]
+}
+
+/** Prisma TransactionClient — uporabljen za zaklepanje vrstic. */
+type StockRowLock =
+  | { ok: true; stockQuantity: number; reservedQuantity: number }
+  | { ok: false; reason: "NOT_FOUND" | "NOT_TRACKED" }
+
+/**
+ * P1-D-1C — atomično zaklene avtoritativno zalogovno vrstico (SELECT ... FOR
+ * UPDATE) in s svežim stanjem vrne naslednje posodobitve, da se izogne
+ * izgubljenim posodobitvam pri sočasnih operacijah.
+ *
+ * Zaklepa ProductVariant, kadar je izbrana varianta (nikoli Product hkrati);
+ * drugače Product. Org pripadnost se preveri v ISTEM SELECT-u (prepreči IDOR).
+ * Vrstni red zaklepanja je enoten: najprej Product, nato ProductVariant (tam,
+ * kjer ga ni, se zaklene le ena vrstica).
+ */
+async function lockStockRow(
+  tx: Prisma.TransactionClient,
+  orgId: string,
+  productId: string,
+  variantId?: string | null
+): Promise<StockRowLock> {
+  const table = variantId ? "ProductVariant" : "Product"
+  const id = variantId ?? productId
+  const rows = await tx.$queryRawUnsafe<{ stockQuantity: number; reservedQuantity: number }[]>(
+    `SELECT "stockQuantity", "reservedQuantity"
+     FROM "${table}"
+     WHERE "id" = $1::text AND "organizationId" = $2::text
+     FOR UPDATE`,
+    id,
+    orgId
+  )
+  if (rows.length !== 1) return { ok: false, reason: "NOT_FOUND" }
+  return { ok: true, stockQuantity: rows[0].stockQuantity, reservedQuantity: rows[0].reservedQuantity }
+}
+
+/**
+ * P1-D-1C — izračuna dovoljeno spremembo na svežem, zaklenjenem stanju,
+ * vključno s pravilom "stockQuantity >= reservedQuantity" za OUT premike.
+ */
+function computeSafeDelta(
+  fresh: { stockQuantity: number; reservedQuantity: number },
+  direction: StockDirectionValue,
+  quantity: number
+): { ok: true; nextStock: number } | { ok: false; reason: "NEGATIVE_STOCK" | "RESERVED_BLOCK" } {
+  const computed = computeStockDelta(fresh.stockQuantity, direction, quantity)
+  if (!computed.ok) return { ok: false, reason: "NEGATIVE_STOCK" as const }
+  // OUT prejemom (odštevanje fizične zaloge) ne sme pasti pod rezervirano.
+  if (direction === "OUT" && computed.nextStock < fresh.reservedQuantity) {
+    return { ok: false, reason: "RESERVED_BLOCK" }
+  }
+  return { ok: true, nextStock: computed.nextStock }
 }
 
 /**
@@ -158,19 +213,38 @@ export async function createStockMovement(
       error: computed.reason === "NEGATIVE_STOCK" ? "NEGATIVE_STOCK" : "INVALID_QUANTITY",
     }
   }
+  // P1-D-1C — autoritativno stanje se prebere pod zaklepom v transakciji;
+  // tu je le varna privzeta vrednost za primer rollbacka (ne uporablja se za
+  // zapis, ampak kot rezultat ob uspehu).
+  let nextStock = computed.nextStock
 
   try {
     await prisma.$transaction(async (tx) => {
-      // 1) STATE — product or variant stock.
+      // P1-D-1C — autoritativno, sveže stanje pod zaklepanjem (ne zauploadano
+      // pre-branu), da dva vzporedna premika ne izgubita posodobitve.
+      const lock = await lockStockRow(tx, org.id, product.id, variant?.id)
+      if (!lock.ok) {
+        throw new Error(lock.reason === "NOT_FOUND" ? "NOT_FOUND" : "NOT_TRACKED")
+      }
+      const safe = computeSafeDelta(
+        { stockQuantity: lock.stockQuantity, reservedQuantity: lock.reservedQuantity },
+        data.direction as StockDirectionValue,
+        data.quantity
+      )
+      if (!safe.ok) {
+        throw new Error(safe.reason === "NEGATIVE_STOCK" ? "NEGATIVE_STOCK" : "RESERVED_BLOCK")
+      }
+      nextStock = safe.nextStock
+
       if (variant) {
         await tx.productVariant.update({
           where: { id: variant.id },
-          data: { stockQuantity: computed.nextStock },
+          data: { stockQuantity: safe.nextStock },
         })
       } else {
         await tx.product.update({
           where: { id: product.id },
-          data: { stockQuantity: computed.nextStock },
+          data: { stockQuantity: safe.nextStock },
         })
       }
 
@@ -191,6 +265,11 @@ export async function createStockMovement(
       })
     })
   } catch (error) {
+    const msg = error instanceof Error ? error.message : ""
+    if (msg === "NEGATIVE_STOCK") return { ok: false, error: "NEGATIVE_STOCK" }
+    if (msg === "RESERVED_BLOCK") return { ok: false, error: "RESERVED_BLOCK" }
+    if (msg === "NOT_FOUND") return { ok: false, error: "NOT_FOUND" }
+    if (msg === "NOT_TRACKED") return { ok: false, error: "NOT_TRACKED" }
     console.error("[inventory] movement transaction failed:", error)
     return { ok: false, error: "GENERIC" }
   }
@@ -199,7 +278,7 @@ export async function createStockMovement(
   revalidatePath(`/dashboard/products/${product.id}/edit`)
   revalidatePath("/dashboard")
 
-  return { ok: true, nextStock: computed.nextStock }
+  return { ok: true, nextStock }
 }
 
 /** Ledger entries for one product (org-scoped, newest first). */
@@ -433,24 +512,26 @@ export async function recordDelivery(input: DeliveryInput): Promise<DeliveryResu
         const variant = line.productVariantId
           ? variants.find((v) => v.id === line.productVariantId)!
           : null
-        const computed = computeStockDelta(
-          variant ? variant.stockQuantity : product.stockQuantity,
+        // P1-D-1C — sveže stanje pod zaklepanjem, da sočasne dobave ne izgubijo
+        // posodobitve (IN nikoli ne gre pod nič, a mora biti konsistentno).
+        const lock = await lockStockRow(tx, org.id, line.productId, variant?.id)
+        if (!lock.ok) continue // NE obstaja / druga org → preskoči to vrstico
+        const safe = computeSafeDelta(
+          { stockQuantity: lock.stockQuantity, reservedQuantity: lock.reservedQuantity },
           "IN",
           line.quantity
         )
-        // Zaloge ne morem povečati pod nič — IN ne more biti zavrnjen
-        // razen pri pokvarjenem state-u; varovalka vseeno.
-        if (!computed.ok) continue
+        if (!safe.ok) continue
 
         if (variant) {
           await tx.productVariant.update({
             where: { id: variant.id },
-            data: { stockQuantity: computed.nextStock },
+            data: { stockQuantity: safe.nextStock },
           })
         } else {
           await tx.product.update({
             where: { id: product.id },
-            data: { stockQuantity: computed.nextStock },
+            data: { stockQuantity: safe.nextStock },
           })
         }
 
@@ -490,6 +571,8 @@ export async function recordDelivery(input: DeliveryInput): Promise<DeliveryResu
 
 const stocktakeLineSchema = z.object({
   productId: z.string().min(1).max(64),
+  // P1-D-1B — inventura lahko šteje posamezno VARIANTO (variant-level).
+  productVariantId: z.string().min(1).max(64).optional().nullable(),
   counted: z.number().int().min(0).max(1_000_000),
 })
 
@@ -502,8 +585,13 @@ export type StockTakeInput = z.input<typeof stocktakeSchema>
 
 export interface StockTakeResult {
   ok: boolean
-  error?: "VALIDATION" | "NOT_FOUND" | "NOT_TRACKED" | "GENERIC"
-  adjusted?: { productId: string; name: string; delta: number }[]
+  error?: "VALIDATION" | "NOT_FOUND" | "NOT_TRACKED" | "VARIANT_MISMATCH" | "GENERIC"
+  adjusted?: {
+    productId: string
+    productVariantId?: string | null
+    name: string
+    delta: number
+  }[]
 }
 
 /**
@@ -528,40 +616,90 @@ export async function submitStockTake(input: StockTakeInput): Promise<StockTakeR
   const untracked = products.find((p) => !p.trackInventory)
   if (untracked) return { ok: false, error: "NOT_TRACKED" }
 
-  const adjusted: { productId: string; name: string; delta: number }[] = []
+  // P1-D-1B — variant-aware: preberi variantne linije (org-scoped, pripadajo izdelku).
+  const variantIds = data.lines
+    .map((l) => l.productVariantId)
+    .filter((v): v is string => typeof v === "string" && v.length > 0)
+  const variants = variantIds.length
+    ? await prisma.productVariant.findMany({
+        where: { id: { in: variantIds }, organizationId: org.id },
+        select: { id: true, productId: true, stockQuantity: true, trackInventory: true },
+      })
+    : []
+  if (variants.length !== variantIds.length) {
+    return { ok: false, error: "VARIANT_MISMATCH" }
+  }
+  for (const line of data.lines) {
+    if (!line.productVariantId) continue
+    const v = variants.find((x) => x.id === line.productVariantId)
+    if (!v || v.productId !== line.productId) {
+      return { ok: false, error: "VARIANT_MISMATCH" }
+    }
+    if (!v.trackInventory) {
+      return { ok: false, error: "NOT_TRACKED" }
+    }
+  }
+
+  const adjusted: {
+    productId: string
+    productVariantId?: string | null
+    name: string
+    delta: number
+  }[] = []
   try {
     await prisma.$transaction(async (tx) => {
       for (const line of data.lines) {
         const product = products.find((p) => p.id === line.productId)!
-        const delta = line.counted - product.stockQuantity
+        const variant = line.productVariantId
+          ? variants.find((v) => v.id === line.productVariantId)!
+          : null
+        // P1-D-1C — inventura mora delati na SVEŽEM, zaklenjenem stanju, da
+        // sočasna prodaja/prejem med inventuro ne povzroči zastarelega delte.
+        const lock = await lockStockRow(tx, org.id, line.productId, variant?.id)
+        if (!lock.ok) continue
+        const baseline = lock.stockQuantity
+        const delta = line.counted - baseline
         if (delta === 0) continue // neničelne razlike se pišejo SAMO
 
         const direction: StockDirectionValue = delta > 0 ? "IN" : "OUT"
-        const computed = computeStockDelta(
-          product.stockQuantity,
+        const safe = computeSafeDelta(
+          { stockQuantity: lock.stockQuantity, reservedQuantity: lock.reservedQuantity },
           direction,
           Math.abs(delta)
         )
-        if (!computed.ok) continue // ne more iti pod nič (counted >= 0 to jamči)
+        if (!safe.ok) continue // ne more iti pod nič / pod rezervirano
 
-        await tx.product.update({
-          where: { id: product.id },
-          data: { stockQuantity: computed.nextStock },
-        })
+        if (variant) {
+          await tx.productVariant.update({
+            where: { id: variant.id },
+            data: { stockQuantity: safe.nextStock },
+          })
+        } else {
+          await tx.product.update({
+            where: { id: product.id },
+            data: { stockQuantity: safe.nextStock },
+          })
+        }
         await tx.stockMovement.create({
           data: {
             organizationId: org.id,
             productId: product.id,
+            productVariantId: variant?.id ?? null,
             direction,
             quantity: Math.abs(delta),
             source: "STOCKTAKE",
             note:
               data.note?.trim() ||
-              `Inventura: prešteto ${line.counted}, sistem ${product.stockQuantity}`,
+              `Inventura: prešteto ${line.counted}, sistem ${baseline}`,
             createdById: session.user.id,
           },
         })
-        adjusted.push({ productId: product.id, name: product.name, delta })
+        adjusted.push({
+          productId: product.id,
+          productVariantId: variant?.id ?? null,
+          name: variant ? `${product.name} (${variant.id})` : product.name,
+          delta,
+        })
       }
     })
   } catch (error) {

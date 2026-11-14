@@ -43,9 +43,17 @@ interface PublicNavbarProps {
    * vklopljen (capability walkIn); izklopljen = povezava ne obstaja.
    */
   walkInEnabled?: boolean
+  /**
+   * F5.3.2 — lastnik-u-urejljiv glavni meni (SiteContent.nav). Ko je prisoten,
+   * se upodobi namesto privzetih povezav; capability-gated prek
+   * navItemAllowed + capabilitiesEnabled (izklopljene funkcije se ne prikažejo).
+   */
+  nav?: import("@/lib/site-design").NavItem[]
+  /** F5.3.2 — capability imena, ki so v workspaceu omogočena. */
+  capabilitiesEnabled?: string[]
 }
 
-export function PublicNavbar({ org, cta, availableSections, walkInEnabled }: PublicNavbarProps) {
+export function PublicNavbar({ org, cta, availableSections, walkInEnabled, nav, capabilitiesEnabled }: PublicNavbarProps) {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { data: session, status } = useSession()
@@ -61,25 +69,46 @@ export function PublicNavbar({ org, cta, availableSections, walkInEnabled }: Pub
   const showShop = availableSections?.shop !== false
   const showTeam = availableSections?.team !== false
   const showReviews = availableSections?.reviews !== false
-  const navLinks: NavLinkItem[] = [
-    ...(showServices
-      ? [{ href: `${homeHref}#services`, sectionId: "services", label: t.public.navServices }]
-      : []),
-    { href: `${homeHref}#about`, sectionId: "about", label: t.public.navAbout },
-    ...(showTeam
-      ? [{ href: `${homeHref}#team`, sectionId: "team", label: t.public.navTeam }]
-      : []),
-    ...(showReviews
-      ? [{ href: `${homeHref}#testimonials`, sectionId: "testimonials", label: t.public.navReviews }]
-      : []),
-    ...(showShop
-      ? [{ href: `${homeHref}#shop`, sectionId: "shop", label: t.public.navShop }]
-      : []),
-    ...(walkInEnabled
-      ? [{ href: orgPath(org.slug, "/vrsta"), label: t.public.navWalkIn }]
-      : []),
-    { href: `${homeHref}#contact`, sectionId: "contact", label: t.public.navContact },
-  ]
+  const showCtaModule = cta != null
+  const capabilities = capabilitiesEnabled ?? []
+
+  // F5.3.2 — lastnikova navigacija: upodobi own nav, capability-gated (ne
+  // povezav do izklopljenih funkcij). Vsak item je #sidro/stran/zunanja.
+  const ownerNav: NavLinkItem[] = []
+  for (const item of nav ?? []) {
+    const allowed =
+      item.visible && (!item.requiresCapability || capabilities.includes(item.requiresCapability))
+    if (!allowed) continue
+    const href = item.external
+      ? item.href
+      : item.href.startsWith("#")
+        ? `${homeHref}${item.href}`
+        : orgPath(org.slug, item.href.startsWith("/") ? item.href : `/${item.href}`)
+    ownerNav.push({ href, label: item.label, ...(item.sectionId ? { sectionId: item.sectionId } : {}) })
+  }
+
+  const navLinks: NavLinkItem[] = ownerNav.length
+    ? ownerNav
+    : [
+        ...(showServices
+          ? [{ href: `${homeHref}#services`, sectionId: "services", label: t.public.navServices }]
+          : []),
+        { href: `${homeHref}#about`, sectionId: "about", label: t.public.navAbout },
+        ...(showTeam
+          ? [{ href: `${homeHref}#team`, sectionId: "team", label: t.public.navTeam }]
+          : []),
+        ...(showReviews
+          ? [{ href: `${homeHref}#testimonials`, sectionId: "testimonials", label: t.public.navReviews }]
+          : []),
+        ...(showShop
+          ? [{ href: `${homeHref}#shop`, sectionId: "shop", label: t.public.navShop }]
+          : []),
+        ...(walkInEnabled
+          ? [{ href: orgPath(org.slug, "/vrsta"), label: t.public.navWalkIn }]
+          : []),
+        { href: `${homeHref}#contact`, sectionId: "contact", label: t.public.navContact },
+      ]
+  void showCtaModule
 
   const isLoading = status === "loading"
   const isAuthenticated = !!session?.user
@@ -146,7 +175,7 @@ export function PublicNavbar({ org, cta, availableSections, walkInEnabled }: Pub
             ) : isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-foreground/80 hover:bg-secondary hover:text-primary-text gap-1.5">
+                  <Button variant="ghost" size="sm" className="text-foreground/80 hover:bg-secondary hover:text-primary-text gap-1.5" aria-label={session.user.name || t.public.account}>
                     <UserIcon size={18} />
                     <span className="hidden 2xl:inline max-w-20 truncate">{session.user.name || t.public.account}</span>
                   </Button>

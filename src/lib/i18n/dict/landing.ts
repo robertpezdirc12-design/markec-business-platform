@@ -133,7 +133,55 @@ export const landingSl = {
     title: "Neobvezna izbira dejavnosti",
     lead: "Dejavnost je samo pomočnik pri začetni nastavitvi — lahko jo preskočite. Vsaka predloga prinese pripravljen katalog, obrazce in besedila, ki jih poljubno spreminjate.",
     tag: "Pripravljena predloga",
-    more: "Prikazanih je 5 od 12 dejavnosti, ki so na voljo v platformi — vzorec, ne celoten seznam.",
+    more: "Prikazanih je 5 od 34 dejavnosti, ki so na voljo v platformi — vzorec, ne celoten seznam.",
+    // Demo tur (interaktivna "video" predstavitev) — odpre se na klik, brez prijave.
+    demo: {
+      label: "Oglej si, kako deluje",
+      steps: [
+        {
+          seconds: 6,
+          scene: "dashboard",
+          title: "Nadzorna plošča — vse številke na enem mestu",
+          description:
+            "Po prijavi vidiš žive števce: panjske postaje, panje, družine, zalogo in odprta naročila. Spodaj te čaka naslednje opravilo in zadnje naročilo — vse iz resničnih podatkov, brez beležk.",
+        },
+        {
+          seconds: 7,
+          scene: "product-form",
+          title: "Vpis izdelka — hiter in predpripravljen",
+          description:
+            "Izpolni ime, ceno in količino; opis že privzet po dejavnosti. Klikni Shrani in izdelek je v trgovini. Nobenega programiranja — oblikuj in shrani kot v urejevalniku besedila.",
+        },
+        {
+          seconds: 6,
+          scene: "customers",
+          title: "Stranke — svoje kupce imaš pregledane",
+          description:
+            "Vsak kupec dobi zapis z naročili, stiki in zgodovino. Novo stranko dodaš z enim klikom ali poiščeš obstoječo — podatki za trženje so na enem mestu.",
+        },
+        {
+          seconds: 7,
+          scene: "apiculture",
+          title: "Pregled čebelarstva — evidence, ki je logična",
+          description:
+            "Zapiši pregled družine, zdravljenje ali hranjenje — polja te vodijo po korakih. Selitve družin ostanejo v zgodovini, tako da vedno veš, kje katera družina je in kaj se je zgodilo.",
+        },
+        {
+          seconds: 7,
+          scene: "traceability",
+          title: "Sledljivost pridelka — vsak kozarec je sledljiv",
+          description:
+            "Serijo pridelka povežeš z izdelkom in naročilom. Stranka lahko preveri, s katere panjske postaje med prihaja — to je zaupanje, ki ga konkurenca nima.",
+        },
+        {
+          seconds: 6,
+          scene: "analytics",
+          title: "Analitika — prodaja in obisk v grafih",
+          description:
+            "Grafi ti pokažejo prodajo in obisk strani brez računanja v Excelu. Obisk, naročila, priljubljeni izdelki — vse se šteje in prikaže samo od sebe.",
+        },
+      ],
+    },
     items: [
       {
         vertical: "barber",
@@ -201,7 +249,7 @@ export const landingSl = {
     lead: "Začnite brezplačno in nadgradite, ko vaše podjetje raste.",
     badge: "Več zmogljivosti",
     cta: "Začni brezplačno",
-    note: "Cene za PRO in SCALE še niso določene. Brezplačni paket je na voljo takoj, brez kreditne kartice.",
+    note: "Cene so na voljo na strani /pricing. Brezplačni paket je mogoč takoj, brez kreditne kartice.",
   },
   faq: {
     title: "Pogosta vprašanja",
@@ -358,7 +406,54 @@ export const landingEn: LandingDictionary = {
     title: "Choosing an activity is optional",
     lead: "An activity is only a helper for the initial setup — you can skip it. Every preset brings a ready catalog, forms and copy that you can change freely.",
     tag: "Ready-made preset",
-    more: "Showing 5 of the 12 activities available in the platform — a sample, not the full list.",
+    more: "Showing 5 of the 34 activities available in the platform — a sample, not the full list.",
+    demo: {
+      label: "See how it works",
+      steps: [
+        {
+          seconds: 6,
+          scene: "dashboard",
+          title: "Dashboard — every number in one place",
+          description:
+            "After login you see live counters: apiary sites, hives, colonies, stock and open orders. Below, the next task and your latest order — all from real data, no notes.",
+        },
+        {
+          seconds: 7,
+          scene: "product-form",
+          title: "Adding a product — quick and pre-filled",
+          description:
+            "Fill in the name, price and quantity; the description comes pre-filled by the industry. Click Save and it is live in your shop. No coding — form and publish like a text editor.",
+        },
+        {
+          seconds: 6,
+          scene: "customers",
+          title: "Customers — your buyers, all in one view",
+          description:
+            "Every customer gets a record with orders, contacts and history. Add a new one in one click or search an existing one — marketing data in a single place.",
+        },
+        {
+          seconds: 7,
+          scene: "apiculture",
+          title: "Beekeeping overview — records that make sense",
+          description:
+            "Record an inspection, treatment or feeding — the fields guide you step by step. Colony moves stay in history, so you always know which colony is where and what happened.",
+        },
+        {
+          seconds: 7,
+          scene: "traceability",
+          title: "Harvest traceability — every jar is traceable",
+          description:
+            "Link a harvest batch to a product and an order. The customer can check which apiary site the honey came from — trust your competitors do not have.",
+        },
+        {
+          seconds: 6,
+          scene: "analytics",
+          title: "Analytics — sales and visits in charts",
+          description:
+            "Charts show sales and page visits without spreadsheet maths. Visits, orders, popular products — everything counts and displays on its own.",
+        },
+      ],
+    },
     items: [
       {
         vertical: "barber",
@@ -426,7 +521,7 @@ export const landingEn: LandingDictionary = {
     lead: "Start for free and upgrade as your business grows.",
     badge: "More capacity",
     cta: "Start for free",
-    note: "PRO and SCALE pricing has not been set yet. The free plan is available now, with no credit card.",
+    note: "See all prices on /pricing. The free plan is available now, with no credit card.",
   },
   faq: {
     title: "Frequently asked questions",

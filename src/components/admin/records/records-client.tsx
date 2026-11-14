@@ -39,17 +39,19 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Badge } from "@/components/ui/badge"
-import { PencilIcon, PlusIcon, SpinnerGapIcon, TrashIcon } from "@/components/icons"
+import { PencilIcon, PlusIcon, SpinnerGapIcon, TrashIcon, EyeIcon } from "@/components/icons"
 import { useI18n } from "@/lib/i18n/provider"
 import {
   createExtensionRecord,
   deleteExtensionRecord,
+  listExtensionRecordOptions,
   listExtensionRecords,
   listRecordCustomers,
   updateExtensionRecord,
   type ExtensionEntityInfo,
   type ExtensionRecordItem,
 } from "@/app/actions/records"
+import { RecordDetail } from "@/components/admin/records/record-detail"
 import type { ProfileFieldDef } from "@/lib/profiles/types"
 
 // ============================================================
@@ -61,7 +63,8 @@ import type { ProfileFieldDef } from "@/lib/profiles/types"
 // records, from the exact same code path.
 // ============================================================
 
-type Values = Record<string, string | boolean | number>
+type RefValue = { id?: string; extensionId?: string; entityKey?: string }
+type Values = Record<string, string | boolean | number | RefValue | null>
 
 function formatDate(iso: string, locale: string): string {
   try {
@@ -86,12 +89,19 @@ export function RecordsClient({ entities }: { entities: ExtensionEntityInfo[] })
   )
 
   const [recordState, setRecordState] = useState<{ key: string; rows: ExtensionRecordItem[] } | null>(null)
+  // Faza 2B: razreševanje entityReference vrednosti (id → naslov) za tabelo in
+  // dialog. Naložimo za vse reference cilje aktivnega entiteta, org-scoped.
+  const [refOptions, setRefOptions] = useState<
+    Record<string, { id: string; title: string; extensionId: string; entityKey: string }[]>
+  >({})
   const [refreshTick, setRefreshTick] = useState(0)
   const [, startTransition] = useTransition()
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<ExtensionRecordItem | null>(null)
   const [deleting, setDeleting] = useState<ExtensionRecordItem | null>(null)
+  // Faza 2C-3: generični record detail (za colony → zgodovina selitev)
+  const [detail, setDetail] = useState<ExtensionRecordItem | null>(null)
 
   // Loading is derived: state belongs to a different entity key while fetching.
   const records =
@@ -113,6 +123,48 @@ export function RecordsClient({ entities }: { entities: ExtensionEntityInfo[] })
       alive = false
     }
   }, [active, refreshTick])
+
+  // Faza 2B/2C-1 — naloži org-scoped options za vse entityReference cilje aktivnega
+  // entiteta (id → title). Single (objekt referenceTo): en nabor. Multi (array):
+  // za vsak dovoljen tip posebej, da UI lahko loči optgroup. Prikaz vedno title.
+  useEffect(() => {
+    if (!active) return
+    let alive = true
+    const refFields = active.fields.filter((f) => f.type === "entityReference" && f.referenceTo)
+    if (refFields.length === 0) return
+    const targets: { fieldKey: string; extensionId: string; entityKey: string }[] = []
+    for (const f of refFields) {
+      const arr = Array.isArray(f.referenceTo) ? f.referenceTo : [f.referenceTo!]
+      for (const t of arr) targets.push({ fieldKey: f.key, extensionId: t.extensionId, entityKey: t.entityKey })
+    }
+    Promise.all(
+      targets.map((t) =>
+        listExtensionRecordOptions({ extensionId: t.extensionId, entityKey: t.entityKey })
+      )
+    ).then((groups) => {
+      if (!alive) return
+      const map: Record<
+        string,
+        { id: string; title: string; extensionId: string; entityKey: string }[]
+      > = {}
+      targets.forEach((t, i) => {
+        const rows = groups[i] ?? []
+        map[t.fieldKey] = map[t.fieldKey] ?? []
+        for (const o of rows) {
+          map[t.fieldKey].push({
+            id: o.id,
+            title: o.title,
+            extensionId: t.extensionId,
+            entityKey: t.entityKey,
+          })
+        }
+      })
+      setRefOptions(map)
+    })
+    return () => {
+      alive = false
+    }
+  }, [active])
 
   const columns = useMemo(() => {
     if (!active) return []
@@ -211,11 +263,31 @@ export function RecordsClient({ entities }: { entities: ExtensionEntityInfo[] })
                       {columns.map((c) => {
                         const v = r.data[c.key]
                         const isTitle = c.key === titleFieldKey(active.fields)
+                        // Popolna prikaz: entityReference razrešimo iz ID → naslov.
+                        let display: string | null = null
+                        if (v === undefined || v === null || v === "") {
+                          display = null
+                        } else if (c.type === "entityReference") {
+                          const isMulti = Array.isArray(c.referenceTo)
+                          const targetId = isMulti
+                            ? (v as { id?: string } | null)?.id
+                            : typeof v === "string"
+                              ? v
+                              : null
+                          const matched = targetId
+                            ? refOptions[c.key]?.find((o) => o.id === targetId)
+                            : undefined
+                          display = matched
+                            ? matched.title
+                            : locale === "sl"
+                              ? "(izbrisano / neznano)"
+                              : "(deleted / unknown)"
+                        } else {
+                          display = String(v)
+                        }
                         return (
                           <TableCell key={c.key} className={isTitle ? "font-medium" : undefined}>
-                            {v === undefined || v === null || v === ""
-                              ? L.noCustomer
-                              : String(v)}
+                            {display ?? L.noCustomer}
                           </TableCell>
                         )
                       })}
@@ -225,6 +297,15 @@ export function RecordsClient({ entities }: { entities: ExtensionEntityInfo[] })
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => setDetail(r)}
+                            aria-label={L.detail?.detail ?? "Details"}
+                          >
+                            <EyeIcon size={15} />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -262,6 +343,7 @@ export function RecordsClient({ entities }: { entities: ExtensionEntityInfo[] })
         entity={active}
         record={editing}
         onSaved={onSaved}
+        refOptions={refOptions}
       />
 
       {/* Delete confirmation */}
@@ -273,6 +355,16 @@ export function RecordsClient({ entities }: { entities: ExtensionEntityInfo[] })
         confirmLabel={L.deleteRecord}
         onConfirm={onDelete}
       />
+
+      {/* Faza 2C-3 — univerzalni record detail (colony → zgodovina selitev) */}
+      {detail && active ? (
+        <RecordDetail
+          open={!!detail}
+          onOpenChange={(open) => !open && setDetail(null)}
+          entity={active}
+          record={detail}
+        />
+      ) : null}
     </div>
   )
 }
@@ -283,15 +375,51 @@ function titleFieldKey(fields: ProfileFieldDef[]): string {
   return (req ?? fields.find((f) => f.type === "text" || f.type === "select"))?.key ?? ""
 }
 
+// Faza 2C-1: človeku razumljiv naziv tipa za optgroup (deklarativno, ne ID).
+function entityLabel(entityKey: string): string {
+  const labels: Record<string, string> = {
+    apiary: "Panjska postaja",
+    hive: "Panj",
+    colony: "Čebelja družina",
+    inspection: "Pregled družine",
+    treatment: "Zdravljenje",
+    feeding: "Hranjenje",
+    queen_management: "Matice in rojenje",
+    task: "Opravilo",
+    harvest: "Pridelek medu",
+    batch: "Serija / lot",
+    supplier: "Dobavitelj",
+  }
+  return labels[entityKey] ?? entityKey
+}
+
+// Faza 2C-1: vrednost selecta za entityReference. Single (2B) → string id;
+// multi (2C-1) → "entityKey::id" string za native select.
+function referenceSelectValue(field: ProfileFieldDef, value: unknown): string {
+  if (Array.isArray(field.referenceTo)) {
+    const o = value as { id?: string; entityKey?: string } | null | undefined
+    if (o && typeof o.id === "string" && o.id && typeof o.entityKey === "string") {
+      return `${o.entityKey}::${o.id}`
+    }
+    return ""
+  }
+  return String(value ?? "")
+}
+
 interface RecordDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   entity: ExtensionEntityInfo
   record: ExtensionRecordItem | null
   onSaved: () => void
+  /** Faza 2B/2C-1: razrešene entityReference options (key → [{id,title,extensionId,entityKey}]), org-scoped. */
+  refOptions?: Record<
+    string,
+    { id: string; title: string; extensionId: string; entityKey: string }[]
+  >
 }
 
-function RecordDialog({ open, onOpenChange, entity, record, onSaved }: RecordDialogProps) {
+function RecordDialog({ open, onOpenChange, entity, record, onSaved, refOptions = {} }: RecordDialogProps) {
   const { t, locale } = useI18n()
   const L = t.recordsPage
   const selectPlaceholder = locale === "sl" ? "Izberite …" : "Select …"
@@ -338,6 +466,7 @@ function RecordDialog({ open, onOpenChange, entity, record, onSaved }: RecordDia
   const errorText = (key: string) => {
     const err = fieldErrors[key]
     if (!err) return null
+    if (err === "INVALID_REFERENCE") return L.errorInvalidReference
     return L.validation[err as keyof typeof L.validation] ?? L.errorGeneric
   }
 
@@ -442,6 +571,67 @@ function RecordDialog({ open, onOpenChange, entity, record, onSaved }: RecordDia
                           {opt}
                         </option>
                       ))}
+                    </select>
+                  ) : field.type === "entityReference" ? (
+                    <select
+                      id={id}
+                      value={referenceSelectValue(field, values[field.key])}
+                      onChange={(e) => {
+                        const raw = e.target.value
+                        // multi (Faza 2C-1) → objekt {id, extensionId, entityKey}; single (2B) → string id.
+                        if (Array.isArray(field.referenceTo)) {
+                          if (!raw) {
+                            setValue(field.key, null as never)
+                          } else {
+                            const sep = raw.indexOf("::")
+                            const entityKey = raw.slice(0, sep)
+                            const recId = raw.slice(sep + 2)
+                            const allowed = field.referenceTo
+                            const pair = allowed.find((a) => a.entityKey === entityKey)
+                            if (pair && recId) {
+                              setValue(field.key, { id: recId, extensionId: pair.extensionId, entityKey } as never)
+                            }
+                          }
+                        } else {
+                          setValue(field.key, raw)
+                        }
+                      }}
+                      aria-invalid={!!err}
+                      aria-label={field.label}
+                      className={`border-input bg-background ring-offset-background focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                        err ? "border-destructive" : ""
+                      }`}
+                    >
+                      <option value="">
+                        {locale === "sl" ? "— ni povezave —" : "— none —"}
+                      </option>
+                      {Array.isArray(field.referenceTo) ? (
+                        // multi-target: optgroup po tipu, vrednost "entityKey::id"
+                        field.referenceTo.map((pair) => {
+                          const groupOptions = (refOptions[field.key] ?? []).filter(
+                            (o) => o.entityKey === pair.entityKey
+                          )
+                          if (groupOptions.length === 0) return null
+                          return (
+                            <optgroup
+                              key={`${pair.extensionId}:${pair.entityKey}`}
+                              label={entityLabel(pair.entityKey)}
+                            >
+                              {groupOptions.map((opt) => (
+                                <option key={opt.id} value={`${pair.entityKey}::${opt.id}`}>
+                                  {opt.title}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )
+                        })
+                      ) : (
+                        (refOptions[field.key] ?? []).map((opt) => (
+                          <option key={opt.id} value={opt.id}>
+                            {opt.title}
+                          </option>
+                        ))
+                      )}
                     </select>
                   ) : field.type === "checkbox" ? (
                     <div className="flex h-10 items-center gap-2">

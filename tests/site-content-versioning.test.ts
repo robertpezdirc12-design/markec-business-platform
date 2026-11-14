@@ -102,6 +102,19 @@ describe("normalizeSections", () => {
     // missing keys appended visible
     expect(merged.sections.every((s) => s.visible)).toBe(true)
   })
+
+  it("2D-9: mergeSiteContent preserves an owner-set reviews title/subtitle (was silently dropped)", () => {
+    const stored = {
+      reviews: { title: "Mnenja strank", subtitle: "Resnične ocene" },
+      sections: [{ key: "reviews", visible: true }],
+    }
+    const merged = mergeSiteContent(stored, "tire-service")
+    expect(merged.reviews?.title).toBe("Mnenja strank")
+    expect(merged.reviews?.subtitle).toBe("Resnične ocene")
+    // Povrže se le, če niso posredovane (i18n privzete ostanejo).
+    const empty = mergeSiteContent({ sections: [] }, "tire-service")
+    expect(empty.reviews?.title).toBeUndefined()
+  })
 })
 
 describe("homeSectionOrder", () => {

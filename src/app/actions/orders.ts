@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma"
 import { requirePermissionOrg } from "@/lib/auth/guards"
 import { revalidatePath } from "next/cache"
-import { OrderStatus } from "@prisma/client"
+import { OrderStatus, type Prisma } from "@prisma/client"
 import { auth } from "@/lib/auth/auth"
 import { getTrustedOrgSlug } from "@/lib/tenant"
 
@@ -42,6 +42,11 @@ export async function getAdminOrders(search?: string) {
     subtotal: order.subtotal.toNumber(),
     tax: order.tax.toNumber(),
     total: order.total.toNumber(),
+    // 2D-1P §5 — Decimal, ki preostaneta v `...order` (tipAmount /
+    // promotionDiscount) pretvorimo v plain number, da z njimi ni Decimal
+    // warninga pri prenosu v Client Components (ExportOrdersButton itd.).
+    tipAmount: order.tipAmount.toNumber(),
+    promotionDiscount: order.promotionDiscount.toNumber(),
   }))
 }
 
@@ -112,9 +117,14 @@ export async function getOrderById(id: string) {
     subtotal: order.subtotal.toNumber(),
     tax: order.tax.toNumber(),
     total: order.total.toNumber(),
+    // 2D-1P §5 — preostala Decimal polja (tipAmount / promotionDiscount)
+    // v plain number; DM ne spreminjamo poslovne logike naročil.
+    tipAmount: order.tipAmount.toNumber(),
+    promotionDiscount: order.promotionDiscount.toNumber(),
     items: order.items.map((item) => ({
       ...item,
       price: item.price.toNumber(),
+      variantPrice: item.variantPrice ? item.variantPrice.toNumber() : null,
     })),
   }
 }
@@ -178,9 +188,14 @@ export async function getOrderByIdForCustomer(id: string) {
     subtotal: order.subtotal.toNumber(),
     tax: order.tax.toNumber(),
     total: order.total.toNumber(),
+    // 2D-1P §5 — preostala Decimal polja (tipAmount / promotionDiscount)
+    // v plain number; DM ne spreminjamo poslovne logike naročil.
+    tipAmount: order.tipAmount.toNumber(),
+    promotionDiscount: order.promotionDiscount.toNumber(),
     items: order.items.map((item) => ({
       ...item,
       price: item.price.toNumber(),
+      variantPrice: item.variantPrice ? item.variantPrice.toNumber() : null,
     })),
   }
 }
@@ -234,9 +249,14 @@ export async function getCustomerOrders() {
     subtotal: order.subtotal.toNumber(),
     tax: order.tax.toNumber(),
     total: order.total.toNumber(),
+    // 2D-1P §5 — preostala Decimal polja (tipAmount / promotionDiscount)
+    // v plain number; DM ne spreminjamo poslovne logike naročil.
+    tipAmount: order.tipAmount.toNumber(),
+    promotionDiscount: order.promotionDiscount.toNumber(),
     items: order.items.map((item) => ({
       ...item,
       price: item.price.toNumber(),
+      variantPrice: item.variantPrice ? item.variantPrice.toNumber() : null,
     })),
   }))
 
@@ -284,5 +304,85 @@ export async function recordOrderTip(
   } catch (error) {
     console.error("Error recording order tip:", error)
     return { success: false, error: "Failed to record tip." }
+  }
+}
+
+// ============================================================
+// P3-H — VRAČILO NAROČILA (refund)
+//
+// Prodajalec vrne kupcu znesek naročila. Akcija je strogo org-scoped
+// (requirePermissionOrg) in ATOMSKO:
+//   1. vrne zalogo vsake postavke nazaj (StockMovement IN, source RETURN,
+//      orderId) — za različice na vrstici različice, za osnovne na izdelku;
+//   2. prestavi Order v status REFUNDED.
+//
+// To je poslovno-priznano vračilo (owner vodi denarni refund zunaj sistema,
+// npr. offline cashback ali Stripe Dashboard). Ne kličemo Stripe API-ja, ker
+// testna/dev okolja nimajo živih ključev; ko bo Stripe konfiguriran, se tukaj
+// lahko doda tvorba Refund objekta pred statusom — zaloga in status ostaneta
+// enaka. Naročilo se sme refundirati samo iz PAID ali COMPLETED (že refundirano
+// ali preklicano → napaka). Prazno naročilo brez postavk se samo prestavi.
+// ============================================================
+export async function refundOrder(orderId: string): Promise<{
+  success: boolean
+  error?: string
+  refundedAmount?: number
+}> {
+  try {
+    const { org } = await requirePermissionOrg("orders.manage")
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, organizationId: org.id },
+      include: { items: true },
+    })
+    if (!order) return { success: false, error: "Order not found" }
+    if (order.status === "REFUNDED")
+      return { success: false, error: "Naročilo je že refundirano." }
+    if (order.status === "CANCELLED")
+      return { success: false, error: "Preklicanega naročila ni mogoče refundirati." }
+
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      for (const item of order.items) {
+        if (item.productId && !item.variantId) {
+          const res = await tx.$executeRawUnsafe(
+            `UPDATE "Product" SET "stockQuantity" = "stockQuantity" + $2::int WHERE "id" = $1::text`,
+            item.productId,
+            item.quantity
+          )
+          if (res !== 1) throw new Error("STOCK_PRODUCT_MISSING")
+        } else if (item.productId && item.variantId) {
+          const res = await tx.$executeRawUnsafe(
+            `UPDATE "ProductVariant" SET "stockQuantity" = "stockQuantity" + $2::int WHERE "id" = $1::text`,
+            item.variantId,
+            item.quantity
+          )
+          if (res !== 1) throw new Error("STOCK_VARIANT_MISSING")
+        } else {
+          continue
+        }
+        await tx.stockMovement.create({
+          data: {
+            organizationId: org.id,
+            productId: item.productId,
+            productVariantId: item.variantId ?? null,
+            direction: "IN",
+            quantity: item.quantity,
+            source: "RETURN",
+            orderId,
+            note: `Vračilo naročila ${orderId}`,
+          },
+        })
+      }
+      await tx.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.REFUNDED },
+      })
+    })
+
+    revalidatePath("/dashboard/orders")
+    revalidatePath(`/dashboard/orders/${orderId}`)
+    return { success: true, refundedAmount: Number(order.total) }
+  } catch (error) {
+    console.error("Error refunding order:", error)
+    return { success: false, error: "Vračilo naročila ni uspelo." }
   }
 }

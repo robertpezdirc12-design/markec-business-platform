@@ -128,17 +128,16 @@ export function ServiceForm({
     }
     setCreatingCategory(true)
     try {
-      const res = await createCategory(valid.name)
-      if (!res.success || !res.category) {
+      const res = await createCategory({ name: valid.name })
+      if (!res.success || !res.data?.category) {
         toast.error(res.error || t.services.categoryCreateFailed)
         return
       }
+      const created = res.data.category
       setCategoryList((prev) =>
-        res.reused || prev.some((c) => c.id === res.category!.id)
-          ? prev
-          : [...prev, res.category!]
+        prev.some((c) => c.id === created.id) ? prev : [...prev, created]
       )
-      setValue("categoryId", res.category.id)
+      setValue("categoryId", created.id)
       clearErrors("categoryId")
       toast.success(t.services.categoryCreated)
       setCategoryDialogOpen(false)

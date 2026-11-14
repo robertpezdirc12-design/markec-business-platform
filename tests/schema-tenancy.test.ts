@@ -26,21 +26,37 @@ interface ModelInfo {
 
 function parseSchema(src: string): ModelInfo[] {
   const models: ModelInfo[] = []
-  const blocks = src.match(/model\s+\w+\s*\{[^}]*\}/g) ?? []
-  for (const block of blocks) {
-    const name = block.match(/model\s+(\w+)/)![1]
-    const lines = block.split("\n").slice(1, -1)
+  // F5.5.4.5.3 — robusten razrez modela: Prisma zaključi model z vrstico `}`
+  // (samo `}`), zato se blok vzame do ta vrstico. Prejšnji regex `[^}]*` je
+  // razrez popačil, ko je model vseboval `{`/`}` v komentarju ali vrednosti
+  // (npr. `document: Document` ni, a `Json? // {name,...}` je) in s tem
+  // odrezal vse poznejše `@@index` — test je lažno tvrdil, da Document ni
+  // indeksiran, čeprav je `@@index([organizationId])` prisoten.
+  const lines = src.split("\n")
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^model\s+(\w+)\s*\{\s*$/)
+    if (!m) continue
+    const name = m[1]
+    const body: string[] = []
+    let j = i + 1
+    while (j < lines.length && !/^\}\s*$/.test(lines[j])) {
+      body.push(lines[j])
+      j++
+    }
+    // j == lines.length pomeni nesošli zaključek — preskoči (defenzivno).
+    if (j >= lines.length) continue
+    i = j // nadaljuj za tem modelom
     const fields = new Set<string>()
     const indexes: string[] = []
-    for (const line of lines) {
+    for (const line of body) {
       const trimmed = line.trim()
       if (!trimmed || trimmed.startsWith("//")) continue
-      if (trimmed.startsWith("@@index")) {
-        indexes.push(trimmed)
+      if (trimmed.startsWith("@@")) {
+        if (trimmed.startsWith("@@index")) indexes.push(trimmed)
         continue
       }
       const field = trimmed.match(/^(\w+)\s/)
-      if (field && !trimmed.startsWith("@@")) fields.add(field[1])
+      if (field) fields.add(field[1])
     }
     models.push({ name, fields, indexes })
   }
@@ -71,6 +87,10 @@ describe("prisma schema tenant isolation invariants (§3)", () => {
     "SalonConfig",
     "Staff",
     "CustomDomain",
+    // F5.1: promotions are tenant-owned data — they must carry
+    // organizationId and index it just like every other tenant model.
+    "Promotion",
+    "PromotionRedemption",
   ]
 
   it("parses the schema and finds all expected models", () => {

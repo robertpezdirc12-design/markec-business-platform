@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
+import { ArrowUpRight } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -44,6 +46,20 @@ const STATE_LABEL: Record<string, { sl: string; en: string }> = {
   optional: { sl: "izbirno", en: "optional" },
   disabled: { sl: "izklopljeno", en: "disabled" },
 }
+
+// Pot do dashboard modula za določeno razširitev (usklajeno s sidebar.tsx).
+// Razširitve brez lastnega modula vodijo na univerzalne evidence (/records),
+// kjer se njihove entitete upravljajo skozi splošni register (§13).
+const EXTENSION_HREF: Record<string, string> = {
+  "bee-apiary": "/dashboard/apiculture",
+  "batch-production": "/dashboard/traceability",
+  "vehicle-workshop": "/dashboard/tire-service",
+  "seamstress-measurements": "/dashboard/seamstress",
+  projects: "/dashboard/projects",
+}
+
+/** Fallback for extensions without a dedicated dashboard module. */
+const EXTENSION_DEFAULT_HREF = "/dashboard/records"
 
 /** Settings card showing the resolved activity profile and materialized assets. */
 export function ProfileOverview() {
@@ -215,15 +231,30 @@ export function ProfileOverview() {
           <section aria-label={t.settings.profile.extensions}>
             <h4 className="mb-2 text-sm font-semibold">{t.settings.profile.extensions}</h4>
             <ul className="space-y-1.5">
-              {data.extensions.map((e) => (
-                <li key={e.id} className="rounded-lg border p-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium">{e.name}</span>
-                    <Badge variant="outline" className="font-mono text-xs">{e.id}</Badge>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{e.description}</p>
-                </li>
-              ))}
+              {data.extensions.map((e) => {
+                const href = EXTENSION_HREF[e.id] ?? EXTENSION_DEFAULT_HREF
+                return (
+                  <li key={e.id}>
+                    <Link
+                      href={href}
+                      className="group rounded-lg border p-2.5 transition-colors hover:border-primary/40 hover:bg-muted/40"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-1.5 text-sm font-medium">
+                          {e.name}
+                          <ArrowUpRight
+                            size={13}
+                            className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                            aria-hidden="true"
+                          />
+                        </span>
+                        <Badge variant="outline" className="font-mono text-xs">{e.id}</Badge>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{e.description}</p>
+                    </Link>
+                  </li>
+                )
+              })}
             </ul>
           </section>
         )}

@@ -18,7 +18,11 @@ import { getLocaleFromCookies } from "@/lib/i18n/server"
 import { hostFromHostHeader, isPlatformHost } from "@/lib/domains/normalize"
 import { getPlatformHosts } from "@/lib/domains/provider"
 import { hasUnpublishedChanges } from "@/lib/publication"
+import { mergeSiteContent } from "@/lib/site-content"
+import { upgradeLegacyDefaultCopy } from "@/lib/verticals"
 import { OwnerBar } from "@/components/public/owner-bar"
+import { PromoBanner } from "@/components/public/promo-banner"
+import { getPublicActivePromotions } from "@/lib/promotions/public"
 
 /**
  * P2 #46/#46: section flags so the navbar never links an anchor that
@@ -86,6 +90,29 @@ export default async function PublicLayout({
     notFound()
   }
 
+  // F5.3.2 — lastnik-u-urejljiv glavni meni + capability imena (za nav gate).
+  // Pomagačne funkcije so hoisted v komponenti, torej na voljo PRI VSEH
+  // predoglednih in javnih vejah (preview + unpublished + published).
+  async function navFor() {
+    if (!org) return undefined
+    const config = await prisma.salonConfig.findUnique({
+      where: { organizationId: org.id },
+      select: { siteContent: true },
+    })
+    const content = upgradeLegacyDefaultCopy(
+      mergeSiteContent(config?.siteContent, org.vertical),
+      org.slug
+    )
+    return content.nav
+  }
+  function capabilitiesFor() {
+    if (!org) return undefined
+    const prof = resolvePublicEffectiveProfile(org)
+    return Object.entries(prof.capabilities)
+      .filter(([, state]) => state !== "disabled")
+      .map(([name]) => name)
+  }
+
   // Publication gate (EPIC #3 E3-1): non-published tenants are private.
   // The owner/staff of THIS tenant still sees the full site as a preview,
   // with a clear banner; everyone else gets a neutral maintenance screen
@@ -108,6 +135,8 @@ export default async function PublicLayout({
           }}
           cta={null}
           availableSections={await availableSectionsFor(org)}
+          nav={await navFor()}
+          capabilitiesEnabled={capabilitiesFor()}
         />
         <CartOrgScope slug={org.slug} />
         <div className="bg-amber-100 text-amber-950 border-b border-amber-200 px-4 py-2 text-center text-sm font-medium dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
@@ -146,6 +175,11 @@ export default async function PublicLayout({
     ? isCapabilityEnabled(resolvePublicEffectiveProfile(org), "walkIn")
     : false
 
+  // F5.3.2 — lastnik-u-urejljiv glavni meni + capability imena (za nav gate).
+  // Navigacija se upodobi SAMO za objavljene/nepreview kontekste; preview in
+  // unpublished uporabljata isto pomoč (draft nav), da je urejevalnik WYSIWYG.
+  // (funkciji navFor/capabilitiesFor sta definirani višje, pred gate-om)
+
   // P2 #67: owner affordance on THEIR OWN public site — resolved
   // server-side, rendered only for the owner of this organisation
   // (never embedded for customers/anonymous — conditional render only).
@@ -181,6 +215,16 @@ export default async function PublicLayout({
 
   const skipLabel = (await getLocaleFromCookies()) === "en" ? "Skip to content" : "Preskoči na vsebino"
 
+  // F5.1: javna reklamna pasica — prikaže se SAMO za objavljenega najemnika
+  // (ne za draft/preview, ne za platformo brez org), ob kakršni aktivni
+  // promociji. Pasica je za obiskovalce, ne le za lastnika — zato je odvisna
+  // od javnega readerja, ne od seje.
+  let promoBanner: React.ReactNode = null
+  if (org && gate === "published") {
+    const actives = await getPublicActivePromotions(org.id).catch(() => [])
+    if (actives.length > 0) promoBanner = <PromoBanner promos={actives} />
+  }
+
   return (
     <>
       {/* P2 #12 (audit-2026-11): skip link — first focusable element
@@ -206,6 +250,7 @@ gtag('config', '${analyticsId}');`}
         </>
       )}
       <PublicI18nProvider org={org}>
+        {promoBanner}
         {ownerBar}
         <PublicNavbar
           org={{
@@ -218,6 +263,8 @@ gtag('config', '${analyticsId}');`}
             org ? await availableSectionsFor(org) : undefined
           }
           walkInEnabled={walkInEnabled}
+          nav={await navFor()}
+          capabilitiesEnabled={capabilitiesFor()}
         />
         <CartOrgScope slug={org?.slug ?? null} />
         <main id="main" tabIndex={-1}>{children}</main>

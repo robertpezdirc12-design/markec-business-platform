@@ -5,6 +5,7 @@ import {
   ClockIcon,
   CurrencyDollarIcon,
   WarningCircleIcon,
+  ReceiptIcon,
 } from "@/components/icons"
 import { getDocumentsOverview } from "@/app/actions/documents"
 import { getServerI18n } from "@/lib/i18n/server"
@@ -35,6 +36,15 @@ export default async function DocumentsPage() {
     { label: d.stats.overdue, value: String(overview.stats.overdueCount), icon: WarningCircleIcon, accent: "text-red-500" },
   ]
 
+  // F5.5.4.5.2 — ločene statistike avansov (izven prihodkov/prilivov).
+  const advanceStatsCards = [
+    { label: d.stats.advancesIssued, value: String(overview.advanceStats.issued), icon: ReceiptIcon, accent: "text-sky-500" },
+    { label: d.stats.advancesReceived, value: formatCurrency(overview.advanceStats.received), icon: CurrencyDollarIcon, accent: "text-emerald-500" },
+    { label: d.stats.advancesUnpaid, value: formatCurrency(overview.advanceStats.unpaid), icon: WarningCircleIcon, accent: "text-amber-500" },
+    { label: d.stats.advancesUsed, value: String(overview.advanceStats.used), icon: CheckCircleIcon, accent: "text-violet-500" },
+    { label: d.stats.advancesUnused, value: String(overview.advanceStats.unused), icon: ClockIcon, accent: "text-sky-500" },
+  ]
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -62,10 +72,32 @@ export default async function DocumentsPage() {
         ))}
       </div>
 
+      {/* F5.5.4.5.2 — ločene kartice statistik avansov (izven prihodkov). */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {advanceStatsCards.map((s) => (
+          <Card key={s.label}>
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className={`rounded-lg bg-muted p-2 ${s.accent}`}>
+                <s.icon size={18} />
+              </div>
+              <div>
+                <div className="text-2xl font-bold leading-none">{s.value}</div>
+                <div className="text-muted-foreground mt-1 text-xs leading-tight">
+                  {s.label}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       <DocumentsClient
         quotes={overview.quotes}
         invoices={overview.invoices}
+        advances={overview.advances}
         openWorkOrders={overview.openWorkOrders}
+        openOrders={overview.openOrders}
+        appointments={overview.appointments}
         labels={d}
       />
     </div>

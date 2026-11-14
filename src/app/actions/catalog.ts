@@ -34,6 +34,8 @@ export interface VariantsActionResult {
   ok: boolean
   error?: string
   id?: string
+  /** F5.5.1 — true = namesto brisanja deaktivirana (že kupljena, zgodovina oprema). */
+  deactivated?: boolean
 }
 
 function serializeVariant(v: {
@@ -85,7 +87,6 @@ export interface CreateVariantInput {
   sku?: string | null
   price?: number | null
   trackInventory?: boolean
-  stockQuantity?: number
 }
 
 export async function createProductVariant(
@@ -123,7 +124,6 @@ export async function createProductVariant(
       sku,
       price: input.price ?? null,
       trackInventory: input.trackInventory ?? true,
-      stockQuantity: input.stockQuantity ?? 0,
       position: (max._max.position ?? 0) + 1,
     },
   })
@@ -139,7 +139,6 @@ export interface UpdateVariantInput {
   sku?: string | null
   price?: number | null
   trackInventory?: boolean
-  stockQuantity?: number
   isActive?: boolean
 }
 
@@ -175,9 +174,6 @@ export async function updateProductVariant(
       ...(input.trackInventory !== undefined
         ? { trackInventory: input.trackInventory }
         : {}),
-      ...(input.stockQuantity !== undefined
-        ? { stockQuantity: input.stockQuantity }
-        : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
     },
   })
@@ -196,6 +192,23 @@ export async function deleteProductVariant(
     select: { id: true, productId: true },
   })
   if (!existing) return { ok: false, error: "NOT_FOUND" }
+
+  // F5.5.1 — varno brisanje: če je različica že kupljena (njen zapis je v
+  // OrderItem), je NE smemo fizično brisati — sicer bi izgubili podatke o
+  // zgodovini naročila. Namesto tega jo deaktiviramo (isActive=false), da se
+  // ne ponuja več v trgovini, zgodovinska naročila pa ostanejo nespremenjena.
+  const used = await prisma.orderItem.count({
+    where: { variantId: existing.id },
+  })
+  if (used > 0) {
+    await prisma.productVariant.update({
+      where: { id: existing.id },
+      data: { isActive: false },
+    })
+    revalidatePath("/dashboard/products")
+    revalidatePath(`/dashboard/products/${existing.productId}/edit`)
+    return { ok: true, id: existing.id, deactivated: true }
+  }
 
   await prisma.productVariant.delete({ where: { id: existing.id } })
 

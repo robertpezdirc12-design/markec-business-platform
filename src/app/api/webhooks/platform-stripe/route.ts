@@ -250,9 +250,26 @@ async function handleSubscriptionEvent(event: Stripe.Event) {
     : null
 
   if (update) {
+    // Grace tok neplačila (točka 7b): ob PRVI prehodu v PAST_DUE/UNPAID
+    // zabeležimo začetek grace; ob vrnitvi v ACTIVE/TRIALING grace počiščemo.
+    const now = new Date()
+    const enteringGrace =
+      (update.status === "PAST_DUE" || update.status === "UNPAID") &&
+      local &&
+      local.status !== "PAST_DUE" &&
+      local.status !== "UNPAID"
+    const leavingGrace =
+      (update.status === "ACTIVE" || update.status === "TRIALING") && local
+
     await prisma.platformSubscription.update({
       where: { organizationId: orgId },
-      data: update,
+      data: {
+        ...update,
+        ...(enteringGrace ? { graceStartedAt: now } : {}),
+        ...(leavingGrace
+          ? { graceStartedAt: null, lastReminderAt: null, suspendNotifiedAt: null }
+          : {}),
+      },
     })
   }
 

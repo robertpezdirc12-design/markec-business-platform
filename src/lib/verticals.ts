@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import type { Prisma } from "@prisma/client"
 import { defaultSiteContent, type SiteContent } from "@/lib/site-content"
 // P1 #18 (audit-2026-11): default media URLs live in ONE module
 import { DEFAULT_CATALOG_IMAGES, DEFAULT_HERO } from "@/lib/default-assets"
@@ -140,17 +141,23 @@ export function derivedLadderDown(base: number): number[] {
   return [1, 2, 3, 4].map((i) => Math.max(8, Math.round((base - 8 * i) * 10) / 10))
 }
 
-/** First shade (walking down from `start`) with ≥ 4.5:1 on the light bg. */
+/** First shade (walking down from `start`) with ≥ 5.5:1 on the light bg.
+    Prag 5.5 (namesto 4.5) pusti rezervo: `text-primary-*text` se uporablja tudi
+    na `bg-primary/10` translucent ozadju (npr. dejavnostni tagi v header/
+    sidebar), kjer 10% alpha zniža efektivno razmerje. Empirično (test #94)
+    10% primary nad ozadjem odbije ~0.5-1.0 od razmerja; prag 5.5 zagotovi,
+    da vsaka paleta ostane ≥4.5 tudi na takem tintu. (Stari prag 5.0 je pri
+    violet/teal/coral še padal na 4.46-4.47.) */
 function textSafeShade(h: number, s: number, start: number): number {
   let l = start
-  while (l > 8 && wcagContrast({ h, s, l }, LIGHT_BG) < 4.5) l -= 1
+  while (l > 8 && wcagContrast({ h, s, l }, LIGHT_BG) < 5.5) l -= 1
   return l
 }
 
-/** First shade (walking UP) with ≥ 4.5:1 on the dark theme background. */
+/** First shade (walking UP) with ≥ 5.5:1 on the dark theme background. */
 function textSafeShadeDark(h: number, s: number, start: number): number {
   let l = Math.min(92, start + 16)
-  while (l < 96 && wcagContrast({ h, s, l }, DARK_BG) < 4.5) l += 1
+  while (l < 96 && wcagContrast({ h, s, l }, DARK_BG) < 5.5) l += 1
   return l
 }
 
@@ -369,6 +376,10 @@ export interface PresetCategory {
   name: string
   slug: string
   services: PresetService[]
+  /** F5.2: vrsta ponudbe za to kategorijo (privzeto oboje). */
+  categoryType?: "PRODUCTS" | "SERVICES" | "BOTH"
+  /** F5.2: neobvezne podkategorije (hierarhija). Samo koren nosi services. */
+  subcategories?: PresetCategory[]
 }
 
 export interface PresetProduct {
@@ -875,7 +886,9 @@ export const VERTICALS: VerticalPreset[] = [
     currency: "EUR",
     locale: "sl",
     timezone: "Europe/Ljubljana",
-    categories: [],
+    categories: [
+      { name: "Izdelki", slug: "izdelki", services: [] },
+    ],
     products: [
       { name: "Cvetlični med 500 g", description: "Odcejen cvetlični med iz lastnih panjskih postaj.", price: 9, stockQuantity: 120, imageUrl: IMG.honeyJars, isFeatured: true },
       { name: "Lipov med 500 g", description: "Aromaten lipov med — priljubljen za prehladne dni.", price: 11, stockQuantity: 80, imageUrl: IMG.honeyJars, isFeatured: true },
@@ -923,9 +936,84 @@ export interface CatalogSeedReport {
  * the preset id. With `replaceForeignPreset` (vertical switch), sample rows of
  * OTHER presets are replaced, while owner-created rows (presetSeed = null) are
  * never touched. Sample rows already referenced by real business data
- * (appointments, orders) are kept — they are history, not samples.
- */
-export async function seedOrganizationCatalog(
+   * (appointments, orders) are kept — they are history, not samples.
+   */
+ async function seedPresetCategory(
+   prismaClient: {
+     category: Prisma.CategoryDelegate
+     service: Prisma.ServiceDelegate
+   },
+   orgId: string,
+   presetId: string,
+   cat: PresetCategory,
+   parentId: string | null,
+   parentSlug: string | null,
+   report: CatalogSeedReport
+ ): Promise<void> {
+   // F5.2: unikaten slug znotraj org. Podkategorije dobijo korensko predpono
+     // (npr. "cena-delo"), da ni kolizije med korenskimi in podrejenimi slug-i.
+   const raw = parentSlug ? `${parentSlug}-${cat.slug}` : cat.slug
+   const unique = await uniqueCategorySlug(prismaClient, orgId, raw)
+   const category = await prismaClient.category.create({
+     data: {
+       name: cat.name,
+       slug: unique,
+       categoryType: cat.categoryType ?? "BOTH",
+       sortOrder: report.added.categories,
+       isActive: true,
+       parentId,
+       organizationId: orgId,
+       presetSeed: presetId,
+     },
+   })
+   report.added.categories += 1
+
+   for (const [i, svc] of cat.services.entries()) {
+     await prismaClient.service.create({
+       data: {
+         name: svc.name,
+         slug: `${category.slug}-${svc.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
+         description: svc.description,
+         duration: svc.duration,
+         price: svc.price,
+         imageUrl: svc.imageUrl,
+         isActive: true,
+         isFeatured: !!svc.isFeatured && i < 2,
+         order: i,
+         organizationId: orgId,
+         categoryId: category.id,
+         presetSeed: presetId,
+       },
+     })
+     report.added.services += 1
+   }
+
+   // Rekurzivno seje podkategorije pod istim korenom.
+   for (const sub of cat.subcategories ?? []) {
+     await seedPresetCategory(prismaClient, orgId, presetId, sub, category.id, category.slug, report)
+   }
+ }
+
+ /** Ustvari unikaten Category slug znotraj org (doda številko, če je zaseden). */
+ async function uniqueCategorySlug(
+   prismaClient: { category: Prisma.CategoryDelegate },
+   orgId: string,
+   base: string
+ ): Promise<string> {
+   const clean = base.replace(/[^a-z0-9-]/gi, "-").toLowerCase() || "kategorija"
+   let candidate = clean
+   let i = 2
+   for (;;) {
+     const taken = await prismaClient.category.findFirst({
+       where: { organizationId: orgId, slug: candidate },
+       select: { id: true },
+     })
+     if (!taken) return candidate
+     candidate = `${clean}-${i++}`
+   }
+ }
+
+ export async function seedOrganizationCatalog(
   orgId: string,
   verticalId: string,
   opts: { replaceForeignPreset?: boolean } = {}
@@ -996,30 +1084,11 @@ export async function seedOrganizationCatalog(
 
   const existingCats = await prisma.category.count({ where: { organizationId: orgId } })
   if (existingCats === 0) {
+    // F5.2: kategorije dobijo novo shemo (isActive, sortOrder, categoryType)
+    // in poljubno hierarhijo. Idempotentno: zgodi se le, ko org nima še
+    // nobene kategorije (nobenih dvojnikov ob ponovljeni inicializaciji).
     for (const cat of preset.categories) {
-      const category = await prisma.category.create({
-        data: { name: cat.name, slug: cat.slug, organizationId: orgId, presetSeed: preset.id },
-      })
-      for (const [i, svc] of cat.services.entries()) {
-        await prisma.service.create({
-          data: {
-            name: svc.name,
-            slug: `${cat.slug}-${svc.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
-            description: svc.description,
-            duration: svc.duration,
-            price: svc.price,
-            imageUrl: svc.imageUrl,
-            isActive: true,
-            isFeatured: !!svc.isFeatured && i < 2,
-            order: i,
-            organizationId: orgId,
-            categoryId: category.id,
-            presetSeed: preset.id,
-          },
-        })
-        report.added.services += 1
-      }
-      report.added.categories += 1
+      await seedPresetCategory(prisma, orgId, preset.id, cat, null, null, report)
     }
   }
 
@@ -1046,5 +1115,71 @@ export async function seedOrganizationCatalog(
     }
   }
 
+  return report
+}
+
+/**
+ * F5.2.3 — združi predloge KATEGORIJ enega profila v obstoječe drevo
+ * najemnika, IDEMPOTENTNO in ADITIVNO:
+ *  - ne izbriše lastniških kategorij, izdelkov ali storitev;
+ *  - ne ustvari podvojenih predlog (dedup po slug znotraj org — več
+ *    dejavnosti lahko deli isto drevo);
+ *  - ponovljena inicializacija ne doda ničesar (idempotentno);
+ *  - predloge različnih dejavnosti se pravilno združijo (skupni slug = en
+ *    vozlišče, manjkajoči otroci se dopolnijo).
+ * Seja SAMO kategorije (ne vzorčnih storitev), da ne pride do prekrivanja —
+ * podjetnik doda storitve/izdelke v nova vozlišča sam.
+ */
+export async function seedProfileCategories(
+  orgId: string,
+  presetId: string
+): Promise<{ added: number }> {
+  const preset = getVertical(presetId)
+  const report = { added: 0 }
+
+  async function node(
+    cat: PresetCategory,
+    parentId: string | null,
+    parentSlug: string | null
+  ): Promise<void> {
+    const slugCand = parentSlug ? `${parentSlug}-${cat.slug}` : cat.slug
+    const existing = await prisma.category.findFirst({
+      where: { organizationId: orgId, slug: slugCand },
+      select: { id: true, slug: true },
+    })
+    if (existing) {
+      // Vozlišče že obstaja → rekurzivno dopolni samo manjkajoče otroke.
+      for (const sub of cat.subcategories ?? []) {
+        await node(sub, existing.id, existing.slug)
+      }
+      return
+    }
+    // Največji sortOrder znotraj istega starša + 1 (preliminarno).
+    const max = await prisma.category.aggregate({
+      where: { organizationId: orgId, parentId },
+      _max: { sortOrder: true },
+    })
+    const created = await prisma.category.create({
+      data: {
+        name: cat.name,
+        slug: slugCand,
+        categoryType: cat.categoryType ?? "BOTH",
+        isActive: true,
+        sortOrder: (max._max.sortOrder ?? -1) + 1,
+        parentId,
+        organizationId: orgId,
+        presetSeed: presetId,
+      },
+      select: { id: true, slug: true },
+    })
+    report.added += 1
+    for (const sub of cat.subcategories ?? []) {
+      await node(sub, created.id, created.slug)
+    }
+  }
+
+  for (const cat of preset.categories) {
+    await node(cat, null, null)
+  }
   return report
 }

@@ -411,12 +411,20 @@ export interface CreateAppointmentData {
   // setup mode). Termin nastane PENDING s privolitvijo; SetupIntent/
   // Customer shrani webhook/success verify (SAVED → CONFIRMED).
   noShowGuarantee?: boolean
+  // F5.1: promocijska koda za storitve (če jo gost vnese).
+  promotionCode?: string
+  // 2D-1W: podatki o vozilu iz javne rezervacije (delavnica vozil / tire-service)
+  // — shranjena/povezana z obstoječim vozilom te org, org-scoped. Neobvezno.
+  vehiclePlate?: string
+  vehicleName?: string
 }
 
 export interface AppointmentCreationResult {
   success: boolean
   appointmentId?: string
   error?: string
+  // F5.1: razlikovalnik napake "promotion" za UI (npr. premalo uporab).
+  code?: string
   stripeClientSecret?: string
 }
 
@@ -484,6 +492,9 @@ export interface CreateCheckoutSessionData {
   // metadata limit 500 znakov ne prenese odgovorov); webhook jih
   // poveže z ustvarjenim terminom.
   intakeAnswers?: Record<string, string>
+  // F5.1: promocijska koda — prenesena v metadata, webhook jo preda
+  // createAppointment ob kreaciji termina.
+  promotionCode?: string
 }
 
 export interface CreateCheckoutSessionResult {
@@ -666,7 +677,12 @@ interface BookingFormBaseProps {
     firstName?: string
     lastName?: string
     email?: string
+    // F2.2.2 P1-4: prefill telefona prijavljene stranke iz njenega
+    // Customer profila (najemniški profil ima prednost).
+    phone?: string
   }
+  // 2D-1W: prikaži neobvezne podatke o vozilu (delavnica vozil / tire-service).
+  showVehicle?: boolean
 }
 
 // Service-first mode: service is preselected, user picks staff
@@ -700,6 +716,9 @@ export interface BookingFormValues {
   email: string
   phone: string
   notes: string
+  // 2D-1W: neobavezni podatki o vozilu (delavnica vozil / tire-service).
+  vehiclePlate?: string
+  vehicleName?: string
 }
 
 // Payment History Types

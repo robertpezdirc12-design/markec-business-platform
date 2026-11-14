@@ -14,6 +14,11 @@ export interface ValidatableField {
   type: string
   required: boolean
   options?: string[]
+  /** Faza 2B/2C-1: za entityReference — single (objekt) ali multi (niz) ciljev. UI razreši; org velja server-side. */
+  referenceTo?:
+    | { extensionId: string; entityKey: string }
+    | { extensionId: string; entityKey: string }[]
+    | undefined
   unit?: string
   placeholder?: string
 }
@@ -70,6 +75,38 @@ export function validateFieldValues(
 
     if (field.type === "checkbox") {
       clean[field.key] = raw === true || raw === "true" || raw === "on"
+      continue
+    }
+
+    // Faza 2B/2C-1: entityReference — single (2B) = string id; multi (2C-1) = objekt
+    // {id, extensionId, entityKey}. Existence/org-scope se preverjata SERVER-side v
+    // records.ts; tukaj (client-safe, deljeno z javnimi obrazci) samo tipski clean.
+    if (field.type === "entityReference") {
+      const isMulti = Array.isArray(field.referenceTo)
+      if (isMulti) {
+        if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+          errors[field.key] = "INVALID_REFERENCE"
+          continue
+        }
+        const obj = raw as Record<string, unknown>
+        const id = typeof obj.id === "string" ? obj.id.trim().slice(0, 200) : ""
+        const extensionId =
+          typeof obj.extensionId === "string" ? obj.extensionId.trim().slice(0, 80) : ""
+        const entityKey =
+          typeof obj.entityKey === "string" ? obj.entityKey.trim().slice(0, 80) : ""
+        if (!id || !extensionId || !entityKey) {
+          errors[field.key] = "INVALID_REFERENCE"
+          continue
+        }
+        clean[field.key] = { id, extensionId, entityKey }
+        continue
+      }
+      const id = String(raw).trim()
+      if (!id) {
+        clean[field.key] = null
+        continue
+      }
+      clean[field.key] = id.slice(0, 200)
       continue
     }
 

@@ -32,7 +32,9 @@ export async function requireSession() {
 export async function requireRole(roles: UserRole[]) {
   const session = await requireSession()
   if (!roles.includes(session.user.role)) {
-    throw new UnauthorizedError("You do not have permission to perform this action")
+    throw new UnauthorizedError(
+      "You do not have permission to perform this action"
+    )
   }
   return session
 }
@@ -69,7 +71,9 @@ export async function isEmployeeSession(): Promise<boolean> {
  */
 export async function requirePermission(key: PermissionKey) {
   const session = await requireSession()
-  const perms = await getEffectivePermissions(session.user.id)
+  // F0: org-scoped permissions (role + custom role per active org).
+  const org = await resolveSessionOrg(session)
+  const perms = await getEffectivePermissions(session.user.id, org?.id)
   if (!perms.includes(key)) {
     throw new UnauthorizedError(
       "You do not have permission to perform this action"
@@ -84,7 +88,9 @@ export async function requirePermission(key: PermissionKey) {
  */
 export async function requirePagePermission(key: PermissionKey) {
   const session = await requireSession()
-  const perms = await getEffectivePermissions(session.user.id)
+  // F0: org-scoped permissions (role + custom role per active org).
+  const org = await resolveSessionOrg(session)
+  const perms = await getEffectivePermissions(session.user.id, org?.id)
   if (!perms.includes(key)) {
     redirect("/dashboard")
   }
@@ -98,7 +104,9 @@ export async function requirePagePermission(key: PermissionKey) {
  */
 export async function requireUnrestrictedPage() {
   const session = await requireSession()
-  const perms = await getEffectivePermissions(session.user.id)
+  // F0: org-scoped permissions (role + custom role per active org).
+  const org = await resolveSessionOrg(session)
+  const perms = await getEffectivePermissions(session.user.id, org?.id)
   if (!hasAllPermissions(perms)) {
     redirect("/dashboard")
   }
@@ -109,43 +117,116 @@ export async function requireUnrestrictedPage() {
 // Full permission matrix (E4-6b): permission + org in one gate
 // ============================================================
 
+// ============================================================
+// F2.1 — ENOTEN, FAIL-CLOSED RAZREŠEVALNIK SEJNE ORGANIZACIJE
+// ============================================================
+//
+// F2.0 je štiri "prvo ACTIVE podjetje" rezerve strogo pogoji z M2
+// pravilom o legacy računih. F2.1 jih za AVTENTICIRANE poti ukinja:
+// globalni ADMIN brez dokazanega članstva ni smel biti vezan na
+// naključnega najemnika (nastavitve, terminologija in cilj akcij so
+// pripadali drugemu podjetju). Edini dovoljen vir resnice so lastne
+// AKTIVNE `OrganizationMember` vrstice.
+//
+// Javne/anonimne rezerve v tenant.ts (`getPublicOrg` platformni koren,
+// anonimna veja `getResolvedOrg`) ostanejo NEDOTAKNJENE — ne
+// razrešujejo seje in so nujne za javno stran platforme.
+//
+// NOTE: intentionally implemented with direct prisma calls (not imported
+// from @/lib/tenant) — tenant.ts already imports this module and a
+// reverse import would create a require cycle.
+
+export interface SessionOrgRef {
+  user: {
+    id?: string
+    organizationId?: string | null
+    role: string
+  }
+}
+
 /**
- * Resolve the organization the acting ADMIN operates on — same rule as
- * the legacy `requireAdminOrg` (session org → legacy default-org
- * fallback, never another tenant's org).
+ * The ONE session-org resolver. Returns an Organization only when ALL of
+ * these hold:
+ *  1. the caller has a session with a user id;
+ *  2. `resolveActiveOrganizationId` resolves an id from the user's own
+ *     ACTIVE memberships (never from a stale JWT alone);
+ *  3. an `OrganizationMember` row EXISTS for (that org, that user) — this
+ *     is the evidence check that kills the legacy global fallback;
+ *  4. the organization itself is ACTIVE.
  *
- * NOTE: intentionally implemented with direct prisma calls (not imported
- * from @/lib/tenant) — tenant.ts already imports this module and a
- * reverse import would create a require cycle.
+ * Any failure -> `null` (fail-closed). There is deliberately NO
+ * "first ACTIVE organization" fallback here.
  */
-async function resolveSessionOrg(session: {
-  user: { id?: string; organizationId?: string | null; role: string }
-}): Promise<Organization | null> {
-  // #100 8.A (M2 dvojno branje): če ima uporabnik članstva, je aktivni
-  // org iz njih (zaščita proti starim JWT-jem); brez članstev → legacy
-  // session org (stari računi pred backfillom delujejo nespremenjeno).
-  if (session.user.id) {
-    const activeOrgId = await resolveActiveOrganizationId(
-      session.user.id,
-      session.user.organizationId ?? null
-    )
-    if (activeOrgId) {
-      const org = await prisma.organization.findUnique({ where: { id: activeOrgId } })
-      if (org) return org
-    }
-  }
-  const orgId = session.user.organizationId
-  if (orgId) {
-    const org = await prisma.organization.findUnique({ where: { id: orgId } })
-    if (org) return org
-  }
-  if (session.user.role === "ADMIN") {
-    return prisma.organization.findFirst({
-      where: { status: "ACTIVE" },
-      orderBy: { createdAt: "asc" },
-    })
-  }
-  return null
+export async function resolveSessionOrganization(
+  session: SessionOrgRef | null | undefined
+): Promise<Organization | null> {
+  const userId = session?.user?.id
+  if (!userId) return null
+
+  const activeOrgId = await resolveActiveOrganizationId(
+    userId,
+    session?.user?.organizationId ?? null
+  )
+  if (!activeOrgId) return null
+
+  // Evidence of belonging: a membership row IN the resolved org. A user
+  // with zero memberships (pre-backfill account) resolves to null even if
+  // their JWT points at an org — that is precisely the F2.1 requirement
+  // "manjkajoča organizacija ne povzroči dostopa prek globalnega
+  // fallbacka".
+  const membership = await prisma.organizationMember.findUnique({
+    where: {
+      organizationId_userId: { organizationId: activeOrgId, userId },
+    },
+    select: { organization: { select: { status: true } } },
+  })
+  if (!membership || membership.organization.status !== "ACTIVE") return null
+
+  return prisma.organization.findUnique({ where: { id: activeOrgId } })
+}
+
+/**
+ * F2.1 action guard: a signed-in caller bound to exactly one of their own
+ * ACTIVE workspaces. Throws `UnauthorizedError` when the org cannot be
+ * safely resolved — access is DENIED, never rerouted to a default tenant.
+ */
+export async function requireSessionOrg(): Promise<{
+  session: Awaited<ReturnType<typeof requireSession>>
+  org: Organization
+}> {
+  const session = await requireSession()
+  const org = await resolveSessionOrganization(session)
+  if (!org)
+    throw new UnauthorizedError("No organization found for this account")
+  return { session, org }
+}
+
+/** Backwards-compatible thin wrapper — one resolver, no second source. */
+async function resolveSessionOrg(
+  session: SessionOrgRef
+): Promise<Organization | null> {
+  return resolveSessionOrganization(session)
+}
+
+/**
+ * F2.1 — evidence check for OWNER PREVIEW of an unpublished tenant.
+ *
+ * The old gates compared `session.user.organizationId === org.id`, i.e. a
+ * legacy JWT pointer with no membership proof. A stale or forged pointer
+ * could expose another tenant's DRAFT site. Preview is now granted only
+ * by an actual ACTIVE `OrganizationMember` row in that exact org.
+ */
+export async function hasActiveMembershipInOrg(
+  userId: string,
+  organizationId: string
+): Promise<boolean> {
+  const row = await prisma.organizationMember.findUnique({
+    where: {
+      organizationId_userId: { organizationId, userId },
+    },
+    select: { organization: { select: { status: true } } },
+  })
+  return !!row && row.organization.status === "ACTIVE"
 }
 
 /**
@@ -163,21 +244,37 @@ async function resolveSessionOrg(session: {
  *    "admin brez financ" is enforced here at the ACTION layer
  */
 export async function requirePermissionOrg(key: PermissionKey): Promise<{
-  session: { user: { id: string; role: string; email?: string | null; name?: string | null } }
+  session: {
+    user: {
+      id: string
+      role: string
+      email?: string | null
+      name?: string | null
+    }
+  }
   org: Organization
 }> {
   const session = await requireRole(["ADMIN"])
-  const perms = await getEffectivePermissions(session.user.id)
+  // F0: resolve the org FIRST so permissions are checked org-scoped
+  // (role + custom role per OrganizationMember), never against a stale
+  // global User.role that could grant another workspace's rights.
+  const org = await resolveSessionOrg(session)
+  if (!org)
+    throw new UnauthorizedError("No organization found for this account")
+  const perms = await getEffectivePermissions(session.user.id, org.id)
   if (!perms.includes(key)) {
     throw new UnauthorizedError(
       "You do not have permission to perform this action"
     )
   }
-  const org = await resolveSessionOrg(session)
-  if (!org) throw new UnauthorizedError("No organization found for this account")
   return {
     session: session as unknown as {
-      user: { id: string; role: string; email?: string | null; name?: string | null }
+      user: {
+        id: string
+        role: string
+        email?: string | null
+        name?: string | null
+      }
     },
     org,
   }
@@ -189,53 +286,170 @@ export async function requirePermissionOrg(key: PermissionKey): Promise<{
  * KATERAKOLI ključ. Prej lovilnicatch-pareti v akcijah; zdaj en vir
  * resnice za "ali smem ta modul z dotično pravico".
  */
-export async function requireAnyPermissionOrg(
-  keys: PermissionKey[]
-): Promise<{
-  session: { user: { id: string; role: string; email?: string | null; name?: string | null } }
+export async function requireAnyPermissionOrg(keys: PermissionKey[]): Promise<{
+  session: {
+    user: {
+      id: string
+      role: string
+      email?: string | null
+      name?: string | null
+    }
+  }
   org: Organization
 }> {
   const session = await requireRole(["ADMIN"])
-  const perms = await getEffectivePermissions(session.user.id)
+  // F0: org-scoped permissions (see requirePermissionOrg).
+  const org = await resolveSessionOrg(session)
+  if (!org)
+    throw new UnauthorizedError("No organization found for this account")
+  const perms = await getEffectivePermissions(session.user.id, org.id)
   const allowed = keys.some((k) => perms.includes(k))
   if (!allowed) {
     throw new UnauthorizedError(
       "You do not have permission to perform this action"
     )
   }
-  const org = await resolveSessionOrg(session)
-  if (!org) throw new UnauthorizedError("No organization found for this account")
   return {
     session: session as unknown as {
-      user: { id: string; role: string; email?: string | null; name?: string | null }
+      user: {
+        id: string
+        role: string
+        email?: string | null
+        name?: string | null
+      }
     },
     org,
   }
 }
 
 /**
- * Guard for privilege-ESCALATING administration (E4-6b): creating ADMIN
- * accounts and administering the custom-roles catalog. Only an admin
- * whose effective permission set covers ALL keys may do this — a
- * restricted admin ("admin brez financ") must never grant what they do
- * not hold.
+ * F5.2.3 — Category action guard (permission-based, org-scoped).
+ *
+ * Kategorije delijo izdelki in storitve, zato je dovolj KATERIKOLI ključ
+ * (`products.manage` ali `services.manage`). Za razliko od ADMIN-only
+ * akcij ta guard dovoli tudi STAFF, ČE njegova efektivna dovoljenja v
+ * aktivni organizaciji vsebujejo kataloški ključ (ADMIN in osnovni STAFF
+ * imata vse ključe; custom-rola ga lahko omeji). Pomaga z `permissions`,
+ * da lahko akcije izvedejo categoryType-check (PRODUCTS/SERVICES/BOTH).
+ */
+export async function requireCatalogPermission(): Promise<{
+  session: Awaited<ReturnType<typeof requireSession>>
+  org: Organization
+  permissions: PermissionKey[]
+}> {
+  const session = await requireSession()
+  const org = await resolveSessionOrg(session)
+  if (!org)
+    throw new UnauthorizedError("No organization found for this account")
+  const permissions = await getEffectivePermissions(session.user.id, org.id)
+  const hasCatalogKey = permissions.some(
+    (k) => k === "products.manage" || k === "services.manage"
+  )
+  if (!hasCatalogKey) {
+    throw new UnauthorizedError(
+      "You do not have permission to manage categories"
+    )
+  }
+  return { session, org, permissions }
+}
+
+/**
+ * F5.5.3.1 — Customer-management action guard (permission-based, org-scoped).
+ *
+ * Same convention as `requireCatalogPermission`: unlike ADMIN-only actions
+ * it permits STAFF too, PROVIDED the caller's effective permissions in the
+ * active organization include `customers.manage`. ADMIN and plain STAFF
+ * hold every key (see `effectivePermissionKeys`); a custom role may grant
+ * or withhold `customers.manage`. This aligns the action surface with
+ * `requirePagePermission` (which already lets a STAFF with the key see the
+ * customers UI) so a STAFF member who views the page can actually act on it.
+ * A custom role that withholds `customers.manage` denies both page and
+ * actions — fail-closed. Never leaks across organizations: org resolved
+ * from the caller's own ACTIVE membership only.
+ */
+export async function requireCustomerPermission(): Promise<{
+  session: Awaited<ReturnType<typeof requireSession>>
+  org: Organization
+  permissions: PermissionKey[]
+}> {
+  const session = await requireSession()
+  const org = await resolveSessionOrg(session)
+  if (!org)
+    throw new UnauthorizedError("No organization found for this account")
+  const permissions = await getEffectivePermissions(session.user.id, org.id)
+  if (!permissions.includes("customers.manage")) {
+    throw new UnauthorizedError(
+      "You do not have permission to manage customers"
+    )
+  }
+  return { session, org, permissions }
+}
+
+/**
+ * F5.5.4.1/.2 — guard za dostop do dokumentov (org-scoped, permission-based).
+ * Dovoljuje ADMIN in STAFF, ki ima v aktivni org ustrezni ključ:
+ *   "finances.view"                → branje/pregled
+ *   "finances.documents.manage"    → izdaja/urejanje
+ *   "finances.documents.pay"       → knjižba plačil
+ *   "finances.documents.credit"    → dobropisi
+ * Custom-rola brez ključa — zavrnjen (fail-closed); IDOR je pokrit s
+ * `where { id, organizationId }` v samih akcijah.
+ */
+export async function requireDocumentPermission(
+  key: "finances.view" | "finances.documents.manage" | "finances.documents.pay" | "finances.documents.credit"
+): Promise<{
+  session: Awaited<ReturnType<typeof requireSession>>
+  org: Organization
+  permissions: PermissionKey[]
+}> {
+  const session = await requireSession()
+  const org = await resolveSessionOrg(session)
+  if (!org)
+    throw new UnauthorizedError("No organization found for this account")
+  const permissions = await getEffectivePermissions(session.user.id, org.id)
+  if (!permissions.includes(key)) {
+    throw new UnauthorizedError("You do not have permission to manage documents")
+  }
+  return { session, org, permissions }
+}
+
+/**
+ * Guard za privilegij-je povišana administracija (E4-6b): ustvarjanje
+ * ADMIN računov in upravljanje kataloga custom-rol. Samo admin brez
+ * omejene role lahko to — omejeni admin ("admin brez financ") ne sme
+ * podeliti pravic, ki jih sam nima.
  */
 export async function requireUnrestrictedAdmin(): Promise<{
-  session: { user: { id: string; role: string; email?: string | null; name?: string | null } }
+  session: {
+    user: {
+      id: string
+      role: string
+      email?: string | null
+      name?: string | null
+    }
+  }
   org: Organization
 }> {
   const session = await requireRole(["ADMIN"])
-  const perms = await getEffectivePermissions(session.user.id)
+  // F0: org-scoped permissions — escalate-only when the member holds ALL
+  // keys in the ACTIVE organization specifically (not another workspace).
+  const org = await resolveSessionOrg(session)
+  if (!org)
+    throw new UnauthorizedError("No organization found for this account")
+  const perms = await getEffectivePermissions(session.user.id, org.id)
   if (!hasAllPermissions(perms)) {
     throw new UnauthorizedError(
       "Only an admin without a restricted role can perform this action"
     )
   }
-  const org = await resolveSessionOrg(session)
-  if (!org) throw new UnauthorizedError("No organization found for this account")
   return {
     session: session as unknown as {
-      user: { id: string; role: string; email?: string | null; name?: string | null }
+      user: {
+        id: string
+        role: string
+        email?: string | null
+        name?: string | null
+      }
     },
     org,
   }

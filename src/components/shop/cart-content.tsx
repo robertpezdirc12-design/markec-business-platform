@@ -33,8 +33,10 @@ import { CartItem } from "@/components/shop/cart-item"
 import { toast } from "sonner"
 import { createProductCheckoutSession } from "@/app/actions/product-checkout"
 import { validateGiftCard } from "@/app/actions/prepaid"
+import { checkPromotionCode } from "@/app/actions/checkout-promo"
 import { useOrgPrefix } from "@/lib/org-path-hooks"
 import { SI_VAT_RATE, vatFromGross, vatLabel } from "@/lib/vat"
+import { useLocale, pick } from "@/lib/i18n/client-locale"
 
 // P1 #65: guest checkout contact — account is an OFFER, not a precondition.
 interface GuestContact {
@@ -53,6 +55,7 @@ interface OfflineConfirmation {
 }
 
 export function CartContent() {
+  const locale = useLocale()
   const fmt = useFormatPrice()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -77,6 +80,24 @@ export function CartContent() {
     { ok: boolean; balance?: number; message: string } | null
   >(null)
   const [isCheckingCard, startCardCheck] = useTransition()
+  // F5.1: promocijska koda.
+  const [promotionCode, setPromotionCode] = useState("")
+  // F5.1 UX: sprotna preverba veljavnosti (gumb "Preveri").
+  type PromoState = { ok: boolean; message?: string } | null
+  const [promotionState, setPromotionState] = useState<PromoState>(null)
+  const [isCheckingPromo, startCheckPromo] = useTransition()
+
+  const handleCheckPromotionCode = () => {
+    if (!promotionCode.trim()) return
+    startCheckPromo(async () => {
+      const r = await checkPromotionCode(promotionCode)
+      setPromotionState(
+        r.ok
+          ? { ok: true, message: `${r.name} · ${r.discountLabel}` }
+          : { ok: false, message: r.message }
+      )
+    })
+  }
 
   const handleCheckGiftCard = () => {
     if (!giftCardCode.trim()) return
@@ -86,17 +107,37 @@ export function CartContent() {
         setGiftCardState({
           ok: true,
           balance: result.balance,
-          message: `Bon veljaven — stanje ${fmt(result.balance ?? 0)}`,
+          message:
+            locale === "en"
+              ? `Gift card valid — balance ${fmt(result.balance ?? 0)}`
+              : `Bon veljaven — stanje ${fmt(result.balance ?? 0)}`,
         })
       } else {
         const messages: Record<string, string> = {
-          NOT_FOUND: "Darilni bon s to kodo ne obstaja.",
+          NOT_FOUND:
+            locale === "en"
+              ? "A gift card with this code does not exist."
+              : "Darilni bon s to kodo ne obstaja.",
           FOREIGN_TENANT:
-            "Ta darilni bon ni iz te trgovine in ga tukaj ni mogoče unovčiti.",
-          PENDING: "Ta darilni bon še ni plačan.",
-          EXPIRED: "Ta darilni bon je potekel.",
-          EXHAUSTED: "Ta darilni bon je že porabljen.",
-          REFUNDED: "Ta darilni bon je preklican.",
+            locale === "en"
+              ? "This gift card is not from this store and cannot be redeemed here."
+              : "Ta darilni bon ni iz te trgovine in ga tukaj ni mogoče unovčiti.",
+          PENDING:
+            locale === "en"
+              ? "This gift card has not been paid for yet."
+              : "Ta darilni bon še ni plačan.",
+          EXPIRED:
+            locale === "en"
+              ? "This gift card has expired."
+              : "Ta darilni bon je potekel.",
+          EXHAUSTED:
+            locale === "en"
+              ? "This gift card has already been used up."
+              : "Ta darilni bon je že porabljen.",
+          REFUNDED:
+            locale === "en"
+              ? "This gift card has been cancelled."
+              : "Ta darilni bon je preklican.",
         }
         setGiftCardState({
           ok: false,
@@ -138,9 +179,31 @@ export function CartContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoContinue, status, items.length])
 
+  // F5.1 — deljiva povezava/QR (Shopify vzorec): URL `?code=COD` odpre
+  // košarico in kodo samodejno vnese ter preveri; zastavico odstrani, da
+  // refresh povezavo ne uporabi znova. Enkrat na nalaganje.
+  const sharedCode = searchParams.get("code")
+  const sharedCodeRef = useRef(false)
+  useEffect(() => {
+    if (sharedCode && !sharedCodeRef.current) {
+      sharedCodeRef.current = true
+      setPromotionCode(sharedCode.toUpperCase())
+      startCheckPromo(async () => {
+        const r = await checkPromotionCode(sharedCode)
+        setPromotionState(
+          r.ok
+            ? { ok: true, message: `${r.name} · ${r.discountLabel}` }
+            : { ok: false, message: r.message }
+        )
+      })
+      router.replace(cartPath, { scroll: false })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sharedCode])
+
   const handleClearCart = () => {
     clearCart()
-    toast.success("Košarica je bila izpraznjena!")
+    toast.success(pick(locale, "Košarica je bila izpraznjena!", "Cart has been cleared!"))
     setShowClearDialog(false)
   }
 
@@ -153,11 +216,13 @@ export function CartContent() {
     // login links remain as an offer ("Že imate račun?") inside the form.
     if (status === "unauthenticated") {
       if (contact.name.trim().length < 2) {
-        toast.error("Vnesite ime in priimek.")
+        toast.error(pick(locale, "Vnesite ime in priimek.", "Please enter your full name."))
         return
       }
       if (!contact.email.trim() && !contact.phone.trim()) {
-        toast.error("Vnesite e-pošto ali telefonsko številko.")
+        toast.error(
+          pick(locale, "Vnesite e-pošto ali telefonsko številko.", "Please enter an email or phone number.")
+        )
         return
       }
     }
@@ -175,16 +240,24 @@ export function CartContent() {
               address: contact.address || undefined,
             }
           : undefined,
-        giftCardCode.trim() || undefined
+        giftCardCode.trim() || undefined,
+        promotionCode.trim() || undefined
       )
 
       if (!result.success) {
         if (result.stockErrors && result.stockErrors.length > 0) {
           result.stockErrors.forEach((error) => {
-            toast.error(`${error.name}: Na voljo le še ${error.available} kos`)
+            toast.error(
+              locale === "en"
+                ? `${error.name}: Only ${error.available} ${error.available === 1 ? "piece" : "pieces"} left`
+                : `${error.name}: Na voljo le še ${error.available} kos`
+            )
           })
         } else {
-          toast.error(result.error || "Ustvarjanje plačilne seje ni uspelo")
+          toast.error(
+            result.error ||
+              pick(locale, "Ustvarjanje plačilne seje ni uspelo", "Could not create the checkout session")
+          )
         }
         return
       }
@@ -209,7 +282,7 @@ export function CartContent() {
       }
     } catch (error) {
       console.error("Checkout error:", error)
-      toast.error("Prišlo je do napake. Poskusite znova.")
+      toast.error(pick(locale, "Prišlo je do napake. Poskusite znova.", "Something went wrong. Please try again."))
     } finally {
       setIsCheckingOut(false)
     }
@@ -232,15 +305,20 @@ export function CartContent() {
                 className="text-emerald-700 dark:text-emerald-300"
               />
             </div>
-            <CardTitle className="text-2xl">Hvala za naročilo!</CardTitle>
+            <CardTitle className="text-2xl">
+              {pick(locale, "Hvala za naročilo!", "Thank you for your order!")}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-center">
             <p className="text-muted-foreground">
-              Naročilo je bilo zabeleženo — salon vas bo kontaktiral za
-              prevzem/dostavo in plačilo.
+              {locale === "en"
+                ? "Your order has been recorded — the salon will contact you for pickup/delivery and payment."
+                : "Naročilo je bilo zabeleženo — salon vas bo kontaktiral za prevzem/dostavo in plačilo."}
             </p>
             <div className="bg-muted/40 rounded-lg border p-4">
-              <p className="text-muted-foreground text-xs">Številka naročila</p>
+              <p className="text-muted-foreground text-xs">
+                {pick(locale, "Številka naročila", "Order number")}
+              </p>
               <p className="font-mono text-lg font-bold">
                 {confirmation.orderNumber}
               </p>
@@ -248,7 +326,7 @@ export function CartContent() {
             {(confirmation.contactPhone || confirmation.contactEmail) && (
               <div className="space-y-2 text-sm">
                 <p className="text-muted-foreground">
-                  Za hitro sporazumevanje:
+                  {pick(locale, "Za hitro sporazumevanje:", "For quick communication:")}
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-3">
                   {confirmation.contactPhone && (
@@ -275,7 +353,9 @@ export function CartContent() {
           </CardContent>
           <CardFooter className="flex justify-center">
             <Button asChild size="lg">
-              <Link href={`${orgPrefix}/shop`}>Nadaljuj z nakupovanjem</Link>
+              <Link href={`${orgPrefix}/shop`}>
+                {pick(locale, "Nadaljuj z nakupovanjem", "Continue shopping")}
+              </Link>
             </Button>
           </CardFooter>
         </Card>
@@ -288,22 +368,28 @@ export function CartContent() {
       {/* Header Badge */}
       <div className="mb-8">
         <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold">Nakupovalna košarica</h1>
+          <h1 className="text-3xl font-bold">
+            {pick(locale, "Nakupovalna košarica", "Shopping cart")}
+          </h1>
           {totalItems > 0 && (
             <Badge variant="secondary" className="text-sm">
               {totalItems} {" "}
-              {totalItems === 1
-                ? "izdelek"
-                : totalItems === 2
-                  ? "izdelka"
-                  : totalItems < 5
-                    ? "izdelki"
-                    : "izdelkov"}
+              {locale === "en"
+                ? totalItems === 1
+                  ? "item"
+                  : "items"
+                : totalItems === 1
+                  ? "izdelek"
+                  : totalItems === 2
+                    ? "izdelka"
+                    : totalItems < 5
+                      ? "izdelki"
+                      : "izdelkov"}
             </Badge>
           )}
         </div>
         <p className="text-muted-foreground mt-1">
-          Pregledajte in upravljajte svoje izdelke
+          {pick(locale, "Preglejte in upravljajte svoje izdelke", "Review and manage your items")}
         </p>
       </div>
 
@@ -314,7 +400,7 @@ export function CartContent() {
             <CardHeader className="border-border/50 bg-muted/30 flex flex-row items-center justify-between border-b">
               <CardTitle className="flex items-center gap-2">
                 <ShoppingBag size={20} />
-                Izdelki v košarici
+                {pick(locale, "Izdelki v košarici", "Items in your cart")}
               </CardTitle>
               {items.length > 0 && (
                 <Button
@@ -324,7 +410,7 @@ export function CartContent() {
                   className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash size={16} className="mr-2" />
-                  Izprazni košarico
+                  {pick(locale, "Izprazni košarico", "Clear cart")}
                 </Button>
               )}
             </CardHeader>
@@ -341,25 +427,26 @@ export function CartContent() {
                   {/* P3 #51: h2 neposredno pod h1 — pravi vrstni red naslovov
                       (axe heading-order; prej h3 brez vmesnega h2). */}
                   <h2 className="mb-2 text-xl font-semibold">
-                    Vaša košarica je prazna
+                    {pick(locale, "Vaša košarica je prazna", "Your cart is empty")}
                   </h2>
                   <p className="text-muted-foreground mx-auto mb-6 max-w-sm">
-                    Videti je, da še niste dodali nobenih izdelkov. Začnite z
-                    nakupovanjem in napolnite košarico!
+                    {locale === "en"
+                      ? "It looks like you haven't added any items yet. Start shopping and fill your cart!"
+                      : "Videti je, da še niste dodali nobenih izdelkov. Začnite z nakupovanjem in napolnite košarico!"}
                   </p>
                   {/* P1 #45: najemniški prefiks — goli "/shop" bi preusmeril
                       kupca v trgovino PRIVZETEGA najemnika. */}
                   <Button asChild size="lg" className="shadow-md">
                     <Link href={`${orgPrefix}/shop`}>
                       <ShoppingBag className="mr-2 h-5 w-5" />
-                      Raziščite izdelke
+                      {pick(locale, "Raziščite izdelke", "Browse products")}
                     </Link>
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {items.map((item) => (
-                    <CartItem key={item.productId} item={item} />
+                    <CartItem key={item.variantId ? `${item.productId}::${item.variantId}` : item.productId} item={item} />
                   ))}
                 </div>
               )}
@@ -372,15 +459,20 @@ export function CartContent() {
           {status === "unauthenticated" && items.length > 0 && (
             <Card className="border-border/50 shadow-sm">
               <CardHeader className="border-border/50 bg-muted/30 border-b">
-                <CardTitle className="text-lg">Vaši kontaktni podatki</CardTitle>
+                <CardTitle className="text-lg">
+                {pick(locale, "Vaši kontaktni podatki", "Your contact details")}
+              </CardTitle>
                 <p className="text-muted-foreground text-sm">
-                  Račun ni obvezen — naročilo oddate z imenom in e-pošto ali
-                  telefonom.
+                  {locale === "en"
+                    ? "No account needed — place your order with your name and email or phone."
+                    : "Račun ni obvezen — naročilo oddate z imenom in e-pošto ali telefonom."}
                 </p>
               </CardHeader>
               <CardContent className="grid gap-4 p-6 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="guest-name">Ime in priimek *</Label>
+                  <Label htmlFor="guest-name">
+                  {pick(locale, "Ime in priimek *", "Full name *")}
+                </Label>
                   <Input
                     id="guest-name"
                     autoComplete="name"
@@ -391,7 +483,9 @@ export function CartContent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="guest-email">E-pošta</Label>
+                  <Label htmlFor="guest-email">
+                  {pick(locale, "E-pošta", "Email")}
+                </Label>
                   <Input
                     id="guest-email"
                     type="email"
@@ -404,7 +498,9 @@ export function CartContent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="guest-phone">Telefon</Label>
+                  <Label htmlFor="guest-phone">
+                  {pick(locale, "Telefon", "Phone")}
+                </Label>
                   <Input
                     id="guest-phone"
                     type="tel"
@@ -417,7 +513,9 @@ export function CartContent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="guest-address">Dostavni naslov (neobvezno)</Label>
+                  <Label htmlFor="guest-address">
+                  {pick(locale, "Dostavni naslov (neobvezno)", "Delivery address (optional)")}
+                </Label>
                   <Input
                     id="guest-address"
                     autoComplete="street-address"
@@ -428,19 +526,21 @@ export function CartContent() {
                   />
                 </div>
                 <p className="text-muted-foreground text-sm sm:col-span-2">
-                  Že imate račun?{" "}
+                  {locale === "en"
+                    ? "Already have an account? "
+                    : "Že imate račun? "}
                   <Link
                     href={loginUrl}
                     className="text-primary-text font-medium hover:underline"
                   >
-                    Prijava
+                    {pick(locale, "Prijava", "Log in")}
                   </Link>{" "}
-                  ali{" "}
+                  {locale === "en" ? "or " : "ali "}
                   <Link
                     href={registerUrl}
                     className="text-primary-text font-medium hover:underline"
                   >
-                    Registracija
+                    {pick(locale, "Registracija", "Register")}
                   </Link>
                 </p>
               </CardContent>
@@ -452,7 +552,7 @@ export function CartContent() {
         <div className="lg:col-span-1">
           <Card className="border-border/50 sticky top-24 shadow-sm">
             <CardHeader className="border-border/50 bg-muted/30 border-b">
-              <CardTitle>Povzetek naročila</CardTitle>
+              <CardTitle>{pick(locale, "Povzetek naročila", "Order summary")}</CardTitle>
             </CardHeader>
             {/* P1 #37: spreminjanje količine se napove bralnikom zaslona. */}
             <CardContent
@@ -461,13 +561,15 @@ export function CartContent() {
               aria-atomic="false"
             >
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Vmesna vsota</span>
+                <span className="text-muted-foreground">
+                  {pick(locale, "Vmesna vsota", "Subtotal")}
+                </span>
                 <span className="font-medium">{fmt(totalPrice)}</span>
               </div>
               {/* #80: darilni bon — preveri kodo pred zaključkom. */}
               <div className="space-y-2 rounded-lg border p-3">
                 <Label htmlFor="gift-card-code" className="text-sm">
-                  🎁 Darilni bon
+                  🎁 {pick(locale, "Darilni bon", "Gift card")}
                 </Label>
                 <div className="flex gap-2">
                   <Input
@@ -487,7 +589,7 @@ export function CartContent() {
                     onClick={handleCheckGiftCard}
                     disabled={isCheckingCard || !giftCardCode.trim()}
                   >
-                    {isCheckingCard ? "…" : "Preveri"}
+                    {isCheckingCard ? "…" : pick(locale, "Preveri", "Check")}
                   </Button>
                 </div>
                 {giftCardState && (
@@ -503,28 +605,80 @@ export function CartContent() {
                   </p>
                 )}
               </div>
+              {/* F5.1: promocijska koda. */}
+              <div className="space-y-2 rounded-lg border p-3">
+                <Label htmlFor="promo-code" className="text-sm">
+                  🏷️ {pick(locale, "Promocijska koda", "Promo code")}
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="promo-code"
+                    value={promotionCode}
+                    onChange={(e) => {
+                      setPromotionCode(e.target.value)
+                      setPromotionState(null)
+                    }}
+                    placeholder={locale === "en" ? "e.g. SUMMER20" : "npr. POLETJE20"}
+                    className="uppercase"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isCheckingPromo || !promotionCode.trim()}
+                    onClick={handleCheckPromotionCode}
+                  >
+                    {isCheckingPromo ? "…" : pick(locale, "Preveri", "Check")}
+                  </Button>
+                </div>
+                {promotionState && (
+                  <p
+                    className={`text-xs ${
+                      promotionState.ok
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-destructive"
+                    }`}
+                    role="status"
+                  >
+                    {promotionState.ok ? `✓ ${promotionState.message}` : promotionState.message}
+                  </p>
+                )}
+                <p className="text-muted-foreground text-xs">
+                  {locale === "en"
+                    ? "The discount is applied at checkout if the code is valid."
+                    : "Popust se uporabi ob zaključku nakupa, če je koda veljavna."}
+                </p>
+              </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Dostava</span>
+                <span className="text-muted-foreground">
+                  {pick(locale, "Dostava", "Shipping")}
+                </span>
                 {shipping === 0 ? (
-                  <span className="font-medium text-green-700 dark:text-green-400">Brezplačno</span>
+                  <span className="font-medium text-green-700 dark:text-green-400">
+                    {pick(locale, "Brezplačno", "Free")}
+                  </span>
                 ) : (
                   <span className="font-medium">{fmt(shipping)}</span>
                 )}
               </div>
               {shipping > 0 && totalPrice > 0 && (
                 <p className="text-muted-foreground bg-accent/10 rounded-lg p-2 text-center text-xs">
-                  Dodajte še {fmt((50 - totalPrice))} za brezplačno dostavo!
+                  {locale === "en"
+                    ? `Add ${fmt(50 - totalPrice)} more for free shipping!`
+                    : `Dodajte še ${fmt(50 - totalPrice)} za brezplačno dostavo!`}
                 </p>
               )}
               {/* P1 #33: informativni razpad DDV iz bruto cene (22 %) —
                   skupaj = vmesna vsota + dostava, brez prištevanja. */}
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{vatLabel()}</span>
+                <span className="text-muted-foreground">
+                  {locale === "en" ? "VAT 22% (included in price)" : vatLabel()}
+                </span>
                 <span className="font-medium">{fmt(vatIncluded)}</span>
               </div>
               <Separator />
               <div className="flex justify-between text-lg font-bold">
-                <span>Skupaj</span>
+                <span>{pick(locale, "Skupaj", "Total")}</span>
                 <span className="text-primary-text">{fmt(grandTotal)}</span>
               </div>
             </CardContent>
@@ -540,23 +694,25 @@ export function CartContent() {
                 {isCheckingOut ? (
                   <CircleNotch size={20} className="animate-spin" />
                 ) : (
-                  "Zaključi nakup"
+                  pick(locale, "Zaključi nakup", "Checkout")
                 )}
               </Button>
               {/* P1 #45: najemniški prefiks — glej zgoraj. */}
               <Button variant="outline" className="w-full" asChild>
-                <Link href={`${orgPrefix}/shop`}>Nadaljuj z nakupovanjem</Link>
+                <Link href={`${orgPrefix}/shop`}>
+                  {pick(locale, "Nadaljuj z nakupovanjem", "Continue shopping")}
+                </Link>
               </Button>
 
               {/* Trust Badges */}
               <div className="text-muted-foreground mt-4 flex items-center justify-center gap-4 text-xs">
                 <div className="flex items-center gap-1">
                   <Truck size={16} />
-                  <span>Hitra dostava</span>
+                  <span>{pick(locale, "Hitra dostava", "Fast delivery")}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <ShieldCheck size={16} />
-                  <span>Varen nakup</span>
+                  <span>{pick(locale, "Varen nakup", "Secure checkout")}</span>
                 </div>
               </div>
             </CardFooter>
@@ -568,9 +724,13 @@ export function CartContent() {
       <ConfirmDialog
         open={showClearDialog}
         onOpenChange={setShowClearDialog}
-        title="Izprazni košarico"
-        description="Ste prepričani, da želite odstraniti vse izdelke iz košarice? Tega dejanja ni mogoče razveljaviti."
-        confirmLabel="Izprazni košarico"
+        title={pick(locale, "Izprazni košarico", "Clear cart")}
+        description={
+          locale === "en"
+            ? "Are you sure you want to remove all items from your cart? This action cannot be undone."
+            : "Ste prepričani, da želite odstraniti vse izdelke iz košarice? Tega dejanja ni mogoče razveljaviti."
+        }
+        confirmLabel={pick(locale, "Izprazni košarico", "Clear cart")}
         onConfirm={handleClearCart}
         variant="destructive"
       />

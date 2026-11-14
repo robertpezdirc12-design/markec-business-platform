@@ -7,6 +7,8 @@ import { UnauthorizedError, requirePermissionOrg } from "@/lib/auth/guards"
 import { recordConfigChange } from "@/lib/config-history/record"
 import { mergeSiteContent, normalizeSections, sanitizeCustomSections, type SiteContent } from "@/lib/site-content"
 import { computeRevert, hasUnpublishedChanges, parsePublishState } from "@/lib/publication"
+import { validateTheme, getTemplate, normalizeNav } from "@/lib/site-design"
+import { resolveEffectiveProfile } from "@/lib/profiles/resolve"
 import type { PublicationStatus } from "@/app/actions/publication"
 import { PALETTES, verticalSiteContent, upgradeLegacyDefaultCopy } from "@/lib/verticals"
 import type { CatalogSeedReport } from "@/lib/verticals"
@@ -29,7 +31,18 @@ function canonicalize(value: unknown): unknown {
   return value
 }
 
-export async function isSiteContentUntouched(orgId: string, vertical: string): Promise<boolean> {
+export async function isSiteContentUntouched(_orgId?: string, vertical?: string): Promise<boolean> {
+  // Varnost (F6.3.5): NNIKOLI ne zaupaj orgId iz zahteve. Le lastnik (session).
+  let orgId: string | null = null
+  let vert: string | null = null
+  try {
+    const { org } = await requirePermissionOrg("settings.manage")
+    orgId = org.id
+    vert = vertical ?? org.vertical
+  } catch {
+    return false
+  }
+  if (!orgId) return false
   const config = await prisma.salonConfig.findUnique({
     where: { organizationId: orgId },
     select: { siteContent: true },
@@ -37,7 +50,7 @@ export async function isSiteContentUntouched(orgId: string, vertical: string): P
   if (!config?.siteContent) return true
   return (
     JSON.stringify(canonicalize(config.siteContent)) ===
-    JSON.stringify(canonicalize(verticalSiteContent(vertical)))
+    JSON.stringify(canonicalize(verticalSiteContent(vert)))
   )
 }
 
@@ -49,6 +62,7 @@ export async function getOrgBranding() {
       where: { organizationId: org.id },
       select: {
         siteContent: true,
+        theme: true,
         publishedContentVersion: true,
       },
     })
@@ -63,6 +77,14 @@ export async function getOrgBranding() {
         palette: org.palette,
         siteUrl: `/s/${org.slug}`,
       },
+      // F5.3.2 — owner-editable theme (colors/typography).
+      theme: (config?.theme ?? null) as
+        | import("@/lib/site-design").SiteTheme
+        | null,
+      // F5.3.2 — capability imena (za predloge + navigacijo; izklopljene se ne ponudijo).
+      capabilities: Object.entries(resolveEffectiveProfile(org).capabilities)
+        .filter(([, state]) => state !== "disabled")
+        .map(([name]) => name),
       siteContent: upgradeLegacyDefaultCopy(
         mergeSiteContent(config?.siteContent, org.vertical),
         org.slug
@@ -75,6 +97,9 @@ export async function getOrgBranding() {
           config?.publishedContentVersion ?? null
         ),
         hasPublishedSnapshot: config?.publishedContentVersion != null,
+        // F5.3.1 (optimistična zaščita hkratnega urejanja): klicatelju
+        // podamo trenutno verzijo, da jo uporabi kot expectedContentVersion.
+        contentVersion: org.contentVersion,
         // Advisories are the PublicationCard's concern (computed there).
         warnings: [],
       } satisfies PublicationStatus,
@@ -95,10 +120,34 @@ export async function getOrgBranding() {
  * social, SEO, sections). Every save creates a NEW content version (E3-2) —
  * the working draft — while the published snapshot stays untouched, so the
  * public site only changes when the owner publishes.
+ *
+ * F5.3.1 (optimistic concurrency): when `expectedContentVersion` is provided
+ * and differs from `org.contentVersion`, the save is REJECTED with `code:
+ * "STALE"` — two editors can no longer silently overwrite each other. The
+ * caller reloads and offers the user to override. Backward-compatible: the
+ * existing form editor passes no version (last-write-wins, unchanged).
  */
-export async function updateSiteContent(content: SiteContent) {
+export async function updateSiteContent(
+  content: SiteContent,
+  opts?: { expectedContentVersion?: number }
+) {
   try {
     const { org, session } = await requirePermissionOrg("settings.manage")
+
+    // F5.3.1: concurrency guard — reject when the draft moved on.
+    if (opts?.expectedContentVersion != null) {
+      const fresh = await prisma.organization.findUnique({
+        where: { id: org.id },
+        select: { contentVersion: true },
+      })
+      if (!fresh || fresh.contentVersion !== opts.expectedContentVersion) {
+        return {
+          success: false,
+          code: "STALE" as const,
+          error: "Vsebino je vmes spremenil drug uporabnik. Naložite najnovejšo in poskusite znova.",
+        }
+      }
+    }
 
     // Minimal server-side sanitization: plain strings only, bounded lengths.
     const clean = JSON.parse(JSON.stringify(content)) as SiteContent
@@ -114,6 +163,17 @@ export async function updateSiteContent(content: SiteContent) {
     else delete clean.customSections
     const normalizedSections = normalizeSections(clean.sections)
     if (normalizedSections) clean.sections = normalizedSections
+
+    // F5.3.3 — navigacija: strežniška sanitizacija na izvoru. Klient ni
+    // zaupanja vreden — nav se normalizira (cap, vrstni red, zavrnitev
+    // javascript:/data: shem) PRED zapisom v osnutek, ne le ob prikazu.
+    // Tako neveljaven/napadalni vnos nikoli ne doseže DB (ne podleti na
+    // branju s tiho degradacijo).
+    if (Array.isArray(clean.nav)) {
+      const nav = normalizeNav(clean.nav)
+      if (nav && nav.length > 0) clean.nav = nav
+      else delete clean.nav
+    }
 
     // F5: prejšnji osnutek (za verzijo v ConfigChangeLog).
     const config = await prisma.salonConfig.findUnique({
@@ -198,6 +258,19 @@ export async function revertSiteContentToPublished(): Promise<
       prisma.organization.update({
         where: { id: org.id },
         data: { contentVersion: revert.contentVersion },
+      }),
+      // F5.5.2 — povratek zavrže še NEOBJAVLJENE (draft) galerije/FAQ.
+      // Objavljene (isPublished=true) ostanejo: sovpadajo z objavljeno stranjo,
+      // zato jih ne smemo brisati. Media datoteke se pri brisanju galerij NIKOLI
+      // ne brišejo (samo reference v GalleryItem), zato druge vsebine ostanejo varne.
+      prisma.galleryItem.deleteMany({
+        where: { gallery: { organizationId: org.id, isPublished: false } },
+      }),
+      prisma.gallery.deleteMany({
+        where: { organizationId: org.id, isPublished: false },
+      }),
+      prisma.faqItem.deleteMany({
+        where: { organizationId: org.id, isPublished: false },
       }),
     ])
 
@@ -414,5 +487,98 @@ export async function loadSampleSiteContent(): Promise<
     }
     console.error("Error loading sample site content:", error)
     return { success: false, error: "Failed to load sample content." }
+  }
+}
+
+/**
+ * F5.3.2 — shrani lastnik-u-urejljivo temo (barve/pisave) v SalonConfig.theme.
+ * Najprej validira kontrast/berljivost; ob napakah NE shrani in vrne jasna
+ * sporočila, da podjetnik popravi (stran se ne sme poslabšati v nečitljivo).
+ */
+export async function updateTheme(theme: import("@/lib/site-design").SiteTheme) {
+  try {
+    const { org } = await requirePermissionOrg("settings.manage")
+    const validation = validateTheme(theme)
+    if (validation.errors.length > 0) {
+      return { success: false as const, errors: validation.errors, warnings: validation.warnings }
+    }
+    const clean = {
+      colors: { ...theme.colors },
+      typography: { ...theme.typography },
+    }
+    await prisma.salonConfig.upsert({
+      where: { organizationId: org.id },
+      create: { organizationId: org.id, name: org.name, theme: clean as unknown as object },
+      update: { theme: clean as unknown as object },
+    })
+    revalidatePath("/", "layout")
+    return { success: true as const, warnings: validation.warnings }
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return { success: false, error: error.message }
+    }
+    console.error("Error updating theme:", error)
+    return { success: false, error: "Failed to update theme." }
+  }
+}
+
+/**
+ * F5.3.2 — izberi oblikovno predlogo (draft). Ne izbris Mbesedil/fotografij:
+ * shranimo samo marker `_templateId` in po potrebi uskladimo vrstni red sekcij
+ * po predlogi; uporabniške vsebine po ključih se ohranijo (mergeSiteContent
+ * pri renderju). Objavi se šele z Objavi (E3-2).
+ */
+export async function applyTemplate(templateId: string) {
+  try {
+    const { org } = await requirePermissionOrg("settings.manage")
+    const template = getTemplate(templateId)
+    if (!template) return { success: false, error: "Neznana predloga." }
+    const config = await prisma.salonConfig.findUnique({
+      where: { organizationId: org.id },
+      select: { siteContent: true },
+    })
+    const current = mergeSiteContent(config?.siteContent, org.vertical)
+    const next: import("@/lib/site-content").SiteContent = {
+      ...current,
+      // marker predloge
+      _templateId: template.id,
+    }
+    // if predloga določi vrstni red, ga uporabimo samo za prisotne ključe
+    if (template.sectionOrder) {
+      const byKey = new Map(current.sections.map((s) => [s.key, s]))
+      const ordered: import("@/lib/site-content").SectionEntry[] = []
+      for (const k of template.sectionOrder) {
+        const e = byKey.get(k)
+        // builtin ključ → premakni na novo pozicijo; custom hranimo ob koncu
+        if (e && e.key !== "custom") ordered.push(e)
+      }
+      const custom = current.sections.filter((s) => s.key === "custom")
+      const existingOrdered = ordered.map((e) => e.key)
+      for (const e of current.sections) {
+        if (e.key === "custom") continue
+        if (!existingOrdered.includes(e.key)) ordered.push(e)
+      }
+      next.sections = [...ordered, ...custom]
+    }
+
+    await prisma.$transaction([
+      prisma.salonConfig.upsert({
+        where: { organizationId: org.id },
+        create: { organizationId: org.id, name: org.name, siteContent: next as unknown as object },
+        update: { siteContent: next as unknown as object },
+      }),
+      prisma.organization.update({
+        where: { id: org.id },
+        data: { contentVersion: { increment: 1 } },
+      }),
+    ])
+    revalidatePath("/", "layout")
+    return { success: true as const }
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return { success: false, error: error.message }
+    }
+    console.error("Error applying template:", error)
+    return { success: false, error: "Failed to apply template." }
   }
 }

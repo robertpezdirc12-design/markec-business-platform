@@ -45,6 +45,8 @@ export interface PlanDefinition {
   description: LocalizedText
   limits: PlanLimits
   features: LocalizedText[]
+  /** Monthly price in EUR cents (FREE = 0). Prikaz za javno pricing stran. */
+  priceMonthly: number
 }
 
 // ------------------------------------------------------------

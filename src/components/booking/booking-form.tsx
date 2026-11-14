@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useActionState } from "react"
+import { useEffect, useState, useActionState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useForm, useWatch } from "react-hook-form"
 import {
@@ -25,13 +25,23 @@ import {
 import { ServiceStep } from "./steps/service-step"
 import { toast } from "sonner"
 import { useI18n } from "@/lib/i18n/provider"
+import { checkPromotionCode } from "@/app/actions/checkout-promo"
+// F2.2.2 P0-2: gostova rezervacija brez plačila se vrne na uspešno stran
+// ZA NAJEMNIKA (isto površino, na kateri je oddal obrazec) — gola pot
+// /booking/success bi padla na platformo in izgubila najemnika (enaka
+// napaka kot Stripe success_url, popravljen v actions/stripe.ts).
+import { useOrgPrefix } from "@/lib/org-path-hooks"
 import { ServiceSelectionStep } from "./steps/service-selection-step"
 import { StaffStep } from "./steps/staff-step"
 import { StaffDisplayStep } from "./steps/staff-display-step"
 import { DateTimeStep } from "./steps/date-time-step"
 import { CustomerInfoStep } from "./steps/customer-info-step"
 import { BookingSummaryCard } from "./booking-summary-card"
+import { BookingStepper } from "./booking-stepper"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { SparkleIcon } from "@/components/icons"
 import { format, isSameDay } from "date-fns"
 import {
@@ -51,6 +61,9 @@ export function BookingForm(props: BookingFormProps) {
     defaultValues = {},
   } = props
   const { locale, t, withBusiness } = useI18n()
+  // F2.2.2 P0-2: najemniška pripona za client-side režime (push na uspešno
+  // stran brez plačila). "" na golih poteh (custom domena servi golo).
+  const tenantPrefix = useOrgPrefix()
 
   const router = useRouter()
   const [flowError, setFlowError] = useState<string | null>(null)
@@ -93,6 +106,24 @@ export function BookingForm(props: BookingFormProps) {
   }>({ available: false, depositAmount: 0, currency: "EUR" })
   const [paymentMode, setPaymentMode] = useState<"deposit" | "guarantee">("deposit")
   const [noShowConsent, setNoShowConsent] = useState(false)
+  // F5.1: promocijska koda (neobvezna; preveri se ob rezervaciji).
+  const [promotionCode, setPromotionCode] = useState("")
+  // F5.1 UX: sprotna preverba veljavnosti (gumb "Preveri").
+  type PromoState = { ok: boolean; message?: string } | null
+  const [promotionState, setPromotionState] = useState<PromoState>(null)
+  const [isCheckingPromo, startCheckPromo] = useTransition()
+
+  const handleCheckPromotionCode = () => {
+    if (!promotionCode.trim()) return
+    startCheckPromo(async () => {
+      const r = await checkPromotionCode(promotionCode)
+      setPromotionState(
+        r.ok
+          ? { ok: true, message: `${r.name} · ${r.discountLabel}` }
+          : { ok: false, message: r.message }
+      )
+    })
+  }
 
 
 
@@ -184,8 +215,10 @@ export function BookingForm(props: BookingFormProps) {
       firstName: defaultValues.firstName || "",
       lastName: defaultValues.lastName || "",
       email: defaultValues.email || "",
-      phone: "",
+      phone: defaultValues.phone ?? "",
       notes: "",
+      vehiclePlate: "",
+      vehicleName: "",
     },
   })
 
@@ -199,6 +232,8 @@ export function BookingForm(props: BookingFormProps) {
     email: useWatch({ control, name: "email" }) ?? "",
     phone: useWatch({ control, name: "phone" }) ?? "",
     notes: useWatch({ control, name: "notes" }) ?? "",
+    vehiclePlate: useWatch({ control, name: "vehiclePlate" }) ?? "",
+    vehicleName: useWatch({ control, name: "vehicleName" }) ?? "",
   }
   // P1 #9 (audit-2026-11): inline validation for the controlled customer
   // fields. These inputs are intentionally unregistered (React 19 action
@@ -266,6 +301,8 @@ export function BookingForm(props: BookingFormProps) {
         email: fdStr(formData, "email"),
         phone: fdStr(formData, "phone"),
         notes: fdOptStr(formData, "notes"),
+        vehiclePlate: fdOptStr(formData, "vehiclePlate") || undefined,
+        vehicleName: fdOptStr(formData, "vehicleName") || undefined,
       }
 
       // Missing staff: keep the inline StaffStep error (same message as the
@@ -308,6 +345,7 @@ export function BookingForm(props: BookingFormProps) {
             resourceRecordId: selectedResourceId,
             addonIds: selectedAddonIds,
           intakeAnswers,
+          promotionCode: promotionCode.trim() || undefined,
           })
 
           if (result.success && result.appointmentId) {
@@ -340,6 +378,7 @@ export function BookingForm(props: BookingFormProps) {
             resourceRecordId: selectedResourceId,
             addonIds: selectedAddonIds,
             intakeAnswers,
+            promotionCode: promotionCode.trim() || undefined,
             guestName: !isAuthenticated
               ? `${parsed.data.firstName} ${parsed.data.lastName}`
               : undefined,
@@ -368,6 +407,7 @@ export function BookingForm(props: BookingFormProps) {
           resourceRecordId: selectedResourceId,
           addonIds: selectedAddonIds,
           intakeAnswers,
+          promotionCode: promotionCode.trim() || undefined,
           guestName: !isAuthenticated
             ? `${parsed.data.firstName} ${parsed.data.lastName}`
             : undefined,
@@ -401,6 +441,9 @@ export function BookingForm(props: BookingFormProps) {
             resourceRecordId: selectedResourceId,
             addonIds: selectedAddonIds,
           intakeAnswers,
+          promotionCode: promotionCode.trim() || undefined,
+          vehiclePlate: parsed.data.vehiclePlate,
+          vehicleName: parsed.data.vehicleName,
           })
 
           if (fallback.success && fallback.appointmentId) {
@@ -408,7 +451,11 @@ export function BookingForm(props: BookingFormProps) {
             if (isAuthenticated) {
               router.push(`/my-appointments?new=${fallback.appointmentId}`)
             } else {
-              router.push(`/booking/success?appointment=${fallback.appointmentId}`)
+              // F2.2.2 P0-2: ohrani najemniški kontekst (custom domena =
+              // "" — gola pot; /s/<slug> pod platformo).
+              router.push(
+                `${tenantPrefix}/booking/success?appointment=${fallback.appointmentId}`
+              )
             }
             return { ok: true }
           }
@@ -439,7 +486,7 @@ export function BookingForm(props: BookingFormProps) {
   )
 
   return (
-    <form action={formAction}>
+    <form action={formAction} className="pb-20 lg:pb-0">
       {/* Employee Banner */}
       {isEmployee && (
         <Alert className="mb-6 border-primary/30 bg-linear-to-r from-primary/5 via-primary/10 to-accent/5 dark:border-primary/40 dark:from-primary/10 dark:via-primary/15 dark:to-accent/10">
@@ -454,6 +501,19 @@ export function BookingForm(props: BookingFormProps) {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column - Form Steps */}
         <div className="space-y-6 lg:col-span-2">
+          <BookingStepper
+            label={t.booking.bookTitle}
+            labels={{
+              service: t.booking.service,
+              staff: t.booking.staff,
+              dateTime: t.booking.dateTime,
+              details: t.booking.yourDetails,
+            }}
+            serviceDone={isStaffFirst ? !!selectedServiceId : true}
+            staffDone={isStaffFirst ? true : !!staffId}
+            slotDone={!!selectedDate && !!selectedTime}
+            detailsDone={!!(customerValues.firstName && customerValues.email && customerValues.phone)}
+          />
           {/* Staff-first mode: Show preselected staff, then service selection */}
           {isStaffFirst ? (
             <>
@@ -553,6 +613,48 @@ export function BookingForm(props: BookingFormProps) {
             }
           />
 
+          {/* 2D-1W — neobavezni podatki o vozilu (delavnica vozil / tire-service).
+              Preko skritih inputov gredo v FormData → createAppointment →
+              poveže vozilo s stranko + rezervacijo (vozilo ostane vozilo). */}
+          {props.showVehicle && (
+            <Card className="border-dashed">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  Podatki o vozilu (neobvezno)
+                </CardTitle>
+                <CardDescription className="text-sm">
+                  Za vulkanizersko storitev lahko vnesete vozilo — povežemo ga s
+                  stranko in rezervacijo.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <Label htmlFor="vehiclePlate">Registrska oznaka</Label>
+                  <Input
+                    id="vehiclePlate"
+                    value={customerValues.vehiclePlate}
+                    onChange={(e) => setValue("vehiclePlate", e.target.value)}
+                    placeholder="npr. LJ-123-AB"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="vehicleName">Vozilo (ime/model)</Label>
+                  <Input
+                    id="vehicleName"
+                    value={customerValues.vehicleName}
+                    onChange={(e) => setValue("vehicleName", e.target.value)}
+                    placeholder="npr. Škoda Octavia"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Skriti inputi: controlled vrednosti morajo priti v FormData za
+              React 19 action-submit obnovo po izpolnjevanju. */}
+          <input type="hidden" name="vehiclePlate" value={customerValues.vehiclePlate} />
+          <input type="hidden" name="vehicleName" value={customerValues.vehicleName} />
+
           {/* #97 (AD-07): no-show zaščita — izbira načina pologa. Privolitev
               je EKSPPLICITNA (checkbox z pravno formulacijo); brez nje se
               garancija ne aktivira. */}
@@ -610,10 +712,53 @@ export function BookingForm(props: BookingFormProps) {
               )}
             </div>
           )}
+
+          {/* F5.1: promocijska koda */}
+          <div className="space-y-2 rounded-xl border bg-muted/30 p-4">
+            <label htmlFor="booking-promo-code" className="text-sm font-semibold">
+              🏷️ Promocijska koda
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="booking-promo-code"
+                type="text"
+                value={promotionCode}
+                onChange={(e) => {
+                  setPromotionCode(e.target.value)
+                  setPromotionState(null)
+                }}
+                placeholder="npr. POLETJE20"
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm uppercase"
+              />
+              <button
+                type="button"
+                onClick={handleCheckPromotionCode}
+                disabled={isCheckingPromo || !promotionCode.trim()}
+                className="shrink-0 rounded-md border px-3 py-2 text-sm font-medium disabled:opacity-50"
+              >
+                {isCheckingPromo ? "…" : "Preveri"}
+              </button>
+            </div>
+            {promotionState && (
+              <p
+                className={`text-xs ${
+                  promotionState.ok
+                    ? "text-green-600 dark:text-green-400"
+                    : "text-destructive"
+                }`}
+              >
+                {promotionState.ok ? `✓ ${promotionState.message}` : promotionState.message}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Če imate kodo za popust na storitve, jo vnesite tukaj. Uporabi se
+              ob potrditvi rezervacije, če je veljavna.
+            </p>
+          </div>
         </div>
 
         {/* Right Column - Summary & Submit */}
-        <div className="lg:col-span-1">
+        <div id="booking-summary" className="scroll-mt-24 lg:col-span-1">
           <BookingSummaryCard
             service={selectedService || null}
             selectedStaff={
@@ -637,6 +782,30 @@ export function BookingForm(props: BookingFormProps) {
       {/* Hidden carriers for the React 19 action — selection state lives in
           React/RHF state, not in DOM inputs, so FormData needs explicit
           mirrors of exactly what the server action expects. */}
+      {/* Mobile: the summary card sits BELOW the wizard, so keep the running
+          selection (what + when) visible at the bottom of the screen. It is a
+          jump link to the real summary — no duplicate submit path. */}
+      <div className="bg-background/95 fixed inset-x-0 bottom-0 z-40 border-t px-4 py-3 backdrop-blur-md lg:hidden">
+        <a
+          href="#booking-summary"
+          className="mx-auto flex max-w-3xl items-center justify-between gap-3"
+        >
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold">
+              {selectedService?.name ?? t.booking.service}
+            </span>
+            <span className="text-muted-foreground block truncate text-xs">
+              {selectedDate && selectedTime
+                ? `${format(selectedDate, "d. M.")} ${t.booking.atSeparator} ${selectedTime}`
+                : t.booking.notSelected}
+            </span>
+          </span>
+          <span className="text-primary-text shrink-0 text-sm font-semibold">
+            {t.booking.summaryTitle}
+          </span>
+        </a>
+      </div>
+
       <input type="hidden" name="staffId" value={staffId ?? ""} />
       <input
         type="hidden"

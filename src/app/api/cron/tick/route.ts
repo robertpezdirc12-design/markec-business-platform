@@ -4,6 +4,8 @@ import { expireStalePending } from "@/lib/jobs/expire-stale-pending"
 import { sendMarketingEmails } from "@/lib/jobs/send-marketing-emails"
 import { sendDailyDigest } from "@/lib/jobs/send-daily-digest"
 import { withJobRun } from "@/lib/jobs/job-run"
+import { purgeExpiredRateLimits } from "@/lib/rate-limit"
+import { enforceBillingGrace } from "@/lib/jobs/enforce-billing-grace"
 
 export const dynamic = "force-dynamic"
 
@@ -33,16 +35,23 @@ export async function GET(req: Request) {
   }
 
   // Vsak job je neodvisen: neuspeh opomnikov ne sme ustaviti čiščenja.
-  const [reminders, expiry, marketing, digest] = await Promise.all([
+  const [reminders, expiry, marketing, digest, rateLimitPurge, billingGrace] = await Promise.all([
     withJobRun("send-due-reminders", sendDueReminders),
     withJobRun("expire-stale-pending", expireStalePending),
     withJobRun("send-marketing-emails", sendMarketingEmails),
     // #99: dnevni digest lastniku (samo ko se je kaj zgodilo).
     withJobRun("send-daily-digest", sendDailyDigest),
+    // Točka 1: počisti zastarele rate-limit vrstice (brez brisanja aktivnih oken).
+    withJobRun("rate-limit-purge", async () => {
+      const purged = await purgeExpiredRateLimits()
+      return { sent: purged, failed: 0, detail: { purged } }
+    }),
+    // Točka 7b: grace tok neplačila (opomnik → grace → suspenz).
+    withJobRun("enforce-billing-grace", () => enforceBillingGrace()),
   ])
 
   return NextResponse.json({
     ok: true,
-    results: { reminders, expiry, marketing, digest },
+    results: { reminders, expiry, marketing, digest, rateLimitPurge, billingGrace },
   })
 }

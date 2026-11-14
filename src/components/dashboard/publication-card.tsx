@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {
+  getPublicationStatus,
   publishSite,
   unpublishSite,
   type PublicationStatus,
@@ -71,13 +72,11 @@ export function PublicationCard({ initial, siteHref }: PublicationCardProps) {
       try {
         const result = await publishSite()
         if (result.success) {
-          setStatus({
-            state: "PUBLISHED",
-            publishedAt: new Date(),
-            hasUnpublishedChanges: false,
-            hasPublishedSnapshot: true,
-            warnings: result.warnings,
-          })
+          // F5.3.1: re-fetch the real state after publish so contentVersion stays
+          // consistent (the field was added for optimistic concurrent editing).
+          getPublicationStatus()
+            .then((fresh) => setStatus(fresh))
+            .catch(() => undefined)
           // P3 #64: negativen resolve-tenant odgovor ni več cacheiran, a
           // CDN/pozitivni cachei lahko še nekaj sekund servirajo staro —
           // sporočilo ne obljublja takojšnje dostopnosti, če ta ni zagotovljena.

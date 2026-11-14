@@ -25,16 +25,31 @@ import { useI18n } from "@/lib/i18n/provider"
 // serijalizabilne čez RSC mejo.
 // ============================================================
 
+interface StocktakeVariant {
+  id: string
+  name: string
+  sku: string | null
+  stockQuantity: number
+}
+
 interface StocktakeProduct {
   id: string
   name: string
   sku: string | null
   unit: string
   stockQuantity: number
+  variants: StocktakeVariant[]
 }
 
 interface StocktakeClientProps {
   products: StocktakeProduct[]
+}
+
+type RowKey = string // "productId" ali "productId::variantId"
+
+/** Enoličen niz vrstice za izdelek oz. posamezno varianto. */
+function rowKey(productId: string, variantId?: string | null): RowKey {
+  return variantId ? `${productId}::${variantId}` : productId
 }
 
 export function StocktakeClient({ products }: StocktakeClientProps) {
@@ -43,28 +58,72 @@ export function StocktakeClient({ products }: StocktakeClientProps) {
   const labels = t.products
   const [isPending, startTransition] = useTransition()
   const [note, setNote] = useState("")
-  const [counted, setCounted] = useState<Record<string, string>>({})
+  const [counted, setCounted] = useState<Record<RowKey, string>>({})
+
+  // Vrstice za inventuro — za variant-led izdelek ena vrstica NA VARIANTO,
+  // sicer ena za izdelek. Nikoli oboje (ne dvojnega štetja).
+  const rows = useMemo(() => {
+    const out: {
+      key: RowKey
+      productId: string
+      product: StocktakeProduct
+      variant: StocktakeVariant | null
+      system: number
+      label: string
+      sku: string | null
+    }[] = []
+    for (const p of products) {
+      if (p.variants.length > 0) {
+        for (const v of p.variants) {
+          out.push({
+            key: rowKey(p.id, v.id),
+            productId: p.id,
+            product: p,
+            variant: v,
+            system: v.stockQuantity,
+            label: `${p.name} — ${v.name}`,
+            sku: v.sku ?? p.sku,
+          })
+        }
+      } else {
+        out.push({
+          key: rowKey(p.id),
+          productId: p.id,
+          product: p,
+          variant: null,
+          system: p.stockQuantity,
+          label: p.name,
+          sku: p.sku,
+        })
+      }
+    }
+    return out
+  }, [products])
 
   const deltas = useMemo(() => {
-    const map: Record<string, number | null> = {}
-    for (const p of products) {
-      const raw = counted[p.id]
+    const map: Record<RowKey, number | null> = {}
+    for (const r of rows) {
+      const raw = counted[r.key]
       if (raw === undefined || raw === "") {
-        map[p.id] = null
+        map[r.key] = null
         continue
       }
       const n = Number(raw)
-      map[p.id] = Number.isInteger(n) && n >= 0 ? n - p.stockQuantity : null
+      map[r.key] = Number.isInteger(n) && n >= 0 ? n - r.system : null
     }
     return map
-  }, [counted, products])
+  }, [counted, rows])
 
   const filledCount = Object.values(deltas).filter((d) => d !== null).length
 
   const handleSubmit = () => {
-    const lines = products
-      .filter((p) => deltas[p.id] !== null)
-      .map((p) => ({ productId: p.id, counted: Number(counted[p.id]) }))
+    const lines = rows
+      .filter((r) => deltas[r.key] !== null)
+      .map((r) => ({
+        productId: r.productId,
+        productVariantId: r.variant?.id ?? null,
+        counted: Number(counted[r.key]),
+      }))
 
     if (lines.length === 0) {
       toast.error(labels.stocktakeEmpty)
@@ -89,7 +148,7 @@ export function StocktakeClient({ products }: StocktakeClientProps) {
     })
   }
 
-  if (products.length === 0) {
+  if (rows.length === 0) {
     return (
       <Card>
         <CardContent className="py-12 text-center">
@@ -105,7 +164,7 @@ export function StocktakeClient({ products }: StocktakeClientProps) {
         <div>
           <CardTitle>{labels.stocktakeTitle}</CardTitle>
           <CardDescription>
-            {labels.totalProductsCount(products.length)}
+            {labels.totalProductsCount(rows.length)}
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
@@ -151,26 +210,26 @@ export function StocktakeClient({ products }: StocktakeClientProps) {
               </tr>
             </thead>
             <tbody>
-              {products.map((p) => {
-                const delta = deltas[p.id]
+              {rows.map((r) => {
+                const delta = deltas[r.key]
                 return (
-                  <tr key={p.id} className="border-b last:border-0">
-                    <td className="py-3 font-medium">{p.name}</td>
+                  <tr key={r.key} className="border-b last:border-0">
+                    <td className="py-3 font-medium">{r.label}</td>
                     <td className="text-muted-foreground py-3 font-mono text-sm">
-                      {p.sku || "—"}
+                      {r.sku || "—"}
                     </td>
                     <td className="py-3 text-right font-mono">
-                      {p.stockQuantity} {p.unit}
+                      {r.system} {r.product.unit}
                     </td>
                     <td className="no-print py-3 text-right">
                       <Input
                         type="number"
                         min="0"
                         inputMode="numeric"
-                        aria-label={`${labels.stocktakeCountedLabel}: ${p.name}`}
-                        value={counted[p.id] ?? ""}
+                        aria-label={`${labels.stocktakeCountedLabel}: ${r.label}`}
+                        value={counted[r.key] ?? ""}
                         onChange={(e) =>
-                          setCounted((prev) => ({ ...prev, [p.id]: e.target.value }))
+                          setCounted((prev) => ({ ...prev, [r.key]: e.target.value }))
                         }
                         className="ml-auto w-24 text-right"
                       />

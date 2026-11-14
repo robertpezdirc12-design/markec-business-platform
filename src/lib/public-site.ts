@@ -14,6 +14,7 @@ import { upgradeLegacyImagery, upgradeLegacyDefaultCopy } from "@/lib/verticals"
 import { parsePublishState } from "@/lib/publication"
 import { resolveEffectiveProfile } from "@/lib/profiles/resolve"
 import { sectionsForProfile, type HomeSectionFlags } from "@/lib/home-sections"
+import { computeAvailableStock } from "@/lib/inventory/stock"
 import type { Organization, SalonConfig } from "@prisma/client"
 
 // ============================================================
@@ -225,9 +226,15 @@ export async function getPublicServicesGrouped(
   uncategorizedLabel = "Brez kategorije"
 ) {
   const services = await prisma.service.findMany({
-    where: { organizationId: orgId, isActive: true },
+    where: {
+      organizationId: orgId,
+      isActive: true,
+      // F5.2: izključi samo storitve v NEAKTIVNI kategoriji; brezkategorijne
+      // in aktivne se prikažejo.
+      NOT: { category: { is: { isActive: false } } },
+    },
     include: { category: true },
-    orderBy: [{ category: { name: "asc" } }, { name: "asc" }],
+    orderBy: [{ category: { sortOrder: "asc" } }, { name: "asc" }],
   })
   return services.reduce(
     (acc, service) => {
@@ -240,12 +247,12 @@ export async function getPublicServicesGrouped(
   )
 }
 
-/** Categories for the services filter. */
+/** Categories for the services filter (only ACTIVE, ordered). */
 export async function getPublicCategories(orgId: string) {
   return prisma.category.findMany({
-    where: { organizationId: orgId },
-    select: { id: true, name: true },
-    orderBy: { name: "asc" },
+    where: { organizationId: orgId, isActive: true },
+    select: { id: true, name: true, parentId: true, slug: true },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
   })
 }
 
@@ -324,7 +331,15 @@ export async function getPublicShopProducts(orgId: string) {
   const products = await prisma.product.findMany({
     // #78: samo izdelki ZA PRODAJO (forSale) so javni — back-bar / notranja
     // uporaba (forSale=false) ne sodi v trgovino, tudi če jih sistem šteje.
-    where: { organizationId: orgId, isActive: true, forSale: true },
+    where: {
+      organizationId: orgId,
+      isActive: true,
+      forSale: true,
+      // F5.2: izdelek v NEAKTIVNI kategoriji ni javno prikazan; izdelek brez
+      // kategorije (categoryId null) pa JA (ni "v neaktivni kategoriji").
+      // NOT{category.isActive=false} vključi null-category in aktivne.
+      NOT: { category: { is: { isActive: false } } },
+    },
     orderBy: [{ isFeatured: "desc" }, { name: "asc" }],
   })
   return products.map((product) => ({
@@ -347,7 +362,13 @@ export async function getPublicShopProducts(orgId: string) {
  */
 export async function getPublicProductById(orgId: string, id: string) {
   const product = await prisma.product.findFirst({
-    where: { organizationId: orgId, id, isActive: true, forSale: true },
+    where: {
+      organizationId: orgId,
+      id,
+      isActive: true,
+      forSale: true,
+      NOT: { category: { is: { isActive: false } } },
+    },
     include: { category: true },
   })
   if (!product) return null
@@ -356,6 +377,35 @@ export async function getPublicProductById(orgId: string, id: string) {
     price: product.price.toNumber(),
     compareAtPrice: product.compareAtPrice?.toNumber() ?? null,
   }
+}
+
+/**
+ * F5.5.1 — javne RAZLIČICE izdelka (org-scoped, samo aktivne).
+ * Vrnemo podatke, ki jih kupec rabi (naziv, cena, SKU, zaloga) za izbiro
+ * različice na javni strani; trackInventory interno ni izpostavljen.
+ */
+export async function getPublicProductVariants(orgId: string, productId: string) {
+  const variants = await prisma.productVariant.findMany({
+    where: { organizationId: orgId, productId, isActive: true },
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      sku: true,
+      price: true,
+      stockQuantity: true,
+      reservedQuantity: true,
+    },
+  })
+  // F6.1: razpoložljiva zaloga variante upošteva rezervirano (stock − reserved),
+  // enako semantiko kot za izdelek (F5.5.1.2).
+  return variants.map((v) => ({
+    id: v.id,
+    name: v.name,
+    sku: v.sku,
+    price: v.price ? v.price.toNumber() : null,
+    stockQuantity: computeAvailableStock(v.stockQuantity, v.reservedQuantity),
+  }))
 }
 
 /** Active staff members with services + working hours (tenant-scoped). */

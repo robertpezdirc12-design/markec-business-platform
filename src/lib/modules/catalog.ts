@@ -12,7 +12,7 @@
 //  - brez vrstice moduleState = vertikalni privzeti (ni spremembe).
 // ============================================================
 
-import type { CapabilityKey } from "@/lib/profiles/types"
+import type { CapabilityKey, CapabilityState } from "@/lib/profiles/types"
 
 export type ModuleState = "ACTIVE" | "DEACTIVATED" | "HIDDEN"
 
@@ -168,14 +168,16 @@ export function getModule(id: string): ModuleDef | null {
 export type ModuleStateMap = Record<string, ModuleState>
 
 /**
- * Efektivna capability matrika (DASHBOARD): vertikalni profil + moduleStates
- * (zadnja beseda — neodvisno od vertikale).
- *  - DEACTIVATED modul izklopi SVOJE capability-je (podatki ostanejo);
- *  - ACTIVE in HIDDEN pustita capability delujočo (HIDDEN = skrito samo
- *    iz JAVNE strani — glej effectivePublicCapabilities);
- *  - ACTIVE/HIDDEN modul ODKLENE capability, ki jo je profil imel
- *    "disabled" (modul = samostojen, ne vezan na dejavnost — jedro 8.C);
- *  - nič vrstic = brez spremembe (obstoječi najemniki).
+ * Efektivna capability matrika (DASHBOARD): vertikalni profil + moduleStates.
+ *
+ * F5.4.1 (P0) — ORGANIZACIJSKO STANJE NE SME PREGLASITI AVTORITATIVNIH
+ * PRAVIL AKTIVNEGA PROFILA:
+ *   - `required` je vedno funkcionalno aktiven (moduleState DEACTIVATED ga ne
+ *     sme izklopiti; vsilimo ACTIVE kot funcionalno).
+ *   - `disabled` se nikoli ne sme vklopiti (moduleState ACTIVE/HIDDEN ne sme
+ *     odpreti — ostaja disabled).
+ *   - `optional` sme biti ACTIVE / HIDDEN / DEACTIVATED po izbiri lastnika.
+ * To je ena politika z `modulePolicyFor` v src/lib/modules/policy.ts.
  */
 export function effectiveCapabilities(
   profileCapabilities: Record<string, string>,
@@ -186,30 +188,62 @@ export function effectiveCapabilities(
     const state = states[mod.id]
     if (!state) continue
     for (const cap of mod.capabilities) {
-      if (state === "DEACTIVATED") {
+      const base = out[cap] as CapabilityState | undefined
+      if (base === "disabled") {
+        // disabled: nikoli vklopljen (moduleState ne sme odpreti).
         out[cap] = "disabled"
-      } else if (out[cap] === "disabled") {
-        out[cap] = "optional"
+        continue
       }
+      if (base === "required") {
+        // required: vedno aktiven (moduleState ga ne sme izklopiti).
+        out[cap] = "required"
+        continue
+      }
+      // optional: podvržen definira modul.
+      out[cap] = state === "DEACTIVATED" ? "disabled" : (base ?? "optional")
     }
   }
   return out
 }
 
 /**
- * Efektivna matrika za JAVNO stran: HIDDEN modul je izklopljen (javni
- * vhodi se zaprejo), DEACTIVATED prav tako; ACTIVE odklene disabled.
- * Dashboard uporablja effectiveCapabilities (HIDDEN tam dela).
+ * Efektivna matrika za JAVNO stran (F5.4.1): ločena od plošče.
+ *
+ * Pravila javne vidnosti (ne sme zamenjati funkcionalne aktivacije):
+ *   - HIDDEN → javno izklopljeno (disabled), tudi za required modul (vidnost
+ *     je ločena od aktivacije — §5);
+ *   - DEACTIVATED → javno izklopljeno (disabled), razen required (zaklenjeno);
+ *   - ACTIVE / brez vrstice → javno tisto, kar profil določi (required/optional);
+ *   - disabled → nikoli (tudi ACTIVE ga ne odpre).
+ * Dashboard uporablja `effectiveCapabilities` (kjer HIDDEN pomeni »plošča dela«).
  */
 export function effectivePublicCapabilities(
   profileCapabilities: Record<string, string>,
   states: ModuleStateMap
 ): Record<string, string> {
-  const publicStates: ModuleStateMap = {}
-  for (const [id, state] of Object.entries(states)) {
-    publicStates[id] = state === "HIDDEN" ? "DEACTIVATED" : state
+  const out: Record<string, string> = { ...profileCapabilities }
+  for (const mod of MODULES) {
+    const state = states[mod.id]
+    if (!state) continue
+    for (const cap of mod.capabilities) {
+      const base = out[cap] as CapabilityState | undefined
+      if (base === "disabled") {
+        out[cap] = "disabled"
+        continue
+      }
+      if (state === "HIDDEN") {
+        out[cap] = "disabled" // javno skrito — ločeno od aktivacije
+        continue
+      }
+      if (state === "DEACTIVATED") {
+        out[cap] = base === "required" ? "required" : "disabled"
+        continue
+      }
+      // ACTIVE: javno enako kot profil (required ali optional).
+      out[cap] = base ?? "disabled"
+    }
   }
-  return effectiveCapabilities(profileCapabilities, publicStates)
+  return out
 }
 
 /** Odvisni moduli (kdo zahteva ta modul) — za opozorilo pred izklopom. */

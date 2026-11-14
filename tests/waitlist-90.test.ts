@@ -91,8 +91,8 @@ describe("#90 email: povezava v rezervacijo, ne lažno potrdilo", () => {
 describe("#90 navigacija: pod isto zmožnostjo kot termini", () => {
   it("sidebar item ima capability appointments + permission appointments.view", () => {
     const sidebar = read("src/components/admin/sidebar.tsx")
-    expect(sidebar).toContain(
-      '{ nameKey: "waitlist", href: "/dashboard/waitlist", icon: ClockIcon, capability: "appointments", permission: "appointments.view" },'
+    expect(sidebar).toMatch(
+      /nameKey: "waitlist", href: "\/dashboard\/waitlist".*?capability: "appointments", permission: "appointments\.view"/
     )
   })
 

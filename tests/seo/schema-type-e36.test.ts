@@ -27,6 +27,30 @@ const EXPECTED: Record<string, string> = {
   seamstress: "ProfessionalService",
   beekeeping: "Store",
   generic: "LocalBusiness",
+
+  // --- F5.0.2: 22 SKD 2025 sekcijskih profilov (A–V), schemaType iz registra.
+  "skd-a-agriculture": "Farm",
+  "skd-b-mining": "Industrial",
+  "skd-c-manufacturing": "Manufacturing",
+  "skd-d-energy": "Utility",
+  "skd-e-water-waste": "Utility",
+  "skd-f-construction": "ConstructionCompany",
+  "skd-g-retail": "Store",
+  "skd-h-transport": "TransportationCompany",
+  "skd-i-hospitality": "Restaurant",
+  "skd-j-media": "MediaOrganization",
+  "skd-k-digital": "ComputerStore",
+  "skd-l-finance": "FinancialService",
+  "skd-m-real-estate": "RealEstateAgent",
+  "skd-n-professional": "ProfessionalService",
+  "skd-o-other-business": "ProfessionalService",
+  "skd-p-public-admin": "GovernmentOffice",
+  "skd-q-education": "EducationalOrganization",
+  "skd-r-health": "MedicalOrganization",
+  "skd-s-culture-sport": "SportsActivityLocation",
+  "skd-t-other": "LocalBusiness",
+  "skd-u-households": "LocalBusiness",
+  "skd-v-international": "GovernmentOffice",
 }
 
 describe("schema.org @type per vertical (#36)", () => {

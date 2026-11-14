@@ -9,6 +9,7 @@ import { formSnapshot, makeFormEntityKey } from "@/lib/config-history/logic"
 import { recordConfigChange } from "@/lib/config-history/record"
 import { validateFieldValues } from "@/lib/field-validation"
 import type { Prisma } from "@prisma/client"
+import { rateLimit, getClientIp, inquiryLimits } from "@/lib/rate-limit"
 
 // ============================================================
 // DYNAMIC FORMS ENGINE (EPIC #1 §8 — Phase 4)
@@ -174,6 +175,18 @@ export async function submitPublicForm(
   contact: PublicSubmissionContact
 ): Promise<SubmitFormResult> {
   const org = await requirePublicOrg()
+
+  // Rate-limit javnih obrazcev per IP × org (točka 1): omeji spam/botnete,
+  // pri tem ne prepreči legitimne oddaje. Fail-open ob izpadu baze.
+  const ip = await getClientIp()
+  const rateRes = await rateLimit({
+    scope: "inquiry:ip",
+    key: `${org.id}:${ip}`,
+    ...inquiryLimits(),
+  })
+  if (!rateRes.ok) {
+    return { ok: false, error: "RATE_LIMITED" }
+  }
 
   const def = await prisma.formDefinition.findFirst({
     where: { organizationId: org.id, key: formKey, isActive: true },

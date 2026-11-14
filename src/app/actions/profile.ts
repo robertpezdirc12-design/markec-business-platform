@@ -7,7 +7,7 @@ import { z } from "zod"
 import { Prisma } from "@prisma/client"
 
 import { getProfile, listProfileOptions } from "@/lib/profiles/registry"
-import { EXTENSIONS } from "@/lib/profiles/extensions"
+import { getExtension, type ExtensionDefinition } from "@/lib/profiles/extensions"
 import {
   applySecondaryProfile,
   secondaryContribution,
@@ -20,6 +20,8 @@ import {
   type ConfigSnapshot,
 } from "@/lib/config-history/logic"
 import { recordConfigChange } from "@/lib/config-history/record"
+import { getOrgCustomProfile } from "@/app/actions/custom-profile"
+import { seedProfileCategories } from "@/lib/verticals"
 import {
   applyOverrides,
   OVERRIDES_VERSION,
@@ -99,11 +101,84 @@ export interface OrgProfileOverview {
 export async function getOrgProfileOverview(): Promise<OrgProfileOverview | { error: string }> {
   try {
     const { org } = await requirePermissionOrg("settings.manage")
-    // Base for capability/widget validation = shared profile + secondary-activity
-    // union (E2-4) — BEFORE owner overrides, mirroring the resolver order.
-    const baseProfile = applySecondaryProfile(getProfile(org.vertical), org.secondaryVertical)
-    const overrides = parseOverrides(org.profileOverrides)
-    const profile = applyOverrides(baseProfile, overrides)
+
+    // Check for org-level custom profile (owner-created via Custom Profile Builder).
+    // If present, it takes precedence over the registry profile.
+    const raw = (org as any)?.profileOverrides
+    const customData =
+      raw && typeof raw === "object" && !Array.isArray(raw)
+        ? (raw as any).customProfile
+        : null
+
+    let profile: any
+    let overrides: any
+    let baseProfile: any
+    if (customData && customData.id && customData.label) {
+      // Custom profile — build a minimal ActivityProfile-shaped object.
+      profile = {
+        id: customData.id,
+        label: customData.label,
+        description: customData.description,
+        version: 1,
+        palette: customData.palette ?? "coral",
+        schemaType: customData.schemaType ?? "LocalBusiness",
+        capabilities: customData.capabilities ?? {},
+        terminology: {
+          appointmentSingular: { sl: "Termin", en: "Appointment" },
+          appointmentPlural: { sl: "Termini", en: "Appointments" },
+          orderSingular: { sl: "Naročilo", en: "Order" },
+          orderPlural: { sl: "Naročila", en: "Orders" },
+          serviceSingular: { sl: "Storitev", en: "Service" },
+          servicePlural: { sl: "Storitve", en: "Services" },
+          productSingular: { sl: "Izdelok", en: "Product" },
+          productPlural: { sl: "Izdelki", en: "Products" },
+          customerSingular: { sl: "Stranka", en: "Customer" },
+          customerPlural: { sl: "Stranke", en: "Customers" },
+          businessSingular: { sl: "podjetje", en: "business" },
+          businessIn: { sl: "v podjetju", en: "at the business" },
+          businessGenitive: { sl: "podjetja", en: "the business's" },
+          bookingCta: { sl: "Naročajte", en: "Order" },
+        },
+        forms: (customData.forms ?? []).map((f: any) => ({
+          key: f.key,
+          name: f.name,
+          description: f.description,
+          fields: (f.fields ?? []).map((field: any) => ({
+            key: field.key,
+            label: field.label,
+            type: field.type,
+            required: field.required,
+            options: field.options,
+            unit: field.unit,
+            placeholder: field.placeholder,
+          })),
+        })),
+        workflows: (customData.workflows ?? []).map((wf: any) => ({
+          key: wf.key,
+          name: wf.name,
+          entity: wf.entity,
+          stages: (wf.stages ?? []).map((s: any) => ({
+            key: s.key,
+            name: s.name,
+            description: s.description,
+            order: s.order,
+            slaHours: s.slaHours,
+            isFinal: s.isFinal,
+          })),
+        })),
+        dashboardWidgets: customData.dashboardWidgets ?? [],
+        website: { ctaMode: customData.ctaMode ?? "inquiry" },
+        extensions: [],
+        catalog: { seedVerticalId: "generic" },
+      }
+      overrides = null
+    } else {
+      // Base for capability/widget validation = shared profile + secondary-activity
+      // union (E2-4) — BEFORE owner overrides, mirroring the resolver order.
+      baseProfile = applySecondaryProfile(getProfile(org.vertical), org.secondaryVertical)
+      overrides = parseOverrides(org.profileOverrides)
+      profile = applyOverrides(baseProfile, overrides)
+    }
 
     const [formDefs, workflowDefs] = await Promise.all([
       prisma.formDefinition.findMany({
@@ -126,11 +201,11 @@ export async function getOrgProfileOverview(): Promise<OrgProfileOverview | { er
       profileDescription: profile.description,
       profileVersion: profile.version,
       materializedVersion: org.profileVersion ?? null,
-      capabilities: (Object.keys(profile.capabilities) as (keyof typeof profile.capabilities)[]).map(
+      capabilities: Object.keys(profile.capabilities).map(
         (key) => ({
           key,
-          state: profile.capabilities[key],
-          overridden: overrides?.capabilityStates?.[key] !== undefined,
+          state: profile.capabilities[key as keyof typeof profile.capabilities],
+          overridden: overrides?.capabilityStates?.[key as keyof typeof profile.capabilities] !== undefined,
         })
       ),
       forms: formDefs.map((f) => ({
@@ -155,18 +230,22 @@ export async function getOrgProfileOverview(): Promise<OrgProfileOverview | { er
         })),
       })),
       extensions: profile.extensions
-        .map((id) => EXTENSIONS[id])
-        .filter((e): e is NonNullable<typeof e> => !!e)
-        .map((e) => ({
+        .map((id: string) => getExtension(id))
+        .filter((e: ExtensionDefinition | undefined): e is ExtensionDefinition => !!e)
+        .map((e: ExtensionDefinition) => ({
           id: e.id,
           name: e.name,
           description: e.description,
           entities: e.entities.map((ent) => ent.name),
         })),
-      isOverridden: overrides !== null,
-      adjustableCapabilities: (
-        Object.keys(baseProfile.capabilities) as CapabilityKey[]
-      ).filter((k) => baseProfile.capabilities[k] === "optional"),
+      isOverridden: customData ? true : overrides !== null,
+      adjustableCapabilities: customData
+        ? (Object.keys(profile.capabilities) as CapabilityKey[]).filter(
+            (k) => profile.capabilities[k] === "optional"
+          )
+        : (Object.keys(baseProfile.capabilities) as CapabilityKey[]).filter(
+            (k) => baseProfile.capabilities[k] === "optional"
+          ),
       dashboardWidgets: profile.dashboardWidgets,
       secondaryVertical:
         org.secondaryVertical &&
@@ -391,6 +470,16 @@ export async function setOrgSecondaryVertical(
       where: { id: org.id },
       data: { secondaryVertical: parsed.data.secondaryVertical },
     })
+
+    // F5.2.3: ko dodamo/spremenimo sekundarno dejavnost, priključimo njene
+    // predloge kategorij (idempotentno; ne briše lastniških, ne podvaja).
+    if (parsed.data.secondaryVertical) {
+      try {
+        await seedProfileCategories(org.id, parsed.data.secondaryVertical)
+      } catch (err) {
+        console.error("setOrgSecondaryVertical: seedProfileCategories failed", err)
+      }
+    }
 
     revalidatePath("/dashboard", "layout")
     revalidatePath("/dashboard")

@@ -119,11 +119,19 @@ describe("landing dictionary", () => {
   })
 })
 
-describe("example cards = sample of 5 of 12", () => {
+describe("example cards = sample of 5 of the whole registry", () => {
   const ids = listProfileOptions().map((v) => v.id)
+  const TOTAL = ids.length // real registry count (currently 34)
 
-  it("12 registered profiles still exist", () => {
-    expect(ids).toHaveLength(12)
+  it("registry is not empty and contains the curated example profiles", () => {
+    // Do not hardcode: the count derives from the single source of truth.
+    expect(TOTAL).toBeGreaterThanOrEqual(12)
+    expect(ids).toContain("beauty")
+    expect(ids).toContain("frizer")
+    expect(ids).toContain("seamstress")
+    // every skd-* section profile is registered (A–V)
+    const skd = ids.filter((id) => id.startsWith("skd-"))
+    expect(skd).toHaveLength(22)
   })
 
   it("exactly 5 examples, no generic, same set in both languages", () => {
@@ -153,8 +161,10 @@ describe("example cards = sample of 5 of 12", () => {
   })
 
   it("sample caption states the real total", () => {
-    expect(landingSl.examples.more).toContain("5 od 12")
-    expect(landingEn.examples.more).toContain("5 of the 12")
+    // The caption must reflect the actual number of registered profiles, so a
+    // future registry change forces a copy update (keeps the invariant honest).
+    expect(landingSl.examples.more).toContain(`5 od ${TOTAL}`)
+    expect(landingEn.examples.more).toContain(`5 of the ${TOTAL}`)
   })
 })
 

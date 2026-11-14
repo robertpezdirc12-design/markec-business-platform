@@ -42,3 +42,17 @@ export function computeStockDelta(
   }
   return { ok: true, nextStock }
 }
+
+/**
+ * F6.1 — razpoložljiva zaloga ob upoštevanju rezervirane količine.
+ * Semantika (F5.5.1.2): RAZPOLOŽLJIVO = stockQuantity − reservedQuantity.
+ * Rezultat je vedno ≥ 0 (rezervirano ne sme prekiniti na negativno) in je
+ * enotni vir resnice za javni prikaz, košarico in checkout UI. Pure, test.
+ */
+export function computeAvailableStock(
+  stock: number,
+  reserved: number
+): number {
+  if (!Number.isFinite(stock) || !Number.isFinite(reserved)) return 0
+  return Math.max(0, Math.floor(stock) - Math.floor(reserved))
+}

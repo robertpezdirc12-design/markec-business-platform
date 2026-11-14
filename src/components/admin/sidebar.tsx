@@ -29,6 +29,7 @@ import {
   ScissorsIcon,
   PackageIcon,
   ToteIcon,
+  TagIcon,
   ShoppingBagIcon,
   ReceiptIcon,
   FileTextIcon,
@@ -39,12 +40,14 @@ import {
   CloseIcon,
   FolderIcon,
   LockIcon,
+  HouseIcon,
+  WrenchIcon,
 } from "@/components/icons"
 import { usePermissions } from "@/components/admin/permissions-provider"
 import type { PermissionKey } from "@/lib/permissions/roles"
 
 interface NavItem {
-  nameKey: "dashboard" | "analytics" | "appointments" | "waitlist" | "walkIn" | "customers" | "marketing" | "services" | "products" | "packages" | "shopOrders" | "workOrders" | "documents" | "forms" | "records" | "projects" | "staff" | "roles" | "settings"
+  nameKey: "dashboard" | "analytics" | "appointments" | "waitlist" | "walkIn" | "customers" | "marketing" | "services" | "products" | "categories" | "packages" | "promotions" | "shopOrders" | "workOrders" | "documents" | "einvoices" | "forms" | "records" | "projects" | "apiculture" | "tireService" | "traceability" | "seamstress" | "staff" | "roles" | "settings"
   href: string
   icon: React.ComponentType<{ size?: number; className?: string }>
   /** Capability that must not be "disabled" for this item to render. */
@@ -59,41 +62,50 @@ interface NavItem {
   termKey?: "appointmentPlural" | "servicePlural" | "productPlural" | "orderPlural"
   /** Custom-role permission required (G8). Absent → visible to all members. */
   permission?: PermissionKey
+  /** F5.2: zadostuje KATERIKOLI od navedenih ključev (kategorije: products.manage ALI services.manage). */
+  anyPermission?: PermissionKey[]
+  /** F7.2: logična skupina — "common" (skupne, A) ali "activity" (dejavnost, B). */
+  group?: "common" | "activity"
 }
 
 const navigation: NavItem[] = [
-  { nameKey: "dashboard", href: "/dashboard", icon: LayoutDashboardIcon },
-  { nameKey: "analytics", href: "/dashboard/analytics", icon: ChartBarIcon, capability: "analytics", permission: "analytics.view" },
-  { nameKey: "appointments", href: "/dashboard/appointments", icon: CalendarIcon, capability: "appointments", termKey: "appointmentPlural", permission: "appointments.view" },
-  // #90: čakalna lista — isti zmožnost/dovoljenje kot termini
-  { nameKey: "waitlist", href: "/dashboard/waitlist", icon: ClockIcon, capability: "appointments", permission: "appointments.view" },
-  // #98 (AD-02): walk-in vrsta — samostojen izbirni modul (vse dejavnosti)
-  { nameKey: "walkIn", href: "/dashboard/walk-in", icon: UsersIcon, capability: "walkIn", permission: "appointments.view" },
-  { nameKey: "customers", href: "/dashboard/users", icon: UsersIcon, capability: "customers", permission: "customers.manage" },
-  // #95: marketing avtomatika — isti zmožnost/dovoljenje kot stranke
-  { nameKey: "marketing", href: "/dashboard/marketing", icon: EnvelopeIcon, capability: "customers", permission: "customers.manage" },
-  { nameKey: "services", href: "/dashboard/services", icon: ScissorsIcon, capability: "services", termKey: "servicePlural", permission: "services.manage" },
-  { nameKey: "products", href: "/dashboard/products", icon: PackageIcon, capability: "shop", termKey: "productPlural", permission: "products.manage" },
-  // Packages (bundles of services and/or products) — shown when either exists
-  { nameKey: "packages", href: "/dashboard/packages", icon: ToteIcon, anyCapabilities: ["shop", "services"], permission: "products.manage" },
-  // Work orders (workflow-driven jobs) — terminology comes from the profile
-  { nameKey: "workOrders", href: "/dashboard/work-orders", icon: ReceiptIcon, capability: "workOrders", termKey: "orderPlural", permission: "workorders.manage" },
+  // ===== A: SKUPNE POSLOVNE FUNKCIJE ===== (neodvisne od aktivne dejavnosti)
+  { nameKey: "dashboard", href: "/dashboard", icon: LayoutDashboardIcon, group: "common" },
+  { nameKey: "analytics", href: "/dashboard/analytics", icon: ChartBarIcon, capability: "analytics", permission: "analytics.view", group: "common" },
+  { nameKey: "customers", href: "/dashboard/customers", icon: UsersIcon, capability: "customers", permission: "customers.manage", group: "common" },
+  { nameKey: "marketing", href: "/dashboard/marketing", icon: EnvelopeIcon, capability: "customers", permission: "customers.manage", group: "common" },
   // Documents (quotes/invoices) — gated by the documents capability (§13)
-  { nameKey: "documents", href: "/dashboard/documents", icon: FileTextIcon, capability: "documents", permission: "finances.view" },
-  // E-commerce shop orders — generic label, only for shop-capable tenants
-  { nameKey: "shopOrders", href: "/dashboard/orders", icon: ShoppingBagIcon, capability: "shop", permission: "orders.manage" },
-  { nameKey: "forms", href: "/dashboard/forms", icon: SlidersIcon, capability: "forms", permission: "inquiries.manage" },
-  // Extension entity registries (vehicles, batches, …) — §13, rendered
-  // only when the profile enables extensions that contribute entities
-  { nameKey: "records", href: "/dashboard/records", icon: StackIcon, requiresExtensions: true, permission: "workorders.manage" },
-  // Projects & tasks (E2-3) — rendered only when the profile enables
-  // the `projects` extension (runtime shipped in E2-3; other profiles
-  // keep today's experience verbatim).
-  { nameKey: "projects", href: "/dashboard/projects", icon: FolderIcon, extension: "projects", permission: "workorders.manage" },
-  { nameKey: "staff", href: "/dashboard/staff", icon: UserCogIcon, capability: "staff", permission: "staff.manage" },
-  // Custom roles (G8) — admin-only, gated in the filter below by isAdmin.
-  { nameKey: "roles", href: "/dashboard/roles", icon: LockIcon },
-  { nameKey: "settings", href: "/dashboard/settings", icon: SettingsIcon, permission: "settings.manage" },
+  { nameKey: "documents", href: "/dashboard/documents", icon: FileTextIcon, capability: "documents", permission: "finances.view", group: "common" },
+  // F5.5.4.6.2 — e-računi (priprava/validacija/arhiv)
+  { nameKey: "einvoices", href: "/dashboard/einvoices", icon: ReceiptIcon, permission: "finances.view", group: "common" },
+  { nameKey: "staff", href: "/dashboard/staff", icon: UserCogIcon, capability: "staff", permission: "staff.manage", group: "common" },
+  // Custom roles (G8) — admin-only
+  { nameKey: "roles", href: "/dashboard/roles", icon: LockIcon, group: "common" },
+  { nameKey: "settings", href: "/dashboard/settings", icon: SettingsIcon, permission: "settings.manage", group: "common" },
+
+  // ===== B: FUNKCIJE AKTIVNE DEJAVNOSTI (capability/extension gated) =====
+  { nameKey: "appointments", href: "/dashboard/appointments", icon: CalendarIcon, capability: "appointments", termKey: "appointmentPlural", permission: "appointments.view", group: "activity" },
+  { nameKey: "waitlist", href: "/dashboard/waitlist", icon: ClockIcon, capability: "appointments", permission: "appointments.view", group: "activity" },
+  { nameKey: "walkIn", href: "/dashboard/walk-in", icon: UsersIcon, capability: "walkIn", permission: "appointments.view", group: "activity" },
+  { nameKey: "services", href: "/dashboard/services", icon: ScissorsIcon, capability: "services", termKey: "servicePlural", permission: "services.manage", group: "activity" },
+  { nameKey: "products", href: "/dashboard/products", icon: PackageIcon, capability: "shop", termKey: "productPlural", permission: "products.manage", group: "activity" },
+  { nameKey: "categories", href: "/dashboard/categories", icon: FolderIcon, anyCapabilities: ["shop", "services"], anyPermission: ["products.manage", "services.manage"], group: "activity" },
+  { nameKey: "packages", href: "/dashboard/packages", icon: ToteIcon, anyCapabilities: ["shop", "services"], permission: "products.manage", group: "activity" },
+  { nameKey: "promotions", href: "/dashboard/promotions", icon: TagIcon, anyCapabilities: ["shop", "services"], permission: "promotions.manage", group: "activity" },
+  { nameKey: "workOrders", href: "/dashboard/work-orders", icon: ReceiptIcon, capability: "workOrders", termKey: "orderPlural", permission: "workorders.manage", group: "activity" },
+  { nameKey: "shopOrders", href: "/dashboard/orders", icon: ShoppingBagIcon, capability: "shop", permission: "orders.manage", group: "activity" },
+  { nameKey: "forms", href: "/dashboard/forms", icon: SlidersIcon, capability: "forms", permission: "inquiries.manage", group: "activity" },
+  { nameKey: "records", href: "/dashboard/records", icon: StackIcon, requiresExtensions: true, permission: "workorders.manage", group: "activity" },
+  // N1 — čebelarska nadzorna plošča (Z1): prikaže se SAMO profilom z
+  // razširitvijo bee-apiary (čebelar). Vodi na živo pregledno ploščo.
+  { nameKey: "apiculture", href: "/dashboard/apiculture", icon: HouseIcon, extension: "bee-apiary", permission: "workorders.manage", group: "activity" },
+  // 2D-1P — sledljivost pridelka (pridelek → serija → zaloga → prodaja → izvor).
+  { nameKey: "traceability", href: "/dashboard/traceability", icon: StackIcon, extension: "batch-production", permission: "products.manage", group: "activity" },
+  // 2D-1S — delavnica vozil & vulkanizerija (tire-service): živa plošča.
+  { nameKey: "tireService", href: "/dashboard/tire-service", icon: WrenchIcon, extension: "vehicle-workshop", permission: "workorders.manage", group: "activity" },
+  // 2D-2B — šiviljstvo (seamstress): živa plošča, gated na merilno razširitev.
+  { nameKey: "seamstress", href: "/dashboard/seamstress", icon: ScissorsIcon, extension: "seamstress-measurements", permission: "workorders.manage", group: "activity" },
+  { nameKey: "projects", href: "/dashboard/projects", icon: FolderIcon, extension: "projects", permission: "workorders.manage", group: "activity" },
 ]
 
 interface SidebarNavProps {
@@ -110,9 +122,12 @@ function SidebarNav({ onNavigate }: SidebarNavProps) {
   // "roles" item is admin-only. Members WITHOUT a custom role hold the
   // full legacy set (see effectivePermissionKeys), so their chrome is
   // byte-for-byte unchanged.
-  const visible = navigation.filter((item) => {
+  const itemVisible = (item: NavItem) => {
     if (item.nameKey === "roles" && !isAdmin) return false
     if (item.permission && !permissions.includes(item.permission)) {
+      return false
+    }
+    if (item.anyPermission?.length && !item.anyPermission.some((k) => permissions.includes(k))) {
       return false
     }
     if (item.extension) {
@@ -128,33 +143,60 @@ function SidebarNav({ onNavigate }: SidebarNavProps) {
     }
     if (!item.capability) return true
     return profile.capabilities[item.capability] !== "disabled"
-  })
+  }
+
+  // F7.2: dve jasno ločeni skupini — A Skupne poslovne funkcije, B Dejavnost.
+  const commonItems = navigation.filter(
+    (item) => item.group === "common" && itemVisible(item)
+  )
+  const activityItems = navigation.filter(
+    (item) => item.group !== "common" && itemVisible(item)
+  )
+
+  const renderItem = (item: NavItem) => {
+    const isActive =
+      pathname === item.href ||
+      (item.href !== "/dashboard" && pathname.startsWith(item.href))
+    const IconComponent = item.icon
+    const label = item.termKey ? term(item.termKey) : t.common.nav[item.nameKey]
+    return (
+      <Link
+        key={item.nameKey}
+        href={item.href}
+        onClick={onNavigate}
+        className={cn(
+          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+          isActive
+            ? "bg-primary text-primary-foreground shadow-sm"
+            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+        )}
+      >
+        <IconComponent size={18} className={cn(isActive && "text-primary-foreground")} />
+        {label}
+      </Link>
+    )
+  }
 
   return (
-    <nav className="space-y-1 px-3">
-      {visible.map((item) => {
-        const isActive = pathname === item.href ||
-          (item.href !== "/dashboard" && pathname.startsWith(item.href))
-        const IconComponent = item.icon
-        // Industry terminology overrides the generic dictionary label.
-        const label = item.termKey ? term(item.termKey) : t.common.nav[item.nameKey]
-        return (
-          <Link
-            key={item.nameKey}
-            href={item.href}
-            onClick={onNavigate}
-            className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
-              isActive
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            )}
-          >
-            <IconComponent size={18} className={cn(isActive && "text-primary-foreground")} />
-            {label}
-          </Link>
-        )
-      })}
+    <nav aria-label="Glavna navigacija" className="space-y-1 px-3">
+      {/* A: SKUPNE POSLOVNE FUNKCIJE */}
+      {commonItems.length > 0 && (
+        <div>
+          <p className="px-3 pt-1 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+            Skupno
+          </p>
+          {commonItems.map(renderItem)}
+        </div>
+      )}
+      {/* B: FUNKCIJE AKTIVNE DEJAVNOSTI */}
+      {activityItems.length > 0 && (
+        <div className="mt-1">
+          <p className="px-3 pt-1 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+            Dejavnost
+          </p>
+          {activityItems.map(renderItem)}
+        </div>
+      )}
     </nav>
   )
 }
@@ -163,9 +205,12 @@ function SidebarNav({ onNavigate }: SidebarNavProps) {
 function OrgSwitcher({
   organizations,
   currentOrganizationId,
+  onPicked,
 }: {
   organizations: { id: string; name: string }[]
   currentOrganizationId: string | null
+  /** F2.0: close the mobile Sheet after a pick (desktop passes nothing). */
+  onPicked?: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [pending, startTransition] = useTransition()
@@ -175,6 +220,7 @@ function OrgSwitcher({
   function pick(id: string) {
     if (id === currentOrganizationId) {
       setOpen(false)
+      onPicked?.()
       return
     }
     setOpen(false)
@@ -184,8 +230,18 @@ function OrgSwitcher({
         toast.error(res.error ?? "Preklop ni uspel.")
         return
       }
+      onPicked?.()
+      // NOTE: do NOT call router.refresh() after router.push() — it runs
+      // synchronously and cancels the pending navigation (same bug fixed in
+      // login-form / workspace-picker). switchActiveOrganization already
+      // revalidated the layout, so /dashboard re-reads the new org on the
+      // client-side navigation.
       router.push("/dashboard")
-      router.refresh()
+      // F7.2 (F7.1 open issue): klient-nav ne prerenderira server-side layouta
+      // z revalidiranimi podatki (ime okolja, dejavnost, navigacija) sam —
+      // zato naredimo en deferred refresh v naslednjem makrokoraku, da se
+      // sidebar/header sveža navigacija takoj (brez ročnega F5/osvežitve).
+      setTimeout(() => router.refresh(), 0)
     })
   }
 
@@ -238,6 +294,8 @@ function OrgSwitcher({
 export function AdminSidebar({
   organizations,
   currentOrganizationId,
+  currentOrgName,
+  currentVerticalLabel,
 }: {
   /**
    * #100 8.A (M3): podjetja na tem računu (članstva) — preklop se pokaže
@@ -245,6 +303,9 @@ export function AdminSidebar({
    */
   organizations?: { id: string; name: string }[]
   currentOrganizationId?: string | null
+  /** F7.1 K2: ime aktivnega okolja + naziv dejavnosti (iz seje/org). */
+  currentOrgName?: string | null
+  currentVerticalLabel?: string | null
 }) {
   const { t } = useI18n()
   const switcher = organizations && organizations.length > 1
@@ -257,6 +318,21 @@ export function AdminSidebar({
             <Logo variant="sidebar" />
           </Link>
         </div>
+        {/* F7.1 K2: stalna identiteta okolja (ime podjetja + dejavnost z besedilom). */}
+        {(currentOrgName || currentVerticalLabel) && (
+          <div className="border-t px-4 py-2.5">
+            <div className="truncate text-sm font-semibold text-foreground">
+              {currentOrgName ?? "—"}
+            </div>
+            {currentVerticalLabel && (
+              <div className="mt-1">
+                <span className="bg-primary/10 text-primary-text inline-block rounded-md px-2 py-0.5 text-xs font-medium">
+                  {currentVerticalLabel}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
         {switcher && (
           <div className="px-4 pb-2">
             <OrgSwitcher
@@ -285,15 +361,32 @@ export function AdminSidebar({
 interface MobileSidebarProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** F2.0: own ACTIVE memberships, same source as the desktop sidebar. */
+  organizations?: { id: string; name: string }[]
+  currentOrganizationId?: string | null
+  /** F7.1 K2: identiteta okolja tudi v mobilnem listu. */
+  currentOrgName?: string | null
+  currentVerticalLabel?: string | null
 }
 
-export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
+export function MobileSidebar({
+  open,
+  onOpenChange,
+  organizations,
+  currentOrganizationId = null,
+  currentOrgName,
+  currentVerticalLabel,
+}: MobileSidebarProps) {
   const { t } = useI18n()
+  // F2.0: the phone used to have NO switcher at all — OrgSwitcher only lived
+  // in the `hidden lg:block` desktop aside. Gate is membership count, never
+  // a role, so STAFF/CLIENTE with 2+ workspaces can switch here too.
+  const switcher = organizations && organizations.length > 1
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="w-72 p-0">
-        <SheetHeader className="flex h-16 flex-row items-center justify-between px-4">
+      <SheetContent side="left" className="flex w-72 flex-col p-0">
+        <SheetHeader className="flex h-16 shrink-0 flex-row items-center justify-between px-4">
           <SheetTitle className="flex items-center gap-2">
             <Logo variant="sidebar" />
           </SheetTitle>
@@ -307,7 +400,29 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
             <span className="sr-only">{t.common.header.closeMenu}</span>
           </Button>
         </SheetHeader>
-        <ScrollArea className="h-[calc(100vh-4rem)] py-4">
+        {switcher && (
+          <div className="shrink-0 px-4 pb-2">
+            <OrgSwitcher
+              organizations={organizations}
+              currentOrganizationId={currentOrganizationId}
+              onPicked={() => onOpenChange(false)}
+            />
+          </div>
+        )}
+        {/* F7.1 K2: identiteta okolja v mobilnem menu (ime + dejavnost). */}
+        {(currentOrgName || currentVerticalLabel) && (
+          <div className="shrink-0 border-t px-4 py-2.5">
+            <div className="truncate text-sm font-semibold">
+              {currentOrgName ?? "—"}
+            </div>
+            {currentVerticalLabel && (
+              <span className="bg-primary/10 text-primary-text mt-1 inline-block rounded-md px-2 py-0.5 text-xs font-medium">
+                {currentVerticalLabel}
+              </span>
+            )}
+          </div>
+        )}
+        <ScrollArea className="min-h-0 flex-1 py-4">
           <SidebarNav onNavigate={() => onOpenChange(false)} />
         </ScrollArea>
       </SheetContent>

@@ -148,3 +148,44 @@ describe("#94 vgrajene palete — WCAG AA (razširitev #7)", () => {
     })
   }
 })
+
+// ============================================================
+// P2-a11y: `text-primary-*text` na TINTED ozadju `bg-primary/10`.
+// Tagi (dejavnostna oznaka v headerju/sidebarju) uporabljajo 10%
+// transparentni primary nad ozadjem — ta blend zniža efektivno
+// razmerje pod 4.5, čeprav isti tekst na čistem ozadju prehaja.
+// Generator (textSafeShade prag ≥5) mora via to vzdržati. Ta test
+// rekonstruira blend in zahteva ≥ 4.5 (regresijska zaščita).
+// ============================================================
+describe("#94 primary-text na bg-primary/10 tintanem ozadju ≥ 4.5", () => {
+  // HSL triplet ("h s% l%") → [r,g,b] v 0..1 (sRGB premencoder za lum)
+  function tripletToRgb01(t: string): [number, number, number] {
+    const [h, s, l] = t.trim().replace(/%/g, "").split(/\s+/).map(Number)
+    return hslToRgb(h, s, l).map((v) => v / 255) as [number, number, number]
+  }
+  // sRGB α-blend: src nad dst (per channel, opažen format kot CSS)
+  function blend01(src: [number, number, number], dst: [number, number, number], t: number) {
+    return src.map((v, i) => t * v + (1 - t) * dst[i]) as [number, number, number]
+  }
+  function lum01([r, g, b]: [number, number, number]): number {
+    const lin = (v: number) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4))
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+  }
+  function contrast01(a: [number, number, number], b: [number, number, number]): number {
+    const la = lum01(a)
+    const lb = lum01(b)
+    const [hi, lo] = la >= lb ? [la, lb] : [lb, la]
+    return (hi + 0.05) / (lo + 0.05)
+  }
+
+  for (const [id, palette] of Object.entries(PALETTES)) {
+    it(`${id}: primary-text ≥ 4.5 na bg-primary/10 (svetli način)`, () => {
+      const vars = paletteCssVars(palette)
+      const bg = tripletToRgb01(TENANT_LIGHT_BG)
+      const prim = tripletToRgb01(vars["--primary"])
+      const tintedBg = blend01(prim, bg, 0.1)
+      const fg = tripletToRgb01(vars["--primary-text"])
+      expect(contrast01(fg, tintedBg)).toBeGreaterThanOrEqual(4.5)
+    })
+  }
+})

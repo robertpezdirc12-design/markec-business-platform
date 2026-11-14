@@ -273,10 +273,15 @@ describe("#79 — tips and commissions are SEPARATE lines", () => {
     expect(src).toMatch(/interface StaffPerformance \{[\s\S]*?tips: number[\s\S]*?commission: number/)
   })
 
-  it("the chart renders them as their own categories", () => {
+  it("the chart renders tips/commission as their own localized categories", () => {
     const chart = read("src/components/analytics/staff-performance-chart.tsx")
-    expect(chart).toMatch(/Tips: staff\.tips/)
-    expect(chart).toMatch(/Commission: staff\.commission/)
+    // #79: tips & commission are separate bar categories (never merged into
+    // service revenue). F2.2.2 P2-9: keys are the LOCALIZED category names
+    // (matches Tremor `categories`), so zero-value charts render no NaN bars.
+    expect(chart).toMatch(/\[catTips\]: finiteOrZero\(staff\.tips\)/)
+    expect(chart).toMatch(/\[catCommission\]: finiteOrZero\(staff\.commission\)/)
+    expect(chart).toMatch(/\[catAppointments\]: finiteOrZero\(staff\.appointments\)/)
+    expect(chart).toMatch(/\[catRevenue\]: finiteOrZero\(staff\.revenue\)/)
   })
 
   it("recording a tip is org-scoped for both appointments and orders", () => {

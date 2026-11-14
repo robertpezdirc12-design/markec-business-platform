@@ -2,13 +2,15 @@ import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { getPublicProductById, getPublicSiteData, redirectBareToTenant } from "@/lib/public-site"
+import { getPublicProductById, getPublicProductVariants, getPublicSiteData, redirectBareToTenant } from "@/lib/public-site"
 import { resolveEffectiveProfile } from "@/lib/profiles/resolve"
 import { isCapabilityEnabled } from "@/lib/profiles/registry"
 import { buildProductJsonLd, canonicalMetadata, resolveAppUrl } from "@/lib/seo"
 import { resolvePublishGate } from "@/lib/publish-gate"
+import { computeAvailableStock } from "@/lib/inventory/stock"
 import { isInternalTenantSlug } from "@/lib/tenant-flags"
 import { orgPath } from "@/lib/org-path"
+import { getLocaleFromCookies } from "@/lib/i18n/server"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -22,7 +24,7 @@ import {
   Check,
   X,
 } from "@phosphor-icons/react/dist/ssr"
-import { AddToCartButton } from "@/components/shop/add-to-cart-button"
+import { VariantSelector } from "@/components/shop/variant-selector"
 import { formatCurrency } from "@/lib/utils/format"
 
 interface ProductDetailsProps {
@@ -67,6 +69,7 @@ export async function generateMetadata({ params }: ProductDetailsProps): Promise
 
 const ProductDetails = async ({ params }: ProductDetailsProps) => {
   const { slug } = await params
+  const locale = await getLocaleFromCookies()
   // P1 #39-5: gola pot → kanonična najemniška pot.
   await redirectBareToTenant(`/shop/${slug}`)
   const site = await getPublicSiteData()
@@ -76,11 +79,19 @@ const ProductDetails = async ({ params }: ProductDetailsProps) => {
     notFound()
   }
 
+  // F5.5.1 — različice izdelka za javno izbiro (aktivne, org-scoped).
+  const variants = site
+    ? await getPublicProductVariants(site.org.id, product.id)
+    : []
+
   // #105-nadaljevanje (G1, 2. linija): izklopljena trgovina → izdelek 404.
   if (!isCapabilityEnabled(resolveEffectiveProfile(site.org), "shop")) notFound()
 
   const orgSlug = site?.org.slug ?? null
-  const inStock = product.stockQuantity > 0
+  // F6.1: razpoložljivo upošteva rezervirano zalogo (stock − reserved); tako
+  // za prikaz, SEO JSON-LD in omejitev količine v košarici.
+  const available = computeAvailableStock(product.stockQuantity, product.reservedQuantity)
+  const inStock = available > 0
   const mainImage = product.images?.[0] || null
 
   // P3 #50: Product/Offer JSON-LD — cena, razpoložljivost, SKU. Samo za
@@ -98,7 +109,7 @@ const ProductDetails = async ({ params }: ProductDetailsProps) => {
             price: product.price,
             compareAtPrice: product.compareAtPrice,
             images: product.images,
-            stockQuantity: product.stockQuantity,
+            stockQuantity: available,
           },
           appUrl: resolveAppUrl(),
           indexable:
@@ -128,7 +139,7 @@ const ProductDetails = async ({ params }: ProductDetailsProps) => {
         >
           <Link href={orgPath(orgSlug, "/shop")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Nazaj v trgovino
+            {locale === "en" ? "Back to shop" : "Nazaj v trgovino"}
           </Link>
         </Button>
 
@@ -161,17 +172,17 @@ const ProductDetails = async ({ params }: ProductDetailsProps) => {
               <div className="absolute left-4 top-4 flex flex-col gap-2">
                 {product.isFeatured && (
                   <Badge className="bg-accent text-accent-foreground shadow-md">
-                    Izpostavljeno
+                    {locale === "en" ? "Featured" : "Izpostavljeno"}
                   </Badge>
                 )}
                 {!inStock && (
                   <Badge variant="destructive" className="shadow-md">
-                    Ni na zalogi
+                    {locale === "en" ? "Out of stock" : "Ni na zalogi"}
                   </Badge>
                 )}
                 {product.compareAtPrice && inStock && (
                   <Badge className="bg-primary text-primary-foreground shadow-md">
-                    Akcija
+                    {locale === "en" ? "Sale" : "Akcija"}
                   </Badge>
                 )}
               </div>
@@ -187,7 +198,7 @@ const ProductDetails = async ({ params }: ProductDetailsProps) => {
                   >
                     <Image
                       src={image}
-                      alt={`${product.name} - slika ${index + 1}`}
+                      alt={locale === "en" ? `${product.name} - image ${index + 1}` : `${product.name} - slika ${index + 1}`}
                       fill
                       className="object-cover"
                     
@@ -225,7 +236,7 @@ const ProductDetails = async ({ params }: ProductDetailsProps) => {
                 ))}
               </div>
               <span className="text-sm text-muted-foreground">
-                (0 ocen)
+                ({locale === "en" ? "0 reviews" : "0 ocen"})
               </span>
             </div>
 
@@ -241,7 +252,9 @@ const ProductDetails = async ({ params }: ProductDetailsProps) => {
               )}
               {product.compareAtPrice && (
                 <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                  Prihranite {formatCurrency(product.compareAtPrice - product.price)}
+                  {locale === "en"
+                    ? `Save ${formatCurrency(product.compareAtPrice - product.price)}`
+                    : `Prihranite ${formatCurrency(product.compareAtPrice - product.price)}`}
                 </Badge>
               )}
             </div>
@@ -252,14 +265,16 @@ const ProductDetails = async ({ params }: ProductDetailsProps) => {
                 <>
                   <Check size={20} weight="bold" className="text-green-600" />
                   <span className="font-medium text-green-700 dark:text-green-400">
-                    Na zalogi ({product.stockQuantity} kos)
+                    {locale === "en"
+                      ? `In stock (${available} pcs)`
+                      : `Na zalogi (${available} kos)`}
                   </span>
                 </>
               ) : (
                 <>
                   <X size={20} weight="bold" className="text-destructive" />
                   <span className="font-medium text-destructive">
-                    Ni na zalogi
+                    {locale === "en" ? "Out of stock" : "Ni na zalogi"}
                   </span>
                 </>
               )}
@@ -269,7 +284,9 @@ const ProductDetails = async ({ params }: ProductDetailsProps) => {
             {product.description && (
               <div className="mb-6">
                 {/* P3 #51: h2 — h1 → h3 je prelomil vrstni red naslovov (axe). */}
-                <h2 className="mb-2 font-semibold">Opis</h2>
+                <h2 className="mb-2 font-semibold">
+                  {locale === "en" ? "Description" : "Opis"}
+                </h2>
                 <p className="leading-relaxed text-muted-foreground">
                   {product.description}
                 </p>
@@ -278,17 +295,15 @@ const ProductDetails = async ({ params }: ProductDetailsProps) => {
 
             <Separator className="my-6" />
 
-            {/* Add to Cart */}
+            {/* Add to Cart (F5.5.1 — podpira različice) */}
             <div className="mb-6">
-              <AddToCartButton
-                product={{
-                  id: product.id,
-                  name: product.name,
-                  image: mainImage,
-                  price: product.price,
-                }}
-                inStock={inStock}
-                stockQuantity={product.stockQuantity}
+              <VariantSelector
+                productId={product.id}
+                productName={product.name}
+                image={mainImage}
+                basePrice={product.price}
+                baseStockQuantity={available}
+                variants={variants}
               />
             </div>
 
@@ -300,9 +315,9 @@ const ProductDetails = async ({ params }: ProductDetailsProps) => {
                     <Truck size={20} className="text-primary-text" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium">Brezplačna dostava</p>
+                    <p className="text-sm font-medium">{locale === "en" ? "Free delivery" : "Brezplačna dostava"}</p>
                     <p className="text-xs text-muted-foreground">
-                      Za naročila nad 50 €
+                      {locale === "en" ? "For orders over €50" : "Za naročila nad 50 €"}
                     </p>
                   </div>
                 </div>
@@ -311,9 +326,9 @@ const ProductDetails = async ({ params }: ProductDetailsProps) => {
                     <ShieldCheck size={20} className="text-primary-text" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium">Varen nakup</p>
+                    <p className="text-sm font-medium">{locale === "en" ? "Secure payment" : "Varen nakup"}</p>
                     <p className="text-xs text-muted-foreground">
-                      100 % zaščiteno
+                      {locale === "en" ? "100% protected" : "100 % zaščiteno"}
                     </p>
                   </div>
                 </div>

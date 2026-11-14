@@ -3,8 +3,12 @@ import { cache } from "react"
 import { headers } from "next/headers"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth/auth"
-import { requireAdmin, UnauthorizedError } from "@/lib/auth/guards"
-import { resolveActiveOrganizationId } from "@/lib/auth/memberships"
+import {
+  requireAdmin,
+  requireSessionOrg,
+  resolveSessionOrganization,
+  hasActiveMembershipInOrg,
+} from "@/lib/auth/guards"
 import type { Organization } from "@prisma/client"
 import { DEFAULT_SALON_TIMEZONE, safeTimezone } from "@/lib/booking-time"
 import { hostFromHostHeader, isPlatformHost } from "@/lib/domains/normalize"
@@ -53,8 +57,12 @@ export const getTrustedOrgSlug = cache(async (): Promise<string | null> => {
 async function headerOrgAccessible(org: Organization): Promise<boolean> {
   if (org.status !== "ACTIVE") return false
   if (org.publishState === "PUBLISHED") return true
+  // F2.1: a legacy JWT pointer is NOT proof of membership. Only a real
+  // ACTIVE OrganizationMember of this tenant may preview a DRAFT site.
   const session = await auth()
-  return session?.user?.organizationId === org.id
+  return session?.user?.id
+    ? hasActiveMembershipInOrg(session.user.id, org.id)
+    : false
 }
 
 /**
@@ -84,9 +92,11 @@ export const getCustomDomainOrg = cache(async (): Promise<Organization | null> =
   const org = matched.organization
   if (org.status !== "ACTIVE") return null
   if (org.publishState === "PUBLISHED") return org
-  // Unpublished tenant on its own domain: member preview only.
+  // Unpublished tenant on its own domain: F2.1 membership proof, not a
+  // legacy `session.user.organizationId` pointer (see headerOrgAccessible).
   const session = await auth()
-  return session?.user?.organizationId === org.id ? org : null
+  if (!session?.user?.id) return null
+  return (await hasActiveMembershipInOrg(session.user.id, org.id)) ? org : null
 })
 
 /**
@@ -160,54 +170,45 @@ export const getPublicOrg = cache(async (): Promise<Organization | null> => {
   })
 })
 
-/** Organization of the signed-in admin/staff user (falls back to default org). */
+/**
+ * Organization of the signed-in admin/staff user.
+ *
+ * F2.1: the SAME fail-closed resolver as every action guard. No session
+ * path may fall back to "the first ACTIVE organization" — a pre-backfill
+ * account without an ACTIVE membership now resolves to `null` and gets
+ * denied at the action layer instead of being bound to a foreign tenant.
+ */
 export const getSessionOrg = cache(async (): Promise<Organization | null> => {
   const session = await auth()
-  // #100 8.A (M2 dvojno branje): uporabnik s članstvi → aktivni org iz
-  // njih (zaščita proti starim JWT-jem); brez članstev → legacy session.
-  if (session?.user?.id) {
-    const activeOrgId = await resolveActiveOrganizationId(
-      session.user.id,
-      session.user.organizationId ?? null
-    )
-    if (activeOrgId) {
-      const org = await getOrgById(activeOrgId)
-      if (org) return org
-    }
-  }
-  const orgId = session?.user?.organizationId
-  if (orgId) {
-    const org = await getOrgById(orgId)
-    if (org) return org
-  }
-  // Legacy admin (no organizationId) manages the default organization
-  if (session?.user?.role === "ADMIN") {
-    return prisma.organization.findFirst({
-      where: { status: "ACTIVE" },
-      orderBy: { createdAt: "asc" },
-    })
-  }
-  return null
+  const org = await resolveSessionOrganization(session)
+  if (!org) return null
+  // Preserve the moduleStates include that the resolver's thin projection
+  // does not carry (module gates need it in the dashboard chrome).
+  return getOrgById(org.id)
 })
 
 /**
- * Guard + org for admin server actions. Throws UnauthorizedError when not admin.
- * Returns the organization the admin manages.
+ * Guard + org for admin server actions. Throws UnauthorizedError when not
+ * admin or when the session cannot be safely bound to one of the admin's
+ * own ACTIVE workspaces.
+ *
+ * F2.1: delegates to the single `requireSessionOrg()` resolver. The old
+ * legacy "first ACTIVE organization" branch is GONE — a global ADMIN with
+ * no membership evidence is denied instead of silently acting on another
+ * tenant's data.
  */
 export async function requireAdminOrg(): Promise<{
   session: { user: { id: string; role: string; email?: string | null; name?: string | null } }
   org: Organization
 }> {
-  const session = await requireAdmin()
-  const orgId = session.user.organizationId
-  const org = orgId
-    ? await getOrgById(orgId)
-    : await prisma.organization.findFirst({
-        where: { status: "ACTIVE" },
-        orderBy: { createdAt: "asc" },
-      })
-  if (!org) throw new UnauthorizedError("No organization found for this account")
-  return { session: session as unknown as { user: { id: string; role: string; email?: string | null; name?: string | null } }, org }
+  await requireAdmin()
+  const { session, org } = await requireSessionOrg()
+  return {
+    session: session as unknown as {
+      user: { id: string; role: string; email?: string | null; name?: string | null }
+    },
+    org,
+  }
 }
 
 /** Public org for server actions (booking/checkout from a tenant site). */
@@ -250,6 +251,10 @@ export async function getResolvedOrg(): Promise<Organization | null> {
   ) {
     const sessionOrg = await getSessionOrg()
     if (sessionOrg) return sessionOrg
+    // F2.0: a SIGNED-IN admin/staff whose own workspaces cannot be resolved
+    // must NOT be bound to the anonymous public default tenant. Anonymous
+    // visitors and CLIENTE still reach the public branches below unchanged.
+    return null
   }
   // PR #103 review round 2 (Codex — lastne domene): booking/checkout/inquiry
   // resolve the org for PUBLIC actions; on a custom domain without a proxy

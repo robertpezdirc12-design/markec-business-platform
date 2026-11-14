@@ -11,15 +11,21 @@ import { resolveEffectiveProfile } from "@/lib/profiles/resolve"
 import { isCapabilityEnabled } from "@/lib/profiles/registry"
 import { noIndexMetadata } from "@/lib/seo"
 import { orgPath } from "@/lib/org-path"
+import { getLocaleFromCookies } from "@/lib/i18n/server"
 
 export async function generateMetadata(): Promise<Metadata> {
   // Per-tenant title: "Nakupovalna košarica | <Salon>" (P0-3)
   // P1 #26: košarica ni indeksirljiva — noindex, follow (prej je bila
   // kanonizirana na domačo stran, kar je onesnaževalo njen signal).
   const org = await getPublicOrg()
+  const locale = await getLocaleFromCookies()
+  const title = locale === "en" ? "Shopping cart" : "Nakupovalna košarica"
   return noIndexMetadata({
-    title: `Nakupovalna košarica | ${org?.name ?? "Poslovna platforma"}`,
-    description: "Pregledajte in upravljajte izdelke v svoji košarici.",
+    title: `${title} | ${org?.name ?? "Poslovna platforma"}`,
+    description:
+      locale === "en"
+        ? "Review and manage the products in your cart."
+        : "Preglejte in upravljajte izdelke v svoji košarici.",
   })
 }
 
@@ -32,6 +38,7 @@ export default async function CartPage() {
   const org = await getPublicOrg()
   // #105-nadaljevanje (G1, 2. linija): izklopljena trgovina → košarica 404.
   if (!org || !isCapabilityEnabled(resolveEffectiveProfile(org), "shop")) notFound()
+  const locale = await getLocaleFromCookies()
 
   return (
     <div className="from-background to-muted/20 min-h-screen bg-linear-to-b">
@@ -44,7 +51,7 @@ export default async function CartPage() {
         >
           <Link href={orgPath(org?.slug, "/shop")}>
             <ArrowLeftIcon size={16} className="mr-2" />
-            Nazaj v trgovino
+            {locale === "en" ? "Back to shop" : "Nazaj v trgovino"}
           </Link>
         </Button>
 

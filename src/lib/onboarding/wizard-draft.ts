@@ -28,7 +28,7 @@ export const WIZARD_DRAFT_VERSION = 1
 /** Small clock-skew allowance: a slightly-future savedAt is tolerated. */
 const CLOCK_SKEW_MS = 5 * 60 * 1000
 
-import { SKD_AREA_KEYS, SKD_SECTION_CODES } from "@/lib/skd/catalog"
+import { SKD_AREA_KEYS, SKD_SECTION_CODES, isSkdHierarchical } from "@/lib/skd/catalog"
 
 // F1 #100 — SKD katalog je čista podatkovna datoteka (varna na odjemalcu);
 // draft preslikuje izbire prek istih allowlist kot panoge.
@@ -172,7 +172,8 @@ function clampCodeList(value: unknown, maxCount: number, maxLen: number, allowed
   for (const raw of value.slice(0, maxCount)) {
     if (typeof raw !== "string") continue
     const v = raw.slice(0, maxLen)
-    if (allowed.includes(v) && !out.includes(v)) out.push(v)
+    // F5.0: hierarhični SKD kodi (raven 3–5) so veljavne poleg sekcij/področij.
+    if ((allowed.includes(v) || isSkdHierarchical(v)) && !out.includes(v)) out.push(v)
   }
   return out
 }

@@ -13,6 +13,11 @@
 //  - dejavnost ni obvezna (razlika B): preskok = generična osnova.
 // ============================================================
 
+// F5.0: razreševanje profila in hierarhije za konkretne podrazrede.
+import { resolveSkdProfile } from "@/lib/skd/profiles"
+import { skdByCode } from "@/lib/skd/data/skd2025"
+import type { ActivityProfile } from "@/lib/profiles/types"
+
 /** Tipi capability ključev (registry) — samo tolmač za predloge. */
 export type SkdSuggestedModule =
   | "appointments"
@@ -28,6 +33,33 @@ export type SkdSuggestedModule =
   | "delivery"
   | "analytics"
   | "reviews"
+
+/** Ali je šifra hierarhični SKD zapis (raven 3–5, npr. "A01.11" ali "T96.210"). */
+export function isSkdHierarchical(code: string): boolean {
+  const c = code.trim().toUpperCase()
+  if (!c.includes(".")) return false
+  return Boolean(c[0] >= "A" && c[0] <= "V" && skdByCode(c))
+}
+
+/** Moduli, ki jih profil dejansko omogoča (capabilities != disabled). */
+function profileModules(profile: ActivityProfile): SkdSuggestedModule[] {
+  const out: SkdSuggestedModule[] = []
+  const c = profile.capabilities
+  if (c.appointments !== "disabled") out.push("appointments")
+  if (c.workOrders !== "disabled") out.push("workOrders")
+  if (c.shop !== "disabled") out.push("shop")
+  if (c.services !== "disabled") out.push("services")
+  if (c.inventory !== "disabled") out.push("inventory")
+  if (c.customers !== "disabled") out.push("customers")
+  if (c.staff !== "disabled") out.push("staff")
+  if (c.forms !== "disabled") out.push("forms")
+  if (c.workflows !== "disabled") out.push("workflows")
+  if (c.documents !== "disabled") out.push("documents")
+  if (c.delivery !== "disabled") out.push("delivery")
+  if (c.analytics !== "disabled") out.push("analytics")
+  if (c.reviews !== "disabled") out.push("reviews")
+  return out
+}
 
 export interface SkdSection {
   /** Uradna šifra sekcije (raven 1): ena črka A–V. */
@@ -134,6 +166,8 @@ export const SKD_AREA_KEYS: ReadonlySet<string> = new Set(
  * Čist predlog modulov za izbrane SKD šifre.
  * - Sekcija → vsota predlogov vseh področij pod to sekcijo.
  * - Področje (ključ `area:<key>`) → predlogi tega področja.
+ * - Konkretni podrazred/razred/skupina (raven 3–5) → predlogi iz
+ *   razrešenega poslovnega profila (F5.0) + predlogi nadrejene sekcije.
  * - Lastne oznake namenoma NE vplivajo na predloge (nasvet je podatkovni,
  *   ne AI) — customTags živijo na Organization za lastnikovo evidenco.
  * - Nikoli ne vrnemo zaklenjenih odločitev — samo urejen seznam ključev.
@@ -144,6 +178,12 @@ export function suggestModulesForSkd(codes: string[]): SkdSuggestedModule[] {
     if (code.startsWith("area:")) {
       const area = SKD_AREAS.find((a) => a.key === code.slice(5))
       area?.suggests.forEach((m) => out.add(m))
+      continue
+    }
+    // F5.0: konkreten podrazred/razred/skupina — predlogi iz profila.
+    if (isSkdHierarchical(code)) {
+      const profile = resolveSkdProfile(code)
+      profileModules(profile).forEach((m) => out.add(m))
       continue
     }
     if (!SKD_SECTION_CODES.has(code)) continue
@@ -171,6 +211,9 @@ export function sanitizeSkdInput(codes: unknown, tags: unknown): { codes: string
       if (value.startsWith("area:")) {
         if (SKD_AREA_KEYS.has(value.slice(5))) cleanCodes.push(value)
       } else if (SKD_SECTION_CODES.has(value)) {
+        cleanCodes.push(value)
+      } else if (isSkdHierarchical(value)) {
+        // F5.0: konkreten podrazred/razred/skupina (raven 3–5) — veljaven.
         cleanCodes.push(value)
       }
     }

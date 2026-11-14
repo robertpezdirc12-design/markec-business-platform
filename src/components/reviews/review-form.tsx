@@ -77,6 +77,8 @@ export function ReviewForm({ serviceId, serviceName }: ReviewFormProps) {
             <button
               key={star}
               type="button"
+              aria-label={`Ocena ${star} od 5`}
+              aria-pressed={star <= (hoveredRating || rating)}
               onClick={() => setValue("rating", star, { shouldValidate: true })}
               onMouseEnter={() => setHoveredRating(star)}
               onMouseLeave={() => setHoveredRating(0)}

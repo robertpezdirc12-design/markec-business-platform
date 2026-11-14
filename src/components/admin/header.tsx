@@ -22,12 +22,27 @@ import {
   SettingsIcon,
   UsersIcon,
   HouseIcon,
+  StorefrontIcon,
 } from "@/components/icons"
 import { MobileSidebar } from "./sidebar"
 import { LanguageSwitcher } from "./language-switcher"
 import { useI18n } from "@/lib/i18n/provider"
 
-export function AdminHeader({ orgSlug }: { orgSlug?: string | null }) {
+export function AdminHeader({
+  orgSlug,
+  organizations = [],
+  currentOrganizationId = null,
+  currentOrgName = null,
+  currentVerticalLabel = null,
+}: {
+  orgSlug?: string | null
+  /** F2.0: own ACTIVE memberships, computed server-side in (admin)/layout. */
+  organizations?: { id: string; name: string }[]
+  currentOrganizationId?: string | null
+  /** F7.1 K2: identiteta okolja (ime + dejavnost) v zgornji vrstici. */
+  currentOrgName?: string | null
+  currentVerticalLabel?: string | null
+}) {
   // Javna stran lastnega salona (/s/{slug}) — ne platformni landing (P0 #2 walkthrough).
   const publicSiteHref = orgSlug ? `/s/${orgSlug}` : "/"
   const router = useRouter()
@@ -51,6 +66,11 @@ export function AdminHeader({ orgSlug }: { orgSlug?: string | null }) {
   const userRole = session?.user?.role || "CLIENT"
   const isAdmin = userRole === "ADMIN"
 
+  // F2.0: the workspace switcher is gated on OWN ACTIVE MEMBERSHIPS, not on
+  // the global ADMIN role. Any member who actually has 2+ workspaces may
+  // switch between them (the server action re-checks membership + ACTIVE).
+  const canSwitchWorkspaces = organizations.length > 1
+
   const getRoleBadgeVariant = () => {
     switch (userRole) {
       case "ADMIN":
@@ -67,10 +87,10 @@ export function AdminHeader({ orgSlug }: { orgSlug?: string | null }) {
 
   return (
     <>
-      <header className="sticky top-0 z-40 shrink-0 bg-card shadow-sm">
+      <header className="bg-card sticky top-0 z-40 shrink-0 shadow-sm">
         <div className="flex h-16 items-center justify-between px-4 sm:px-6">
-          {/* Left side - Mobile menu */}
-          <div className="flex items-center">
+          {/* Left side - Mobile menu + identity */}
+          <div className="flex min-w-0 items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
@@ -80,6 +100,20 @@ export function AdminHeader({ orgSlug }: { orgSlug?: string | null }) {
               <MenuIcon size={20} />
               <span className="sr-only">{t.common.header.openMenu}</span>
             </Button>
+            {/* F7.1 K2: stalna identiteta okolja (ime podjetja + dejavnost) —
+                vidna vselej, tudi na mobilnih napravah. */}
+            {(currentOrgName || currentVerticalLabel) && (
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold text-foreground">
+                  {currentOrgName ?? "—"}
+                </div>
+                {currentVerticalLabel && (
+                  <span className="bg-primary/10 text-primary-text inline-block max-w-40 truncate rounded px-1.5 py-px text-[11px] font-medium leading-4">
+                    {currentVerticalLabel}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right side - Actions */}
@@ -96,7 +130,9 @@ export function AdminHeader({ orgSlug }: { orgSlug?: string | null }) {
             >
               <Link href={publicSiteHref} target="_blank">
                 <HouseIcon size={16} />
-                <span className="hidden md:inline">{t.common.header.visitSite}</span>
+                <span className="hidden md:inline">
+                  {t.common.header.visitSite}
+                </span>
               </Link>
             </Button>
 
@@ -124,19 +160,41 @@ export function AdminHeader({ orgSlug }: { orgSlug?: string | null }) {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-2">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium leading-none">
+                      <p className="text-sm leading-none font-medium">
                         {session?.user?.name || t.common.header.user}
                       </p>
-                      <Badge variant={getRoleBadgeVariant()} className="ml-2 text-xs">
+                      <Badge
+                        variant={getRoleBadgeVariant()}
+                        className="ml-2 text-xs"
+                      >
                         {roleLabel}
                       </Badge>
                     </div>
-                    <p className="text-xs leading-none text-muted-foreground">
+                    <p className="text-muted-foreground text-xs leading-none">
                       {session?.user?.email}
                     </p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+
+                {/* F2.0: moved OUT of the ADMIN-only block. Role-agnostic by
+                    design — membership count is the only meaningful gate. */}
+                {canSwitchWorkspaces && (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link href="/workspaces">
+                        <StorefrontIcon size={16} className="mr-2" />
+                        Zamenjaj poslovni prostor
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/workspaces/manage">
+                        <SettingsIcon size={16} className="mr-2" />
+                        Moja podjetja
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
 
                 {isAdmin && (
                   <>
@@ -163,7 +221,10 @@ export function AdminHeader({ orgSlug }: { orgSlug?: string | null }) {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="text-red-600 dark:text-red-400">
+                <DropdownMenuItem
+                  onClick={handleSignOut}
+                  className="text-red-600 dark:text-red-400"
+                >
                   <LogoutIcon size={16} className="mr-2" />
                   {t.common.header.signOut}
                 </DropdownMenuItem>
@@ -173,8 +234,14 @@ export function AdminHeader({ orgSlug }: { orgSlug?: string | null }) {
         </div>
       </header>
 
-      {/* Mobile sidebar */}
-      <MobileSidebar open={mobileMenuOpen} onOpenChange={setMobileMenuOpen} />
+      {/* Mobile sidebar — F2.0: same memberships as the desktop sidebar so
+          the switcher exists on phones too, for every eligible role. */}
+      <MobileSidebar
+        open={mobileMenuOpen}
+        onOpenChange={setMobileMenuOpen}
+        organizations={organizations}
+        currentOrganizationId={currentOrganizationId}
+      />
     </>
   )
 }

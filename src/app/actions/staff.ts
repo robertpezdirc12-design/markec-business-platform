@@ -262,9 +262,17 @@ export const createStaffMember = async (data: UpdateStaffInput) => {
     })
 
     if (existingUser) {
-      // Check if this user is already linked to a staff member
+      // F2.3.1: duplicate check is per-ORGANIZATION. A user may be an
+      // employee in MULTIPLE orgs (one Staff row per (user, org)). Only a
+      // Staff row for THIS (user, org) is a duplicate; the same user being
+      // staff elsewhere is normal and must NOT reject the new row.
       const existingStaff = await prisma.staff.findUnique({
-        where: { userId: existingUser.id },
+        where: {
+          userId_organizationId: {
+            userId: existingUser.id,
+            organizationId: org.id,
+          },
+        },
       })
 
       if (existingStaff) {
@@ -503,8 +511,14 @@ export const getCurrentStaffMember = async () => {
   }
 
   try {
-    const staffMember = await prisma.staff.findUnique({
-      where: { userId: session.user.id },
+    // F2.3.1: resolve within the ACTIVE organization (a user may be staff in
+    // several orgs — never a global one-to-one lookup).
+    const org = await getSessionOrg()
+    if (!org) {
+      return { success: false, error: "Staff profile not found" }
+    }
+    const staffMember = await prisma.staff.findFirst({
+      where: { userId: session.user.id, organizationId: org.id },
       include: {
         services: {
           include: {
@@ -571,8 +585,13 @@ export const getStaffPortalStats = async () => {
     const monthStart = startOfMonth(now)
     const monthEnd = endOfMonth(now)
 
-    const staffMember = await prisma.staff.findUnique({
-      where: { userId: session.user.id },
+    // F2.3.1: org-scoped (a user may be staff in several orgs).
+    const org = await getSessionOrg()
+    if (!org) {
+      return { success: false, error: "Staff profile not found" }
+    }
+    const staffMember = await prisma.staff.findFirst({
+      where: { userId: session.user.id, organizationId: org.id },
     })
 
     if (!staffMember) {
@@ -644,8 +663,13 @@ export const getStaffTodaysAppointments = async () => {
     const dayStart = startOfDay(now)
     const dayEnd = endOfDay(now)
 
-    const staffMember = await prisma.staff.findUnique({
-      where: { userId: session.user.id },
+    // F2.3.1: org-scoped.
+    const org = await getSessionOrg()
+    if (!org) {
+      return { success: false, error: "Staff profile not found" }
+    }
+    const staffMember = await prisma.staff.findFirst({
+      where: { userId: session.user.id, organizationId: org.id },
       include: {
         appointments: {
           where: {
@@ -753,9 +777,13 @@ export const getStaffAppointments = async (
         ? filters.statusFilter
         : undefined
 
-    // Get staff member
-    const staff = await prisma.staff.findUnique({
-      where: { userId: session.user.id },
+    // F2.3.1: org-scoped staff of the ACTIVE workspace.
+    const org = await getSessionOrg()
+    if (!org) {
+      return { success: false, error: "Staff profile not found" }
+    }
+    const staff = await prisma.staff.findFirst({
+      where: { userId: session.user.id, organizationId: org.id },
       select: { id: true },
     })
 
@@ -841,8 +869,13 @@ export const getStaffProfile = async () => {
   }
 
   try {
-    const staffMember = await prisma.staff.findUnique({
-      where: { userId: session.user.id },
+    // F2.3.1: org-scoped staff.
+    const org = await getSessionOrg()
+    if (!org) {
+      return { success: false, error: "Staff member not found" }
+    }
+    const staffMember = await prisma.staff.findFirst({
+      where: { userId: session.user.id, organizationId: org.id },
       select: {
         id: true,
         name: true,
@@ -904,8 +937,13 @@ export const getStaffAssignedServices = async () => {
   }
 
   try {
-    const staffMember = await prisma.staff.findUnique({
-      where: { userId: session.user.id },
+    // F2.3.1: org-scoped staff.
+    const org = await getSessionOrg()
+    if (!org) {
+      return { success: false, error: "Staff profile not found" }
+    }
+    const staffMember = await prisma.staff.findFirst({
+      where: { userId: session.user.id, organizationId: org.id },
       select: {
         services: {
           select: {
@@ -971,9 +1009,9 @@ export const updateStaffSelfProfile = async (data: StaffSelfUpdateFormData) => {
       }
     }
 
-    // Verify the staff profile belongs to this organization before mutating
-    const existingStaff = await prisma.staff.findUnique({
-      where: { userId: session.user.id },
+    // F2.3.1: per-org — a user may be staff in several orgs.
+    const existingStaff = await prisma.staff.findFirst({
+      where: { userId: session.user.id, organizationId: org.id },
       select: { id: true, organizationId: true },
     })
 
@@ -985,7 +1023,7 @@ export const updateStaffSelfProfile = async (data: StaffSelfUpdateFormData) => {
     }
 
     const updatedStaff = await prisma.staff.update({
-      where: { userId: session.user.id },
+      where: { id: existingStaff.id },
       data: {
         name: data.name,
         phone: data.phone,
@@ -1020,8 +1058,13 @@ export const getStaffWorkingHours = async () => {
   }
 
   try {
-    const staffMember = await prisma.staff.findUnique({
-      where: { userId: session.user.id },
+    // F2.3.1: org-scoped staff.
+    const org = await getSessionOrg()
+    if (!org) {
+      return { success: false, error: "Staff member not found" }
+    }
+    const staffMember = await prisma.staff.findFirst({
+      where: { userId: session.user.id, organizationId: org.id },
       select: {
         workingHours: {
           select: {

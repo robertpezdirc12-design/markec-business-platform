@@ -6,6 +6,7 @@ import {
   PlusIcon,
   PencilIcon,
   CalendarIcon,
+  ArrowLeftIcon,
 } from "@/components/icons"
 import { getAdminStaffMembers, getAdminStaffStats } from "@/app/actions/staff"
 import { getServerI18n } from "@/lib/i18n/server"
@@ -41,12 +42,20 @@ export default async function StaffPage({ searchParams }: StaffPageProps) {
             {t.staff.subtitle}
           </p>
         </div>
-        <Link href="/dashboard/staff/new">
-          <Button>
-            <PlusIcon size={16} className="mr-2" />
-            {t.staff.addStaffMember}
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          {/* 2D-11: varni povratek v WYSIWYG urejevalnik. */}
+          <Link href="/dashboard/settings?tab=branding">
+            <Button variant="ghost" size="sm">
+              <ArrowLeftIcon size={16} className="mr-1" /> Urejevalnik
+            </Button>
+          </Link>
+          <Link href="/dashboard/staff/new">
+            <Button>
+              <PlusIcon size={16} className="mr-2" />
+              {t.staff.addStaffMember}
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Stats Cards */}

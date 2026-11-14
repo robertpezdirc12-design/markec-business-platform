@@ -24,7 +24,16 @@ export const PERMISSION_KEYS = [
   "staff.manage",
   "analytics.view",
   "finances.view",
+  // F5.5.4.1 — pisanje/izdajanje dokumentov (računov, ponudb). `finances.view`
+  // ostane samo-bralni pregled; brez tega ključa član ne more ustvariti,
+  // urediti, izdati ali preklicati dokumenta (ločitev read/write).
+  "finances.documents.manage",
+  // F5.5.4.2 — ločena dovoljenja za plačila in dobropise dokumentov.
+  "finances.documents.pay",
+  "finances.documents.credit",
   "settings.manage",
+  // F5.1: upravljanje popustov in promocij.
+  "promotions.manage",
 ] as const
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number]
@@ -59,6 +68,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     permissions: [
       { key: "products.manage", label: "Urejanje izdelkov" },
       { key: "orders.manage", label: "Urejanje spletnih naročil" },
+      { key: "promotions.manage", label: "Urejanje popustov in promocij" },
     ],
   },
   {
@@ -76,6 +86,9 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: "inquiries.manage", label: "Urejanje povpraševanj in obrazcev" },
       { key: "analytics.view", label: "Vid analitiko" },
       { key: "finances.view", label: "Vid finance (dokumenti, plačila)" },
+      { key: "finances.documents.manage", label: "Izdaja in urejanje dokumentov (računi, ponudbe)" },
+      { key: "finances.documents.pay", label: "Knjižba plačil dokumentov" },
+      { key: "finances.documents.credit", label: "Izdaja dobropisov" },
       { key: "settings.manage", label: "Urejanje nastavitev salona" },
     ],
   },

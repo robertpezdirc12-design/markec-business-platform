@@ -10,7 +10,8 @@ import "./globals.css"
 import { auth } from "@/lib/auth/auth"
 import { getOrgBySlug, getOrgById, getTrustedOrgSlug } from "@/lib/tenant"
 import { prisma } from "@/lib/prisma"
-import { paletteCssVars, paletteDarkTextVars, PALETTES, type Palette, upgradeLegacyDefaultCopy } from "@/lib/verticals"
+import { paletteCssVars, paletteDarkTextVars, PALETTES, FONT_CSS_VARS, type Palette, upgradeLegacyDefaultCopy } from "@/lib/verticals"
+import { themeToCssVars, DEFAULT_TYPOGRAPHY, type SiteTheme, type ThemeTypography } from "@/lib/site-design"
 import { mergeSiteContent } from "@/lib/site-content"
 import { CurrencyProvider } from "@/lib/currency"
 import { platformThemeCss } from "@/lib/platform-theme"
@@ -205,8 +206,30 @@ export default async function RootLayout({
       .join(";")}}`
     const config = await prisma.salonConfig.findUnique({
       where: { organizationId: org.id },
-      select: { currency: true, siteContent: true },
+      select: { currency: true, siteContent: true, theme: true },
     })
+    // F5.3.2 — lastnik-u-urejljiva grafika (barve/pisave) v SalonConfig.theme
+    // se prekriva čez paleto; kontrast je validiral `updateTheme`. Vbrizgane
+    // custom props so berene v globals.css (`--f532-*` → shadcn/org tokeni).
+    if (config?.theme && typeof config.theme === "object") {
+      const f532 = themeToCssVars(config.theme as unknown as SiteTheme)
+      const parts = Object.entries(f532).map(([k, v]) => `${k}:${v}`)
+      const themeObj = config.theme as Record<string, unknown>
+      const typo = {
+        ...DEFAULT_TYPOGRAPHY,
+        ...(themeObj.typography as Partial<ThemeTypography> | undefined),
+      } satisfies ThemeTypography
+      // pisave: mapiraj FontKey → CSS var (komponente berejo --org-font-heading/body)
+      const heading = FONT_CSS_VARS[typo.fontHeading]
+      const body = FONT_CSS_VARS[typo.fontBody]
+      parts.push(`--org-font-heading:${heading}`)
+      parts.push(`--org-font-body:${body}`)
+      // font sizing/weight
+      parts.push(`--f532-heading-scale:${typo.headingScale}`)
+      parts.push(`--f532-base-font-size:${typo.baseFontSize}px`)
+      // :root — pritaj za paleto, da lastnikova tema PREMAGA palette (later = wins)
+      themeCss += `:root{${parts.join(";")}}`
+    }
     orgCurrency = config?.currency || "EUR"
 
     // JSON-LD samo za javne kontekste (tenant/bare) objavljenih najemnikov.

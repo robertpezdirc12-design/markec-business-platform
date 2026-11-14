@@ -81,7 +81,12 @@ describe("#59 — seedOrganizationCatalog independent guards + provenance", () =
   })
 
   it("source guard: provenance presetSeed is written on every seeded row", () => {
-    expect(verticals.match(/presetSeed: preset\.id/g)?.length).toBeGreaterThanOrEqual(3)
+    // F5.2: seedanje kategorij/storitev se je preselilo v seedPresetCategory,
+    // ki piše `presetSeed: presetId` (kategorija + storitev); izdelki pišejo
+    // `presetSeed: preset.id`. Skupaj ≥ 3 → tri vrste vrstic nosijo provenance.
+    const inHelper = verticals.match(/presetSeed: presetId/g)?.length ?? 0
+    const inProducts = verticals.match(/presetSeed: preset\.id/g)?.length ?? 0
+    expect(inHelper + inProducts).toBeGreaterThanOrEqual(3)
   })
 
   it("source guard: vertical switch replaces foreign preset samples, never owner rows", () => {

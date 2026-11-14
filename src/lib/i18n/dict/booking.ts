@@ -33,6 +33,11 @@ export const bookingSl = {
   waitlistHint: "Zasedeno? Prijavite se na čakalno listo ↓",
   // #92: izbirni dodatki storitve (cena/trajanje se prištejeta atomarno)
   addonsTitle: "Dodatki (neobvezno)",
+  // Deli dneva — termini so združeni, ne ena sama mreža.
+  morning: "Jutro",
+  afternoon: "Popoldne",
+  evening: "Večer",
+  pickDateFirst: "Izberite dan v koledarju — prikažemo proste termine.",
 
   // ---- Korak 4: kontakt ----
   yourDetails: "Vaši podatki",
@@ -146,6 +151,11 @@ export const bookingEn: BookingDict = {
   waitlistHint: "Fully booked? Join the waitlist ↓",
   // #92: optional service add-ons (price/duration added atomically)
   addonsTitle: "Add-ons (optional)",
+  // Parts of the day — times are grouped instead of one flat grid.
+  morning: "Morning",
+  afternoon: "Afternoon",
+  evening: "Evening",
+  pickDateFirst: "Pick a day in the calendar to see available times.",
 
   yourDetails: "Your details",
   confirmDetailsDesc: "Confirm your contact details",

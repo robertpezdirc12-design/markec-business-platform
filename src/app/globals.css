@@ -624,3 +624,46 @@ label[for], select, .cursor-pointer {
     color: black;
   }
 }
+
+/* ============================================================
+   F5.3.2 — lastnik-u-urejljiva grafična podoba (barve/pisave).
+   layout.tsx vbrigeh `--f532-*` RGB triplete (ko ima lastnik nastavljeno
+   temo v SalonConfig.theme). Tukaj jih preslikamo na shadcn/org tokene,
+   ki jih uporabljajo komponente. Preverjanje kontrasta v updateTheme.
+   ============================================================ */
+:root:not(.dark) {
+  --f532-background: 20 25% 98%;
+  --f532-foreground: 340 20% 15%;
+  --f532-text: 340 20% 15%;
+  --f532-text-muted: 340 10% 40%;
+  --f532-heading: 340 20% 15%;
+  --f532-button-text: 0 0% 100%;
+  --f532-button-bg: 340 45% 36%;
+  --f532-link: 340 45% 36%;
+}
+
+/* Kadar je lastnikova tema prisotna, RGB tripleti prihajajo iz layout.tsx
+   prek --f532-*; spodaj jih preslikamo na shadcn tokene. Fallbacki so
+   literalni (platformska kremna/skorica), da stran brez teme ni nečitljiva
+   in da ni samosklicevalne var(--background) zanke.
+
+   F5.3.3.1 (AA): selector `:not(.dark)` — prej je ta `:root` blok prominil PO
+   globals `.dark` token-ih z enako specificity in jih PREGLASIL, zato dark
+   mode nikoli ni uporabil shadcn `.dark` AA tokenov (--background temen,
+   --muted-foreground svetel …); v dark je ostala svetla/fallback in kontrast
+   besedila na temnih ozadjih je padel (npr. 340 10% 40% muted na temnem).
+   Zdaj ta blok velja le v LIGHT; v dark veljajo shadcn `.dark` AA tokeni. */
+:root:not(.dark) {
+  --background: var(--f532-background, 20 25% 98%);
+  --foreground: var(--f532-text, 340 20% 15%);
+  --muted-foreground: var(--f532-text-muted, 340 10% 40%);
+  --card-foreground: var(--f532-text, 340 20% 15%);
+  --popover-foreground: var(--f532-text, 340 20% 15%);
+  --primary: var(--f532-button-bg, var(--primary-500));
+  --primary-foreground: var(--f532-button-text, 0 0% 100%);
+  --ring: var(--f532-link, var(--primary-500));
+}
+h1, h2, h3, h4, h5, h6 {
+  color: var(--f532-heading);
+  font-family: var(--org-font-heading, var(--font-heading, inherit));
+}

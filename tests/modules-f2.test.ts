@@ -52,31 +52,36 @@ describe("#100 8.C katalog modulov (integriteta)", () => {
   })
 })
 
-describe("#100 8.C efektivna matrika (izklop = zadnja beseda)", () => {
-  it("DEACTIVATED izklopi capability modula; brez vrstic = brez spremembe", () => {
-    const profile = { appointments: "required", shop: "required", analytics: "required" }
+describe("#100 8.C efektivna matrika (izklop = zadnja beseda, F5.4.1 politika)", () => {
+  it("DEACTIVATED izklopi OPTIONAL capability; required ostane zaklenjen", () => {
+    const profile = { appointments: "required", shop: "required", analytics: "optional" }
     const out = effectiveCapabilities(profile, { appointments: "DEACTIVATED" })
-    expect(out.appointments).toBe("disabled")
+    // F5.4.1: moduleState NE sme izklopiti required — appointments ostane required.
+    expect(out.appointments).toBe("required")
     expect(out.shop).toBe("required")
+    // optional pa se sme izklopiti.
+    const out2 = effectiveCapabilities(profile, { analytics: "DEACTIVATED" })
+    expect(out2.analytics).toBe("disabled")
     expect(effectiveCapabilities(profile, {}).appointments).toBe("required")
   })
 
-  it("ACTIVE ODKLENE profil 'disabled' (modul neodvisen od dejavnosti — jedro 8.C)", () => {
+  it("ACTIVE NE odpre profil 'disabled' (ni več samostojno odklepanje)", () => {
+    // F5.4.1 P0: disabled se nikoli ne sme vklopiti prek moduleState.
     const profile = { reviews: "optional", appointments: "disabled" }
     const out = effectiveCapabilities(profile, { appointments: "ACTIVE" })
-    expect(out.appointments).toBe("optional")
+    expect(out.appointments).toBe("disabled")
     expect(out.reviews).toBe("optional")
   })
 
-  it("več izklopk hkrati ne motijo ostalih modulov", () => {
-    const profile = { appointments: "required", shop: "required", delivery: "optional" }
+  it("več izklopk hkrati ne moti ostalih modulov", () => {
+    const profile = { appointments: "required", shop: "optional", delivery: "optional" }
     const out = effectiveCapabilities(profile, {
       appointments: "DEACTIVATED",
       delivery: "DEACTIVATED",
     })
-    expect(out.appointments).toBe("disabled")
+    expect(out.appointments).toBe("required") // zaklenjeno
     expect(out.delivery).toBe("disabled")
-    expect(out.shop).toBe("required")
+    expect(out.shop).toBe("optional")
   })
 })
 
@@ -89,13 +94,14 @@ describe("#100 8.C odvisnosti pri vklopu/izklopu", () => {
 })
 
 describe("#100 F5 HIDDEN (skrito javno, plošča dela)", () => {
-  it("HIDDEN v plošči capability pusti delujočo (in odklene disabled)", () => {
+  it("HIDDEN v plošči pusti required delujočo; disabled ne postane optional", () => {
     const out = effectiveCapabilities({ appointments: "required", reviews: "disabled" }, {
       appointments: "HIDDEN",
       reviews: "HIDDEN",
     })
+    // F5.4.1: required ostaja aktiven (HIDDEN je le javna vidnost), disabled se ne odklene.
     expect(out.appointments).toBe("required")
-    expect(out.reviews).toBe("optional")
+    expect(out.reviews).toBe("disabled")
   })
 
   it("HIDDEN na JAVNI strani = izklopljen (javni vhodi se zaprejo)", () => {
@@ -105,17 +111,20 @@ describe("#100 F5 HIDDEN (skrito javno, plošča dela)", () => {
     expect(pub.appointments).toBe("disabled")
   })
 
-  it("ACTIVE na javni strani odklene disabled (enako kot plošča)", () => {
+  it("ACTIVE na javni strani NE odklene disabled (F5.4.1 P0)", () => {
     const pub = effectivePublicCapabilities({ appointments: "disabled" }, {
       appointments: "ACTIVE",
     })
-    expect(pub.appointments).toBe("optional")
+    expect(pub.appointments).toBe("disabled")
   })
 
-  it("DEACTIVATED je izklopljen na obeh površinah", () => {
+  it("DEACTIVATED izklopi optional na obeh površinah; required ostane zaklenjen", () => {
     const st = { shop: "DEACTIVATED" as const }
-    expect(effectiveCapabilities({ shop: "required" }, st).shop).toBe("disabled")
-    expect(effectivePublicCapabilities({ shop: "required" }, st).shop).toBe("disabled")
+    expect(effectiveCapabilities({ shop: "optional" }, st).shop).toBe("disabled")
+    expect(effectivePublicCapabilities({ shop: "optional" }, st).shop).toBe("disabled")
+    // required + (nedovoljeno) DEACTIVATED: ostane required (zaklenjeno), a javno skrito vidno.
+    expect(effectiveCapabilities({ shop: "required" }, st).shop).toBe("required")
+    expect(effectiveCapabilities({ appointments: "required", shop: "required" }, { appointments: "DEACTIVATED" }).appointments).toBe("required")
   })
 })
 
@@ -137,9 +146,13 @@ describe("#100 8.C struktura: resolve, akcije, UI, vrata", () => {
     expect(resolve).toContain("statesFromOrg(org)")
   })
 
-  it("akcija: settings.manage guard, odvisnosti (opozorilo/vrata), ConfigChangeLog revizija", () => {
+  it("akcija: org-scoped permission guard, odvisnosti (opozorilo/vrata), ConfigChangeLog revizija", () => {
     const actions = read("src/app/actions/modules.ts")
-    expect(actions).toContain('requirePermissionOrg("settings.manage")')
+    // F5.4.2: modulno upravljanje je org-scoped + permission-based (settings.manage),
+    // ne samo ADMIN-vloga — lastnik in STAFF z ustrezno custom vlogo.
+    expect(actions).toContain("requireModuleManageOrg")
+    expect(actions).toContain('getEffectivePermissions(session.user.id, org.id)')
+    expect(actions).toContain('perms.includes("settings.manage")')
     expect(actions).toContain("dependentsOf(moduleId)")
     expect(actions).toContain("missingDependencies(moduleId, states)")
     expect(actions).toContain("recordConfigChange(")
@@ -147,12 +160,12 @@ describe("#100 8.C struktura: resolve, akcije, UI, vrata", () => {
     expect(actions).toContain('r.state === "HIDDEN"')
   })
 
-  it("UI: kartica v2 v Modulih — izklop z opozorilom, brez tihih sprememb", () => {
-    const card = read("src/components/dashboard/modules-v2-card.tsx")
+  it("UI: enoten »Moji moduli« (ModulesOverview) — izklop z opozorilom, brez tihih sprememb", () => {
+    const card = read("src/components/dashboard/modules-overview.tsx")
     expect(card).toContain("setModuleState")
     expect(card).toContain("podatki ostanejo")
     const settings = read("src/app/(admin)/dashboard/settings/page.tsx")
-    expect(settings).toContain("<ModulesV2Card />")
+    expect(settings).toContain("<ModulesOverview />")
   })
 
   it("shema: OrganizationModuleState unique par + brez brisanja podatkov ob izklopu", () => {

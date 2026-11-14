@@ -3,17 +3,19 @@ import { getPublicationStatus } from "@/app/actions/publication"
 import { SettingsForm } from "@/components/dashboard/settings-form"
 import { AnalyticsIntegrationCard } from "@/components/dashboard/analytics-integration-card"
 import { PushCard } from "@/components/dashboard/push-card"
-import { BrandingEditor } from "@/components/dashboard/branding-editor"
+import { BrandingTabs } from "@/components/dashboard/branding-tabs"
 import { PaymentsSettings } from "@/components/dashboard/payments-settings"
 import { ProfileOverview } from "@/components/dashboard/profile-overview"
+import { ModulesOverview } from "@/components/dashboard/modules-overview"
 import { ModulesConfigurator } from "@/components/dashboard/modules-configurator"
-import { ModulesV2Card } from "@/components/dashboard/modules-v2-card"
 import { ActivitiesCard } from "@/components/dashboard/activities-card"
 import { ConfigHistoryCard } from "@/components/dashboard/config-history-card"
+import { CustomProfileBuilder } from "@/components/dashboard/custom-profile-builder"
 import { PublicationCard } from "@/components/dashboard/publication-card"
 import { PlanUsageCard } from "@/components/dashboard/plan-usage-card"
 import { DomainsCard } from "@/components/dashboard/domains-card"
 import { SettingsTabs } from "@/components/dashboard/settings-tabs"
+import { ContentManager } from "@/components/dashboard/content/content-manager"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getServerI18n } from "@/lib/i18n/server"
 import { getSessionOrg } from "@/lib/tenant"
@@ -112,15 +114,16 @@ export default async function SettingsPage({
       }
       modules={
         <div className="space-y-6">
-          {/* #100 8.C (F2): modulni katalog v2 — vklop/izklop neodvisno
-              od dejavnosti (podatki ostanejo, javni vhodi se zaprejo). */}
-          <ModulesV2Card />
-          <ActivitiesCard />
+          {/* F5.4.1: enoten »Moji moduli« zaslon — združuje module (ModulesV2Card)
+              in prejšnje module ModulesConfigurator v en pregled. ModulesOverview
+              ureja module; ModulesConfigurator nastal SAMO za dashboard widgete. */}
+          <ModulesOverview />
           <ModulesConfigurator />
+          <ActivitiesCard />
           <ConfigHistoryCard />
         </div>
       }
-      branding={<BrandingEditor />}
+      branding={<BrandingTabs />}
       payments={<PaymentsSettings />}
       domains={
         <DomainsCard
@@ -128,6 +131,8 @@ export default async function SettingsPage({
           sitePath={org ? `/s/${org.slug}` : null}
         />
       }
+      customProfile={org ? <CustomProfileBuilder orgId={org.id} /> : null}
+      content={<ContentManager />}
     />
   )
 }

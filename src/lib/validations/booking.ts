@@ -80,6 +80,9 @@ export function buildBookingSchema(locale: BookingSchemaLocale = "sl") {
       .max(500, m.notesMax)
       .trim()
       .optional(),
+    // 2D-1W: neobavezni podatki o vozilu (delavnica vozil / tire-service).
+    vehiclePlate: z.string().trim().max(20).optional(),
+    vehicleName: z.string().trim().max(120).optional(),
   })
 }
 

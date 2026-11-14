@@ -63,7 +63,7 @@ import {
   updateOrgVertical,
   updateSiteContent,
 } from "@/app/actions/site-content"
-import { publishSite, type PublicationStatus } from "@/app/actions/publication"
+import { getPublicationStatus, publishSite, type PublicationStatus } from "@/app/actions/publication"
 import {
   MAX_CUSTOM_SECTIONS,
   SECTION_KEYS,
@@ -894,13 +894,11 @@ export function BrandingEditor() {
     try {
       const res = await publishSite()
       if (res.success) {
-        setPublication({
-          state: "PUBLISHED",
-          publishedAt: new Date(),
-          hasUnpublishedChanges: false,
-          hasPublishedSnapshot: true,
-          warnings: res.warnings,
-        })
+        // F5.3.1: after publishing re-fetch the real state (fresh contentVersion)
+        // instead of hand-building an optimistic snapshot that omits it.
+        getPublicationStatus()
+          .then((fresh) => setPublication(fresh))
+          .catch(() => undefined)
         toast.success(b.publishDone)
         router.refresh()
       } else {

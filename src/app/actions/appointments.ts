@@ -25,6 +25,7 @@ import {
 import { sendAppointmentConfirmationEmail } from "@/lib/email/appointment-confirmation"
 import { resolveAddonSelection, computeAddonTotals, type AddonLike } from "@/lib/booking/addons"
 import { acquireBookingLocks, bookingLockKeys } from "@/lib/booking/locking"
+import { linkVehicleToAppointment } from "@/app/actions/workshop-booking"
 import {
   validateIntakeAnswers,
   generateIntakeToken,
@@ -38,13 +39,18 @@ import { AppointmentStatus } from "@/lib/types"
 import { AdminAppointmentsFilter } from "@/lib/interfaces"
 // #79: polog kot pravilo — EN helper za booking, Stripe in zapis.
 import { resolveDepositForServices, computeCommission } from "@/lib/booking/deposit"
+// F5.1: promo engine (avtoritativni izračun) + atomsko unovčenje.
+import { loadActivePromotions } from "@/lib/promotions/map"
+import { bestPromotion, buildPromotionSnapshot, round2, type PricingLine } from "@/lib/promotions/engine"
+import { redeemPromotion, PromotionRedeemError } from "@/lib/promotions/redeem"
 import { sendNoShowNotificationEmail } from "@/lib/email/no-show-notification"
 import { sendAppointmentCompletedEmail } from "@/lib/email/appointment-completed"
 import { sendAppointmentCancelledEmail } from "@/lib/email/appointment-cancelled"
 import { sendAppointmentRescheduledEmail } from "@/lib/email/appointment-rescheduled"
 import { sendAppointmentExpiredEmail } from "@/lib/email/appointment-expired"
-import { getSessionOrg, getResolvedOrg, getTrustedOrgSlug } from "@/lib/tenant"
+import { getSessionOrg, getPublicOrg, getResolvedOrg, getTrustedOrgSlug } from "@/lib/tenant"
 import { requirePermissionOrg, UnauthorizedError } from "@/lib/auth/guards"
+import { pickIdentityMatch } from "@/lib/customers/identity"
 import { notifyOrgOwners } from "@/lib/push/send"
 import { buildPushPayload } from "@/lib/push/core"
 import { hasPermission } from "@/lib/permissions/roles"
@@ -126,13 +132,31 @@ export async function listBookingResources(): Promise<BookingResource[]> {
   }
 }
 
-/** Salon timezone for an organization (falls back to the platform default). */
-export async function getOrgTimezone(organizationId: string): Promise<string> {
-  const config = await prisma.salonConfig.findUnique({
-    where: { organizationId },
-    select: { timezone: true },
-  })
-  return safeTimezone(config?.timezone)
+/** Salon timezone — samo za varno razrešeno org (session ali javni kontekst). */
+export async function getOrgTimezone(organizationId?: string): Promise<string> {
+  // Varnost (F6.3.5): NNIKOLI ne zaupaj orgId iz zahteve. Dovolimo le, če
+  // sežema prijavljeno sejno org (owner/staff) ALI javno razrešeno org tega
+  // zahtevka. Sicer → privzeti časovni pas (fail-closed, brez cross-org leak).
+  const allowed: string[] = []
+  const [sessionOrg, publicOrg] = await Promise.all([getSessionOrg(), getPublicOrg()])
+  if (sessionOrg?.id) allowed.push(sessionOrg.id)
+  if (publicOrg?.id) allowed.push(publicOrg.id)
+  if (organizationId && allowed.includes(organizationId)) {
+    const config = await prisma.salonConfig.findUnique({
+      where: { organizationId },
+      select: { timezone: true },
+    })
+    return safeTimezone(config?.timezone)
+  }
+  // Brez ujemajoče org → default (ali javni, če obstaja).
+  if (publicOrg?.id) {
+    const config = await prisma.salonConfig.findUnique({
+      where: { organizationId: publicOrg.id },
+      select: { timezone: true },
+    })
+    return safeTimezone(config?.timezone)
+  }
+  return "Europe/Ljubljana"
 }
 
 // Get current user's staff ID (if they are a staff member)
@@ -144,8 +168,16 @@ export async function getCurrentUserStaffId(): Promise<string | null> {
     return null
   }
 
+  // F2.3.1: resolve within the ACTIVE (request) organization. A user may be
+  // staff in several orgs — a global one-to-one lookup would return an
+  // arbitrary Staff from the wrong org, leaking the self-booking guard.
+  const org = await resolveRequestOrg()
+  if (!org) return null
+
   const staff = await prisma.staff.findUnique({
-    where: { userId: session.user.id },
+    where: {
+      userId_organizationId: { userId: session.user.id, organizationId: org.id },
+    },
     select: { id: true },
   })
 
@@ -554,6 +586,7 @@ export async function getServicesForBooking(serviceIds: string[]) {
       name: true,
       price: true,
       duration: true,
+      categoryId: true,
       // #79: pravilo pologa na storitvi — razreši ga EN helper.
       depositType: true,
       depositValue: true,
@@ -612,8 +645,16 @@ export async function createAppointment(
       ["STAFF", "ADMIN"].includes(session.user.role) &&
       !isAdminCreating
     ) {
+      // F2.3.1: org-scoped — prevent self-booking only against the employee's
+      // Staff row in the CURRENT (request) org, never an arbitrary Staff from
+      // another org (a user may be staff in several orgs).
       const currentUserStaff = await prisma.staff.findUnique({
-        where: { userId: session.user.id },
+        where: {
+          userId_organizationId: {
+            userId: session.user.id,
+            organizationId: org.id,
+          },
+        },
         select: { id: true },
       })
       if (currentUserStaff && currentUserStaff.id === data.staffId) {
@@ -672,6 +713,49 @@ export async function createAppointment(
     const totalPrice = isEmployeeBooking
       ? (baseTotalPrice + addonPrice) * (1 - employeeDiscountRate)
       : baseTotalPrice + addonPrice
+
+    // ------------------------------------------------------------
+    // F5.1 — POPUST/PROMOCIJA za storitve. Avtoritativno na strežniku:
+    // naložimo ACTIVE promocije podjetja in jih ovrednotimo nad izbranimi
+    // storitvami. Zaposleni (20 % vir) promocije NE kombinirata — jasno
+    // pravilo prekrivanja (§4): največ eden popust, poslovna koda zmaga
+    // nad avtomatsko; za zaposlenega ostane samo 20 %.
+    // ------------------------------------------------------------
+    let promotionDiscount = 0
+    let promotionPick: ReturnType<typeof bestPromotion> | null = null
+    let promotionSnapshot: unknown = null
+    if (!isEmployeeBooking) {
+      const promotionLines: PricingLine[] = services.map((s: { id: string; price: number; categoryId: string | null }) => ({
+        kind: "service" as const,
+        serviceId: s.id,
+        categoryId: s.categoryId ?? undefined,
+        amount: s.price,
+        quantity: 1,
+      }))
+      // WHOLE_AMOUNT popust pokriva tudi dodatke.
+      if (addonPrice > 0) {
+        promotionLines.push({
+          kind: "service" as const,
+          serviceId: undefined,
+          amount: addonPrice,
+          quantity: 1,
+        })
+      }
+      const activePromotions = await loadActivePromotions(prisma, org.id)
+      promotionPick = bestPromotion(activePromotions, promotionLines, {
+        code: data.promotionCode,
+      })
+      promotionDiscount = promotionPick ? promotionPick.discountAmount : 0
+      if (promotionPick) {
+        promotionSnapshot = buildPromotionSnapshot(promotionPick.rule, {
+          baseAmount: promotionPick.baseAmount,
+          discountAmount: promotionPick.discountAmount,
+          affectedLines: promotionPick.affectedLines,
+        })
+      }
+    }
+    // Popust nikoli ne sme potisniti skupne cene pod 0.
+    const effectiveTotalPrice = Math.max(0, round2(totalPrice - promotionDiscount))
 
     // Calculate appointment end time based on total duration
     // Build the exact start instant in the SALON timezone from date+time
@@ -793,30 +877,48 @@ export async function createAppointment(
         })
         customerId = customer.id
       }
-    } else if (data.guestEmail) {
-      // Admin creating for a customer OR guest booking
-      // Check if customer already exists by email (within this organization)
-      const existingCustomer = await prisma.customer.findFirst({
-        where: { email: data.guestEmail, organizationId: org.id },
+    } else if (data.guestEmail || data.guestPhone) {
+      // Admin creating for a customer OR guest booking.
+      // F5.5.3.1 — enoten identity resolver: e-pošta = identiteta (neobčutljivo);
+      // telefon poveže SAMO ob ujemanju imena (varno, brez spajanja tujcev).
+      const candidates = await prisma.customer.findMany({
+        where: {
+          organizationId: org.id,
+          OR: [
+            ...(data.guestEmail ? [{ email: { equals: data.guestEmail, mode: "insensitive" as const } }] : []),
+            ...(data.guestPhone ? [{ phone: data.guestPhone }] : []),
+          ],
+        },
+        select: { id: true, name: true, email: true, phone: true },
+        take: 20,
+      })
+      const match = pickIdentityMatch(candidates, {
+        name: data.guestName || "",
+        email: data.guestEmail,
+        phone: data.guestPhone,
       })
 
-      if (existingCustomer) {
-        customerId = existingCustomer.id
-        // Update customer info if needed
-        await prisma.customer.update({
-          where: { id: existingCustomer.id },
-          data: {
-            name: data.guestName || existingCustomer.name,
-            phone: data.guestPhone || existingCustomer.phone,
-          },
-        })
+      if (match) {
+        customerId = match.id
+        // Posodobi samo neobdelana kontaktna polja (brez tihega prepisa).
+        const fresh = await prisma.customer.findUnique({ where: { id: match.id }, select: { name: true, phone: true } })
+        if (fresh) {
+          await prisma.customer.update({
+            where: { id: match.id },
+            data: {
+              name: fresh.name || data.guestName || fresh.name,
+              phone: fresh.phone || data.guestPhone || fresh.phone,
+            },
+          })
+        }
       } else if (data.guestName) {
-        // Create new customer without linking to any user
+        // Create new customer without linking to any user (guest bez emaila
+        // ali nouve stranke) — NI tihega spajanja.
         const customer = await prisma.customer.create({
           data: {
             name: data.guestName,
-            email: data.guestEmail,
-            phone: data.guestPhone,
+            email: data.guestEmail || null,
+            phone: data.guestPhone || null,
             organizationId: org.id,
           },
         })
@@ -969,7 +1071,15 @@ export async function createAppointment(
           ...(noShowGuarantee
             ? { noShowConsent: true, noShowSetupStatus: "PENDING" }
             : {}),
-          totalPrice,
+          totalPrice: effectiveTotalPrice,
+          // F5.1: popust (kadar velja) — immutabilni posnetek na terminu.
+          ...(promotionDiscount > 0 && promotionPick
+            ? {
+                promotionDiscount,
+                promotionId: promotionPick.rule.id,
+                promotionSnapshot: promotionSnapshot as unknown as Prisma.InputJsonValue,
+              }
+            : {}),
           depositAmount,
           depositPaid,
           // #92: snapshot izbranih dodatkov (cene iz DB ob rezervaciji —
@@ -1020,6 +1130,19 @@ export async function createAppointment(
         }
       }
 
+      // F5.1: atomsko unovčenje promocije (row-lock + unikatna ograja).
+      // Ista transakcija kot termin — padec = rollback = brez termina.
+      if (promotionPick) {
+        await redeemPromotion(tx, {
+          promotion: promotionPick.rule,
+          baseAmount: promotionPick.baseAmount,
+          customerId,
+          guestEmail: !customerId ? data.guestEmail : null,
+          appointmentId: created.id,
+          codeUsed: promotionPick.rule.code,
+        })
+      }
+
       // #96: sprejemni obrazec — validacija + FormSubmission v ISTI
       // transakciji (padec = rollback = brez termina brez polnega
       // obrazca). Servis mora imeti povezan aktiven FormDefinition.
@@ -1067,7 +1190,37 @@ export async function createAppointment(
         // povrnil morebitno porabljeno seanso.
         return { success: false, error: error.message }
       }
+      // F5.1: promocija v oknu ni več veljavna (npr. zmanjka omejitev).
+      if (error instanceof PromotionRedeemError) {
+        return { success: false, error: error.message, code: "promotion" }
+      }
       throw error
+    }
+
+    // ------------------------------------------------------------
+    // 2D-1W — vozilo iz javne rezervacije (delavnica vozil).
+    // Če je najemnik vehicle-workshop (tire-service/mehanik) in je gost
+    // (ali admin za stranko) vnesel registrsko oznako, jo NE-DESTRUKTIVNO
+    // shranimo/povežemo z obstoječim vozilom te org. Rezervacija ostane
+    // rezervacija (nikoli delovni nalog); NE odšteva zaloge. Failure je
+    // ne-bločajoč (rezervacija je že shranjena) — vozilo se poveže, ko je
+    // mogoče, na stranki.
+    // ------------------------------------------------------------
+    const vehiclePlate = data.vehiclePlate?.trim()
+    if (vehiclePlate) {
+      const orgRow = await prisma.organization.findUnique({ where: { id: org.id }, select: { vertical: true, secondaryVertical: true } })
+      const isVehicleOrg =
+        orgRow && ["tire-service", "mehanik"].includes(orgRow.vertical ?? "")
+      if (isVehicleOrg) {
+        await linkVehicleToAppointment({
+          organizationId: org.id,
+          customerId,
+          appointmentId: appointment.id,
+          vehiclePlate,
+          vehicleName: data.vehicleName,
+          serviceNames: services.map((s) => s.name),
+        }).catch(() => undefined)
+      }
     }
 
     // Send confirmation email to customer
@@ -1092,7 +1245,7 @@ export async function createAppointment(
           appointmentDate: startInstant,
           appointmentTime: formatSalonTime(startInstant, tz),
           duration: totalDuration,
-          totalPrice,
+          totalPrice: effectiveTotalPrice,
           depositAmount, // #79: izračunan polog, ne globalna številka
           appointmentId: appointment.id,
         })
@@ -1526,7 +1679,12 @@ export async function updateAppointmentStatus(
     throw new UnauthorizedError("Unauthorized")
   }
   if (session.user.role === "ADMIN") {
-    const perms = await getEffectivePermissions(session.user.id)
+    const org = await getSessionOrg()
+    if (!org) {
+      throw new UnauthorizedError("Unauthorized")
+    }
+    // F0: org-scoped permissions (role + custom role per-org).
+    const perms = await getEffectivePermissions(session.user.id, org.id)
     if (!hasPermission(perms, "appointments.manage")) {
       throw new UnauthorizedError(
         "You do not have permission to perform this action"
@@ -1558,10 +1716,17 @@ export async function updateAppointmentStatus(
     throw new Error("Appointment not found")
   }
 
-  // SECURITY: STAFF may only update their own appointments (ADMIN can update all)
+  // SECURITY: STAFF may only update their OWN appointments in the CURRENT
+  // org (ADMIN can update all). F2.3.1: org-scoped — never resolve the
+  // staff row globally (a user may be staff in several orgs).
   if (session.user.role === "STAFF") {
     const ownStaff = await prisma.staff.findUnique({
-      where: { userId: session.user.id },
+      where: {
+        userId_organizationId: {
+          userId: session.user.id,
+          organizationId: org.id,
+        },
+      },
       select: { id: true },
     })
     if (!ownStaff || appointmentDetails.staffId !== ownStaff.id) {
@@ -1961,8 +2126,15 @@ export async function recordAppointmentTip(
   }
 
   if (session.user.role === "STAFF") {
+    // F2.3.1: org-scoped — a user may be staff in several orgs, never
+    // resolve the staff row globally.
     const ownStaff = await prisma.staff.findUnique({
-      where: { userId: session.user.id },
+      where: {
+        userId_organizationId: {
+          userId: session.user.id,
+          organizationId: org.id,
+        },
+      },
       select: { id: true },
     })
     if (!ownStaff || existing.staffId !== ownStaff.id) {

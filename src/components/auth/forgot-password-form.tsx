@@ -47,8 +47,9 @@ export function ForgotPasswordForm() {
     }
 
     // Brez e-poštnega servisa povezavo pokaži direktno (uporabniku dostopno).
-    if (!result.emailSent && result.resetUrl) {
-      setFallbackResetUrl(result.resetUrl)
+    const r = result as { resetUrl?: string; emailSent?: boolean }
+    if (!r.emailSent && r.resetUrl) {
+      setFallbackResetUrl(r.resetUrl)
       return
     }
 

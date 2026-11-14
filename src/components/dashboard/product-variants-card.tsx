@@ -53,7 +53,6 @@ const emptyForm = {
   sku: "",
   price: "",
   trackInventory: true,
-  stockQuantity: 0,
   isActive: true,
 }
 
@@ -98,7 +97,6 @@ export function ProductVariantsCard({
       sku: v.sku ?? "",
       price: v.price !== null ? String(v.price) : "",
       trackInventory: v.trackInventory,
-      stockQuantity: v.stockQuantity,
       isActive: v.isActive,
     })
     setOpen(true)
@@ -115,7 +113,6 @@ export function ProductVariantsCard({
       sku: form.sku || null,
       price: form.price !== "" ? Number(form.price) : null,
       trackInventory: form.trackInventory,
-      stockQuantity: Number(form.stockQuantity) || 0,
     }
     startTransition(async () => {
       const result = editingId
@@ -139,7 +136,9 @@ export function ProductVariantsCard({
     startTransition(async () => {
       const result = await deleteProductVariant(v.id)
       if (result.ok) {
-        toast.success(labels.deleted)
+        toast.success(
+          result.deactivated ? labels.deactivatedUsed : labels.deleted
+        )
         load()
         router.refresh()
       } else {
@@ -267,30 +266,15 @@ export function ProductVariantsCard({
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="var-stock">{labels.stock}</Label>
-                  <Input
-                    id="var-stock"
-                    type="number"
-                    min="0"
-                    value={form.stockQuantity}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, stockQuantity: Number(e.target.value) || 0 }))
-                    }
-                    disabled={!form.trackInventory}
-                  />
-                </div>
-                <div className="flex items-end gap-2 pb-1">
-                  <Switch
-                    id="var-track"
-                    checked={form.trackInventory}
-                    onCheckedChange={(checked) =>
-                      setForm((f) => ({ ...f, trackInventory: checked }))
-                    }
-                  />
-                  <Label htmlFor="var-track">{labels.trackInventory}</Label>
-                </div>
+              <div className="flex items-end gap-2 pb-1">
+                <Switch
+                  id="var-track"
+                  checked={form.trackInventory}
+                  onCheckedChange={(checked) =>
+                    setForm((f) => ({ ...f, trackInventory: checked }))
+                  }
+                />
+                <Label htmlFor="var-track">{labels.trackInventory}</Label>
               </div>
 
               <DialogFooter>

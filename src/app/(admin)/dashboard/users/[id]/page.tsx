@@ -357,8 +357,8 @@ export default async function UserDetailsPage({ params }: PageProps) {
             </Card>
           )}
 
-          {/* Staff Info */}
-          {user.staff && (
+          {/* Staff Info — F2.3.1: staff row scoped to the active org. */}
+          {user.staffs[0] && (
             <Card>
               <CardHeader>
                 <CardTitle>{t.users.staffProfile}</CardTitle>
@@ -371,17 +371,17 @@ export default async function UserDetailsPage({ params }: PageProps) {
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-muted-foreground">{t.users.statusLabel}</span>
                   <Badge
-                    variant={user.staff.isActive ? "default" : "secondary"}
+                    variant={user.staffs[0].isActive ? "default" : "secondary"}
                   >
-                    {user.staff.isActive ? t.users.active : t.users.inactive}
+                    {user.staffs[0].isActive ? t.users.active : t.users.inactive}
                   </Badge>
                 </div>
-                {user.staff.bio && (
+                {user.staffs[0].bio && (
                   <p className="text-muted-foreground text-sm">
-                    {user.staff.bio}
+                    {user.staffs[0].bio}
                   </p>
                 )}
-                <Link href={`/dashboard/staff/${user.staff.id}`}>
+                <Link href={`/dashboard/staff/${user.staffs[0].id}`}>
                   <Button variant="outline" className="w-full" size="sm">
                     {t.users.viewStaffProfile}
                   </Button>

@@ -69,6 +69,12 @@ export const ordersSl = {
     onlineBadge: "Spletno plačilo",
     notesTitle: "Opombe",
     noNotes: "Brez opomb.",
+    // 2D-1P — izvor prodaje (serija → pridelek)
+    provenanceTitle: "Izvor proizvodne serije",
+    provBatch: "Serija",
+    provQty: "Količina",
+    provOrigin: "Izvor (pridelek)",
+    provUnknown: "Neznan",
   },
   itemsCount: itemsCountSl,
   statusLabels: {
@@ -139,6 +145,11 @@ export const ordersEn: OrdersDict = {
     onlineBadge: "Online payment",
     notesTitle: "Notes",
     noNotes: "No notes.",
+    provenanceTitle: "Production batch origin",
+    provBatch: "Batch",
+    provQty: "Qty",
+    provOrigin: "Origin (harvest)",
+    provUnknown: "Unknown",
   },
   itemsCount: itemsCountEn,
   statusLabels: {

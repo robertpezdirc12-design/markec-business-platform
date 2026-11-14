@@ -15,6 +15,8 @@ import {
   EnvelopeIcon,
 } from "@/components/icons"
 import { getAppointmentById } from "@/app/actions/appointments"
+import { getAppointmentWorkshopInfo } from "@/app/actions/workshop-booking"
+import { WorkshopWorkOrderCard } from "@/components/dashboard/workshop-work-order-card"
 import { TipRecorder } from "@/components/dashboard/tip-recorder"
 import { AppointmentIntakeLink } from "@/components/dashboard/appointment-intake-link"
 import { formatSalonTime } from "@/lib/booking-time"
@@ -105,6 +107,9 @@ export default async function AppointmentDetailPage({ params }: PageProps) {
   const hasIntakeForm = appointment.services.some(
     (s) => s.service.intakeFormDefinitionId
   )
+
+  // 2D-1W — podatki delavnice vozil za to rezervacijo (org-scoped).
+  const workshopInfo = await getAppointmentWorkshopInfo(appointment.id)
 
   const totalDuration = appointment.services.reduce(
     (sum, s) => sum + (s.service.duration || 0),
@@ -271,6 +276,9 @@ export default async function AppointmentDetailPage({ params }: PageProps) {
               )}
             </CardContent>
           </Card>
+
+          {/* 2D-1W — Delavnica vozil: vozila + 'Ustvari delovni nalog' */}
+          <WorkshopWorkOrderCard info={workshopInfo} appointmentId={appointment.id} />
 
           {/* Staff Info */}
           <Card>

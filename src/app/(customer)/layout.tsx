@@ -7,6 +7,8 @@ import { resolvePublicCta } from "@/lib/public-cta"
 import { resolvePublishGate } from "@/lib/publish-gate"
 import { MaintenanceScreen } from "@/components/public/maintenance-screen"
 import { CartOrgScope } from "@/components/shop/cart-org-scope"
+import { PromoBanner } from "@/components/public/promo-banner"
+import { getPublicActivePromotions } from "@/lib/promotions/public"
 import { PublicI18nProvider } from "@/components/providers/public-i18n-provider"
 import { getLocaleFromCookies } from "@/lib/i18n/server"
 
@@ -60,8 +62,17 @@ export default async function CustomerLayout({
 
   const cta = resolvePublicCta(org, await getLocaleFromCookies())
 
+  // F5.1: javna pasica aktivnih promocij na vsakem javnem najemniškem
+  // pogledu (domača, shop, booking …) — samo objavljeni najemnik.
+  let promoBanner: React.ReactNode = null
+  if (org && gate === "published") {
+    const actives = await getPublicActivePromotions(org.id).catch(() => [])
+    if (actives.length > 0) promoBanner = <PromoBanner promos={actives} />
+  }
+
   return (
     <PublicI18nProvider org={org}>
+      {promoBanner}
       <PublicNavbar
         org={{
           slug: org?.slug ?? null,

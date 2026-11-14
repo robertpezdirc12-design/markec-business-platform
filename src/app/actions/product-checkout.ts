@@ -14,6 +14,18 @@ import { guestIdentityMatches } from "@/lib/checkout/guest-identity"
 import type { CartItem } from "@/store/cart-store"
 // #80: unovčitev darilnega bona (deljena z webhookom — idempotentna).
 import { redeemGiftCardForOrder } from "./prepaid"
+// F5.1: promo engine (avtoritativni izračun popusta) + atomsko unovčenje.
+import { loadActivePromotions } from "@/lib/promotions/map"
+import { bestPromotion, buildPromotionSnapshot, round2 } from "@/lib/promotions/engine"
+import { redeemPromotion } from "@/lib/promotions/redeem"
+import { redeemOrderPromotion } from "@/lib/promotions/redeem-order"
+import {
+  reconcileExpiredReservations,
+  reservePromotionSlot,
+  SessionStateResolver,
+  stripeSessionStateResolver,
+} from "@/lib/promotions/reservation"
+import type { Prisma } from "@prisma/client"
 
 const FREE_SHIPPING_THRESHOLD = 50
 const SHIPPING_COST = 5.99
@@ -33,6 +45,9 @@ export interface CheckoutContact {
 interface CheckoutResult {
   success: boolean
   checkoutUrl?: string
+  /** F5.5.1 — id ustvarjenega naročila (offline ali darilni bon), da lahko
+   * klicatelj potrdi/zgleda naročilo brez ponovnega ugibanja. */
+  orderId?: string
   /** P1 #65: true when the order was recorded WITHOUT online payment. */
   offline?: boolean
   /** Short human-readable code the customer sees on the confirmation. */
@@ -49,6 +64,183 @@ interface CheckoutResult {
     available: number
     requested: number
   }>
+}
+
+export interface PricedLine {
+  productId: string
+  variantId: string | null
+  variantName: string | null
+  variantSku: string | null
+  quantity: number
+  price: number
+  name: string
+  image: string | null
+}
+
+/**
+ * F5.5.1 — variant-aware, ATOMSKO pogojno zmanjšanje zaloge za plačano naročilo.
+ * Za postavko z variantId zniža zalogo RAZLIČICE in zapiše StockMovement z
+ * variantId; za postavko brez različice osnovnega izdelka.
+ *
+ * F5.5.1.1 — VARNOST: zaloga se zmanjša SAMO, če je na voljo dovolj kosov
+ * (`updateMany` s pogojem `stockQuantity >= quantity`). Dve sočasni seji ne
+ * moreta obe prodati zadnjega kosa: druga dobi `count === 0` → vržemo napako,
+ * transakcija se prekliče (rolling back order status), zaloga ne gre v negativ,
+ * StockMovement se NE zapiše. Ne zanašamo se na pre-check `validateCartStock`.
+ */
+export async function applyOrderStockDecrement(
+  tx: Prisma.TransactionClient,
+  item: PricedLine,
+  orgId: string,
+  orderId: string
+): Promise<void> {
+  if (item.variantId) {
+    // P1-D-1A — direktna prodaja sme odšteti le RAZPOLOŽLJIVO zalogo
+    // (stockQuantity − reservedQuantity), ne posegati v že rezervirano.
+    const res = await tx.$executeRawUnsafe(
+      `UPDATE "ProductVariant" SET "stockQuantity" = "stockQuantity" - $2::int
+       WHERE "id" = $1::text AND "stockQuantity" - "reservedQuantity" >= $2::int`,
+      item.variantId,
+      item.quantity
+    )
+    if (res !== 1) {
+      throw new Error("STOCK_CONFLICT_VARIANT")
+    }
+    await tx.stockMovement.create({
+      data: {
+        organizationId: orgId,
+        productId: item.productId,
+        productVariantId: item.variantId,
+        direction: "OUT",
+        quantity: item.quantity,
+        source: "ORDER",
+        orderId,
+      },
+    })
+  } else {
+    const res = await tx.$executeRawUnsafe(
+      `UPDATE "Product" SET "stockQuantity" = "stockQuantity" - $2::int
+       WHERE "id" = $1::text AND "stockQuantity" - "reservedQuantity" >= $2::int`,
+      item.productId,
+      item.quantity
+    )
+    if (res !== 1) {
+      throw new Error("STOCK_CONFLICT_PRODUCT")
+    }
+    await tx.stockMovement.create({
+      data: {
+        organizationId: orgId,
+        productId: item.productId,
+        direction: "OUT",
+        quantity: item.quantity,
+        source: "ORDER",
+        orderId,
+      },
+    })
+  }
+}
+
+// ============================================================
+// F5.5.1.2 — ONLINE INVENTORY RESERVATION.
+// Ločimo RAZPOLOŽLJIVO (stockQuantity − reservedQuantity), REZERVIRANO
+// (reservedQuantity) in PRODANO (stockQuantity se zniža ob plačilu).
+// Vsi trije so atomarni `UPDATE ... WHERE` (row-lock + pogoj), da dva
+// checkouta ne moreta rezervirati/prodati/iste kose.
+// ============================================================
+
+/** SQL pogoj: razpoložljivo >= qty. */
+const AVAIL = `"stockQuantity" - "reservedQuantity" >= $2::int`
+
+async function rowExists(
+  tx: Prisma.TransactionClient,
+  table: "Product" | "ProductVariant",
+  id: string
+): Promise<boolean> {
+  const r = await tx.$queryRawUnsafe<{ n: number }[]>(
+    `SELECT 1::int AS n FROM "${table}" WHERE "id" = $1 LIMIT 1`,
+    id
+  )
+  return r.length === 1
+}
+
+/**
+ * Atomična rezervacija ob začetku spletnega checkouta (online Stripe).
+ * Zmanjša le REZERVIRANO — dejanska zaloga se NE zmanjša (nikoli dvakrat):
+ * available ostane nespremenjen, prodano šteje šele ob plačilu.
+ * Vrne false, če ni dovolj razpoložljivega (count=0) → klicatelj zbFig rollback.
+ */
+export async function reserveStock(
+  tx: Prisma.TransactionClient,
+  item: PricedLine,
+  orgId: string
+): Promise<boolean> {
+  const table = item.variantId ? "ProductVariant" : "Product"
+  const id = item.variantId ?? item.productId
+  if (!(await rowExists(tx, table, id))) return false
+  const r = await tx.$executeRawUnsafe(
+    `UPDATE "${table}" SET "reservedQuantity" = "reservedQuantity" + $2::int
+     WHERE "id" = $1::text AND ${AVAIL}`,
+    id,
+    item.quantity
+  )
+  return r === 1
+}
+
+/**
+ * Sprostitev rezervacije (unpaid / expired / cancelled / opuščeno).
+ * Atomično zniža le reservedQuantity (condition: reservedQuantity >= qty).
+ */
+export async function releaseStockReservation(
+  tx: Prisma.TransactionClient,
+  item: PricedLine
+): Promise<boolean> {
+  const table = item.variantId ? "ProductVariant" : "Product"
+  const id = item.variantId ?? item.productId
+  const r = await tx.$executeRawUnsafe(
+    `UPDATE "${table}" SET "reservedQuantity" = "reservedQuantity" - $2::int
+     WHERE "id" = $1::text AND "reservedQuantity" >= $2::int`,
+    id,
+    item.quantity
+  )
+  return r === 1
+}
+
+/**
+ * Potrjeno PLAČILO: rezervacijo pretvori v PRODAJO v enem atomskem stavku —
+ * `stockQuantity` se zniža (dejanska prodaja), `reservedQuantity` se zniža
+ * (sprosti ta kos), dostopnost za druge ostane nespremenjena (ni dvojnega
+ * štetja). Pogoj: reservedQuantity >= qty (ne sme sprostiti več kot ima).
+ */
+export async function convertReservationToSale(
+  tx: Prisma.TransactionClient,
+  item: PricedLine,
+  orgId: string,
+  orderId: string
+): Promise<boolean> {
+  const table = item.variantId ? "ProductVariant" : "Product"
+  const id = item.variantId ?? item.productId
+  const r = await tx.$executeRawUnsafe(
+    `UPDATE "${table}"
+     SET "stockQuantity" = "stockQuantity" - $2::int,
+         "reservedQuantity" = "reservedQuantity" - $2::int
+     WHERE "id" = $1::text AND "reservedQuantity" >= $2::int`,
+    id,
+    item.quantity
+  )
+  if (r !== 1) return false
+  // Ledger: prodaja z source ORDER (kot prej), variant-aware.
+  await tx.stockMovement.create({
+    data: {
+      organizationId: orgId,
+      productId: item.productId,
+      ...(item.variantId ? { productVariantId: item.variantId } : {}),
+      direction: "OUT",
+      quantity: item.quantity,
+      source: "ORDER",
+      orderId,
+    },
+  })
+  return true
 }
 
 /** Tolerant contact validation (server-side — the client form is a hint). */
@@ -131,8 +323,14 @@ async function resolveGuestCustomerId(
 export async function createProductCheckoutSession(
   items: CartItem[],
   contact?: CheckoutContact,
-  giftCardCode?: string
+  giftCardCode?: string,
+  promotionCode?: string
 ): Promise<CheckoutResult> {
+  // F5.1.2: refs na funkcijski ravni za varen catch cleanup (rezervacija +
+  // PENDING order), kadar ustvarjanje Stripe seje pade — `catch` ni v obsegu
+  // bloka `try`, zato morajo biti deklarirani pred `try`.
+  let order: { id: string } | null = null
+  let reservationId: string | null = null
   try {
     // Get current session — OPTIONAL since #65: guests can order with
     // contact details; an account is offered, never required.
@@ -201,8 +399,33 @@ export async function createProductCheckoutSession(
         organizationId: org.id,
       },
       // #78: per-izdelek DDV stopnja za točen informativni razpad.
-      select: { id: true, name: true, images: true, price: true, vatRate: true },
+      select: { id: true, name: true, images: true, price: true, vatRate: true, categoryId: true },
     })
+
+    // F5.5.1 — različice, ki jih zahtevajo postavke z variantId. Njihova
+    // cena/aktivnost/zaloga in pripadnost org+product se preveri tu, na
+    // strežniku — brskalniku se nikoli ne zaupa (variantId, cena, količina).
+    const variantIds = items
+      .filter((item) => item.variantId)
+      .map((item) => item.variantId!)
+    const dbVariants =
+      variantIds.length > 0
+        ? await prisma.productVariant.findMany({
+            where: {
+              id: { in: variantIds },
+              organizationId: org.id,
+              isActive: true,
+            },
+            select: {
+              id: true,
+              productId: true,
+              name: true,
+              sku: true,
+              price: true,
+            },
+          })
+        : []
+    const variantMap = new Map(dbVariants.map((v) => [v.id, v]))
 
     const productMap = new Map(dbProducts.map((p) => [p.id, p]))
 
@@ -213,12 +436,31 @@ export async function createProductCheckoutSession(
       }
     }
 
+    // F5.5.1 — vsaka postavka z variantId mora imeti obstoječo različico,
+    // ki pripada izdelku (in org) in je aktivna. V nasprotnem zavrnemo.
+    for (const item of items) {
+      if (!item.variantId) continue
+      const v = variantMap.get(item.variantId)
+      if (!v || v.productId !== item.productId) {
+        return {
+          success: false,
+          error: "Izbrana različica ni več na voljo",
+        }
+      }
+    }
+
     const pricedItems = items.map((item) => {
       const product = productMap.get(item.productId)! // existence guaranteed above
+      const variant = item.variantId ? variantMap.get(item.variantId) : undefined
+      // Različica z lastno ceno prevlada; sicer osnovna cena izdelka.
+      const price = variant?.price != null ? variant.price.toNumber() : product.price.toNumber()
       return {
         productId: item.productId,
+        variantId: variant?.id ?? null,
+        variantName: variant?.name ?? null,
+        variantSku: variant?.sku ?? null,
         quantity: item.quantity,
-        price: product.price.toNumber(),
+        price,
         name: product.name,
         image: product.images[0] || null,
       }
@@ -245,6 +487,38 @@ export async function createProductCheckoutSession(
       return sum + vatFromGross(item.price * item.quantity, rate)
     }, vatFromGross(shipping, SI_VAT_RATE))
     const total = subtotal + shipping
+
+    // ------------------------------------------------------------
+    // F5.1 — POPUST/PROMOCIJA. Cene in popusti so iZKLJUČNO iz baze:
+    // preračunamo vsako postavko in naložimo ACTIVE promocije podjetja.
+    // Če je vnesena promo koda, se unovči prav ta; sicer se avtomatsko
+    // izbere NAJVEČJI popust med vsemi aktivnimi promocijami brez kode.
+    // Brskalnik NE pošlje cene ali popusta — samo morebitno kodo.
+    // ------------------------------------------------------------
+    const promotionLines = pricedItems.map((item) => {
+      const product = productMap.get(item.productId)!
+      return {
+        kind: "product" as const,
+        productId: item.productId,
+        categoryId: product.categoryId ?? undefined,
+        amount: item.price * item.quantity,
+        quantity: item.quantity,
+      }
+    })
+    const activePromotions = await loadActivePromotions(prisma, org.id)
+    const promotionPick = bestPromotion(activePromotions, promotionLines, {
+      code: promotionCode,
+    })
+    const promotionDiscount = promotionPick ? promotionPick.discountAmount : 0
+    const promotionSnapshot = promotionPick
+      ? buildPromotionSnapshot(promotionPick.rule, {
+          baseAmount: promotionPick.baseAmount,
+          discountAmount: promotionPick.discountAmount,
+          affectedLines: promotionPick.affectedLines,
+        })
+      : null
+    // Popust nikoli ne sme potisniti skupnega zneska pod 0.
+    const discountedTotal = Math.max(0, round2(total - promotionDiscount))
 
     // ------------------------------------------------------------
     // #80: DARILNI BON pri checkoutu. Validacija je strogo org-scoped
@@ -311,8 +585,8 @@ export async function createProductCheckoutSession(
         code,
         purchaseId: purchase.id,
         balance,
-        applied: Math.min(balance, total),
-        fullCoverage: balance >= total,
+        applied: Math.min(balance, discountedTotal),
+        fullCoverage: balance >= discountedTotal,
       }
     }
 
@@ -382,7 +656,15 @@ export async function createProductCheckoutSession(
             customerId,
             subtotal,
             tax,
-            total,
+            // F5.1: total že upošteva popust; subtotal/tax ostaneta bruto.
+            total: discountedTotal,
+            ...(promotionDiscount > 0
+              ? {
+                  promotionDiscount,
+                  promotionId: promotionPick!.rule.id,
+                  promotionSnapshot: promotionSnapshot as unknown as Prisma.InputJsonValue,
+                }
+              : {}),
             status: "PAID",
             paymentMethod: "giftcard",
             notes: `Plačilo z darilnim bonom ${gc.code} (pokritih ${gc.applied.toFixed(2)} €).${guestContact?.address?.trim() ? ` Dostavni naslov: ${guestContact.address.trim()}` : ""}`,
@@ -396,6 +678,10 @@ export async function createProductCheckoutSession(
             items: {
               create: pricedItems.map((item) => ({
                 productId: item.productId,
+                variantId: item.variantId,
+                variantName: item.variantName,
+                variantSku: item.variantSku,
+                variantPrice: item.price,
                 quantity: item.quantity,
                 price: item.price,
               })),
@@ -423,19 +709,18 @@ export async function createProductCheckoutSession(
 
         // Stock: the same ledger guarantees as the paid webhook path.
         for (const item of pricedItems) {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stockQuantity: { decrement: item.quantity } },
-          })
-          await tx.stockMovement.create({
-            data: {
-              organizationId: org.id,
-              productId: item.productId,
-              direction: "OUT",
-              quantity: item.quantity,
-              source: "ORDER",
-              orderId: order.id,
-            },
+          await applyOrderStockDecrement(tx, item, org.id, order.id)
+        }
+
+        // F5.1: atomic promotion redemption (row-lock + unique fence).
+        if (promotionPick) {
+          await redeemPromotion(tx, {
+            promotion: promotionPick.rule,
+            baseAmount: promotionPick.baseAmount,
+            customerId,
+            guestEmail: guestContact?.email,
+            orderId: order.id,
+            codeUsed: promotionPick.rule.code,
           })
         }
 
@@ -450,6 +735,7 @@ export async function createProductCheckoutSession(
       return {
         success: true,
         giftCardPaid: true,
+        orderId: paidOrder.id,
         orderNumber: paidOrder.id.slice(-8).toUpperCase(),
         contactPhone: shopConfig2?.phone ?? null,
         contactEmail: shopConfig2?.email ?? null,
@@ -465,33 +751,59 @@ export async function createProductCheckoutSession(
     // ------------------------------------------------------------
     if (!stripeClient) {
       const guestContact = guest && contact ? contact : null
-      const order = await prisma.order.create({
-        data: {
-          organizationId: org.id,
-          customerId,
-          subtotal,
-          tax,
-          total,
-          status: "PENDING",
-          paymentMethod: "offline",
-          notes: guestContact?.address?.trim()
-            ? `Naročilo brez spletnega plačila — plačilo ob prevzemu. Dostavni naslov: ${guestContact.address.trim()}`
-            : "Naročilo brez spletnega plačila — plačilo ob prevzemu.",
-          ...(guestContact
-            ? {
-                guestName: guestContact.name.trim(),
-                guestEmail: guestContact.email?.trim().toLowerCase() || null,
-                guestPhone: guestContact.phone?.trim() || null,
-              }
-            : {}),
-          items: {
-            create: pricedItems.map((item) => ({
-              productId: item.productId,
-              quantity: item.quantity,
-              price: item.price,
-            })),
+      const order = await prisma.$transaction(async (tx) => {
+        const created = await tx.order.create({
+          data: {
+            organizationId: org.id,
+            customerId,
+            subtotal,
+            tax,
+            // F5.1: total že upošteva popust.
+            total: discountedTotal,
+            ...(promotionDiscount > 0
+              ? {
+                  promotionDiscount,
+                  promotionId: promotionPick!.rule.id,
+                  promotionSnapshot: promotionSnapshot as unknown as Prisma.InputJsonValue,
+                }
+              : {}),
+            status: "PENDING",
+            paymentMethod: "offline",
+            notes: guestContact?.address?.trim()
+              ? `Naročilo brez spletnega plačila — plačilo ob prevzemu. Dostavni naslov: ${guestContact.address.trim()}`
+              : "Naročilo brez spletnega plačila — plačilo ob prevzemu.",
+            ...(guestContact
+              ? {
+                  guestName: guestContact.name.trim(),
+                  guestEmail: guestContact.email?.trim().toLowerCase() || null,
+                  guestPhone: guestContact.phone?.trim() || null,
+                }
+              : {}),
+            items: {
+              create: pricedItems.map((item) => ({
+                productId: item.productId,
+                variantId: item.variantId,
+                variantName: item.variantName,
+                variantSku: item.variantSku,
+                variantPrice: item.price,
+                quantity: item.quantity,
+                price: item.price,
+              })),
+            },
           },
-        },
+        })
+        // F5.1: atomic promotion redemption in the same transaction.
+        if (promotionPick) {
+          await redeemPromotion(tx, {
+            promotion: promotionPick.rule,
+            baseAmount: promotionPick.baseAmount,
+            customerId,
+            guestEmail: guestContact?.email,
+            orderId: created.id,
+            codeUsed: promotionPick.rule.code,
+          })
+        }
+        return created
       })
 
       const shopConfig = await prisma.salonConfig.findFirst({
@@ -502,6 +814,7 @@ export async function createProductCheckoutSession(
       return {
         success: true,
         offline: true,
+        orderId: order.id,
         // Short code the customer can quote; the dashboard shows the order.
         orderNumber: order.id.slice(-8).toUpperCase(),
         contactPhone: shopConfig?.phone ?? null,
@@ -510,23 +823,139 @@ export async function createProductCheckoutSession(
     }
 
     // Create order in database with PENDING status
-    const order = await prisma.order.create({
-      data: {
-        organizationId: org.id,
-        customerId,
-        subtotal,
-        tax,
-        total,
-        status: "PENDING",
-        items: {
-          create: pricedItems.map((item) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-          })),
+    // F5.1: order se ustvari z immutabilnim posnetkom popusta, vendar se
+    // promocija NE unovči še tukaj — unovči se ŠELE ob potrjenem plačilu
+    // (verifyProductOrder / webhook → redeemOrderPromotion). Preklicano
+    // ali opuščeno plačilo ZATO NE porabi promocije (isti vzorec kot
+    // darilni bon #80: "unovči se šele ob plačilu").
+    //
+    // F5.1.2 (payment amount integrity): kadar velja promocija, ATOMSKO
+    // rezerviramo mesto (maxRedemptions/maxPerCustomer) v ISTI transakciji
+    // kot ustvarjanje naročila. Tako je znesek, ki ga Stripe zaračuna
+    // (PaymentIntent.amount_received), vselej enak znesku, ki ga naročilo
+    // evidentira (Order.total + promotionSnapshot): kupec, ki ne dobi mesta,
+    // plača polno ceno (brez popusta), kupec z rezervacijo pa popustan znesek.
+    // Rezervacija se ob plačilu pretvori v unovčenje, ob preteku/preklicu pa
+    // se sprosti (glej src/lib/promotions/reservation.ts).
+    const RESERVATION_HOLD_MS = 1000 * 60 * 60 * 26 // 26h: 24h Stripe + 2h grace
+    // F5.1.4: pred rezervacijo reconciliziraj ekspirane rezervacije iste
+    // promocije prek Stripe-ja (paid → REDEEMED, expirano+unpaid → sprosti,
+    // processing/neznano/nedosegljivo → OHRANI). Ne sproščamo po lokalni uri.
+    // Delamo to PRED DB transakcijo, da ne držimo transakcije čez Stripe HTTP.
+    let sessionStateResolver: SessionStateResolver | null = null
+    {
+      const client = getStripeForOrg(org)
+      if (client) {
+        sessionStateResolver = stripeSessionStateResolver((sessionId) =>
+          client.checkout.sessions.retrieve(sessionId).then((s) => ({
+            payment_status: s.payment_status,
+            status: s.status,
+            payment_intent: s.payment_intent,
+          }))
+        )
+      }
+    }
+    if (promotionPick && sessionStateResolver) {
+      await reconcileExpiredReservations(
+        prisma,
+        { promotionId: promotionPick.rule.id },
+        sessionStateResolver
+      )
+    }
+
+    const checkoutHold = await prisma.$transaction(async (tx) => {
+      // Promocija je bila v prejšnjem koraku izračunana iz baze; tu mesto
+      // rezerviramo, dokler plačilo ne potrdi. Če mesta ni → polna cena.
+      let discount = promotionDiscount
+      let snap = promotionSnapshot
+      let pick = promotionPick
+      let reservationId: string | null = null
+      let reservationHeldAt: Date | null = null
+
+      if (pick) {
+        const heldUntil = new Date(Date.now() + RESERVATION_HOLD_MS)
+        const held = await reservePromotionSlot(tx, {
+          organizationId: org.id,
+          promotionId: pick.rule.id,
+          customerId,
+          guestEmail: guest ? contact?.email : session?.user?.email,
+          codeUsed: pick.rule.code,
+          discountAmount: discount,
+          baseAmount: pick.baseAmount,
+          heldUntil,
+        })
+        if (!held.ok) {
+          // LIMIT_REACHED / PER_CUSTOMER_LIMIT / INACTIVE — ta kupec ne
+          // dobi popusta; zaračuna se in evidentira POLNA cena.
+          discount = 0
+          snap = null
+          pick = null
+        } else {
+          reservationId = held.id
+          reservationHeldAt = heldUntil
+        }
+      }
+
+      const finalTotal = Math.max(0, round2(total - discount))
+
+      const created = await tx.order.create({
+        data: {
+          organizationId: org.id,
+          customerId,
+          subtotal,
+          tax,
+          total: finalTotal,
+          ...(discount > 0 && pick
+            ? {
+                promotionDiscount: discount,
+                promotionId: pick.rule.id,
+                promotionSnapshot: snap as unknown as Prisma.InputJsonValue,
+              }
+            : {}),
+          status: "PENDING",
+          items: {
+            create: pricedItems.map((item) => ({
+              productId: item.productId,
+              variantId: item.variantId,
+              variantName: item.variantName,
+              variantSku: item.variantSku,
+              variantPrice: item.price,
+              quantity: item.quantity,
+              price: item.price,
+            })),
+          },
         },
-      },
+      })
+
+      // Poveži rezervacijo s točno tem naročilom (idempotentno veže).
+      if (reservationId) {
+        await tx.promotionRedemption.update({
+          where: { id: reservationId },
+          data: { orderId: created.id },
+        })
+      }
+
+      // F5.5.1.2 — ATOMSKA rezervacija zaloge v SAME transakciji kot order
+      // create (online seja). Če katere različice/izdelka ni dovolj
+      // razpoložljivega ali je ni, vržemo izjem → celotna transakcija se
+      // prekliče (order + promocijska rezervacija se rollback-u), tako da
+      // drugi checkout prav tako vidi stanje brez tega orderja. Dejanska
+      // zaloga (stockQuantity) se TUKAJ ne zniža — le rezervira.
+      for (const item of pricedItems) {
+        const ok = await reserveStock(tx, item, org.id)
+        if (!ok) {
+          throw new Error(`STOCK_CONFLICT:${item.variantId ?? item.productId}`)
+        }
+      }
+
+      return { created, finalTotal, discount, pick, reservationId, reservationHeldAt }
     })
+    order = checkoutHold.created
+    const finalTotal = checkoutHold.finalTotal
+    const finalPromotionDiscount = checkoutHold.discount
+    const finalPromotionPick = checkoutHold.pick
+    reservationId = checkoutHold.reservationId
+    const reservationHeldAt = checkoutHold.reservationHeldAt
 
     // Get base URL for redirects
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
@@ -549,17 +978,25 @@ export async function createProductCheckoutSession(
     // #80: z delno pokritostjo darilnega bona Stripe NE sme zaračunati
     // polnega zneska — košara se strne v ENO vrstico za OSTANEK
     // (Stripe ne podpira negativnih vrstic za popust).
+    // F5.1: enako za popust — kadar velja promocija, Stripe zaračuna
+    // popustan znesek v eni vrstici "Skupaj (s popustom)".
     const lineItems =
-      giftCard
+      giftCard || finalPromotionDiscount > 0
         ? [
             {
               price_data: {
                 currency,
                 product_data: {
-                  name: `Naročilo (darilni bon ${giftCard.code} pokrije ${giftCard.applied.toFixed(2)} €)`,
+                  name: giftCard
+                    ? `Naročilo (darilni bon ${giftCard.code} pokrije ${giftCard.applied.toFixed(2)} €)`
+                    : finalPromotionPick
+                      ? `Naročilo (popust: ${finalPromotionPick.rule.name})`
+                      : "Naročilo",
                   images: [],
                 },
-                unit_amount: Math.round((total - giftCard.applied) * 100),
+                unit_amount: Math.round(
+                  (finalTotal - (giftCard ? giftCard.applied : 0)) * 100
+                ),
               },
               quantity: 1 as const,
             },
@@ -622,12 +1059,39 @@ export async function createProductCheckoutSession(
       cancel_url: `${baseUrl}${tenantPrefix}/checkout/cancel`,
     })
 
+    // F5.1.2: veži rezervacijo na Stripe sejo in ji nastavi iztek na realni
+    // `expires_at` (Stripe) + grace. Tako pretečen/preklican checkout ob
+    // heldUntil sprosti mesto. Če seja NI uspela, rezervacijo sprostimo.
+    if (reservationId) {
+      let heldUntil = reservationHeldAt
+      if (checkoutSession.expires_at) {
+        heldUntil = new Date((checkoutSession.expires_at + 2 * 60 * 60) * 1000)
+      }
+      await prisma.promotionRedemption.update({
+        where: { id: reservationId },
+        data: {
+          checkoutSessionId: checkoutSession.id,
+          heldUntil,
+          ...(order.id ? { orderId: order.id } : {}),
+        },
+      })
+    }
+
     return {
       success: true,
       checkoutUrl: checkoutSession.url || undefined,
     }
   } catch (error) {
     console.error("Error creating product checkout session:", error)
+    // F5.1.2: če Stripe seje ni bilo mogoče ustvariti, sprosti morebitno
+    // rezervacijo in izbriši PENDING order (ki ne bi imel veze s plačilom),
+    // da rezervacija ne drži mesta v nedogled.
+    await prisma.promotionRedemption
+      .deleteMany({ where: { status: "RESERVED", orderId: order?.id ?? "__none__" } })
+      .catch(() => undefined)
+    await prisma.order
+      .deleteMany({ where: { id: order?.id ?? "__none__", status: "PENDING" } })
+      .catch(() => undefined)
     return {
       success: false,
       error: "Ustvarjanje plačilne seje ni uspelo. Poskusite znova.",
@@ -782,25 +1246,33 @@ export async function verifyProductOrder(sessionId: string) {
       // is unchanged (cart guard prevents oversell pre-payment).
       const ledgerOrgId = existingOrder.organizationId ?? org?.id ?? null
       for (const item of existingOrder.items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: {
-            stockQuantity: {
-              decrement: item.quantity,
-            },
-          },
-        })
-        if (ledgerOrgId) {
-          await tx.stockMovement.create({
-            data: {
-              organizationId: ledgerOrgId,
-              productId: item.productId,
-              direction: "OUT",
-              quantity: item.quantity,
-              source: "ORDER",
-              orderId: existingOrder.id,
-            },
-          })
+        // F5.5.1 — variant-aware postavka. F5.5.1.2 — online pa placilo
+        // REZERVACIJO pretvori v prodajo (stockQuantity −= qty, reserved −= qty,
+        // StockMovement). Če rezervacija ni obstajala (legacy / offline /
+        // darilni bon brez rezerve), fallback na klasično znižanje zaloge.
+        const line: PricedLine = {
+          productId: item.productId,
+          variantId: item.variantId ?? null,
+          variantName: item.variantName ?? null,
+          variantSku: item.variantSku ?? null,
+          quantity: item.quantity,
+          price: item.price.toNumber(),
+          name: "",
+          image: null,
+        }
+        const converted = await convertReservationToSale(
+          tx,
+          line,
+          ledgerOrgId ?? org!.id,
+          existingOrder.id
+        )
+        if (!converted) {
+          await applyOrderStockDecrement(
+            tx,
+            line,
+            ledgerOrgId ?? org!.id,
+            existingOrder.id
+          )
         }
       }
     })
@@ -821,6 +1293,31 @@ export async function verifyProductOrder(sessionId: string) {
         existingOrder.id,
         Math.min(gcAmount, existingOrder.total.toNumber())
       ).catch(() => undefined)
+    }
+
+    // F5.1: promocija naročila se unovči ŠELE zdaj (naročilo PLAČANO) —
+    // preklicano/opuščeno plačilo je NE porabi. Idempotentno (unikatna
+    // [promotionId, orderId]) in odporno na dirko webhook/verify.
+    const paidOrgId = existingOrder.organizationId ?? org?.id
+    if (paidOrgId) {
+      await prisma.$transaction(async (tx) => {
+        const fresh = await tx.order.findUnique({
+          where: { id: existingOrder.id },
+          select: {
+            id: true,
+            organizationId: true,
+            customerId: true,
+            guestEmail: true,
+            promotionId: true,
+            promotionDiscount: true,
+            promotionSnapshot: true,
+            total: true,
+          },
+        })
+        if (fresh) {
+          await redeemOrderPromotion(tx, fresh, paidOrgId)
+        }
+      })
     }
 
     return {

@@ -13,6 +13,13 @@ import { useI18n } from "@/lib/i18n/provider"
 import { useFormatPrice } from "@/lib/currency"
 import { UserCogIcon } from "@/components/icons"
 
+// F2.2.2 P2-9: pri ničelnih/nepravilnih vrednostih Tremorjev BarChart ne sme
+// proizvesti NaN koordinat (<rect y=NaN>). Vsako plottano vrednost sanitiziramo
+// na končno število (NaN/Infinity/negativno nedoločeno → 0) — graf ostane
+// prazen stolpec, namesto da zruši SVG os.
+const finiteOrZero = (v: number): number =>
+  Number.isFinite(v) ? v : 0
+
 interface StaffPerformanceChartProps {
   data: StaffPerformance[]
 }
@@ -20,19 +27,24 @@ interface StaffPerformanceChartProps {
 export function StaffPerformanceChart({ data }: StaffPerformanceChartProps) {
   const { t } = useI18n()
   const fmt = useFormatPrice()
+  // The Tremor `categories` are LOCALIZED (e.g. "Termini"/"Prihodki" in sl).
+  // The data keys MUST match those exact strings, otherwise Recharts reads
+  // `undefined` and renders <rect y="NaN"> (F2.2.2 P2-9 — zero-value charts).
+  const [catAppointments, catRevenue, catTips, catCommission] =
+    t.analytics.staffPerformance.categories
   const chartData = data.map((staff) => ({
     name: staff.name,
-    Appointments: staff.appointments,
-    Revenue: staff.revenue,
+    [catAppointments]: finiteOrZero(staff.appointments),
+    [catRevenue]: finiteOrZero(staff.revenue),
     // #79: payroll stolpci kot LOČENE kategorije — graf jih ne sešteje v prihodek.
-    Tips: staff.tips,
-    Commission: staff.commission,
+    [catTips]: finiteOrZero(staff.tips),
+    [catCommission]: finiteOrZero(staff.commission),
   }))
 
-  const totalAppointments = data.reduce((sum, s) => sum + s.appointments, 0)
-  const totalRevenue = data.reduce((sum, s) => sum + s.revenue, 0)
-  const totalTips = data.reduce((sum, s) => sum + s.tips, 0)
-  const totalCommission = data.reduce((sum, s) => sum + s.commission, 0)
+  const totalAppointments = data.reduce((sum, s) => sum + finiteOrZero(s.appointments), 0)
+  const totalRevenue = data.reduce((sum, s) => sum + finiteOrZero(s.revenue), 0)
+  const totalTips = data.reduce((sum, s) => sum + finiteOrZero(s.tips), 0)
+  const totalCommission = data.reduce((sum, s) => sum + finiteOrZero(s.commission), 0)
 
   return (
     <Card>
@@ -96,7 +108,9 @@ export function StaffPerformanceChart({ data }: StaffPerformanceChartProps) {
               yAxisWidth={60}
               showAnimation
               showGridLines
-              valueFormatter={(value: number) => value.toLocaleString()}
+              valueFormatter={(value: number) =>
+                finiteOrZero(value).toLocaleString()
+              }
             />
           </div>
         ) : (

@@ -89,9 +89,52 @@ export function trustedInternalOrigin(): string | null {
 }
 
 /**
+ * Development-only origin preference (F2.2.2 P1.6): when BOTH the configured
+ * env origin and the incoming request resolve to a LOOPBACK host, prefer the
+ * REQUEST's own origin. `NEXT_PUBLIC_APP_URL`/`NEXTAUTH_URL` are often pinned
+ * to `http://localhost:3000`, yet the dev server may run on :3001. Without
+ * this, the proxy's internal resolver fetch targets :3000 and tenant
+ * resolution breaks whenever the port differs. Both the proxy signer and the
+ * resolver verifier use this SAME rule against the SAME incoming request, so
+ * the HMAC proof stays consistently bound.
+ *
+ * Production is NEVER affected: there the configured env origin remains
+ * authoritative (isolation intact), and an attacker-controlled loopback Host
+ * cannot steer the proof anywhere (non-loopback env origins still win). In
+ * dev, a non-loopback env origin (e.g. a staging host) is also preserved.
+ */
+function devLoopbackOriginPreferred(
+  configuredOrigin: string | null,
+  requestOrigin: string | null
+): string | null {
+  if (process.env.NODE_ENV === "production") return configuredOrigin
+  // The preference applies only when BOTH sides are loopback (see jsdoc):
+  // a non-loopback env origin (staging host) stays authoritative in dev.
+  if (configuredOrigin) {
+    try {
+      const cfgUrl = new URL(configuredOrigin)
+      if (!isLoopbackHost(cfgUrl.hostname)) return configuredOrigin
+    } catch {
+      return configuredOrigin
+    }
+  }
+  if (requestOrigin) {
+    try {
+      const reqUrl = new URL(requestOrigin)
+      if (isLoopbackHost(reqUrl.hostname)) return requestOrigin
+    } catch {
+      // fall through to configured
+    }
+  }
+  return configuredOrigin // null → callers keep the request-origin fallback
+}
+
+/**
  * The origin a resolver ENDPOINT expects proofs to be bound to. Same
  * rule for every resolver route so the contract cannot drift:
  *   - configured deployment → the trusted env origin,
+ *   - F2.2.2 P1.6: NOT production + loopback request → the REQUEST origin
+ *     (dev server on any port works with .env pinned to localhost:3000),
  *   - no config + NOT production → the request's own origin (local
  *     sandboxes without env keep working; confers no production trust),
  *   - no config + production → null → callers MUST reject every proof
@@ -99,6 +142,16 @@ export function trustedInternalOrigin(): string | null {
  */
 export function resolverExpectedOrigin(request: { url: string }): string | null {
   const trusted = trustedInternalOrigin()
+  if (process.env.NODE_ENV !== "production") {
+    let requestOrigin: string | null = null
+    try {
+      requestOrigin = new URL(request.url).origin
+    } catch {
+      requestOrigin = null
+    }
+    const preferred = devLoopbackOriginPreferred(trusted, requestOrigin)
+    if (preferred) return preferred
+  }
   if (trusted) return trusted
   if (process.env.NODE_ENV === "production") return null
   try {
@@ -112,6 +165,8 @@ export function resolverExpectedOrigin(request: { url: string }): string | null 
  * PR #103 review round 4 (owner): proxy-side mirror of resolverExpectedOrigin —
  * the origin the PROXY uses for its internal resolver fetches.
  *   - configured deployment → the trusted env origin (never request data),
+ *   - F2.2.2 P1.6: NOT production + loopback request → the REQUEST origin
+ *     (keeps internal fetches on the actual dev port, 3000 or 3001),
  *   - no config + NOT production → the request's own origin (local
  *     sandboxes without env keep working; confers no production trust),
  *   - no config + production → null → the proxy performs NO internal
@@ -122,6 +177,10 @@ export function resolverExpectedOrigin(request: { url: string }): string | null 
  */
 export function proxyResolverOrigin(request: { nextUrl: URL }): string | null {
   const trusted = trustedInternalOrigin()
+  if (process.env.NODE_ENV !== "production") {
+    const preferred = devLoopbackOriginPreferred(trusted, request.nextUrl.origin)
+    if (preferred) return preferred
+  }
   if (trusted) return trusted
   if (process.env.NODE_ENV === "production") return null
   return request.nextUrl.origin

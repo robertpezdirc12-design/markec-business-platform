@@ -5,6 +5,7 @@ import { ShoppingCartIcon } from "@/components/icons"
 import { useCartStore } from "@/store/cart-store"
 import { useOrgPrefix } from "@/lib/org-path-hooks"
 import { useRouter } from "next/navigation"
+import { useLocale, pick } from "@/lib/i18n/client-locale"
 
 interface CartButtonProps {
   size?: "default" | "sm" | "lg" | "icon"
@@ -20,6 +21,7 @@ export function CartButton({
   const itemCount = useCartStore((state) => state.getTotalItems())
   const router = useRouter()
   const prefix = useOrgPrefix()
+  const locale = useLocale()
 
   return (
     <Button
@@ -28,7 +30,7 @@ export function CartButton({
       className={`${mobile ? "rounded-full shadow-lg" : ""} ${className}`}
     >
       <ShoppingCartIcon size={20} weight="regular" className="mr-2" />
-      Košarica {itemCount > 0 && `(${itemCount})`}
+      {pick(locale, "Košarica", "Cart")} {itemCount > 0 && `(${itemCount})`}
     </Button>
   )
 }
