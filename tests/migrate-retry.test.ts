@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest"
 import {
   ensureDatabaseUrl,
   runMigrationsWithRetry,
+  shouldRunMigrations,
 } from "../scripts/migrate-with-retry.mjs"
 
 // ============================================================
@@ -22,6 +23,36 @@ describe("ensureDatabaseUrl", () => {
 
   it("preide z nastavljenim DATABASE_URL", () => {
     expect(ensureDatabaseUrl({ DATABASE_URL: "postgres://x" }, console)).toBe(true)
+  })
+})
+
+// ============================================================
+// P2-D (14. 11. 2026): shemo posodablja SAMO produkcijski deploy.
+// Preview/development imata izolirano Neon vejo — migracija iz
+// njunega builda bi pisala v napačno bazo.
+// ============================================================
+
+describe("shouldRunMigrations", () => {
+  it("produkcija migrira", () => {
+    expect(shouldRunMigrations({ VERCEL_ENV: "production" })).toBe(true)
+  })
+
+  it("preview NE migrira", () => {
+    expect(shouldRunMigrations({ VERCEL_ENV: "preview" })).toBe(false)
+  })
+
+  it("development NE migrira", () => {
+    expect(shouldRunMigrations({ VERCEL_ENV: "development" })).toBe(false)
+  })
+
+  it("lokalni build brez VERCEL_ENV ohrani dosedanje vedenje", () => {
+    expect(shouldRunMigrations({})).toBe(true)
+  })
+
+  it("MIGRATE_FORCE=1 omogoči kontroliran zagon izven produkcije", () => {
+    expect(
+      shouldRunMigrations({ VERCEL_ENV: "preview", MIGRATE_FORCE: "1" })
+    ).toBe(true)
   })
 })
 
