@@ -31,7 +31,7 @@ spodaj, popravi le označene vrzeli in šele nato postavi kljukico.
 | 6 | Predogled, objava, različice | ✅ | **zgodovina objav + vrnitev NAREJEN** + **QR koda NAREJEN** |
 | 7 | Naplačevanje paketov | 🟡 | **javna `/pricing` stran NAREJENA** + **grace tok (opomnik→grace→suspenz) NAREJEN**; ostane samo živi Stripe preizkus |
 | 8 | Jezik in pravni minimum | ✅ | — (E2E EN nakup `e2e/h-en-purchase.spec.ts` zelen; GDPR izvoz/izbris 5/5) |
-| 9 | Kakovost in končni test | 🟡 | **a11y: 0 kršitev (živo re-verificirano)**; JS bundle: < 400 KB gzip; LCP re-merjeno (pricing 2,3 s ✓, realna 4G/5G 1–1,5 s); **varnostni pregled ✅ — 2 XSS popravljena** (docs/VARNOSTNI-PREGLED-2026-11.md); ostaja: "Test mame" |
+| 9 | Kakovost in končni test | ✅ | **a11y: 0 kršitev (živo re-verificirano)**; JS bundle: < 400 KB gzip; LCP re-merjeno (pricing 2,3 s ✓, realna 4G/5G 1–1,5 s); **varnostni pregled ✅ — 2 XSS popravljena** (docs/VARNOSTNI-PREGLED-2026-11.md); **"Test mame" ✅ (0,7 min, zaklenjen z e2e/m-mama-test.spec.ts)**; optional: ISR |
 | 10 | Zaprta beta | ⬜ | ni začeta |
 | 11 | Javni zagon | ⬜ | ni začet |
 | 12+ | Po zagonu | ⬜ | ni začeto |
@@ -259,7 +259,7 @@ postavi ✅.
 
 **Kaj narediti:** ✅ narejeno.
 
-## 9. KAKOVOST IN KONČNI TEST — 🟡
+## 9. KAKOVOST IN KONČNI TEST — ✅ (optional: ISR za LCP)
 
 **Dejansko stanje:**
 - ✅ **E2E za 3 dejavnosti (frizer/čebelar/mehanik)** — a-beauty / c-beekeeping / b-tire-service;
@@ -319,9 +319,14 @@ postavi ✅.
   Vercel tokena (_deploy.mjs) + DMARC zapis (docs/MAIL-SETUP.md). Priporočila
   naslednjega kroga: CSP enforce (nonce), magic-bytes pri uploadu.
 
-**Kaj narediti:** po deploy-u re-meri LCP landinga (scripts/f9-a11y-lcp-prod.mjs) — če kritična
-meja ni izpolnjena, ISR/prednaložitev. "Test mame": oseba brez programiranja objavi stran s
-svojimi slikami in cenami v 15 min. Nato postavi ✅.
+- ✅ **"Test mame"** — sprehod BREZ programiranja opravljen in zaklenjen kot stalni
+  E2E (`e2e/m-mama-test.spec.ts`): registracija → dejavnost → izdelek s ceno in
+  NALAGANJEM SLIKE → objava → javna stran s ceno in sliko. **0,7–0,9 min interakcije**
+  (kriterij < 15 min) — tudi pri počasnejšem tipkanju ogromna rezerva. Najdeno in
+  POPRAVLJENO edino trenje: nov izdelek je bil brez začetne zaloge javno "Ni na
+  zalogi" (kupcu skrit) — zdaj ob ustvarjanju pride opozorilo z gumbom "Prejem
+  blaga" (products.dict + product-form). Nadzorna plošča z "Vodeno namestitvijo"
+  (2/6 korakov) vodi uporabnika brez dodatne pomoči.
 
 ## 10. ZAPRTA BETA — ⬜
 

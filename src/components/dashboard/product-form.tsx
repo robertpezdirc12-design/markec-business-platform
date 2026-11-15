@@ -325,6 +325,18 @@ export function ProductForm({ categories, product, mode = "create" }: ProductFor
 
         if (result.success) {
           toast.success(isEditMode ? t.products.updateSuccess : t.products.createSuccess)
+          // "Test mame" (2026-11-15): nov izdelek s sledenjem zaloge je brez
+          // začetne zaloge javno "Ni na zalogi" (gumb onemogočen) — lastnika
+          // takoj usmerimo na prejem blaga, da je izdelek kupljiv.
+          if (!isEditMode && result.product?.trackInventory) {
+            toast.info(t.products.initialStockHint, {
+              duration: 12_000,
+              action: {
+                label: t.products.initialStockAction,
+                onClick: () => router.push("/dashboard/products/stocktake"),
+              },
+            })
+          }
           router.push("/dashboard/products")
           return { ok: true }
         }

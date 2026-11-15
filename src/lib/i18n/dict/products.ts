@@ -164,6 +164,11 @@ export const productsSl = {
   deleteSuccess: "Izdelek je uspešno izbrisan",
   deleteFailed: "Napaka pri brisanju izdelka",
   createSuccess: "Izdelek je uspešno ustvarjen",
+  // Vodnik po "Testu mame" (2026-11-15): nov izdelek s sledenjem zaloge je
+  // javno "Ni na zalogi" dokler ni vnosa prejema blaga.
+  initialStockHint:
+    "Za nakup na voljo dodajte začetno zalogo (prejem blaga).",
+  initialStockAction: "Prejem blaga",
   createFailed: "Napaka pri ustvarjanju izdelka",
   updateSuccess: "Izdelek je uspešno posodobljen",
   updateFailed: "Napaka pri posodabljanju izdelka",
@@ -336,6 +341,9 @@ export const productsEn: ProductsDict = {
   deleteSuccess: "Product deleted successfully",
   deleteFailed: "Failed to delete product",
   createSuccess: "Product created successfully",
+  initialStockHint:
+    "Add initial stock (goods receipt) so customers can buy it.",
+  initialStockAction: "Goods receipt",
   createFailed: "Failed to create product",
   updateSuccess: "Product updated successfully",
   updateFailed: "Failed to update product",
