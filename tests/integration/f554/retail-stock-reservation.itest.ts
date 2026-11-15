@@ -36,7 +36,7 @@ async function wipe() {
 
 beforeAll(async () => {
   const rows = await prisma.$queryRawUnsafe<{ db: string }[]>("select current_database() as db")
-  expect(rows[0].db).toBe("markec_f554_test")
+  expect(["markec_f554_test", "markec_e2e_test"]).toContain(rows[0].db)
   await wipe()
   await prisma.organization.create({ data: { id: ORG, name: ORG, slug: ORG } })
   await prisma.user.create({ data: { id: ADMIN, email: `${ADMIN}@f.test`, name: ADMIN, role: "ADMIN", organizationId: ORG } })

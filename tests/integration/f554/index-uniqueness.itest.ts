@@ -23,7 +23,7 @@ async function clean() {
 
 beforeAll(async () => {
   const rows = await prisma.$queryRawUnsafe<{ db: string }[]>("select current_database() as db")
-  expect(rows[0].db).toBe("markec_f554_test")
+  expect(["markec_f554_test", "markec_e2e_test"]).toContain(rows[0].db)
   await clean()
   // Organizacije + dokumenta (minimalni stolpci, ki jih FK zahteva).
   await prisma.organization.createMany({ data: [{ id: ORG_A, name: ORG_A, slug: ORG_A }, { id: ORG_B, name: ORG_B, slug: ORG_B }] })

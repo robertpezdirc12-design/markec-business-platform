@@ -13,6 +13,9 @@ export default defineConfig({
     environment: "node",
     testTimeout: 60000,
     hookTimeout: 60000,
+    // Idempotentni f631 fixtureji (org + owner uporabniki) pred zagonom —
+    // vidno v tests/integration/itest-global-setup.ts.
+    globalSetup: ["tests/integration/itest-global-setup.ts"],
   },
   resolve: {
     alias: {

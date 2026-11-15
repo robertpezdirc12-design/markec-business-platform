@@ -16,7 +16,7 @@ import { PrismaClient } from "@prisma/client"
 import { hashSync } from "bcryptjs"
 
 const url = process.env.DATABASE_URL ?? ""
-const safe = /^postgresql:\/\/[^@]*@[^/]+\/markec_f21_test(\?|$)/.test(url)
+const safe = /^postgresql:\/\/[^@]*@[^/]+\/(markec_e2e_test|markec_f21_test)(\?|$)/.test(url)
 if (!safe) {
   console.error(
     "REFUSED: DATABASE_URL must point to the dedicated test database " +

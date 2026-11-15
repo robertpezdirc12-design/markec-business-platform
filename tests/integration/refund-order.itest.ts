@@ -28,9 +28,11 @@ import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { refundOrder } from "@/app/actions/orders"
 
-// Potrebujemo obstoječi testni najemnik — poenostavljeno uporabimo uporabnika
-// z organizacijo (f681/e2e sejno okolje). Če userja ni, test ni mogoč.
+// Potrebujemo obstoječega testnega najemnika (uporabnik z organizacijo).
+// Primarno f681/e2e sejno okolje; če ga ni (bazni seed je bil izpraznjen),
+// fallback na itest fixture lastnika (tests/integration/itest-global-setup.ts).
 const ACTOR_EMAIL = "cebeler.fresh@markec.test"
+const ACTOR_FALLBACK_EMAIL = "cb@f631.test"
 
 describe("refundOrder — vračilo naročila", () => {
   let orgId: string
@@ -38,14 +40,24 @@ describe("refundOrder — vračilo naročila", () => {
   let orderId: string
 
   beforeAll(async () => {
-    // Najdi / pripravi testno organizacijo prek obstoječega userja.
-    const owner = await prisma.user.findUnique({ where: { email: ACTOR_EMAIL }, select: { id: true, role: true } })
-    if (!owner) throw new Error(`testni uporabnik ${ACTOR_EMAIL} ne obstaja`)
-    const org = await prisma.organization.findFirst({
-      where: { members: { some: { userId: owner.id } } },
-      select: { id: true, slug: true },
-    })
-    if (!org) throw new Error("uporabnik nima organizacije")
+    // Najdi / pripravi testno organizacijo prek uporabnika, ki IMA članstvo
+    // (f681 uporabnik je lahko brez članstva, če je bil seed izpraznjen).
+    let owner: { id: string; role: string } | null = null
+    let org: { id: string; slug: string } | null = null
+    for (const email of [ACTOR_EMAIL, ACTOR_FALLBACK_EMAIL]) {
+      const u = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true } })
+      if (!u) continue
+      const o = await prisma.organization.findFirst({
+        where: { members: { some: { userId: u.id } } },
+        select: { id: true, slug: true },
+      })
+      if (o) {
+        owner = u
+        org = o
+        break
+      }
+    }
+    if (!owner || !org) throw new Error(`testni uporabnik z organizacijo (${ACTOR_EMAIL} / ${ACTOR_FALLBACK_EMAIL}) ne obstaja`)
     orgId = org.id
     state.role = owner.role
     state.userId = owner.id

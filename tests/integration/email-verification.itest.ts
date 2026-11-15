@@ -20,7 +20,15 @@ vi.mock("@/lib/auth/auth", () => ({
   signOut: async () => undefined,
 }))
 vi.mock("next/cache", () => ({ revalidatePath: () => undefined, revalidateTag: () => undefined }))
-vi.mock("next/headers", () => ({ headers: async () => new Headers(), cookies: async () => ({ get: () => null }) }))
+// next/headers mock: vsak dobi SVOJ naključen x-forwarded-for, ker je
+// rate-limit (register/resend:ip) DB-backed s fiksnim oknom in bi si drugače
+// testi delili en bucket — tudi ostanki prejšnjih zank v istem oknu bi
+// blokirali naslednji zagon. Naključni ključ = vedno svež bucket.
+vi.mock("next/headers", () => ({
+  headers: async () =>
+    new Headers({ "x-forwarded-for": `10.99.${Math.random().toString(36).slice(2, 10)}` }),
+  cookies: async () => ({ get: () => null }),
+}))
 vi.mock("next/server", () => ({ after: (fn: () => unknown) => Promise.resolve(undefined) }))
 
 import bcrypt from "bcryptjs"

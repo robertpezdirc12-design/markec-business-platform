@@ -16,7 +16,7 @@ import { PrismaClient } from "@prisma/client"
 import { hashSync } from "bcryptjs"
 
 const url = process.env.DATABASE_URL ?? ""
-const safe = /^postgresql:\/\/[^@]*@[^/]+\/markec_f51_test(\?|$)/.test(url)
+const safe = /^postgresql:\/\/[^@]*@[^/]+\/(markec_e2e_test|markec_f51_test)(\?|$)/.test(url)
 if (!safe) {
   console.error(
     "REFUSED: DATABASE_URL must point to the dedicated test database " +
@@ -214,8 +214,8 @@ async function seed() {
 try {
   const db = await prisma.$queryRawUnsafe("select current_database() as db")
   console.log("F5.1 seed target:", JSON.stringify(db))
-  if (db[0]?.db !== "markec_f51_test") {
-    console.error("REFUSED: not markec_f51_test")
+  if (db[0]?.db !== "markec_f51_test" && db[0]?.db !== "markec_e2e_test") {
+    console.error("REFUSED: not markec_f51_test / markec_e2e_test")
     process.exit(1)
   }
   await seed()

@@ -28,6 +28,10 @@ const state = vi.hoisted(() => ({
       name?: string | null
     }
   },
+  // Javni kontekst (getPublicOrg → getTrustedOrgSlug) se določa prek
+  // x-org-slug headerja — BREZ platform-root fallbacka (na deljeni bazi bi
+  // ta fallback razrešil NAJSTAREJŠO objavljeno org, ne f552-it-org-a).
+  headerEntries: {} as Record<string, string>,
 }))
 
 vi.mock("@/lib/auth/auth", () => ({
@@ -44,7 +48,7 @@ vi.mock("next/cache", () => ({
 }))
 
 vi.mock("next/headers", () => ({
-  headers: async () => new Headers({}),
+  headers: async () => new Headers(state.headerEntries),
 }))
 
 vi.mock("@/lib/tenant-proof", () => ({
@@ -115,7 +119,7 @@ beforeAll(async () => {
   const rows = await prisma.$queryRawUnsafe<{ db: string }[]>(
     "select current_database() as db"
   )
-  expect(rows[0].db).toBe("markec_f552_test")
+  expect(["markec_f552_test", "markec_e2e_test"]).toContain(rows[0].db)
   await seedOrg(ID.orgA, ID.adminA)
   await seedOrg(ID.orgB, ID.adminB)
   await prisma.category.createMany({
@@ -133,6 +137,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   state.session = { user: { id: ID.adminA, role: "ADMIN", organizationId: ID.orgA, email: "a@f552.test" } }
+  state.headerEntries = { "x-org-slug": ID.orgA }
   return Promise.all([
     prisma.galleryItem.deleteMany({ where: { gallery: { organizationId: { in: [ID.orgA, ID.orgB] } } } }),
     prisma.gallery.deleteMany({ where: { organizationId: { in: [ID.orgA, ID.orgB] } } }),
@@ -353,7 +358,8 @@ describe("Organizacijska izolacija", () => {
     const rmRes = await removeGalleryItem(item.id)
     expect(rmRes.ok).toBe(false)
 
-    // Javna branja so org-scoped.
+    // Javna branja so org-scoped (javni kontekst = obiskovalec B-jeve strani).
+    state.headerEntries = { "x-org-slug": ID.orgB }
     expect(await getPreviewGalleries(ID.orgB)).toHaveLength(0)
     expect(await getPublicGalleries(ID.orgB)).toHaveLength(0)
   })

@@ -64,7 +64,7 @@ async function seedOrg(orgId: string, adminId: string) {
 
 beforeAll(async () => {
   const rows = await prisma.$queryRawUnsafe<{ db: string }[]>("select current_database() as db")
-  expect(rows[0].db).toBe("markec_f553_test")
+  expect(["markec_f553_test", "markec_e2e_test"]).toContain(rows[0].db)
   // Clean left-overs from aborted runs (FK safety order).
   await prisma.walkInEntry.deleteMany({ where: { organizationId: { in: [ORGA, ORGB] } } })
   await prisma.document.deleteMany({ where: { organizationId: { in: [ORGA, ORGB] } } })

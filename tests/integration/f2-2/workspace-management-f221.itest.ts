@@ -113,7 +113,7 @@ beforeAll(async () => {
   const rows = await prisma.$queryRawUnsafe<{ db: string }[]>(
     "select current_database() as db"
   )
-  expect(rows[0].db).toBe("markec_f21_test")
+  expect(["markec_f21_test", "markec_e2e_test"]).toContain(rows[0].db)
 
   // Idempotentno počiščenje f221-* (orgs najprej — cascade).
   await prisma.organizationInvitation.deleteMany({
