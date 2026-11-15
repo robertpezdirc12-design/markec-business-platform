@@ -44,6 +44,7 @@ dev-*.log
 # Diagnostični artefakti povezave / analize (niso del izdelka)
 _diag-*
 _analyze-*
+_deploy.mjs
 _where.*
 _*probe*
 semgrep/
@@ -54,6 +55,7 @@ semgrep/
 scripts/_tmp-*
 prisma/_*.txt
 prisma/_*.json
+prisma/_*.ps1
 prisma/_analyze_*
 prisma/_extract_models.*
 prisma/_read_migrations.*
