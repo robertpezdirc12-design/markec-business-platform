@@ -267,7 +267,7 @@ export function CustomersScene() {
           ))}
         </div>
         <div className="mt-3 text-[11px] text-white/55">
-          Klikni "Nova stranka" ali poišči obstoječo → odpre se njen zapis z naročili.
+          Klikni &quot;Nova stranka&quot; ali poišči obstoječo → odpre se njen zapis z naročili.
         </div>
       </div>
     </BrowserFrame>

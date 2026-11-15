@@ -127,7 +127,7 @@ test("F0-S removed employee (role CLIENTE) loses private media; members and oper
   })
   expect(afterRemove.role).toBe("CLIENTE")
   expect(afterRemove.organizationId).toBe(orgA.id)
-  const staffRowAfter = await e2eDb.staff.findUniqueOrThrow({
+  const staffRowAfter = await e2eDb.staff.findFirstOrThrow({
     where: { userId: staffUser.id },
     select: { isActive: true },
   })

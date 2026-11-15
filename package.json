@@ -22,7 +22,8 @@
     "test:check-db": "node scripts/test-db-guard.mjs",
     "test:db:migrate": "node scripts/run-with-test-db.mjs prisma migrate deploy",
     "test:db:push": "node scripts/run-with-test-db.mjs prisma db push",
-    "test:itest": "node scripts/run-with-test-db.mjs vitest run --config vitest.itest.config.ts"
+    "test:itest": "node scripts/run-with-test-db.mjs vitest run --config vitest.itest.config.ts",
+    "depcruise": "depcruise src prisma scripts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
@@ -86,6 +87,7 @@
     "@types/web-push": "^3.6.4",
     "axe-core": "^4.14.0",
     "babel-plugin-react-compiler": "^1.0.0",
+    "dependency-cruiser": "18.7.2",
     "embedded-postgres": "^18.6.0-beta.19",
     "eslint": "^9",
     "eslint-config-next": "16.0.3",

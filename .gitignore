@@ -34,6 +34,7 @@ docs/einvoicing/artifacts/validator/tmp/
 .thinkrail/
 .freebuff/
 .serena/
+.repomix/
 
 # posnetki zaslona testov + lokalne slike
 screenshots/

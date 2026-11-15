@@ -1,20 +1,19 @@
-import { AdminI18nProvider } from "@/lib/i18n/provider"
-import { getLocaleFromCookies } from "@/lib/i18n/server"
+import { PublicI18nProvider } from "@/components/providers/public-i18n-provider"
 
 export const dynamic = "force-dynamic"
 
-export default async function AuthLayout({
+export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const locale = await getLocaleFromCookies()
-
   return (
     <div className="admin-sans-headings">
-      <AdminI18nProvider initialLocale={locale}>
+      {/* T9: javna podmnožica slovarjev (auth+common+public) — admin slovarji
+          ostanejo izven client bundleja. Locale bere wrapper iz cookieja. */}
+      <PublicI18nProvider>
         {children}
-      </AdminI18nProvider>
+      </PublicI18nProvider>
     </div>
   )
 }

@@ -85,11 +85,12 @@ function run(prog: string, args: string[], opts: { encoding?: BufferEncoding } =
   return new Promise((resolve) => {
     execFile(prog, args, { maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => {
       // err je non-null le za ENOENT / lahko exit!=0; stdout vseeno preberemo.
-      resolve({ code: err ? (err as any).code ?? -1 : 0, stdout: String(stdout), stderr: String(stderr) })
+      resolve({ code: err ? Number((err as NodeJS.ErrnoException).code ?? -1) : 0, stdout: String(stdout), stderr: String(stderr) })
     })
   })
 }
 
+// JSON iz zunanjega validatorja (XSD/Schematron); oblika je preverjena v klicih.
 function parseJson(s: string): any {
   try { return JSON.parse(s) } catch { return null }
 }
@@ -203,7 +204,7 @@ export async function validateOfficial(input: OfficialValidatorInput): Promise<O
   }
 }
 
-function extractFatal(viol: any[]): string[] {
+function extractFatal(viol: Array<Record<string, unknown>>): string[] {
   if (!Array.isArray(viol)) return []
   return viol
     .filter((v) => String(v.flag ?? "fatal").toLowerCase() !== "warning")

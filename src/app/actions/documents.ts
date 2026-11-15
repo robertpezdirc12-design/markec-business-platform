@@ -5,7 +5,7 @@ import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { requireDocumentPermission } from "@/lib/auth/guards"
 import { computeDocument, type LineInput } from "@/lib/documents/money"
-import { nextDocumentNumber, fiscalYearOf, docNumberLabel } from "@/lib/documents/numbering"
+import { nextDocumentNumber, fiscalYearOf, docNumberLabel, type DocType } from "@/lib/documents/numbering"
 import { buildIssuerSnapshot, buildCustomerSnapshot } from "@/lib/documents/snapshots"
 import {
   toCents,
@@ -1011,7 +1011,10 @@ export async function convertQuoteToSuggestedInvoice(quoteId: string, issueDate?
     include: { items: { orderBy: { position: "asc" } } },
   })
   if (!quote) return { ok: false, error: "NOT_FOUND" }
-  if (quote.status !== "ACCEPTED") return { ok: false, error: "NOT_ACCEPTED" }
+  // F2 §2.2: samo POTRJENA ponudba se lahko pretvori v račun. Sprejmemo
+  // tako legacy `ACCEPTED` (obstoječi tok) kot novi F2 status `CONFIRMED`.
+  if (quote.status !== "ACCEPTED" && quote.status !== "CONFIRMED")
+    return { ok: false, error: "NOT_ACCEPTED" }
 
   const issue = new Date(issueDate ?? quote.issueDate)
   const fiscalYear = fiscalYearOf(issue)
@@ -1035,6 +1038,8 @@ export async function convertQuoteToSuggestedInvoice(quoteId: string, issueDate?
         dueDate: quote.dueDate,
         currency: quote.currency,
         fiscalYear,
+        // F2 §2.2: ohrani povezavo na izvorno ponudbo (invoice.sourceQuoteId).
+        sourceId: quote.id,
         vatEnabled: quote.vatEnabled,
         subtotal: quote.subtotal,
         discountAmount: quote.discountAmount,
@@ -2118,4 +2123,49 @@ export async function getDocumentSendLogs(docId: string): Promise<
     error: r.error,
     sentAt: r.sentAt.toISOString(),
   }))
+}
+
+// ============================================================
+// FAZA 2 — VERIGA DOKUMENTOV (F2 §2): ponudba → račun → dobropisi.
+// Vrne vse dokumente istega delovnega naloga v kronološkem vrstnem redu
+// (org-scoped; tuji docId → NOT_FOUND).
+// ============================================================
+export interface DocumentChainLink {
+  id: string
+  kind: string
+  code: string
+  status: string
+  total: number
+  issuedAt: string | null
+  sourceId: string | null
+}
+export type GetDocumentChainResult =
+  | { ok: true; workOrderId: string | null; links: DocumentChainLink[] }
+  | { ok: false; error: string }
+
+export async function getDocumentChain(documentId: string): Promise<GetDocumentChainResult> {
+  const { org } = await requireDocumentPermission("finances.view")
+  const anchor = await prisma.document.findFirst({ where: { id: documentId, organizationId: org.id } })
+  if (!anchor) return { ok: false, error: "NOT_FOUND" }
+
+  // Cilj verige je delovni nalog; če ga ni, povežemo prek customer+issueDate.
+  const rows = anchor.workOrderId
+    ? await prisma.document.findMany({
+        where: { organizationId: org.id, workOrderId: anchor.workOrderId },
+        orderBy: [{ issueDate: "asc" }, { createdAt: "asc" }],
+      })
+    : await prisma.document.findMany({
+        where: { organizationId: org.id, id: anchor.id },
+      })
+
+  const links: DocumentChainLink[] = rows.map((d) => ({
+    id: d.id,
+    kind: d.type,
+    code: docNumberLabel(d.type as DocType, d.fiscalYear, d.number),
+    status: d.status,
+    total: Number(d.total),
+    issuedAt: d.issuedAt ? d.issuedAt.toISOString() : null,
+    sourceId: d.sourceId,
+  }))
+  return { ok: true, workOrderId: anchor.workOrderId, links }
 }

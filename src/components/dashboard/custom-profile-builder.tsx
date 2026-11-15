@@ -46,6 +46,9 @@ import {
   saveOrgCustomProfile,
   removeOrgCustomProfile,
   type CustomProfileData,
+  type CustomFieldDraft,
+  type CustomFormDraft,
+  type CustomWorkflowDraft,
 } from "@/app/actions/custom-profile"
 
 type CapabilityState = "required" | "optional" | "disabled"
@@ -165,7 +168,7 @@ export function CustomProfileBuilder({ orgId }: CustomProfileBuilderProps) {
 
   const markDirty = useCallback(() => setDirty(true), [])
 
-  const setField = useCallback((key: string, value: any) => {
+  const setField = useCallback((key: string, value: unknown) => {
     setDraft((d) => ({ ...d, [key]: value }))
     setDirty(true)
   }, [])
@@ -243,7 +246,7 @@ export function CustomProfileBuilder({ orgId }: CustomProfileBuilderProps) {
     setDirty(true)
   }, [])
 
-  const updateField = useCallback((formIndex: number, fieldIndex: number, updates: any) => {
+  const updateField = useCallback((formIndex: number, fieldIndex: number, updates: Partial<CustomFieldDraft>) => {
     setDraft((d) => {
       const next = [...d.forms]
       const form = { ...next[formIndex] }
@@ -286,7 +289,7 @@ export function CustomProfileBuilder({ orgId }: CustomProfileBuilderProps) {
     setDirty(true)
   }, [])
 
-  const updateWorkflow = useCallback((index: number, updates: Partial<CustomProfileData["workflows"][number]>) => {
+  const updateWorkflow = useCallback((index: number, updates: Partial<CustomWorkflowDraft>) => {
     setDraft((d) => {
       const next = [...d.workflows]
       next[index] = { ...next[index], ...updates }
@@ -552,7 +555,7 @@ function BasicSection({
   markDirty,
 }: {
   draft: CustomProfileData
-  setField: (key: string, value: any) => void
+  setField: (key: string, value: unknown) => void
   markDirty: () => void
 }) {
   const { locale } = useI18n()
@@ -652,7 +655,7 @@ function CapabilitiesSection({
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        "Obvezno" vedno deluje. "Izbirno" lahko vklopite/izklopite kasneje. "Onemogočeno" je popolnoma izključeno.
+        &quot;Obvezno&quot; vedno deluje. &quot;Izbirno&quot; lahko vklopite/izklopite kasneje. &quot;Onemogočeno&quot; je popolnoma izključeno.
       </p>
       <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {CAPABILITY_KEYS.map((cap) => {
@@ -703,10 +706,10 @@ function FormsSection({
   draft: CustomProfileData
   addForm: () => void
   removeForm: (index: number) => void
-  updateForm: (index: number, updates: any) => void
+  updateForm: (index: number, updates: Partial<CustomFormDraft>) => void
   addField: (formIndex: number) => void
   removeField: (formIndex: number, fieldIndex: number) => void
-  updateField: (formIndex: number, fieldIndex: number, updates: any) => void
+  updateField: (formIndex: number, fieldIndex: number, updates: Partial<CustomFieldDraft>) => void
   markDirty: () => void
 }) {
   const { locale } = useI18n()
@@ -774,7 +777,7 @@ function FormsSection({
                   />
                   <Select
                     value={field.type}
-                    onValueChange={(v) => updateField(formIndex, fieldIndex, { type: v })}
+                    onValueChange={(v) => updateField(formIndex, fieldIndex, { type: v as CustomFieldDraft["type"] })}
                   >
                     <SelectTrigger className="h-8 min-h-[auto]">
                       <SelectValue placeholder={fieldTypeLabels[field.type]} />
@@ -796,7 +799,7 @@ function FormsSection({
                   </Select>
                   <Checkbox
                     checked={field.required}
-                    onCheckedChange={(v) => updateField(formIndex, fieldIndex, { required: v })}
+                    onCheckedChange={(v) => updateField(formIndex, fieldIndex, { required: v === true })}
                     className="w-4 h-4"
                   />
                   <Label className="text-xs text-muted-foreground">Obvezno</Label>
@@ -828,7 +831,7 @@ function WorkflowsSection({
   draft: CustomProfileData
   addWorkflow: () => void
   removeWorkflow: (index: number) => void
-  updateWorkflow: (index: number, updates: any) => void
+  updateWorkflow: (index: number, updates: Partial<CustomWorkflowDraft>) => void
   addStage: (workflowIndex: number) => void
   removeStage: (workflowIndex: number, stageIndex: number) => void
   markDirty: () => void
@@ -922,7 +925,7 @@ function WorkflowsSection({
                     onCheckedChange={(v) => {
                       updateWorkflow(wfIndex, {
                         stages: wf.stages.map((s, i) =>
-                          i === stageIndex ? { ...s, isFinal: v } : s
+                          i === stageIndex ? { ...s, isFinal: v === true } : s
                         ),
                       })
                     }}
@@ -994,7 +997,7 @@ function CtaSection({
   markDirty,
 }: {
   draft: CustomProfileData
-  setField: (key: string, value: any) => void
+  setField: (key: string, value: unknown) => void
   markDirty: () => void
 }) {
   const { locale } = useI18n()

@@ -183,7 +183,7 @@ test.describe("2D-8 — céloten tok urejevalnika (real browser, drei orgs)", ()
 
   test("2D-8 izolacija: tri org ohranijo svoje strede (vulkanizer ne spremeni čebelarja/šivilje)", async ({ page }) => {
     // Preverimo, da se vsaka javna stran odziva s svojo dejavnostjo.
-    for (const [key, [, , slug, h1]] of Object.entries(ORGS) as [OrgKey, (string)[]][]) {
+    for (const [key, [, , slug, h1]] of Object.entries(ORGS) as [OrgKey, readonly string[]][]) {
       await page.goto(`${BASE}/s/${slug}`)
       await expect(page.locator("h1").first()).toContainText(h1, { timeout: 30000 })
     }

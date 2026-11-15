@@ -6,6 +6,7 @@ function input(over: Partial<SmartSuggestionInput> = {}): SmartSuggestionInput {
     counts: { apiary: 0, hive: 0, colony: 0, inspection: 0, harvest: 0, products: 0, orders: 0 },
     published: false,
     beekeeping: true,
+    tireService: false,
     shopCapable: true,
     ...over,
   }

@@ -305,98 +305,19 @@ export function templatesFor(
 }
 
 // ------------------------------------------------------------
-// NAVIGATION — owner-editable main menu (stored in SiteContent.nav).
+// NAVIGATION — re-exported from site-content (the data owner, since
+// nav lives in SiteContent.nav). Kept here so existing consumers
+// of "@/lib/site-design" keep their imports, while site-content no
+// longer imports runtime code from site-design (breaks the cycle
+// site-design ↔ site-content and site-design ↔ verticals).
 // ------------------------------------------------------------
 
-export interface NavItem {
-  id: string
-  label: string
-  /** absolutna ali relativna; za notranje sekcije uporabimo "#sectionId", za
-   *  strani "/services", zunanje "https://…". */
-  href: string
-  /** če je povezava sidro na sekcijo domače strani */
-  sectionId?: string
-  external?: boolean
-  visible: boolean
-  order: number
-  /** če je določeno in capability izklopljen, se element NE prikaže */
-  requiresCapability?: string
-}
-
-export const MAX_NAV_ITEMS = 12
-
-/** Tolerantna normalizacija nav (F5.3.2): nizi, omejene dimenzije, cap,
- *  razvrščeno po order; neveljavni izpadejo; vrednosti order so stabilne. */
-export function normalizeNav(input: unknown): NavItem[] | null {
-  if (!Array.isArray(input)) return null
-  const out: NavItem[] = []
-  for (const raw of input) {
-    if (!raw || typeof raw !== "object") continue
-    const it = raw as Record<string, unknown>
-    const label = typeof it.label === "string" && it.label.trim() ? it.label.trim().slice(0, 60) : ""
-    const href = typeof it.href === "string" && it.href.trim() ? it.href.trim().slice(0, 200) : ""
-    if (!label || !href) continue
-    // F5.3.3 varnost: nedovoljene URL sheme (javascript:, data:, vbscript: …)
-    // se na izvoru zavržejo — nikoli se ne shranijo v osnutek/osnam in ne
-    // upodobijo v javnem meniju (XSS preprečevanje, ne le skrivanje v UI).
-    if (!isSafeNavHref(href)) continue
-    const id = typeof it.id === "string" && it.id ? it.id : `n${Math.random().toString(36).slice(2, 8)}`
-    out.push({
-      id,
-      label,
-      href,
-      sectionId: typeof it.sectionId === "string" ? it.sectionId : undefined,
-      external: it.external === true,
-      visible: it.visible !== false,
-      order: typeof it.order === "number" ? it.order : out.length,
-      requiresCapability: typeof it.requiresCapability === "string" ? it.requiresCapability : undefined,
-    })
-    if (out.length >= MAX_NAV_ITEMS) break
-  }
-  if (out.length === 0) return null
-  return out.sort((a, b) => a.order - b.order)
-}
-
-/** Vhodne povezave, ki jih podjetnik lahko doda (samodejno iz razpoložljivih
- *  strani/skcij modulov). Ne prikazuj izklopljenih funkcij. */
-export function availableNavTargets(capabilitiesEnabled: string[]): { value: string; label: string; sectionId?: string; requiresCapability?: string }[] {
-  const targets: { value: string; label: string; sectionId?: string; requiresCapability?: string }[] = [
-    { value: "#services", label: "Storitve (sekcija)", sectionId: "services", requiresCapability: "services" },
-    { value: "#about", label: "O nas (sekcija)", sectionId: "about" },
-    { value: "#team", label: "Ekipa (sekcija)", sectionId: "team", requiresCapability: "staff" },
-    { value: "#reviews", label: "Ocene (sekcija)", sectionId: "reviews" },
-    { value: "#shop", label: "Izdelki (sekcija)", sectionId: "shop", requiresCapability: "shop" },
-    { value: "#contact", label: "Kontakt (sekcija)", sectionId: "contact" },
-    { value: "/services", label: "Stran: Storitve", requiresCapability: "services" },
-    { value: "/shop", label: "Stran: Trgovina", requiresCapability: "shop" },
-    { value: "/booking", label: "Stran: Rezervacija", requiresCapability: "appointments" },
-    { value: "/vrsta", label: "Stran: Walk-in", requiresCapability: "walkIn" },
-  ]
-  return targets.filter((t) => !t.requiresCapability || capabilitiesEnabled.includes(t.requiresCapability))
-}
-
-/** Povezava, ki kaže na izklopljeno/nedelujočo funkcionalnost, se ne upodobi. */
-export function navItemAllowed(item: NavItem, capabilitiesEnabled: string[]): boolean {
-  if (!item.visible) return false
-  if (item.requiresCapability && !capabilitiesEnabled.includes(item.requiresCapability)) return false
-  return true
-}
-
-/** Ali je povezava zunanja? */
-export function isExternalHref(href: string): boolean {
-  return /^https?:\/\//i.test(href)
-}
-
-/** Dovoljene URL sheme za povezave v navigaciji. Vse ostalo (javascript:,
- *  data:, blob:, vbscript:, itd.) je zavrnjeno na izvoru, da se obranimo
- *  XSS/navedne povezave v javnem meniju. Čista pomožna heksa — kliče se per
- *  item BOTH pri normalizaciji (strežniška sanitizacija, F5.3.3) in v panelu. */
-const ALLOWED_NAV_SCHEMES = new Set(["http", "https", "mailto", "tel"])
-export function isSafeNavHref(href: string): boolean {
-  const trimmed = href.trim()
-  if (trimmed.startsWith("#") || trimmed.startsWith("/")) return true
-  const colon = trimmed.indexOf(":")
-  if (colon === -1) return true // brez sheme (relativno) — varno
-  const scheme = trimmed.slice(0, colon).toLowerCase()
-  return ALLOWED_NAV_SCHEMES.has(scheme)
-}
+export {
+  type NavItem,
+  MAX_NAV_ITEMS,
+  normalizeNav,
+  availableNavTargets,
+  navItemAllowed,
+  isExternalHref,
+  isSafeNavHref,
+} from "@/lib/site-content"

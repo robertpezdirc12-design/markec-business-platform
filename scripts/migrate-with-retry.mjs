@@ -89,6 +89,20 @@ export async function runMigrationsWithRetry({
 async function main() {
   if (!ensureDatabaseUrl(process.env)) process.exit(1)
 
+  // Non-production Vercel builds (preview / development) must NEVER run
+  // migrations against a shared DATABASE_URL: deploy-time migrations are
+  // restricted to the production environment. Locally (no VERCEL_ENV) the
+  // build runs without migrating, matching prior behaviour when the script
+  // was invoked manually.
+  const vercelEnv = process.env.VERCEL_ENV
+  if (vercelEnv && vercelEnv !== "production") {
+    console.log(
+      `[migrate-retry] VERCEL_ENV="${vercelEnv}" — preskočim migracije ` +
+        `(migrira dovoljuje le production). Nadaljujem z buildom.`
+    )
+    return
+  }
+
   const attempts = Number(process.env.MIGRATE_RETRY_ATTEMPTS || DEFAULT_ATTEMPTS)
   const backoffMs = Number(process.env.MIGRATE_RETRY_BACKOFF_MS || DEFAULT_BACKOFF_MS)
   console.log(

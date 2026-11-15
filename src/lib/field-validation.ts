@@ -17,7 +17,7 @@ export interface ValidatableField {
   /** Faza 2B/2C-1: za entityReference — single (objekt) ali multi (niz) ciljev. UI razreši; org velja server-side. */
   referenceTo?:
     | { extensionId: string; entityKey: string }
-    | { extensionId: string; entityKey: string }[]
+    | readonly { extensionId: string; entityKey: string }[]
     | undefined
   unit?: string
   placeholder?: string
@@ -34,7 +34,7 @@ export interface FieldValidationResult {
  * date | option) plus the cleaned, typed values.
  */
 export function validateFieldValues(
-  fields: ValidatableField[],
+  fields: readonly ValidatableField[],
   values: Record<string, unknown>
 ): FieldValidationResult {
   const errors: Record<string, string> = {}
@@ -132,7 +132,7 @@ export function validateFieldValues(
  *  the first required text/select value, else the first non-empty
  *  short value, else a fallback label. */
 export function deriveRecordTitle(
-  fields: ValidatableField[],
+  fields: readonly ValidatableField[],
   values: Record<string, unknown>,
   fallback: string
 ): string {

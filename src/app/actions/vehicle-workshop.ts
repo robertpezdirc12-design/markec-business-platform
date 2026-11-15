@@ -23,7 +23,11 @@ import { requirePermissionOrg } from "@/lib/auth/guards"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import type { Prisma } from "@prisma/client"
-import { nextDocumentNumber, fiscalYearOf } from "@/lib/documents/numbering"
+import {
+  consumeOnWorkOrder,
+  VEHICLE_WORKSHOP_CONSUMPTION_OPTS,
+  type ConsumptionResult,
+} from "./work-order-consumption"
 
 const VEHICLE_EXT = "vehicle-workshop"
 const VEHICLE_KEY = "vehicle"
@@ -126,7 +130,7 @@ export async function getTireServiceOverview(): Promise<TireServiceOverview | nu
 
 // ============================================================
 // Prodaja / poraba delov na delovnem nalogu.
-// Order + OrderItem + StockMovement OUT + Document{workOrderId,orderId}.
+// Uporablja UNIVERZALNO funkcijo consumeOnWorkOrder iz jedra.
 // ============================================================
 
 const partLineSchema = z.object({
@@ -147,177 +151,17 @@ export interface WorkOrderPartsResult {
   documentId?: string
 }
 
-/** Atomarno zniža zalogo določene vrstice (Product ali ProductVariant). */
-async function decrementStock(
-  tx: Prisma.TransactionClient,
-  table: "Product" | "ProductVariant",
-  id: string,
-  qty: number
-): Promise<boolean> {
-  const r = await tx.$executeRawUnsafe(
-    `UPDATE "${table}" SET "stockQuantity" = "stockQuantity" - $2::int
-     WHERE "id" = $1::text AND "stockQuantity" - "reservedQuantity" >= $2::int`,
-    id,
-    qty
-  )
-  return r === 1
-}
-
 /**
- * Proda/porabi dele na delovnem nalogu. Zniža zalogo (CAS, ne prodaj
- * rezervirano/negativno), ustvari Order+OrderItem+StockMovement OUT, in
- * DRAFT Document { workOrderId, orderId } prek nextDocumentNumber +
- * WorkOrderEvent za revizijo. Napaka → celoten rollback.
+ * Proda/porabi dele na delovnem nalogu.
+ * DELEGIRA na univerzalno funkcijo consumeOnWorkOrder z opcijami za servis vozil.
+ * Dokument se ustvari kot QUOTE (osnutek ponudbe), ne kot INVOICE —
+ * ločitev med porabo in dejanskim računom.
  */
-export async function sellPartsOnWorkOrder(input: z.input<typeof workOrderPartsSchema>): Promise<WorkOrderPartsResult> {
-  const parsed = workOrderPartsSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: "VALIDATION" }
-  const data = parsed.data
-
-  const { org, session } = await requirePermissionOrg("orders.manage")
-  const orgId = org.id
-
-  // Delovni nalog mora biti v tej org (ne IDOR).
-  const wo = await prisma.workOrder.findFirst({ where: { id: data.workOrderId, organizationId: orgId }, select: { id: true } })
-  if (!wo) return { ok: false, error: "WORKORDER_NOT_FOUND" }
-
-  const productIds = [...new Set(data.lines.map((l) => l.productId))]
-  const products = await prisma.product.findMany({
-    where: { id: { in: productIds }, organizationId: orgId, isActive: true },
-    select: { id: true, name: true, price: true, trackInventory: true }, // price se pretvori spodaj
-  })
-  if (products.length !== productIds.length) return { ok: false, error: "NOT_FOUND" }
-  const variantIds = data.lines.map((l) => l.productVariantId).filter((v): v is string => typeof v === "string" && v.length > 0)
-  const variants = variantIds.length
-    ? await prisma.productVariant.findMany({ where: { id: { in: variantIds }, organizationId: orgId }, select: { id: true, productId: true, name: true, sku: true, price: true } })
-    : []
-  if (variants.length !== variantIds.length) return { ok: false, error: "VARIANT_NOT_FOUND" }
-  for (const l of data.lines) {
-    if (!l.productVariantId) continue
-    const v = variants.find((x) => x.id === l.productVariantId)
-    if (!v || v.productId !== l.productId) return { ok: false, error: "VARIANT_MISMATCH" }
-  }
-  const productById = new Map(products.map((p) => [p.id, p]))
-  const variantById = new Map(variants.map((v) => [v.id, v]))
-
-  try {
-    const result = await prisma.$transaction(async (tx) => {
-      // ---- 1) Znižanje zaloge (CAS) ----
-      const decrements: { productId: string; variantId?: string | null }[] = []
-      for (const line of data.lines) {
-        if (line.productVariantId) {
-          const v = variantById.get(line.productVariantId)!
-          const ok = await decrementStock(tx, "ProductVariant", v.id, line.quantity)
-          if (!ok) throw new Error("INSUFFICIENT_STOCK")
-          decrements.push({ productId: line.productId, variantId: v.id })
-        } else {
-          const p = productById.get(line.productId)!
-          if (!p.trackInventory) throw new Error("NOT_TRACKED")
-          const ok = await decrementStock(tx, "Product", p.id, line.quantity)
-          if (!ok) throw new Error("INSUFFICIENT_STOCK")
-          decrements.push({ productId: line.productId })
-        }
-      }
-
-      // ---- 2) Order + Items ----
-      let subtotal = 0
-      for (const l of data.lines) {
-        const v = l.productVariantId ? variantById.get(l.productVariantId)! : null
-        subtotal += Number(v ? v.price ?? 0 : productById.get(l.productId)!.price ?? 0) * l.quantity
-      }
-      const created = await tx.order.create({
-        data: {
-          organizationId: orgId,
-          customerId: null,
-          subtotal,
-          tax: 0,
-          total: subtotal,
-          status: "PAID",
-          paymentMethod: "offline",
-          notes: `Poraba delov na delovnem nalogu #${wo.id.slice(-6)}`,
-          items: {
-            create: data.lines.map((l) => {
-              const v = l.productVariantId ? variantById.get(l.productVariantId)! : null
-              const unit = v ? Number(v.price ?? 0) : Number(productById.get(l.productId)!.price ?? 0)
-              return {
-                productId: l.productId,
-                variantId: l.productVariantId ?? null,
-                variantName: v ? v.name : null,
-                variantSku: v ? v.sku : null,
-                variantPrice: l.productVariantId ? unit : null,
-                quantity: l.quantity,
-                price: unit,
-              }
-            }),
-          },
-        },
-      })
-
-      // ---- 3) StockMovement OUT (source ORDER, orderId) ----
-      for (const d of decrements) {
-        const line = data.lines.find((x) => x.productId === d.productId && (d.variantId ? x.productVariantId === d.variantId : !x.productVariantId))!
-        await tx.stockMovement.create({
-          data: {
-            organizationId: orgId,
-            productId: d.productId,
-            ...(d.variantId ? { productVariantId: d.variantId } : {}),
-            direction: "OUT",
-            quantity: line.quantity,
-            source: "ORDER",
-            orderId: created.id,
-            ...(data.notes ? { note: `Delovni nalog: ${data.notes.trim()}` } : { note: `Poraba na delovnem nalogu #${wo.id.slice(-6)}` }),
-          },
-        })
-      }
-
-      // ---- 4) DRAFT Document { workOrderId, orderId } — povezava nalog↔naročilo ----
-      const fiscalYear = fiscalYearOf(new Date())
-      const number = await nextDocumentNumber(tx, orgId, "INVOICE", fiscalYear)
-      const doc = await tx.document.create({
-        data: {
-          organizationId: orgId,
-          type: "INVOICE",
-          number,
-          status: "DRAFT",
-          workOrderId: data.workOrderId,
-          orderId: created.id,
-          issueDate: new Date(),
-          fiscalYear,
-          currency: "EUR",
-          vatEnabled: false,
-          subtotal,
-          discountAmount: 0,
-          taxBase: subtotal,
-          taxTotal: 0,
-          total: subtotal,
-          notes: `Delovni nalog — poraba delov (sledljivost).`,
-        },
-      })
-
-      // ---- 5) WorkOrderEvent za revizijsko sled ----
-      await tx.workOrderEvent.create({
-        data: {
-          organizationId: orgId,
-          workOrderId: data.workOrderId,
-          type: "NOTE",
-          message: `Poraba delov: ${data.lines.reduce((s, l) => s + l.quantity, 0)} kos → naročilo ${created.id.slice(-6)} / dokument ${number}`,
-          actorEmail: session.user?.email ?? null,
-        },
-      })
-
-      return { orderId: created.id, documentId: doc.id }
-    })
-
-    revalidatePath("/dashboard/tire-service")
-    revalidatePath("/dashboard/work-orders")
-    return { ok: true, orderId: result.orderId, documentId: result.documentId }
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : ""
-    if (msg === "INSUFFICIENT_STOCK") return { ok: false, error: "INSUFFICIENT_STOCK" }
-    if (msg === "NOT_TRACKED") return { ok: false, error: "NOT_TRACKED" }
-    if (msg === "WORKORDER_NOT_FOUND") return { ok: false, error: "WORKORDER_NOT_FOUND" }
-    return { ok: false, error: "TRANSACTION_FAILED" }
-  }
+export async function sellPartsOnWorkOrder(
+  input: z.input<typeof workOrderPartsSchema>
+): Promise<WorkOrderPartsResult> {
+  const result: ConsumptionResult = await consumeOnWorkOrder(input, VEHICLE_WORKSHOP_CONSUMPTION_OPTS)
+  return result as WorkOrderPartsResult
 }
 
 // ============================================================
@@ -540,7 +384,7 @@ export async function recordTireSetEvent(input: z.input<typeof tireEventSchema>)
       const tire = await tx.extensionRecord.findFirst({ where: { id: data.tireSetId, organizationId: orgId, entityKey: TIRE_SET_KEY }, select: { id: true, data: true } })
       if (!tire) throw new Error("TIRE_SET_NOT_FOUND")
 
-      let vehicleId: string | null = data.vehicleId ?? null
+      const vehicleId: string | null = data.vehicleId ?? null
       if (vehicleId) {
         const v = await tx.extensionRecord.findFirst({ where: { id: vehicleId, organizationId: orgId, entityKey: VEHICLE_KEY }, select: { id: true } })
         if (!v) throw new Error("VEHICLE_NOT_FOUND")

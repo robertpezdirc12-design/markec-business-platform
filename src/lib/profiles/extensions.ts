@@ -545,8 +545,62 @@ const suppliers: ExtensionDefinition = {
         { key: "contact_person", label: "Kontaktna oseba", type: "text", required: false },
         { key: "email", label: "E-pošta", type: "text", required: false },
         { key: "phone", label: "Telefon", type: "text", required: false },
+        { key: "tax_number", label: "Davčna številka", type: "text", required: false },
+        { key: "payment_terms", label: "Pogoji plačila", type: "text", required: false },
         { key: "address", label: "Naslov", type: "textarea", required: false },
         { key: "notes", label: "Opombe", type: "textarea", required: false },
+      ],
+    },
+  ],
+}
+
+/** Purchase orders and receiving — full procurement chain. */
+const purchasing: ExtensionDefinition = {
+  id: "purchasing",
+  name: "Nabavno poslovanje",
+  description:
+    "Nabavni nalogi, prejem blaga in sleditev dobavam; veriga Dobavitelj → Nabavni nalog → Prejem → Zaloga.",
+  version: 1,
+  capabilities: ["inventory", "documents"],
+  entities: [
+    {
+      key: "purchase_order",
+      name: "Nabavni nalog",
+      description: "Naročilo blaga dobavitelju s postavkami, statusom in datumom dobave.",
+      fields: [
+        { key: "order_number", label: "Številka naloga", type: "text", required: true },
+        { key: "supplier_name", label: "Dobavitelj", type: "text", required: true },
+        { key: "order_date", label: "Datum naročila", type: "date", required: true },
+        { key: "expected_delivery_date", label: "Pričakovana dobava", type: "date", required: false },
+        { key: "status", label: "Status", type: "select", required: true, options: ["Osnutek", "Poslano", "Delno prejeto", "Prejeto", "Preklicano"] },
+        { key: "total_amount", label: "Skupni znesek", type: "number", required: false, unit: "EUR" },
+        { key: "notes", label: "Opombe", type: "textarea", required: false },
+      ],
+    },
+  ],
+}
+
+/** Work order labor tracking — hours per employee, cost calculation. */
+const workOrderLabor: ExtensionDefinition = {
+  id: "work-order-labor",
+  name: "Delovni čas",
+  description:
+    "Beleženje delovnega časa na delovnem nalogu po zaposlenem; izračun dejanskih stroškov dela.",
+  version: 1,
+  capabilities: ["workOrders"],
+  entities: [
+    {
+      key: "work_order_labor",
+      name: "Vnos delovnega časa",
+      description: "En vnos delovnega časa na delovnem nalogu (ure, postavček, opis).",
+      fields: [
+        { key: "work_order_number", label: "Številka delovnega naloga", type: "text", required: true },
+        { key: "staff_name", label: "Izvajalec", type: "text", required: true },
+        { key: "hours", label: "Ure", type: "number", required: true, unit: "h" },
+        { key: "hourly_rate", label: "Urni postavček", type: "number", required: false, unit: "EUR" },
+        { key: "total_cost", label: "Skupni strošek", type: "number", required: false, unit: "EUR" },
+        { key: "work_date", label: "Datum dela", type: "date", required: true },
+        { key: "description", label: "Opis dela", type: "textarea", required: false },
       ],
     },
   ],
@@ -649,6 +703,8 @@ const EXTENSION_LIST: ExtensionDefinition[] = [
   multiLocation,
   memberships,
   suppliers,
+  purchasing,
+  workOrderLabor,
   deliveryRuntime,
   documents,
 ]

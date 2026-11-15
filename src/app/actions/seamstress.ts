@@ -26,6 +26,11 @@ import { z } from "zod"
 import type { Prisma } from "@prisma/client"
 import { nextDocumentNumber, fiscalYearOf } from "@/lib/documents/numbering"
 import { advanceWorkOrder } from "./work-orders"
+import {
+  consumeOnWorkOrder,
+  SEAMSTRESS_CONSUMPTION_OPTS,
+  type ConsumptionResult,
+} from "./work-order-consumption"
 
 const MEASURE_EXT = "seamstress-measurements"
 const MEASURE_KEY = "measurement"
@@ -362,6 +367,7 @@ export async function getOrderProgress(workOrderId: string) {
 
 // ============================================================
 // Poraba materiala / blaga (CAS, brez negativne zaloge)
+// Uporablja UNIVERZALNO funkcijo consumeOnWorkOrder iz jedra.
 // ============================================================
 
 const materialLineSchema = z.object({
@@ -383,173 +389,17 @@ export interface ConsumeMaterialResult {
   documentId?: string
 }
 
-/** Atomarno zniža zalogo (CAS — nikoli pod razpoložljivo). */
-async function decrementStock(
-  tx: Prisma.TransactionClient,
-  table: "Product" | "ProductVariant",
-  id: string,
-  qty: number
-): Promise<boolean> {
-  const r = await tx.$executeRawUnsafe(
-    `UPDATE "${table}" SET "stockQuantity" = "stockQuantity" - $2::int
-     WHERE "id" = $1::text AND "stockQuantity" - "reservedQuantity" >= $2::int`,
-    id,
-    qty
-  )
-  return r === 1
-}
-
 /**
- * Porabi blago/material na šiviljskem delovnem nalogu. Zniža zalogo (CAS,
- * ni negativne/rezervirane), ustvari Order + OrderItem + StockMovement OUT +
- * DRAFT Document { workOrderId, orderId } + WorkOrderEvent. Napaka → rollback.
+ * Porabi blago/material na šiviljskem delovnem nalogu.
+ * DELEGIRA na univerzalno funkcijo consumeOnWorkOrder z opcijami za šiviljstvo.
+ * Dokument se ustvari kot QUOTE (osnutek ponudbe), ne kot INVOICE —
+ * ločitev med porabo in dejanskim računom.
  */
-export async function consumeMaterialOnWorkOrder(input: z.input<typeof consumeMaterialSchema>): Promise<ConsumeMaterialResult> {
-  const parsed = consumeMaterialSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: "VALIDATION" }
-  const data = parsed.data
-
-  const { org, session } = await requirePermissionOrg("workorders.manage")
-  const orgId = org.id
-
-  const wo = await prisma.workOrder.findFirst({
-    where: { id: data.workOrderId, organizationId: orgId },
-    select: { id: true, customerId: true },
-  })
-  if (!wo) return { ok: false, error: "WORKORDER_NOT_FOUND" }
-
-  const productIds = [...new Set(data.lines.map((l) => l.productId))]
-  const products = await prisma.product.findMany({
-    where: { id: { in: productIds }, organizationId: orgId, isActive: true },
-    select: { id: true, name: true, price: true, trackInventory: true },
-  })
-  if (products.length !== productIds.length) return { ok: false, error: "NOT_FOUND" }
-  const productById = new Map(products.map((p) => [p.id, p]))
-
-  const variantIds = data.lines.map((l) => l.productVariantId).filter((v): v is string => typeof v === "string" && v.length > 0)
-  const variants = variantIds.length
-    ? await prisma.productVariant.findMany({ where: { id: { in: variantIds }, organizationId: orgId }, select: { id: true, productId: true, name: true, sku: true, price: true } })
-    : []
-  if (variants.length !== variantIds.length) return { ok: false, error: "VARIANT_NOT_FOUND" }
-  for (const l of data.lines) {
-    if (!l.productVariantId) continue
-    const v = variants.find((x) => x.id === l.productVariantId)
-    if (!v || v.productId !== l.productId) return { ok: false, error: "VARIANT_MISMATCH" }
-  }
-  const variantById = new Map(variants.map((v) => [v.id, v]))
-
-  try {
-    const result = await prisma.$transaction(async (tx) => {
-      const decrements: { productId: string; variantId?: string | null }[] = []
-      for (const line of data.lines) {
-        if (line.productVariantId) {
-          const ok = await decrementStock(tx, "ProductVariant", line.productVariantId, line.quantity)
-          if (!ok) throw new Error("INSUFFICIENT_STOCK")
-          decrements.push({ productId: line.productId, variantId: line.productVariantId })
-        } else {
-          const p = productById.get(line.productId)!
-          if (!p.trackInventory) throw new Error("NOT_TRACKED")
-          const ok = await decrementStock(tx, "Product", line.productId, line.quantity)
-          if (!ok) throw new Error("INSUFFICIENT_STOCK")
-          decrements.push({ productId: line.productId })
-        }
-      }
-
-      let subtotal = 0
-      for (const l of data.lines) {
-        const v = l.productVariantId ? variantById.get(l.productVariantId)! : null
-        subtotal += Number(v ? v.price ?? 0 : productById.get(l.productId)!.price ?? 0) * l.quantity
-      }
-
-      const created = await tx.order.create({
-        data: {
-          organizationId: orgId,
-          customerId: wo.customerId ?? null,
-          subtotal,
-          tax: 0,
-          total: subtotal,
-          status: "PAID",
-          paymentMethod: "offline",
-          notes: `Poraba materiala na delovnem nalogu #${wo.id.slice(-6)} (šiviljstvo)`,
-          items: {
-            create: data.lines.map((l) => {
-              const v = l.productVariantId ? variantById.get(l.productVariantId)! : null
-              const unit = v ? Number(v.price ?? 0) : Number(productById.get(l.productId)!.price ?? 0)
-              return {
-                productId: l.productId,
-                variantId: l.productVariantId ?? null,
-                variantName: v ? v.name : null,
-                variantSku: v ? v.sku : null,
-                variantPrice: l.productVariantId ? unit : null,
-                quantity: l.quantity,
-                price: unit,
-              }
-            }),
-          },
-        },
-      })
-
-      for (const d of decrements) {
-        const line = data.lines.find((x) => x.productId === d.productId && (d.variantId ? x.productVariantId === d.variantId : !x.productVariantId))!
-        await tx.stockMovement.create({
-          data: {
-            organizationId: orgId,
-            productId: d.productId,
-            ...(d.variantId ? { productVariantId: d.variantId } : {}),
-            direction: "OUT",
-            quantity: line.quantity,
-            source: "ORDER",
-            orderId: created.id,
-            note: `Poraba materiala na delovnem nalogu #${wo.id.slice(-6)}`,
-          },
-        })
-      }
-
-      const fiscalYear = fiscalYearOf(new Date())
-      const number = await nextDocumentNumber(tx, orgId, "INVOICE", fiscalYear)
-      const doc = await tx.document.create({
-        data: {
-          organizationId: orgId,
-          type: "INVOICE",
-          number,
-          status: "DRAFT",
-          workOrderId: data.workOrderId,
-          orderId: created.id,
-          issueDate: new Date(),
-          fiscalYear,
-          currency: "EUR",
-          vatEnabled: false,
-          subtotal,
-          discountAmount: 0,
-          taxBase: subtotal,
-          taxTotal: 0,
-          total: subtotal,
-          notes: "Šiviljstvo — poraba materiala (sledljivost).",
-        },
-      })
-
-      await tx.workOrderEvent.create({
-        data: {
-          organizationId: orgId,
-          workOrderId: data.workOrderId,
-          type: "NOTE",
-          message: `Poraba materiala: ${data.lines.reduce((s, l) => s + l.quantity, 0)} kos → naročilo ${created.id.slice(-6)} / dokument ${number}`,
-          actorEmail: session.user?.email ?? null,
-        },
-      })
-
-      return { orderId: created.id, documentId: doc.id }
-    })
-
-    revalidatePath("/dashboard/seamstress")
-    revalidatePath("/dashboard/work-orders")
-    return { ok: true, orderId: result.orderId, documentId: result.documentId }
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : ""
-    if (msg === "INSUFFICIENT_STOCK") return { ok: false, error: "INSUFFICIENT_STOCK" }
-    if (msg === "NOT_TRACKED") return { ok: false, error: "NOT_TRACKED" }
-    return { ok: false, error: "TRANSACTION_FAILED" }
-  }
+export async function consumeMaterialOnWorkOrder(
+  input: z.input<typeof consumeMaterialSchema>
+): Promise<ConsumeMaterialResult> {
+  const result: ConsumptionResult = await consumeOnWorkOrder(input, SEAMSTRESS_CONSUMPTION_OPTS)
+  return result as ConsumeMaterialResult
 }
 
 // ============================================================
