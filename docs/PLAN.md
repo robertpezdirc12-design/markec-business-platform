@@ -30,7 +30,7 @@ spodaj, popravi le označene vrzeli in šele nato postavi kljukico.
 | 5 | Urejevalnik z živim predogledom | ✅ | **auto-save (900ms debounce) NAREJEN**; E2E `visual-editor.spec.ts` obstaja |
 | 6 | Predogled, objava, različice | ✅ | **zgodovina objav + vrnitev NAREJEN** + **QR koda NAREJEN** |
 | 7 | Naplačevanje paketov | 🟡 | **javna `/pricing` stran NAREJENA** + **grace tok (opomnik→grace→suspenz) NAREJEN**; ostane samo živi Stripe preizkus |
-| 8 | Jezik in pravni minimum | 🟡 | GDPR izvoz/izbris **DOKAZAN (itest 5/5)**; ostane E2E EN nakup (shop→cart→checkout) |
+| 8 | Jezik in pravni minimum | ✅ | — (E2E EN nakup `e2e/h-en-purchase.spec.ts` zelen; GDPR izvoz/izbris 5/5) |
 | 9 | Kakovost in končni test | 🟡 | **a11y: axe 0 kršitev na 4 javnih straneh (popravljen button-name, živo re-verificirano)**; LCP: 3/4 strani < 1,2 s — landing 3,3 s (ISR follow-up) |
 | 10 | Zaprta beta | ⬜ | ni začeta |
 | 11 | Javni zagon | ⬜ | ni začet |
@@ -228,7 +228,7 @@ postavi ✅ (že).
 **Kaj narediti še:** preizkus "tuj človek sam plača naročnino" (zahteva žive Stripe ključe) — nato
 postavi ✅.
 
-## 8. JEZIK IN PRAVNI MINIMUM — 🟡
+## 8. JEZIK IN PRAVNI MINIMUM — ✅
 
 **Dejansko stanje:**
 - ✅ **EN prevod javnega dela** — `src/app/(public)/en/page.tsx`, i18n dicts (`public.ts`,
@@ -247,7 +247,17 @@ postavi ✅.
   naročilo) OSTANEJO · izvoz po izbrisu blokiran. Implementacija: `exportMyData` +
   `deleteMyAccount(password)` v `src/app/actions/account.ts` (Art. 20 + Art. 17).
 
-**Kaj narediti:** E2E EN nakup (shop → cart → checkout v EN). Nato postavi ✅.
+- ✅ **Angleški uporabnik opravi nakup brez ene slovenske besede** — DOKAZANO Z E2E (2026-11):
+  `e2e/h-en-purchase.spec.ts` (register → objava → EN kontekst → shop → košarica → checkout →
+  naročilo v bazi); test na vsaki strani potrdi odsotnost slovenskih UI nizov (SL_MARKERS),
+  vzorčna vsebina najemnika (defaultSiteContent) je izrecno izvzeta (lastna vsebina, ne UI).
+  Ob tem popravljene LUKNJE V PREVODIH (platforma UI): podnožje (hitre povezave, kontakt,
+  delovni čas, pravne povezave, "Oblikovano s ❤"), iskanje izdelkov, placeholder e-pošte;
+  `formatOpeningHours` dobi locale (dnevi/Zaprto). Popravljena tudi prava napaka prodaje:
+  `trackInventory=false` sedaj RES pomeni "brez sledenja zalogi" (UI, validacija košarice,
+  rezervacija/dekrement/gibanja zalog), prej je bil izdelek z 0 zaloge vedno "Ni na zalogi".
+
+**Kaj narediti:** ✅ narejeno.
 
 ## 9. KAKOVOST IN KONČNI TEST — 🟡
 
