@@ -44,7 +44,7 @@ export default async function StaffPage({ searchParams }: StaffPageProps) {
         </div>
         <div className="flex items-center gap-2">
           {/* 2D-11: varni povratek v WYSIWYG urejevalnik. */}
-          <Link href="/dashboard/settings?tab=branding">
+          <Link href="/dashboard/settings?tab=website">
             <Button variant="ghost" size="sm">
               <ArrowLeftIcon size={16} className="mr-1" /> Urejevalnik
             </Button>

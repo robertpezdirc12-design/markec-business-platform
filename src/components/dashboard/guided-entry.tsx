@@ -199,7 +199,7 @@ export function GuidedEntryBody({
           <p className="text-muted-foreground mt-3 text-xs">
             {dict.contentsNote}{" "}
             <Link
-              href="/dashboard/settings?tab=branding"
+              href="/dashboard/settings?tab=website"
               className="text-primary-text font-medium underline underline-offset-2 hover:underline"
             >
               {dict.contentsNoteLink}

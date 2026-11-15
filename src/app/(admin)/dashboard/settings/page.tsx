@@ -66,37 +66,11 @@ export default async function SettingsPage({
   }
 
   // P2 #43: globinska povezava iz vodenega vstopa — odpre zavihek
-  // "Izgled in vsebina" neposredno (/dashboard/settings?tab=branding).
+  // "Spletna stran" neposredno (/dashboard/settings?tab=website).
   return (
     <SettingsTabs defaultTab={params.tab}
-      basic={
+      company={
         <div className="space-y-6">
-          <PlanUsageCard
-            initial={
-              planContext
-                ? {
-                    planId: planContext.planId,
-                    usage: { ...planContext.usage },
-                  }
-                : null
-            }
-            billing={
-              billing
-                ? {
-                    paymentsConfigured: billing.paymentsConfigured,
-                    subscription: billing.subscription,
-                    history: billing.history.map((e) => ({
-                      id: e.id,
-                      type: e.type,
-                      amountCents: e.amountCents,
-                      currency: e.currency,
-                      createdAt: e.createdAt,
-                    })),
-                  }
-                : null
-            }
-            billingFlag={params.billing ?? null}
-          />
           <PublicationCard
             initial={publication}
             siteHref={org ? `/s/${org.slug}` : null}
@@ -106,13 +80,18 @@ export default async function SettingsPage({
             initialSettings={settings}
             appointmentsEnabled={appointmentsEnabled}
           />
-          {/* E4-2b: owner-supplied analytics (GA4) — optional, honest default = no script. */}
-          <AnalyticsIntegrationCard initialValue={settings.analyticsMeasurementId ?? null} />
           {/* #99: push obvestila lastniku (nov termin, odpoved) */}
           <PushCard />
         </div>
       }
-      modules={
+      website={
+        <div className="space-y-6">
+          <BrandingTabs />
+          <ContentManager />
+          {org && <CustomProfileBuilder orgId={org.id} />}
+        </div>
+      }
+      features={
         <div className="space-y-6">
           {/* F5.4.1: enoten »Moji moduli« zaslon — združuje module (ModulesV2Card)
               in prejšnje module ModulesConfigurator v en pregled. ModulesOverview
@@ -120,19 +99,20 @@ export default async function SettingsPage({
           <ModulesOverview />
           <ModulesConfigurator />
           <ActivitiesCard />
+          <PaymentsSettings />
           <ConfigHistoryCard />
         </div>
       }
-      branding={<BrandingTabs />}
-      payments={<PaymentsSettings />}
-      domains={
-        <DomainsCard
-          initial={domains}
-          sitePath={org ? `/s/${org.slug}` : null}
-        />
+      advanced={
+        <div className="space-y-6">
+          <DomainsCard
+            initial={domains}
+            sitePath={org ? `/s/${org.slug}` : null}
+          />
+          {/* E4-2b: owner-supplied analytics (GA4) — optional, honest default = no script. */}
+          <AnalyticsIntegrationCard initialValue={settings.analyticsMeasurementId ?? null} />
+        </div>
       }
-      customProfile={org ? <CustomProfileBuilder orgId={org.id} /> : null}
-      content={<ContentManager />}
     />
   )
 }

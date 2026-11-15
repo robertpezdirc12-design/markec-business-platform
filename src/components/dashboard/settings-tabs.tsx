@@ -1,105 +1,62 @@
 "use client"
 
-// Client wrapper so the settings page can render all forms inside
-// shadcn Tabs. Contents are force-mounted so unsaved state survives
-// switching between tabs.
+// ============================================================
+// SETTINGS TABS (reorganized 2026-11-15)
+// 7 tabs → 4 logical groups:
+//   🏢 Podjetje       — company info, profile, publication, push
+//   🎨 Spletna stran  — branding, galleries/FAQ, custom profiles
+//   ⚙️ Funkcije       — modules, activities, payments, config history
+//   🔧 Napredno       — domains, analytics
+// ============================================================
 
-import type { ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useI18n } from "@/lib/i18n/provider"
 
 interface SettingsTabsProps {
-  basic: ReactNode
-  modules?: ReactNode
-  branding: ReactNode
-  payments?: ReactNode
-  domains?: ReactNode
-  customProfile?: ReactNode
-  /** F5.5.2 — galerije in vprašanja. */
-  content?: ReactNode
-  /** P2 #43: globinska povezava (npr. /dashboard/settings?tab=branding)
-   * iz vodenega vstopa — privzeti zavihek. Neznana vrednost pade na osnovni. */
   defaultTab?: string
+  company: ReactNode
+  website: ReactNode
+  features: ReactNode
+  advanced: ReactNode
 }
 
-const TAB_IDS = ["basic", "modules", "branding", "payments", "domains", "customProfile", "content"] as const
+const TAB_IDS = ["company", "website", "features", "advanced"] as const
+type TabId = (typeof TAB_IDS)[number]
+
+function resolveTab(value: string | undefined): TabId {
+  return TAB_IDS.includes(value as TabId) ? (value as TabId) : "company"
+}
 
 export function SettingsTabs({
-  basic,
-  modules,
-  branding,
-  payments,
-  domains,
-  customProfile,
-  content,
   defaultTab,
+  company,
+  website,
+  features,
+  advanced,
 }: SettingsTabsProps) {
-  const { t } = useI18n()
-
-  const initial = TAB_IDS.includes((defaultTab ?? "") as (typeof TAB_IDS)[number])
-    ? (defaultTab as string)
-    : "basic"
+  const [tab, setTab] = useState<TabId>(() => resolveTab(defaultTab))
 
   return (
-    <Tabs defaultValue={initial}>
+    <Tabs value={tab} onValueChange={(v) => setTab(v as TabId)}>
       <TabsList>
-        <TabsTrigger value="basic">{t.settings.tabs.basic}</TabsTrigger>
-        {modules && <TabsTrigger value="modules">{t.settings.tabs.modules}</TabsTrigger>}
-        <TabsTrigger value="branding">{t.settings.tabs.branding}</TabsTrigger>
-        {payments && (
-          <TabsTrigger value="payments">{t.settings.tabs.payments}</TabsTrigger>
-        )}
-        {domains && <TabsTrigger value="domains">{t.settings.tabs.domains}</TabsTrigger>}
-        {customProfile && (
-          <TabsTrigger value="customProfile">{t.settings.tabs.customProfile}</TabsTrigger>
-        )}
-        {content && (
-          <TabsTrigger value="content">{t.settings.tabs.content}</TabsTrigger>
-        )}
+        <TabsTrigger value="company">🏢 Podjetje</TabsTrigger>
+        <TabsTrigger value="website">🎨 Spletna stran</TabsTrigger>
+        <TabsTrigger value="features">⚙️ Funkcije</TabsTrigger>
+        <TabsTrigger value="advanced">🔧 Napredno</TabsTrigger>
       </TabsList>
-      <TabsContent value="basic" forceMount className="mt-6 data-[state=inactive]:hidden">
-        {basic}
+
+      <TabsContent value="company" forceMount className="mt-6 data-[state=inactive]:hidden">
+        {company}
       </TabsContent>
-      {modules && (
-        <TabsContent value="modules" forceMount className="mt-6 data-[state=inactive]:hidden">
-          {modules}
-        </TabsContent>
-      )}
-      <TabsContent value="branding" forceMount className="mt-6 data-[state=inactive]:hidden">
-        {branding}
+      <TabsContent value="website" forceMount className="mt-6 data-[state=inactive]:hidden">
+        {website}
       </TabsContent>
-      {payments && (
-        <TabsContent
-          value="payments"
-          forceMount
-          className="mt-6 data-[state=inactive]:hidden"
-        >
-          {payments}
-        </TabsContent>
-      )}
-      {domains && (
-        <TabsContent value="domains" forceMount className="mt-6 data-[state=inactive]:hidden">
-          {domains}
-        </TabsContent>
-      )}
-      {customProfile && (
-        <TabsContent
-          value="customProfile"
-          forceMount
-          className="mt-6 data-[state=inactive]:hidden"
-        >
-          {customProfile}
-        </TabsContent>
-      )}
-      {content && (
-        <TabsContent
-          value="content"
-          forceMount
-          className="mt-6 data-[state=inactive]:hidden"
-        >
-          {content}
-        </TabsContent>
-      )}
+      <TabsContent value="features" forceMount className="mt-6 data-[state=inactive]:hidden">
+        {features}
+      </TabsContent>
+      <TabsContent value="advanced" forceMount className="mt-6 data-[state=inactive]:hidden">
+        {advanced}
+      </TabsContent>
     </Tabs>
   )
 }

@@ -130,7 +130,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         </div>
         <div className="flex flex-wrap gap-2">
           {/* 2D-11: varni povratek v WYSIWYG urejevalnik. */}
-          <Link href="/dashboard/settings?tab=branding">
+          <Link href="/dashboard/settings?tab=website">
             <Button variant="ghost" size="sm">
               <ArrowLeftIcon size={16} className="mr-1" /> Urejevalnik
             </Button>

@@ -202,13 +202,11 @@ export const settingsSl = {
     error: "Napaka pri shranjevanju. Poskusite znova.",
   },
   tabs: {
-    basic: "Osnovne nastavitve",
-    modules: "Moduli",
-    branding: "Izgled in vsebina",
-    payments: "Plačila",
-    domains: "Domene",
-    customProfile: "Lastni profil dejavnosti",
-    content: "Galerije in vprašanja",
+    company: "Podjetje",
+    website: "Spletna stran",
+    features: "Funkcije",
+    advanced: "Napredno",
+    // Stari zavihki (7) združeni v 4 — glej settings-tabs.tsx.
   },
   // F5.5.2 — galerije in pogosta vprašanja (vsebina podjetja).
   content: {
@@ -886,13 +884,11 @@ export const settingsEn: SettingsDict = {
     error: "Saving failed. Please try again.",
   },
   tabs: {
-    basic: "Basic Settings",
-    modules: "Modules",
-    branding: "Branding",
-    payments: "Payments",
-    domains: "Domains",
-    customProfile: "Custom Activity Profile",
-    content: "Galleries & FAQ",
+    company: "Company",
+    website: "Website",
+    features: "Features",
+    advanced: "Advanced",
+    // Old tabs (7) merged into 4 — see settings-tabs.tsx.
   },
   // F5.5.2 — galleries and frequently asked questions (business content).
   content: {

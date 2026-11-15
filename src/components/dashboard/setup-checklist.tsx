@@ -98,7 +98,7 @@ export function SetupChecklistCard({
   guidedEntryDict,
 }: SetupChecklistCardProps) {
   const router = useRouter()
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(false)
   const [pending, startTransition] = useTransition()
   const [copied, setCopied] = useState(false)
   const confettiFired = useRef(false)

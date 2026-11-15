@@ -35,9 +35,11 @@ import { auth } from "@/lib/auth/auth"
 import { getEffectivePermissions } from "@/lib/permissions/effective"
 import { hasPermission } from "@/lib/permissions/roles"
 import { getSessionOrg } from "@/lib/tenant"
+import { getSessionPlanContext } from "@/lib/plans/resolve"
 import { ShareLinkCard } from "@/components/dashboard/share-link-card"
 import { GuidedEntryGate } from "@/components/dashboard/guided-entry"
 import { SetupChecklistCard } from "@/components/dashboard/setup-checklist"
+import { PlanCompactCard } from "@/components/dashboard/plan-compact-card"
 import {
   buildSetupChecklist,
   parseSetupChecklistUi,
@@ -106,7 +108,7 @@ export default async function AdminDashboard() {
     )
   }
 
-  const [stats, todaysAppointments, recentActivities, revenueStats] =
+  const [stats, todaysAppointments, recentActivities, revenueStats, planContext] =
     await Promise.all([
       canAppointments
         ? getDashboardStats()
@@ -120,6 +122,9 @@ export default async function AdminDashboard() {
       canFinances
         ? getRevenueStats()
         : Promise.resolve(null as RevenueStats | null),
+      canManageSettings
+        ? getSessionPlanContext()
+        : Promise.resolve(null),
     ])
 
   // Capability-gated dashboard (EPIC #1 §21): irrelevant modules never render.
@@ -768,6 +773,12 @@ export default async function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Plan status — compact card showing current plan + top usage bars.
+          Moved from Settings (2026-11-15) — plan is STATUS, not config. */}
+      {planContext && (
+        <PlanCompactCard planContext={planContext} />
+      )}
 
       {/* Owner growth helper (research-backed): public link + Instagram bio
           + Google Business Profile — visible only to settings managers. */}
