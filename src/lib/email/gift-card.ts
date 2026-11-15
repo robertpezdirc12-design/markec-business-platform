@@ -1,7 +1,7 @@
 import { Resend } from "resend"
 import { render } from "@react-email/components"
 import { GiftCardTemplate } from "./templates/gift-card-template"
-import { isEmailServiceConfigured } from "./config"
+import { getEmailConfig } from "./config"
 
 // ============================================================
 // DARILNI BON (#80) — pošiljanje kode po nakupu. Non-blocking:
@@ -31,8 +31,13 @@ export async function sendGiftCardEmail({
   salonName,
   expiresAt,
 }: SendGiftCardEmailParams) {
-  if (!isEmailServiceConfigured()) {
-    return { success: false, error: "Email service not configured" }
+  const config = getEmailConfig()
+  if (!config) {
+    return {
+      success: false,
+      notConfigured: true,
+      error: "Email service not configured",
+    }
   }
 
   try {
@@ -47,7 +52,7 @@ export async function sendGiftCardEmail({
     )
 
     const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL!,
+      from: config.from,
       to: email,
       subject: `Darilni bon ${faceValue.toFixed(2)} € — ${salonName} (koda: ${code})`,
       html,

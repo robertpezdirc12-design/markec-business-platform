@@ -1,4 +1,5 @@
 import { Resend } from "resend"
+import { getEmailConfig } from "./config"
 import { render } from "@react-email/components"
 import { AppointmentExpiredTemplate } from "./templates/appointment-expired-template"
 
@@ -25,6 +26,15 @@ export async function sendAppointmentExpiredEmail({
   appointmentTime,
   depositAmount,
 }: SendAppointmentExpiredParams) {
+  const config = getEmailConfig()
+  if (!config) {
+    return {
+      success: false,
+      notConfigured: true,
+      error: "Email service not configured",
+    }
+  }
+
   try {
     const html = await render(
       AppointmentExpiredTemplate({
@@ -38,7 +48,7 @@ export async function sendAppointmentExpiredEmail({
     )
 
     const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL!,
+      from: config.from,
       to: email,
       subject: `Appointment Cancelled - Payment Not Received`,
       html,

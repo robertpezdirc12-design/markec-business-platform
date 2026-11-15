@@ -1,4 +1,5 @@
 import { Resend } from "resend"
+import { getEmailConfig } from "./config"
 import { render } from "@react-email/components"
 import { AppointmentConfirmationTemplate } from "./templates/appointment-confirmation-template"
 import { formatDateStandard } from "@/lib/utils/format"
@@ -32,6 +33,15 @@ export async function sendAppointmentConfirmationEmail({
   depositAmount,
   appointmentId,
 }: SendAppointmentConfirmationParams) {
+  const config = getEmailConfig()
+  if (!config) {
+    return {
+      success: false,
+      notConfigured: true,
+      error: "Email service not configured",
+    }
+  }
+
   try {
     const html = await render(
       AppointmentConfirmationTemplate({
@@ -48,7 +58,7 @@ export async function sendAppointmentConfirmationEmail({
     )
 
     const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL!,
+      from: config.from,
       to: email,
       subject: `Appointment Confirmed - ${serviceName} on ${formatDateStandard(new Date(appointmentDate))}`,
       html,
