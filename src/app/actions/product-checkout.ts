@@ -94,6 +94,14 @@ export async function applyOrderStockDecrement(
   orgId: string,
   orderId: string
 ): Promise<void> {
+  // Brez sledenja zalogi (#78) ni kaj odštevati niti knjižiti — prodaja
+  // ostane zabeležena v Order/OrderItem, gibanja zaloge ni.
+  const policy = await rowStockPolicy(
+    tx,
+    item.variantId ? "ProductVariant" : "Product",
+    item.variantId ?? item.productId
+  )
+  if (policy.exists && !policy.tracked) return
   if (item.variantId) {
     // P1-D-1A — direktna prodaja sme odšteti le RAZPOLOŽLJIVO zalogo
     // (stockQuantity − reservedQuantity), ne posegati v že rezervirano.
@@ -151,16 +159,22 @@ export async function applyOrderStockDecrement(
 /** SQL pogoj: razpoložljivo >= qty. */
 const AVAIL = `"stockQuantity" - "reservedQuantity" >= $2::int`
 
-async function rowExists(
+/**
+ * Politika zaloge vrstice: ali vrstica obstaja in ali se zaloga sploh šteje
+ * (#78 trackInventory: false → brez sledenja, brez knjiženja zaloge).
+ */
+async function rowStockPolicy(
   tx: Prisma.TransactionClient,
   table: "Product" | "ProductVariant",
   id: string
-): Promise<boolean> {
-  const r = await tx.$queryRawUnsafe<{ n: number }[]>(
-    `SELECT 1::int AS n FROM "${table}" WHERE "id" = $1 LIMIT 1`,
+): Promise<{ exists: boolean; tracked: boolean }> {
+  const r = await tx.$queryRawUnsafe<{ track: boolean }[]>(
+    `SELECT "trackInventory" AS track FROM "${table}" WHERE "id" = $1 LIMIT 1`,
     id
   )
   return r.length === 1
+    ? { exists: true, tracked: r[0].track }
+    : { exists: false, tracked: true }
 }
 
 /**
@@ -176,7 +190,10 @@ export async function reserveStock(
 ): Promise<boolean> {
   const table = item.variantId ? "ProductVariant" : "Product"
   const id = item.variantId ?? item.productId
-  if (!(await rowExists(tx, table, id))) return false
+  const policy = await rowStockPolicy(tx, table, id)
+  if (!policy.exists) return false
+  // Brez sledenja zalogi ni kaj rezervirati — uspeh brez spremembe.
+  if (!policy.tracked) return true
   const r = await tx.$executeRawUnsafe(
     `UPDATE "${table}" SET "reservedQuantity" = "reservedQuantity" + $2::int
      WHERE "id" = $1::text AND ${AVAIL}`,
@@ -196,6 +213,10 @@ export async function releaseStockReservation(
 ): Promise<boolean> {
   const table = item.variantId ? "ProductVariant" : "Product"
   const id = item.variantId ?? item.productId
+  // Brez sledenja zalogi ni bilo rezervacije — uspeh brez spremembe.
+  const policy = await rowStockPolicy(tx, table, id)
+  if (!policy.exists) return false
+  if (!policy.tracked) return true
   const r = await tx.$executeRawUnsafe(
     `UPDATE "${table}" SET "reservedQuantity" = "reservedQuantity" - $2::int
      WHERE "id" = $1::text AND "reservedQuantity" >= $2::int`,
@@ -219,6 +240,11 @@ export async function convertReservationToSale(
 ): Promise<boolean> {
   const table = item.variantId ? "ProductVariant" : "Product"
   const id = item.variantId ?? item.productId
+  // Brez sledenja zalogi ni rezervacije niti knjiženja — prodaja je v
+  // evidencah (Order/OrderItem), zaloge se ne dotikamo.
+  const policy = await rowStockPolicy(tx, table, id)
+  if (!policy.exists) return false
+  if (!policy.tracked) return true
   const r = await tx.$executeRawUnsafe(
     `UPDATE "${table}"
      SET "stockQuantity" = "stockQuantity" - $2::int,

@@ -113,7 +113,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   }
   if (inStock === "1") {
     products = products.filter(
-      (p) => computeAvailableStock(p.stockQuantity, p.reservedQuantity) > 0
+      (p) => computeAvailableStock(p.stockQuantity, p.reservedQuantity, p.trackInventory) > 0
     )
   }
   products = sortProducts(
@@ -193,7 +193,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {products.map((product) => {
             // F6.1: razpoložljivo upošteva rezervirano zalogo (stock − reserved).
-            const available = computeAvailableStock(product.stockQuantity, product.reservedQuantity)
+            const available = computeAvailableStock(product.stockQuantity, product.reservedQuantity, product.trackInventory)
             const inStock = available > 0
             const imageUrl = product.images?.[0] || null
 

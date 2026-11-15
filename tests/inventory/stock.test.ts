@@ -8,7 +8,7 @@
 // ============================================================
 
 import { describe, it, expect } from "vitest"
-import { computeStockDelta, computeAvailableStock } from "@/lib/inventory/stock"
+import { computeStockDelta, computeAvailableStock, UNLIMITED_STOCK } from "@/lib/inventory/stock"
 
 describe("E2-2 computeStockDelta — receipts (IN)", () => {
   it("adds to the current stock", () => {
@@ -95,5 +95,26 @@ describe("F6.1 computeAvailableStock — razpoložljiva zaloga", () => {
   it("decimalni vnosi se zaokrožijo navzdol (floor) → nikoli negativni", () => {
     expect(computeAvailableStock(10.9, 3.2)).toBe(7)
     expect(computeAvailableStock(1.9, 2.1)).toBe(0)
+  })
+})
+
+// #78 — trackInventory=false: zaloga se NE šteje, izdelek je prodajljiv
+// vedno in brez omejitve količine (tudi ob 0 kosih).
+describe("#78 computeAvailableStock — brez sledenja zalogi", () => {
+  it("trackInventory=false → neomejena količina tudi ob 0 kosih", () => {
+    expect(computeAvailableStock(0, 0, false)).toBe(UNLIMITED_STOCK)
+    expect(computeAvailableStock(0, 5, false)).toBe(UNLIMITED_STOCK)
+  })
+  it("trackInventory=true → normalno štetje", () => {
+    expect(computeAvailableStock(0, 0, true)).toBe(0)
+    expect(computeAvailableStock(10, 3, true)).toBe(7)
+  })
+  it("trackInventory manjka/null → privzeto se šteje (združljivost)", () => {
+    expect(computeAvailableStock(0, 0)).toBe(0)
+    expect(computeAvailableStock(0, 0, null)).toBe(0)
+    expect(computeAvailableStock(10, 3, undefined)).toBe(7)
+  })
+  it("neomejena količina je vedno > zahtevane količine (validacija košarice)", () => {
+    expect(UNLIMITED_STOCK).toBeGreaterThan(Number.MAX_SAFE_INTEGER - 1)
   })
 })

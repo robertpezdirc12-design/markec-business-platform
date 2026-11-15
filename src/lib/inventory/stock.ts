@@ -48,11 +48,20 @@ export function computeStockDelta(
  * Semantika (F5.5.1.2): RAZPOLOŽLJIVO = stockQuantity − reservedQuantity.
  * Rezultat je vedno ≥ 0 (rezervirano ne sme prekiniti na negativno) in je
  * enotni vir resnice za javni prikaz, košarico in checkout UI. Pure, test.
+ *
+ * Sledenje zalogi (`trackInventory`, #78): ko je IZKLOPLJENO, se zaloga ne
+ * šteje — izdelek je prodajljiv vedno in brez omejitve količine, tudi ob 0
+ * kosih. Ker vsi prikazi/validacije temeljijo na razpoložljivi količini
+ * (število), vrnemo "neomejeno" kot veliko, a končno celo število.
  */
+export const UNLIMITED_STOCK = Number.MAX_SAFE_INTEGER
+
 export function computeAvailableStock(
   stock: number,
-  reserved: number
+  reserved: number,
+  trackInventory?: boolean | null
 ): number {
+  if (trackInventory === false) return UNLIMITED_STOCK
   if (!Number.isFinite(stock) || !Number.isFinite(reserved)) return 0
   return Math.max(0, Math.floor(stock) - Math.floor(reserved))
 }

@@ -90,7 +90,7 @@ const ProductDetails = async ({ params }: ProductDetailsProps) => {
   const orgSlug = site?.org.slug ?? null
   // F6.1: razpoložljivo upošteva rezervirano zalogo (stock − reserved); tako
   // za prikaz, SEO JSON-LD in omejitev količine v košarici.
-  const available = computeAvailableStock(product.stockQuantity, product.reservedQuantity)
+  const available = computeAvailableStock(product.stockQuantity, product.reservedQuantity, product.trackInventory)
   const inStock = available > 0
   const mainImage = product.images?.[0] || null
 

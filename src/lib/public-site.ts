@@ -395,16 +395,18 @@ export async function getPublicProductVariants(orgId: string, productId: string)
       price: true,
       stockQuantity: true,
       reservedQuantity: true,
+      trackInventory: true,
     },
   })
   // F6.1: razpoložljiva zaloga variante upošteva rezervirano (stock − reserved),
-  // enako semantiko kot za izdelek (F5.5.1.2).
+  // enako semantiko kot za izdelek (F5.5.1.2). Brez sledenja zalogi je
+  // količina neomejena (trackInventory sam ni izpostavljen).
   return variants.map((v) => ({
     id: v.id,
     name: v.name,
     sku: v.sku,
     price: v.price ? v.price.toNumber() : null,
-    stockQuantity: computeAvailableStock(v.stockQuantity, v.reservedQuantity),
+    stockQuantity: computeAvailableStock(v.stockQuantity, v.reservedQuantity, v.trackInventory),
   }))
 }
 

@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { getPublicOrg } from "@/lib/tenant"
+import { computeAvailableStock } from "@/lib/inventory/stock"
 import { CartItem } from "@/store/cart-store";
 
 export async function validateCartStock(items: CartItem[]) {
@@ -65,9 +66,10 @@ export async function validateCartStock(items: CartItem[]) {
     const stock = variant ?? product
     const validItem = product && (item.variantId ? !!variant : true)
     // F5.5.1.2 — RAZPOLOŽLJIVO = stockQuantity − reservedQuantity (online
-    // rezervacije ne štejejo med razpoložljive).
+    // rezervacije ne štejejo med razpoložljive). Izdelek BREZ sledenja
+    // zalogi (#78) je prodajljiv vedno — količina ni omejena.
     const available = stock
-      ? stock.stockQuantity - (stock.reservedQuantity ?? 0)
+      ? computeAvailableStock(stock.stockQuantity, stock.reservedQuantity ?? 0, stock.trackInventory)
       : 0
     if (!validItem || !stock || available < item.quantity) {
       errors.push({
