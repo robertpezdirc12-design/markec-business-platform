@@ -47,6 +47,10 @@ const nextConfig: NextConfig = {
   // dev strežnikom —NEXT_DIST_DIR preusmeri izpis (npr. .next-analysis),
   // da ne poškoduje dev strežnikovega .next. Produkcija ostane ".next".
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  // T9 (bundle analiza 2026-11): analitični build z virskimi mapami
+  // (NEXT_ANALYZE=1) omogoči atribucijo chunkov → moduli; produkcija
+  // map NE izdaja (večji prenos).
+  productionBrowserSourceMaps: process.env.NEXT_ANALYZE === "1",
   // Turbopack: določi koren projekta eksplicitno (v Windows okolju z več
   // lockfiles je Next sprva izbral napačen koren → ni razrešil tailwindcss).
   turbopack: {

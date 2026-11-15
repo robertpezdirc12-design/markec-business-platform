@@ -8,7 +8,15 @@ import { AccentSpan, splitLastWord } from "@/components/landing/section-title"
 import { useI18n } from "@/lib/i18n/provider"
 import { cloudinaryPresets } from "@/lib/utils/cloudinary"
 import { displayAuthor } from "@/lib/utils/author"
-import { ReviewForm } from "@/components/reviews/review-form"
+import dynamic from "next/dynamic"
+
+// T9 (bundle analiza): ReviewForm vleče react-hook-form + zod + dialog +
+// date-fns (~200 KB raw) — na LANDING to naloži šele interakcija oz.
+// redki profili brez storitev (showForm), ne vsak obiskovalec.
+const ReviewForm = dynamic(
+  () => import("@/components/reviews/review-form").then((m) => m.ReviewForm),
+  { ssr: false, loading: () => null }
+)
 
 export interface LandingTestimonial {
   id: string

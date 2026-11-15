@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cn } from "@/lib/utils"
-import { ChevronRightIcon, DotsHorizontalIcon } from "@radix-ui/react-icons"
+import { CaretRightIcon, DotsHorizontalIcon } from "@/components/icons"
 
 const Breadcrumb = React.forwardRef<
   HTMLElement,
@@ -82,7 +82,7 @@ const BreadcrumbSeparator = ({
     className={cn("[&>svg]:w-3.5 [&>svg]:h-3.5", className)}
     {...props}
   >
-    {children ?? <ChevronRightIcon />}
+    {children ?? <CaretRightIcon />}
   </li>
 )
 BreadcrumbSeparator.displayName = "BreadcrumbSeparator"
