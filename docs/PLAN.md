@@ -23,7 +23,7 @@ spodaj, popravi le označene vrzeli in šele nato postavi kljukico.
 
 | Točka | Naslov | Status | Kaj manjka |
 |---|---|---|---|
-| 1 | Varnost in higiena | 🟡 | **rate-limit … NAREJEN**; **backup obnova ✅**; **email senderji 16/16 fail-closed ✅ (2026-11-15)**; ostane le zunanja SPF/DKIM/DMARC + `RESEND_API_KEY`/`RESEND_FROM_EMAIL` |
+| 1 | Varnost in higiena | 🟡 | **rate-limit, backup obnova, email senderji 16/16 ✅**; SPF/DKIM/MX že v DNS; ostane: `RESEND_API_KEY` + `RESEND_FROM_EMAIL` in **en sam** `_dmarc` zapis — preveri z `pnpm mail:check` |
 | 2 | Katalog dejavnosti (SKD 2025) | ✅ | — (1725 zapisov / 678 podrazredov, preskok, 21 področij, iskalnik) |
 | 3 | Predeloki za dejavnosti | ✅ | le preveriti, da vsak arhetip dobi prave module (dokaz E2E) |
 | 4 | Knjižnica slik | ✅ | **Cloudinary auto-rezanje (2000px + q_auto/f_auto) NAREJEN**; hero zamenjava tu |
@@ -64,23 +64,25 @@ baze iz backupa.
   - cron `api/cron/tick` čisti zastarele vrstice (`purgeExpiredRateLimits`);
   - enotni test `tests/security/rate-limit.test.ts` (8/8) + lint čist + E2E smoke potrjeno
     (2. klic pri limit 2 vrne `ok:false`, `retryAfterMs` > 0).
-- ⬜ **SPF/DKIM/DMARC** — PREVERJENO V DNS (2026-11-15, domena `rcbeautysalon.org` iz
-  `PLATFORM_ADMIN_EMAILS`): na korenu **ni `TXT` SPF zapisa**, `_dmarc` ima **dva
-  nasprotujoča si zapisa** (`p=none` in `p=quarantine`), MX zapisa ni, DKIM
-  selektorja ni mogoče preveriti. Dodaten blokator: med 30 Vercelovimi
-  spremenljivkami manjkata `RESEND_API_KEY` in `RESEND_FROM_EMAIL`, zato
-  pošiljanje e-pošte v produkciji sploh ni vklopljeno. **Koda je zdaj utrjena
-  (2026-11-15):** vseh 16 pošiljateljev v `src/lib/email/` je fail-closed prek
-  `getEmailConfig()` — brez ključa ali brez pošiljatelja ne pokličejo Resenda in
-  vrnejo `notConfigured: true` (prej jih je bilo utrjenih le 5, ostali so
-  pošiljali placeholder ključ → 401 in `from: undefined`). Preostali blokator je
-  torej **izključno zunanja konfiguracija**, ne več koda; dodatne spremembe kode
-  ob vnosu ključev niso potrebne.
-  **Kje se ureja:** avtoritativni NS sta `ns75.domaincontrol.com` in
-  `ns76.domaincontrol.com` (GoDaddy), ne Vercel — `GET /v3/domains/rcbeautysalon.org`
-  vrne 403, projekt ima v Vercelu samo `rcbeautysalon-phi.vercel.app`. Zapise je torej
-  treba urediti v GoDaddy DNS konzoli; točno DKIM vrednost dobiš šele ob potrditvi
-  domene pri ponudniku pošte (Resend).
+- ⬜ **SPF/DKIM/DMARC** — PONOVNO, NATANČNEJE PREVERJENO V DNS (2026-11-15, domena
+  `rcbeautysalon.org`): **SPF in DKIM sta ŽE pravilno nastavljena**, le ne na korenu —
+  `send.rcbeautysalon.org` ima `TXT v=spf1 include:amazonses.com ~all` in MX
+  `feedback-smtp.us-east-1.amazonses.com`, `resend._domainkey.rcbeautysalon.org` pa
+  DKIM `p=…`. Prejšnji zapis »SPF manjka / DKIM ni preverljiv« je bil **napačen**;
+  zato zapisov **ne dodajaj na koren**. Edini resnični DNS defekt sta **dva
+  nasprotujoča si `_dmarc` zapisa** (`p=none` in `p=quarantine`) — obdrži natanko
+  enega. Preostali blokator: v Vercelu (30 spremenljivk) še vedno manjkata
+  `RESEND_API_KEY` in `RESEND_FROM_EMAIL`. **Koda je utrjena:** vseh 16 pošiljateljev
+  v `src/lib/email/` je fail-closed prek `getEmailConfig()` — brez ključa ali brez
+  pošiljatelja ne pokličejo Resenda in vrnejo `notConfigured: true` (prej le 5 od 16,
+  ostali so pošiljali placeholder ključ → 401 in `from: undefined`). Spremembe kode ob
+  vnosu ključev torej niso potrebne; blokator je **izključno zunanja konfiguracija**.
+  **Preverjanje z enim ukazom:** `pnpm mail:check` (`scripts/check-mail-setup.mjs`,
+  `tests/mail-setup.test.ts`, runbook `docs/MAIL-SETUP.md`) — trenutno vrne kodo 1 z
+  natanko tremi napakami: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `DMARC`.
+  **Kje se ureja DNS:** avtoritativni NS `ns75`/`ns76.domaincontrol.com` (GoDaddy),
+  ne Vercel — `GET /v3/domains/rcbeautysalon.org` → 403, projekt ima samo
+  `rcbeautysalon-phi.vercel.app`.
 - ✅ **Test obnove baze iz backupa** — NAREJEN (2026-11-15): Neon
   `POST /branches/{main}/snapshot` → `snap-still-thunder-b7af41ta`,
   `POST /snapshots/{id}/restore` v **novo** začasno vejo `br-wispy-block-b743uq3e`
@@ -93,12 +95,13 @@ baze iz backupa.
   ob izpadu baze (`src/app/actions/forms.ts:179-189`); tudi `checkout-promo.ts` uporablja
   `promo:ip`. Vsi javni vstopni točki so torej pokriti.
 
-**Kaj narediti še:** (1) nastavi `RESEND_API_KEY` + `RESEND_FROM_EMAIL` in potrdi
-domeno pri ponudniku pošte (od tam vzameš točen DKIM `TXT` in SPF vrednost);
-(2) **v GoDaddy DNS konzoli** (`ns75`/`ns76.domaincontrol.com`) odpravi podvojeni
-`_dmarc` zapis (obdrži enega, `p=quarantine` ali `p=reject`), dodaj en `TXT` SPF
-in DKIM zapis; (3) ponovno preveri DNS. **Obnovitveni preizkus je ✅.** Šele nato
-postavi ✅ pri točki 1.
+**Kaj narediti še:** (1) v Resendu potrdi domeno/obstoječi DKIM in ustvari API ključ,
+v Vercelu nastavi `RESEND_API_KEY` + `RESEND_FROM_EMAIL` (na potrjeni domeni);
+(2) **v GoDaddy DNS konzoli** (`ns75`/`ns76.domaincontrol.com`) izbriši enega od
+dveh `_dmarc` zapisov (obdrži `p=quarantine` ali `p=reject`) — obstoječih SPF / DKIM /
+MX zapisov **ne spreminjaj**; (3) po propagaciji poženi `pnpm mail:check`, ki mora
+vrniti `0`. **Obnovitveni preizkus ✅, email senderji 16/16 ✅.** Šele nato postavi ✅
+pri točki 1.
 
 ## 2. KATALOG DEJAVNOSTI — ✅
 
