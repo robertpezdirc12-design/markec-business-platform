@@ -22,6 +22,7 @@ import { getServerI18n } from "@/lib/i18n/server"
 import { requirePagePermission } from "@/lib/auth/guards"
 import { formatDateStandard } from "@/lib/utils/format"
 import { AdminCalendar } from "@/components/dashboard/admin-calendar"
+import { EmptyState } from "@/components/ui/empty-state"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const statusColors: Record<string, string> = {
@@ -164,21 +165,15 @@ export default async function AppointmentsPage() {
             </CardHeader>
             <CardContent>
               {appointments.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <CalendarIcon size={48} className="mb-4 text-muted-foreground" />
-                  <h3 className="text-lg font-medium">
-                    {t.appointments.list.emptyTitle}
-                  </h3>
-                  <p className="mb-4 text-sm text-muted-foreground">
-                    {t.appointments.list.emptyDescription}
-                  </p>
-                  <Link href="/dashboard/appointments/new">
-                    <Button>
-                      <PlusIcon size={16} className="mr-2" />
-                      {t.appointments.list.newAppointment}
-                    </Button>
-                  </Link>
-                </div>
+                <EmptyState
+                  icon={<CalendarIcon size={48} />}
+                  title={t.appointments.list.emptyTitle}
+                  description={t.appointments.list.emptyDescription}
+                  action={{
+                    label: t.appointments.list.newAppointment,
+                    href: "/dashboard/appointments/new",
+                  }}
+                />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">

@@ -18,6 +18,7 @@ import {
   DotsHorizontalIcon,
 } from "@/components/icons"
 import { QuickBookingLink } from "@/components/dashboard/quick-booking-link"
+import { EmptyState } from "@/components/ui/empty-state"
 import { getAdminServices, getServiceStats } from "@/app/actions/services"
 import { formatCurrency } from "@/lib/utils/format"
 import { ServiceSearch } from "@/components/dashboard/service-search"
@@ -111,22 +112,23 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
 
       {/* Services Grid */}
       {services.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <ScissorsIcon size={48} className="text-muted-foreground mb-4" />
-            <p className="text-muted-foreground text-lg">
-              {search ? t.services.noServicesFound : t.services.noServicesYet}
-            </p>
-            {!search && (
-              <Link href="/dashboard/services/new" className="mt-4">
-                <Button>
-                  <PlusIcon size={16} className="mr-2" />
-                  {t.services.addFirstService}
-                </Button>
-              </Link>
-            )}
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<ScissorsIcon size={48} />}
+          title={search ? t.services.noServicesFound : t.services.noServicesYet}
+          description={
+            search
+              ? "Poskusite z drugim iskanjem ali počistite filtre."
+              : "Dodajte prvo storitev, da začnete s prodajo."
+          }
+          action={
+            search
+              ? undefined
+              : {
+                  label: t.services.addFirstService,
+                  href: "/dashboard/services/new",
+                }
+          }
+        />
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {services.map((service) => (
