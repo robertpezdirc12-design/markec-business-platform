@@ -8,3 +8,5 @@ onlyBuiltDependencies:
   - prisma
   - sharp
   - unrs-resolver
+patchedDependencies:
+  zod@4.1.12: patches/zod@4.1.12.patch
