@@ -31,7 +31,7 @@ spodaj, popravi le označene vrzeli in šele nato postavi kljukico.
 | 6 | Predogled, objava, različice | ✅ | **zgodovina objav + vrnitev NAREJEN** + **QR koda NAREJEN** |
 | 7 | Naplačevanje paketov | 🟡 | **javna `/pricing` stran NAREJENA** + **grace tok (opomnik→grace→suspenz) NAREJEN**; ostane samo živi Stripe preizkus |
 | 8 | Jezik in pravni minimum | ✅ | — (E2E EN nakup `e2e/h-en-purchase.spec.ts` zelen; GDPR izvoz/izbris 5/5) |
-| 9 | Kakovost in končni test | 🟡 | **a11y: axe 0 kršitev na 4 javnih straneh (popravljen button-name, živo re-verificirano)**; JS bundle: vse javne strani < 400 KB gzip (2026-11-15); LCP: po deploy-u re-meriti (pričakovano landing ≈ 2,0–2,2 s) |
+| 9 | Kakovost in končni test | 🟡 | **a11y: axe 0 kršitev na 4 javnih straneh (živo re-verificirano 2026-11-15)**; JS bundle: vse javne strani < 400 KB gzip; LCP re-merjeno: pricing 2,3 s ✓, ostale 2,8–3,3 s v najhujšem lab primeru (realna 4G/5G 1–1,5 s; optional: ISR) |
 | 10 | Zaprta beta | ⬜ | ni začeta |
 | 11 | Javni zagon | ⬜ | ni začet |
 | 12+ | Po zagonu | ⬜ | ni začeto |
@@ -289,8 +289,19 @@ postavi ✅.
       **1218/353 KB**, pricing 1415/394 → **1169/337 KB**; product/cart 580/177 KB nespremenjeno.
     - Preostanek: ~300 KB raw je React+Next okvir (nepogrešljiv), ~209 KB Phosphor ikone
       (77 ikon × vse uteži — morebiten naslednji korak: samo-regular uteži), ~200 KB i18n/registry.
-    - **Ostalo:** LCP landinga re-meriti s `scripts/f9-a11y-lcp-prod.mjs` proti PRODUKCIJI po
-      naslednjem deploy-u (pričakovanje: −0,5–0,7 s → landing ≈ 2,0–2,2 s < 2,5 s ✓).
+    - **Ostalo:** LCP re-meritev po deploy-u (2026-11-15, `f9-a11y-lcp-prod.mjs`, 2 vožnji):
+      a11y **0 kršitev** na vseh 4 straneh; LCP v najhujšem lab primeru (Fast-3G + 4× CPU):
+      pricing **2,31–2,34 s** ✓, landing 2,85–2,89 s, shop 2,95–3,28 s, tenant home 3,17 s.
+      Analiza kritične poti (nov `_probe` vodopad): TTFB ~350 ms toplo / ~1,5 s hladen zagon
+      (Vercel funkcija), HTML + **CSS parse 200 KB raw na 4× CPU ≈ 0,6–0,9 s** — to je zdaj
+      glavni zaviralec (FP tudi brez JS 1,7 s); JS izpadi so drugotni (+0,7 s).
+      Preizkušeno in ZAVRNJENO: `experimental.optimizeCss` (critters) — na Tailwind v4 @layer
+      vgradi le 0,9 KB (no-op), ne splača se eksperimentalne zastavice.
+      Opravljeno dodatno: paralelizacija poizvedb shop strani (Promise.all — pravila 1/3/4).
+      **Presoja:** Fast-3G + 4× CPU je Lighthouse najhujši lab primer; realna 4G/5G omrežja
+      so 1–1,5 s (p75 < 2,5 s brez težave, kot plan že ugotavlja). Strog lab kriterij je
+      izpolnjen na pricing; preostale strani so 2,8–3,3 s — edini preostali vzvod je
+      ISR/prednalaganje najemniških strani (srednje velik refactor — optional follow-up).
   - Kontekst: Fast-3G + 4× CPU je Lighthouse najslabši primer; na realnem 4G/5G (10–50 Mbps) je
     LCP teh strani ≈ 1–1,5 s — polje (p75) bo mejo 2,5 s prestalo brez težave.
 - ✅ **Dostopnost brez kritičnih napak** — DOKAZANO Z AXE (2026-11-14, produkcija, wcag2a+aa):
