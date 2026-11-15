@@ -80,7 +80,7 @@
 
 1. **Zunanji monitor razpoložljivosti** (npr. UptimeRobot / Better Stack / Vercel Observability): interval 5 min na `GET /api/health`, opozorilo ob != 200 ali > 2 s. To je edini signal, ki ga je mogoče avtomatizirati brez prijave — notranja končna točka ostane fail-closed (prijava operaterja), po mnenju načrta namenoma brez dodatnega skrivnega žetona.
 2. **Napake webhookov**: prag — opozorilo, ko `webhookFailures.last24h >= 20` (notranja končna točka ali ploščica na `/platform`). Vzrok je skoraj vedo napačno konfiguriran endpoint v Stripe računu najemnika (glej razloge v dnevniku napak na `/platform`).
-3. **Migracije**: `migrations.unfinished > 0` = deploy ni zaključen (Vercel build poganja `prisma migrate deploy` — neuspel build pomeni, da je ohranjen zadnji delujoč deployment, §3). Preveri Vercel build log.
+3. **Migracije**: `migrations.unfinished > 0` = deploy ni zaključen (**samo produkcijski** Vercel build poganja `prisma migrate deploy`; od 2026-11-15 ga Preview preskoči — glej `docs/DEPLOYMENT-DB-ISOLATION.md`. Neuspel build pomeni, da je ohranjen zadnji delujoč deployment, §3). Preveri Vercel build log.
 4. **Baza**: Neon nadzorna plošča (poraba, PITR ohranjenost) + §1 postopki.
 
 ### 6.3 Razlaga števcev napak webhookov (razlogi)
