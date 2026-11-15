@@ -23,7 +23,7 @@ spodaj, popravi le označene vrzeli in šele nato postavi kljukico.
 
 | Točka | Naslov | Status | Kaj manjka |
 |---|---|---|---|
-| 1 | Varnost in higiena | 🟡 | **rate-limit login/register/forgot/reset/resend/inquiry NAREJEN**; ostalo: SPF/DKIM/DMARC, backup obnova |
+| 1 | Varnost in higiena | 🟡 | **rate-limit … NAREJEN**; **backup obnova ✅ (2026-11-15)**; ostane SPF/DKIM/DMARC — brez `RESEND_API_KEY`/`RESEND_FROM_EMAIL` v Vercelu pošiljatelj ni nastavljen |
 | 2 | Katalog dejavnosti (SKD 2025) | ✅ | — (1725 zapisov / 678 podrazredov, preskok, 21 področij, iskalnik) |
 | 3 | Predeloki za dejavnosti | ✅ | le preveriti, da vsak arhetip dobi prave module (dokaz E2E) |
 | 4 | Knjižnica slik | ✅ | **Cloudinary auto-rezanje (2000px + q_auto/f_auto) NAREJEN**; hero zamenjava tu |
@@ -35,6 +35,12 @@ spodaj, popravi le označene vrzeli in šele nato postavi kljukico.
 | 10 | Zaprta beta | ⬜ | ni začeta |
 | 11 | Javni zagon | ⬜ | ni začet |
 | 12+ | Po zagonu | ⬜ | ni začeto |
+
+> **Infrastruktura izven 12 točk (2026-11-15, ✅):** Vercel Preview / Neon izolacija —
+> ločena `preview` veja, per-target `DATABASE_URL` + `DIRECT_URL`, `directUrl` v
+> `prisma/schema.prisma`, produkcijski-only `migrate deploy` gate, `npm run db:drift`
+> in `docs/DEPLOYMENT-DB-ISOLATION.md`. Ročno ostane le FAZA 3.4 (Neon↔Vercel
+> zastavica v konzoli) in rotacija API ključev.
 
 ---
 
@@ -58,14 +64,29 @@ baze iz backupa.
   - cron `api/cron/tick` čisti zastarele vrstice (`purgeExpiredRateLimits`);
   - enotni test `tests/security/rate-limit.test.ts` (8/8) + lint čist + E2E smoke potrjeno
     (2. klic pri limit 2 vrne `ok:false`, `retryAfterMs` > 0).
-- ⬜ **SPF/DKIM/DMARC** — ni pregledano iz kode (domenska stvar; preveri DNS domene za e-pošto).
-- ⬜ **Test obnove baze iz backupa** — ni bil narejen.
+- ⬜ **SPF/DKIM/DMARC** — PREVERJENO V DNS (2026-11-15, domena `rcbeautysalon.org` iz
+  `PLATFORM_ADMIN_EMAILS`): na korenu **ni `TXT` SPF zapisa**, `_dmarc` ima **dva
+  nasprotujoča si zapisa** (`p=none` in `p=quarantine`), MX zapisa ni, DKIM
+  selektorja ni mogoče preveriti. Dodaten blokator: med 30 Vercelovimi
+  spremenljivkami manjkata `RESEND_API_KEY` in `RESEND_FROM_EMAIL`, zato
+  pošiljanje e-pošte v produkciji sploh ni vklopljeno (koda vrne
+  `notConfigured: true`). Konfiguracija domene je torej predpogoj, ne le DNS popravek.
+- ✅ **Test obnove baze iz backupa** — NAREJEN (2026-11-15): Neon
+  `POST /branches/{main}/snapshot` → `snap-still-thunder-b7af41ta`,
+  `POST /snapshots/{id}/restore` v **novo** začasno vejo `br-wispy-block-b743uq3e`
+  (brez `finalize_restore`, da izvorna veja ostane nedotaknjena).
+  Dokaz: `compare_schema` proti `main` = `""`, 167.215 B sheme, prisoten
+  `auth_logs_export_enabled`. Začasna veja, snapshot in stara `preview-backup-*`
+  veja so izbrisani; končno stanje 2 veji, 0 snapshotov, `preview` vs `main` = `""`.
 - ✅ **Rate-limit javnih obrazcev** — POVRTNO PREVERJENO V KODI (2026-11-14): `submitPublicForm`
   (vsi javni inquiry obrazci) je omejen — `scope: "inquiry:ip"`, ključ `orgId:IP`, fail-open
   ob izpadu baze (`src/app/actions/forms.ts:179-189`); tudi `checkout-promo.ts` uporablja
   `promo:ip`. Vsi javni vstopni točki so torej pokriti.
 
-**Kaj narediti še:** (1) SPF/DKIM/DMARC pregled, (2) en obnovitveni preizkus backupa. Nato postavi ✅.
+**Kaj narediti še:** (1) nastavi `RESEND_API_KEY` + `RESEND_FROM_EMAIL` in potrdi
+domeno pri ponudniku pošte; (2) odpravi podvojeni `_dmarc` zapis (obdrži enega,
+`p=quarantine` ali `p=reject`), dodaj en `TXT` SPF in DKIM zapis; (3) ponovno
+preveri DNS. **Obnovitveni preizkus je ✅.** Šele nato postavi ✅ pri točki 1.
 
 ## 2. KATALOG DEJAVNOSTI — ✅
 
@@ -271,8 +292,8 @@ povpraševanju bete → Google koledar → SMS opomniki → no-code izdelovalnik
 
 Realna ponovna ocena po inventarju: točke 2, 3, 4, 5, 6 so narejene; 1 (rate-limit), 7 (pricing +
 grace), 8, 9 so večinoma narejene, manjkajo le označene vrzeli. **Edina še "velika" realna dela so:**
-varnostni dopolnila (1: SPF/DKIM/DMARC + backup obnova), živi Stripe preizkus (7), EN/GDPR
-preizkus (8), LCP/a11y (9). To je bistveno manj kot 10–12 tednov — kot teden-dva resnega dela, če
+varnostni dopolnila (1: SPF/DKIM/DMARC — **backup obnova ✅, ostane poštna domena**),
+živi Stripe preizkus (7), EN/GDPR preizkus (8), LCP/a11y (9). To je bistveno manj kot 10–12 tednov — kot teden-dva resnega dela, če
 inventar drži. Vrzel z ⬜ v točki 7 (javna pricing stran + grace) je stvarna in je ne smeš preskočiti.
 
 ## DEFINICIJA KONCA (dokončana platforma)
