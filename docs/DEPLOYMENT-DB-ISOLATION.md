@@ -63,8 +63,11 @@ samodejno. Ko produkcijski deploy aplicira novo migracijo, `preview` ostane na
 stari shemi. PR z novo migracijo bo build zaključil, a bo aplikacija v Preview
 v času izvajanja padla (manjkajoč stolpec/tabela).
 
-**Danes (2026-11-15) odmika ni**: `compare_schema` med `preview` in `main`
-vrne `{"diff":""}`; oba produkcijska deployja sta javila
+**Stanje 2026-11-15 (10:25 CET):** aplikacijske (Prisma / `public`) sheme se
+**ujemata**; surovi `compare_schema` diff pa je neprazen, ker je Neon sam dodal
+`auth_logs_export_enabled` v interno tabelo `neon_auth.project_config` na
+`main`. Aplikacija sheme `neon_auth` ne bere, zato to ni odmik, ki bi podrl
+Preview deploy. Oba produkcijska deployja sta javila
 `shema baze je aktualna`.
 
 ### 4.1 Preverjanje (berljivo, varno)
@@ -72,10 +75,22 @@ vrne `{"diff":""}`; oba produkcijska deployja sta javila
 ```bash
 NEON_API_KEY=... node scripts/check-preview-schema-drift.mjs
 # ali: npm run db:drift
+# celoten surovi diff brez filtriranja:
+NEON_API_KEY=... node scripts/check-preview-schema-drift.mjs --strict
 ```
 
-Izhodne kode: `0` = ni odmika, `1` = odmik, `2` = napaka API/konfiguracije.
-Zaženi pred odpiranjem PR-ja z migracijo in po vsakem produkcijskem deployu.
+Skript najprej pokliče `compare_schema`. Če je diff neprazen, primerja
+zgoščevini celotnih `pg_dump` shem obeh vej **po izločitvi vseh objektov
+sheme `neon_auth`** (35 objektov od 571). Če se podpisa ujemata, razliko
+označi za interno Neon Auth spremembo in jo ignorira; sicer javi odmik.
+`--strict` (ali `DRIFT_STRICT=1`) obnovi prvotno strogo obnašanje, kjer vsak
+diff pomeni odmik — uporabno za diagnostiko. Če podpisov ni mogoče
+izračunati, skript odpove varno (fail-closed) in ne domneva ujemanja.
+
+Izhodne kode: `0` = aplikacijski shemi se ujemata, `1` = odmik, `2` = napaka
+API/konfiguracije ali nepreverljivo stanje. Zaženi pred odpiranjem PR-ja z
+migracijo in po vsakem produkcijskem deployu. Čista jedra so pokrita v
+`tests/schema-drift.test.ts`.
 
 ### 4.2 Sinhronizacija — dve možnosti
 
