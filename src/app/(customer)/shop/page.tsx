@@ -71,7 +71,13 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   const { search, category, inStock, sort } = await searchParams
   // P1 #39-5: gola pot → kanonična najemniška pot.
   await redirectBareToTenant(search ? `/shop?search=${encodeURIComponent(search)}` : "/shop")
-  const site = await getPublicSiteData()
+  // T9 (pravila 1/3/4): neodvisni podatki tečejo vzporedno — prej zaporedoma
+  // (site → locale → izdelki → kategorije → … → darilni boni na koncu).
+  const [site, locale, giftCards] = await Promise.all([
+    getPublicSiteData(),
+    getLocaleFromCookies(),
+    getPublicGiftCards(),
+  ])
 
   if (!site) {
     return (
@@ -87,14 +93,15 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   // #105-nadaljevanje (G1, 2. linija): izklopljena trgovina → PRAVI 404
   // (proxy vrata so 1. linija; fail-open pusti zahtevo do sem brez podatka).
   if (!isCapabilityEnabled(resolveEffectiveProfile(org), "shop")) notFound()
-  const locale = await getLocaleFromCookies()
   // P3 #50: posvečen naslov kataloga (landing sekcija obdrži svoj
   // lastniško uredljiv naslov, npr. "Izbrani izdelki").
   const pageTitle = locale === "en" ? "Shop" : "Trgovina"
   const gridTitle = locale === "en" ? "All products" : "Vsi izdelki"
-  const allProducts = await getPublicShopProducts(org.id)
-  // P3-H: kategorije za filter (aktivne, org-scope).
-  const categories = await getPublicCategories(org.id)
+  // P3-H: kategorije za filter (aktivne, org-scope) — vzporedno z izdelki.
+  const [allProducts, categories] = await Promise.all([
+    getPublicShopProducts(org.id),
+    getPublicCategories(org.id),
+  ])
 
   // Filter products based on query params (server-side).
   let products = allProducts
@@ -125,7 +132,6 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     }[],
     sort
   ) as typeof products
-  const giftCards = await getPublicGiftCards()
 
   return (
     <div className="min-h-screen">
