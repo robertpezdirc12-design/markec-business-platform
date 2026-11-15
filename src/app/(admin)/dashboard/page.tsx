@@ -40,6 +40,7 @@ import { ShareLinkCard } from "@/components/dashboard/share-link-card"
 import { GuidedEntryGate } from "@/components/dashboard/guided-entry"
 import { SetupChecklistCard } from "@/components/dashboard/setup-checklist"
 import { PlanCompactCard } from "@/components/dashboard/plan-compact-card"
+import { QuickActions } from "@/components/dashboard/quick-actions"
 import {
   buildSetupChecklist,
   parseSetupChecklistUi,
@@ -271,6 +272,9 @@ export default async function AdminDashboard() {
           guidedEntryDict={t.settings.guidedEntry}
         />
       )}
+
+      {/* Quick Actions */}
+      <QuickActions />
 
       {/* Stats Cards — widget-configurable (Phase 5) */}
       <div
