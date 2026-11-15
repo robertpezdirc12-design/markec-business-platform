@@ -71,6 +71,11 @@ baze iz backupa.
   spremenljivkami manjkata `RESEND_API_KEY` in `RESEND_FROM_EMAIL`, zato
   pošiljanje e-pošte v produkciji sploh ni vklopljeno (koda vrne
   `notConfigured: true`). Konfiguracija domene je torej predpogoj, ne le DNS popravek.
+  **Kje se ureja:** avtoritativni NS sta `ns75.domaincontrol.com` in
+  `ns76.domaincontrol.com` (GoDaddy), ne Vercel — `GET /v3/domains/rcbeautysalon.org`
+  vrne 403, projekt ima v Vercelu samo `rcbeautysalon-phi.vercel.app`. Zapise je torej
+  treba urediti v GoDaddy DNS konzoli; točno DKIM vrednost dobiš šele ob potrditvi
+  domene pri ponudniku pošte (Resend).
 - ✅ **Test obnove baze iz backupa** — NAREJEN (2026-11-15): Neon
   `POST /branches/{main}/snapshot` → `snap-still-thunder-b7af41ta`,
   `POST /snapshots/{id}/restore` v **novo** začasno vejo `br-wispy-block-b743uq3e`
@@ -84,9 +89,11 @@ baze iz backupa.
   `promo:ip`. Vsi javni vstopni točki so torej pokriti.
 
 **Kaj narediti še:** (1) nastavi `RESEND_API_KEY` + `RESEND_FROM_EMAIL` in potrdi
-domeno pri ponudniku pošte; (2) odpravi podvojeni `_dmarc` zapis (obdrži enega,
-`p=quarantine` ali `p=reject`), dodaj en `TXT` SPF in DKIM zapis; (3) ponovno
-preveri DNS. **Obnovitveni preizkus je ✅.** Šele nato postavi ✅ pri točki 1.
+domeno pri ponudniku pošte (od tam vzameš točen DKIM `TXT` in SPF vrednost);
+(2) **v GoDaddy DNS konzoli** (`ns75`/`ns76.domaincontrol.com`) odpravi podvojeni
+`_dmarc` zapis (obdrži enega, `p=quarantine` ali `p=reject`), dodaj en `TXT` SPF
+in DKIM zapis; (3) ponovno preveri DNS. **Obnovitveni preizkus je ✅.** Šele nato
+postavi ✅ pri točki 1.
 
 ## 2. KATALOG DEJAVNOSTI — ✅
 
