@@ -15,7 +15,9 @@ import {
   PencilIcon,
   EyeIcon,
   ArrowLeftIcon,
+  DotsHorizontalIcon,
 } from "@/components/icons"
+import { QuickBookingLink } from "@/components/dashboard/quick-booking-link"
 import { getAdminServices, getServiceStats } from "@/app/actions/services"
 import { formatCurrency } from "@/lib/utils/format"
 import { ServiceSearch } from "@/components/dashboard/service-search"
@@ -175,6 +177,11 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
                     </p>
                   </div>
                   <div className="flex gap-1">
+                    <QuickBookingLink
+                      serviceName={service.name}
+                      serviceSlug={service.slug}
+                      orgSlug={org?.slug ?? ""}
+                    />
                     <Link href={org ? `/s/${org.slug}/services/${service.slug}` : "#"}>
                       <Button variant="ghost" size="icon" title={t.services.viewPublicPage}>
                         <EyeIcon size={16} />
