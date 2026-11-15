@@ -11,9 +11,9 @@ import { CAPABILITY_KEYS, getExtension, type ExtensionDefinition } from "@/lib/p
 import {
   applySecondaryProfile,
   secondaryContribution,
-  secondaryVerticalSchema,
   validateSecondaryVertical,
 } from "@/lib/profiles/secondary"
+import { secondaryVerticalSchema } from "@/lib/profiles/validate"
 import {
   OVERRIDES_ENTITY_KEY,
   overridesSnapshot,

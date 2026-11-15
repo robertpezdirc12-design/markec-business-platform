@@ -20,9 +20,9 @@ import { describe, it, expect } from "vitest"
 import {
   applySecondaryProfile,
   secondaryContribution,
-  secondaryVerticalSchema,
   validateSecondaryVertical,
 } from "@/lib/profiles/secondary"
+import { secondaryVerticalSchema } from "@/lib/profiles/validate"
 import { applyOverrides, parseOverrides } from "@/lib/profiles/overrides"
 import { getProfile, listProfiles } from "@/lib/profiles/registry"
 import type { ActivityProfile, CapabilityKey } from "@/lib/profiles/types"

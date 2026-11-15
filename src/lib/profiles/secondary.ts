@@ -15,7 +15,6 @@
 // actions/onboarding.ts (mirrors the applyOverrides contract).
 // ============================================================
 
-import { z } from "zod"
 import { getProfile, listProfiles } from "./registry"
 import type {
   ActivityProfile,
@@ -23,12 +22,8 @@ import type {
   CapabilityState,
 } from "./types"
 
-/** Zod schema for the stored/action input value (null clears). */
-export const secondaryVerticalSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .nullable()
+/** Shema secondary vertikale (zod) ŽIVI v ./validate.ts — tega modula
+ *  uvažajo client komponente in zod ne sme v client bundle. */
 
 /** Machine-readable validation outcome (actions map codes → locale text). */
 export type SecondaryVerticalCode =

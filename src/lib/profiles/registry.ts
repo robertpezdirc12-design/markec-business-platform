@@ -6,10 +6,11 @@
 // site copy in src/lib/site-content.ts) — no core changes.
 //
 // Client-safe (importable from client components): NO prisma.
-// Every profile is validated with zod at module load.
+// Zod validacija profilov teče v testih (src/lib/profiles/validate.ts,
+// tests/profiles/registry-validation.test.ts) — NE ob nalaganju modula,
+// da zod (110+ KB) ne konča v client bundle-ih javnih strani.
 // ============================================================
 
-import { z } from "zod"
 import { EXTENSIONS } from "./extensions"
 import type {
   ActivityProfile,
@@ -20,113 +21,6 @@ import type {
   TerminologyEntry,
   TerminologySet,
 } from "./types"
-
-// ------------------------------------------------------------
-// Zod schemas
-// ------------------------------------------------------------
-const capabilityState = z.enum(["required", "optional", "disabled"])
-
-const capabilitySchema = z.object({
-  appointments: capabilityState,
-  workOrders: capabilityState,
-  shop: capabilityState,
-  services: capabilityState,
-  inventory: capabilityState,
-  customers: capabilityState,
-  staff: capabilityState,
-  analytics: capabilityState,
-  reviews: capabilityState,
-  forms: capabilityState,
-  workflows: capabilityState,
-  documents: capabilityState,
-  delivery: capabilityState,
-  // #98 (AD-02): walk-in vrsta — samostojen izbirni modul za VSE
-  // dejavnosti (prijava brez računa, živa vrsta, javni status).
-  walkIn: capabilityState,
-})
-
-const termSchema = z.object({ sl: z.string().min(1), en: z.string().min(1) })
-
-const fieldSchema = z.object({
-  key: z.string().regex(/^[a-z][a-z0-9_]*$/),
-  label: z.string().min(1),
-  type: z.enum(["text", "textarea", "number", "date", "select", "checkbox"]),
-  required: z.boolean(),
-  options: z.array(z.string()).optional(),
-  unit: z.string().optional(),
-  placeholder: z.string().optional(),
-})
-
-const formSchema = z.object({
-  key: z.string().regex(/^[a-z][a-z0-9-]*$/),
-  name: z.string().min(1),
-  description: z.string().min(1),
-  fields: z.array(fieldSchema).min(1),
-})
-
-const workflowSchema = z.object({
-  key: z.string().regex(/^[a-z][a-z0-9-]*$/),
-  name: z.string().min(1),
-  entity: z.string().min(1),
-  stages: z
-    .array(
-      z.object({
-        key: z.string().regex(/^[a-z][a-z0-9_]*$/),
-        name: z.string().min(1),
-        description: z.string().optional(),
-        slaHours: z.number().int().positive().optional(),
-        isFinal: z.boolean().optional(),
-      })
-    )
-    .min(2),
-})
-
-const profileSchema = z.object({
-  id: z.string().regex(/^[a-z][a-z0-9-]*$/),
-  version: z.number().int().positive(),
-  label: z.string().min(1),
-  description: z.string().min(1),
-  palette: z.string().min(1),
-  // P2 #36: schema.org tip je del definicije profila — nov profil MORA
-  // izbrati pravi @type (test to zaklene po vseh vertikalah).
-  schemaType: z.string().min(1),
-  capabilities: capabilitySchema,
-  terminology: z.object({
-    appointmentSingular: termSchema,
-    appointmentPlural: termSchema,
-    orderSingular: termSchema,
-    orderPlural: termSchema,
-    serviceSingular: termSchema,
-    servicePlural: termSchema,
-    productSingular: termSchema,
-    productPlural: termSchema,
-    customerSingular: termSchema,
-    customerPlural: termSchema,
-    bookingCta: termSchema,
-  }),
-  forms: z.array(formSchema),
-  workflows: z.array(workflowSchema),
-  dashboardWidgets: z.array(
-    z.enum([
-      "todayAppointments",
-      "revenue",
-      "customers",
-      "topServices",
-      "recentOrders",
-      "lowStock",
-      "activeOrders",
-      "deadlines",
-      "pendingApprovals",
-      "readyForDelivery",
-      "projects",
-    ])
-  ),
-  website: z.object({
-    ctaMode: z.enum(["booking", "inquiry", "order", "quote"]),
-  }),
-  extensions: z.array(z.string()),
-  catalog: z.object({ seedVerticalId: z.string().min(1) }),
-})
 
 // ------------------------------------------------------------
 // Reusable capability presets
@@ -1860,30 +1754,26 @@ const PROFILE_LIST: ActivityProfile[] = [
   ]
 
 // ------------------------------------------------------------
-// Validation + accessors
+// Index + accessors
+//
+// Zod validacija (sheme + validateProfiles) je v ./validate.ts in teče
+// v testih; tukaj so le še poceni strukturna preverjanja (dvojniki,
+// neznane razširitve), ki so odvisna samo od podatkov.
 // ------------------------------------------------------------
 
-function validateProfiles(list: ActivityProfile[]): Record<string, ActivityProfile> {
+function indexProfiles(list: ActivityProfile[]): Record<string, ActivityProfile> {
   const out: Record<string, ActivityProfile> = {}
-  const referencedExtensions = new Set<string>()
   for (const profile of list) {
-    const parsed = profileSchema.safeParse(profile)
-    if (!parsed.success) {
-      throw new Error(
-        `[profiles] Invalid profile "${profile.id}": ${parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`
-      )
-    }
     if (out[profile.id]) throw new Error(`[profiles] Duplicate profile id: ${profile.id}`)
+    for (const e of profile.extensions) {
+      if (!EXTENSIONS[e]) throw new Error(`[profiles] Profile references unknown extension: ${e}`)
+    }
     out[profile.id] = profile
-    profile.extensions.forEach((e) => referencedExtensions.add(e))
-  }
-  for (const extId of referencedExtensions) {
-    if (!EXTENSIONS[extId]) throw new Error(`[profiles] Profile references unknown extension: ${extId}`)
   }
   return out
 }
 
-export const PROFILES: Record<string, ActivityProfile> = validateProfiles(PROFILE_LIST)
+export const PROFILES: Record<string, ActivityProfile> = indexProfiles(PROFILE_LIST)
 
 /** Universal fallback: never assume salon-specific behavior (§21). */
 export const GENERIC_PROFILE_ID = "generic"

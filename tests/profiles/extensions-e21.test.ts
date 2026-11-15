@@ -27,7 +27,7 @@ const E21_IDS = [
 ] as const
 
 describe("E2-1 — capability extension registry", () => {
-  it("registers the 5 new capability extensions (zod-validated at load)", () => {
+  it("registers the 5 new capability extensions (zod-validated v testih registry-validation)", () => {
     for (const id of E21_IDS) {
       expect(EXTENSIONS[id], `missing extension ${id}`).toBeDefined()
     }

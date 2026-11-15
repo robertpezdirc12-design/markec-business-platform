@@ -1,54 +1,19 @@
 // ============================================================
 // PLAN REGISTRY (EPIC #3 E3-3)
 // Single source of truth for commercial plans. Adding/changing a
-// plan = editing ONE entry here — no core changes. Zod-validated
-// AT MODULE LOAD: an invalid plan definition breaks the build,
-// not production behavior.
+// plan = editing ONE entry here — no core changes. Zod validacija
+// planov teče v testih (src/lib/plans/validate.ts,
+// tests/plans/registry.test.ts) — NE ob nalaganju modula, da zod
+// (110+ KB) ne konča v client bundle-u javnih strani.
 //
 // Client-safe (importable from client components): NO prisma.
 // Server-side usage counting lives in ./resolve.ts.
 // ============================================================
 
-import { z } from "zod"
 import { PLAN_IDS, type PlanDefinition, type PlanId } from "./types"
 
 export { PLAN_IDS, checkPlanLimit } from "./types"
 export type { LimitCheck, LimitResource, PlanDefinition, PlanId } from "./types"
-
-// ------------------------------------------------------------
-// Zod schema
-// ------------------------------------------------------------
-
-const planIdSchema = z.enum(PLAN_IDS)
-
-const localizedText = z.object({ sl: z.string().min(1), en: z.string().min(1) })
-
-/** null = unlimited; a number must be a positive integer. */
-const limitValue = z.number().int().positive().nullable()
-
-/** Like limitValue but 0 is allowed — a resource can be entirely
- * outside a plan (e.g. custom domains on FREE, EPIC #3 E3-6). */
-const limitValueOrZero = z.number().int().min(0).nullable()
-
-const planSchema = z.object({
-  id: planIdSchema,
-  version: z.number().int().positive(),
-  label: z.string().min(1).max(24),
-  description: localizedText,
-  // Mesečna cena v EUR centih (0 = brezplačno). Prikaz za javno pricing stran.
-  priceMonthly: z.number().int().min(0),
-  limits: z.object({
-    services: limitValue,
-    products: limitValue,
-    staff: limitValue,
-    storageMb: limitValue,
-    customDomains: limitValueOrZero,
-    // Monthly orders (E3-7) — a derived counter, so the same
-    // nullable-positive schema as other count limits applies.
-    orders: limitValue,
-  }),
-  features: z.array(localizedText).min(1),
-})
 
 // ------------------------------------------------------------
 // Plan definitions
@@ -121,18 +86,15 @@ const PLAN_LIST: PlanDefinition[] = [
 ]
 
 // ------------------------------------------------------------
-// Validation + accessors (mirrors profiles/registry.ts)
+// Index + accessors
+//
+// Zod validacija (sheme + validatePlans) je v ./validate.ts in teče
+// v testih; tukaj so le še poceni strukturna preverjanja.
 // ------------------------------------------------------------
 
-function validatePlans(list: PlanDefinition[]): Record<PlanId, PlanDefinition> {
+function indexPlans(list: PlanDefinition[]): Record<PlanId, PlanDefinition> {
   const out = {} as Record<PlanId, PlanDefinition>
   for (const plan of list) {
-    const parsed = planSchema.safeParse(plan)
-    if (!parsed.success) {
-      throw new Error(
-        `[plans] Invalid plan "${plan.id}": ${parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`
-      )
-    }
     if (out[plan.id]) throw new Error(`[plans] Duplicate plan id: ${plan.id}`)
     out[plan.id] = plan
   }
@@ -142,7 +104,7 @@ function validatePlans(list: PlanDefinition[]): Record<PlanId, PlanDefinition> {
   return out
 }
 
-export const PLANS: Record<PlanId, PlanDefinition> = validatePlans(PLAN_LIST)
+export const PLANS: Record<PlanId, PlanDefinition> = indexPlans(PLAN_LIST)
 
 /** Fallback is always FREE — an unknown plan value degrades, never escalates. */
 export const DEFAULT_PLAN_ID: PlanId = "free"

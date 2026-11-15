@@ -1,8 +1,9 @@
 // ============================================================
 // EPIC #3 E3-3 — PLAN REGISTRY TESTS
-// The registry is zod-validated AT MODULE LOAD: importing it
-// alone asserts every plan definition is structurally valid
-// (mirrors tests/profiles/registry.test.ts).
+// Zod validacija planov teče TUKAJ (validatePlans —
+// src/lib/plans/validate.ts), ne več ob nalaganju modula, da zod
+// ne bremeni client bundle-ov javnih strani (T9). Test še vedno
+// zagotavlja, da je vsaka definicija plana strukturno veljavna.
 // ============================================================
 
 import { describe, it, expect } from "vitest"
@@ -15,8 +16,13 @@ import {
   listPlans,
   listPlanOptions,
 } from "@/lib/plans/registry"
+import { validatePlans } from "@/lib/plans/validate"
 
 describe("plan registry invariants (E3-3)", () => {
+  it("validates every plan definition with zod (loud failure on invalid)", () => {
+    expect(() => validatePlans(listPlans())).not.toThrow()
+  })
+
   it("exposes exactly the three known plans", () => {
     expect(Object.keys(PLANS).sort()).toEqual(["free", "pro", "scale"])
     expect(PLAN_IDS).toEqual(["free", "pro", "scale"])

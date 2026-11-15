@@ -1,8 +1,10 @@
 // ============================================================
 // EPIC #1 Phase 7 — profile engine tests (§4, §5, §21)
-// The registry is zod-validated AT MODULE LOAD, so importing it
-// already asserts every profile + extension is structurally valid.
-// These tests lock the §21 critical rules in place:
+// Zod validacija registrov teče TUKAJ (validateProfiles /
+// validateExtensions — src/lib/profiles/validate.ts), ne več ob
+// nalaganju modula, da zod ne bremeni client bundle-ov (T9).
+// Ti testi še vedno zagotavljajo, da je vsak profil + razširitev
+// strukturno veljaven, in zaklenejo §21 kritična pravila:
 //   • capability matrices per mandatory validation scenario
 //   • unknown profile → universal generic (never salon-specific)
 //   • new activity = registry entry only (no core edits)
@@ -18,9 +20,12 @@ import {
   isCapabilityEnabled,
 } from "@/lib/profiles/registry"
 import { EXTENSIONS } from "@/lib/profiles/extensions"
+import { validateProfiles, validateExtensions } from "@/lib/profiles/validate"
 
 describe("activity profile registry (§4)", () => {
-  it("loads every profile through zod validation (loud failure on invalid)", () => {
+  it("validates every profile + extension with zod (loud failure on invalid)", () => {
+    expect(() => validateExtensions(Object.values(EXTENSIONS))).not.toThrow()
+    expect(() => validateProfiles(Object.values(PROFILES), EXTENSIONS)).not.toThrow()
     expect(Object.keys(PROFILES).length).toBeGreaterThanOrEqual(11)
   })
 

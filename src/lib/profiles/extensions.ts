@@ -8,7 +8,6 @@
 // Client-safe: NO server-only imports.
 // ============================================================
 
-import { z } from "zod"
 import type { CapabilityKey, ProfileFieldDef } from "./types"
 
 export interface ExtensionEntity {
@@ -38,52 +37,11 @@ export interface ExtensionDefinition {
 }
 
 // ------------------------------------------------------------
-// Validation schema — every extension is validated at load.
-// ------------------------------------------------------------
-const fieldDefSchema = z
-  .object({
-    key: z.string().min(1).regex(/^[a-z][a-z0-9_]*$/),
-    label: z.string().min(1),
-    type: z.enum([
-      "text",
-      "textarea",
-      "number",
-      "date",
-      "select",
-      "checkbox",
-      "entityReference",
-    ]),
-    required: z.boolean(),
-    options: z.array(z.string()).optional(),
-    // Faza 2B/2C-1: za entityReference — dovoljeni cilj(i). Single objekt (2B) ALI niz.
-    referenceTo: z
-      .union([
-        z.object({
-          extensionId: z.string().regex(/^[a-z][a-z0-9-]*$/),
-          entityKey: z.string().regex(/^[a-z][a-z0-9_]*$/),
-        }),
-        z.array(
-          z.object({
-            extensionId: z.string().regex(/^[a-z][a-z0-9-]*$/),
-            entityKey: z.string().regex(/^[a-z][a-z0-9_]*$/),
-          })
-        ),
-      ])
-      .optional(),
-    unit: z.string().optional(),
-    placeholder: z.string().optional(),
-  })
-  // entityReference brez referenceTo je napaka — ne more se naložiti.
-  .refine((f) => f.type !== "entityReference" || !!f.referenceTo, {
-    message: "entityReference field mora definirati referenceTo",
-    path: ["referenceTo"],
-  })
-
-// ------------------------------------------------------------
 // Typed capability dependencies (E2-1): an extension's
 // `capabilities` array may only reference REAL universal
 // capability keys — enforced by this tuple (compile-time via
-// `satisfies`, runtime via zod at module load).
+// `satisfies`, runtime via validateExtensions v ./validate.ts, ki teče
+// v testih — tests/profiles/registry-validation.test.ts).
 // ------------------------------------------------------------
 export const CAPABILITY_KEYS = [
   "appointments",
@@ -101,23 +59,6 @@ export const CAPABILITY_KEYS = [
   "delivery",
   "walkIn",
 ] as const satisfies readonly CapabilityKey[]
-
-const extensionSchema = z.object({
-  id: z.string().regex(/^[a-z][a-z0-9-]*$/),
-  name: z.string().min(1),
-  description: z.string().min(1),
-  version: z.number().int().positive(),
-  capabilities: z.array(z.enum(CAPABILITY_KEYS)),
-  entities: z.array(
-    z.object({
-      key: z.string().regex(/^[a-z][a-z0-9_]*$/),
-      name: z.string().min(1),
-      description: z.string().min(1),
-      fields: z.array(fieldDefSchema),
-      appendOnly: z.boolean().optional(),
-    })
-  ),
-})
 
 // ------------------------------------------------------------
 // First-generation extensions
@@ -709,21 +650,23 @@ const EXTENSION_LIST: ExtensionDefinition[] = [
   documents,
 ]
 
-function validateExtensions(list: ExtensionDefinition[]): Record<string, ExtensionDefinition> {
+// ------------------------------------------------------------
+// Index + accessors
+//
+// Zod validacija (sheme + validateExtensions) je v ./validate.ts in
+// teče v testih; tukaj je le še zložitev zapisa po id.
+// ------------------------------------------------------------
+
+function indexExtensions(list: ExtensionDefinition[]): Record<string, ExtensionDefinition> {
   const out: Record<string, ExtensionDefinition> = {}
   for (const ext of list) {
-    const parsed = extensionSchema.safeParse(ext)
-    if (!parsed.success) {
-      throw new Error(
-        `[profiles] Invalid extension "${ext.id}": ${parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`
-      )
-    }
+    if (out[ext.id]) throw new Error(`[profiles] Duplicate extension id: ${ext.id}`)
     out[ext.id] = ext
   }
   return out
 }
 
-export const EXTENSIONS: Record<string, ExtensionDefinition> = validateExtensions(EXTENSION_LIST)
+export const EXTENSIONS: Record<string, ExtensionDefinition> = indexExtensions(EXTENSION_LIST)
 
 export function getExtension(id: string): ExtensionDefinition | undefined {
   return EXTENSIONS[id]
