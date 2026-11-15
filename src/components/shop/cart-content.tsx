@@ -490,7 +490,7 @@ export function CartContent() {
                     id="guest-email"
                     type="email"
                     autoComplete="email"
-                    placeholder="ime@primer.si"
+                    placeholder={pick(locale, "ime@primer.si", "john@example.com")}
                     value={contact.email}
                     onChange={(e) =>
                       setContact((c) => ({ ...c, email: e.target.value }))

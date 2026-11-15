@@ -8,6 +8,7 @@ import { formatOpeningHours } from "@/lib/site-content"
 import { term as profileTerm } from "@/lib/profiles/registry"
 import { resolveEffectiveProfile } from "@/lib/profiles/resolve"
 import { resolvePublishGate } from "@/lib/publish-gate"
+import { getServerI18n } from "@/lib/i18n/server"
 import { prisma } from "@/lib/prisma"
 
 function truncate(text: string, max = 160): string {
@@ -15,11 +16,10 @@ function truncate(text: string, max = 160): string {
   return `${text.slice(0, max).trimEnd()}…`
 }
 
-const legalLinks = [
-  { href: "/privacy", label: "Zasebnost" },
-  { href: "/terms", label: "Pogoji uporabe" },
-  { href: "/cookies", label: "Piškotki" },
-]
+/**
+ * Pravne strani (spodaj) se gradijo iz slovarja — tukaj ni trdo kodiranih
+ * nizov (EN nakup, plan točka 8).
+ */
 
 /**
  * Auth surface rule (interface logic): anonymous visitors must not see a
@@ -53,6 +53,7 @@ const tenantScopedHref = (slug: string | null, href: string): string =>
 
 const Footer = async () => {
   const session = await auth()
+  const { t, locale } = await getServerI18n()
   const site = await getPublicSiteData()
   const org = site?.org ?? null
   const config = site?.config ?? null
@@ -69,7 +70,7 @@ const Footer = async () => {
 
   const aboutText = content?.about.paragraphs[0]
     ? truncate(content.about.paragraphs[0])
-    : "Vaš salon lepote — rezervacije terminov, storitve in izbrani izdelki na enem mestu."
+    : t.public.footerDefaultAbout
 
   // Profile-aware footer links (EPIC #1 §21): irrelevant modules never render.
   // Phase 5: effective profile = shared profile + owner overrides.
@@ -92,19 +93,21 @@ const Footer = async () => {
     : [0, 0]
   const quickLinks = [
     cap("services") &&
-      activeServices > 0 && { href: "/services", label: "Storitve" },
-    cap("shop") && activeProducts > 0 && { href: "/shop", label: "Trgovina" },
+      activeServices > 0 && { href: "/services", label: t.public.navServices },
+    cap("shop") &&
+      activeProducts > 0 && { href: "/shop", label: t.public.navShop },
     profile.website.ctaMode === "booking" &&
-      cap("appointments") && { href: "/booking", label: "Rezerviraj termin" },
+      cap("appointments") &&
+      { href: "/booking", label: profileTerm(profile, "bookingCta", locale) },
     session &&
-      cap("appointments") && { href: "/my-appointments", label: "Moji termini" },
+      cap("appointments") && { href: "/my-appointments", label: t.public.myAppointments },
     (profile.website.ctaMode === "inquiry" || profile.website.ctaMode === "quote") && {
       href: "/inquiry",
-      label: profileTerm(profile, "bookingCta", "sl"),
+      label: profileTerm(profile, "bookingCta", locale),
     },
   ].filter(Boolean) as { href: string; label: string }[]
 
-  const openingHours = content ? formatOpeningHours(content.openingHours) : []
+  const openingHours = content ? formatOpeningHours(content.openingHours, locale) : []
 
   const socialLinks = content
     ? [
@@ -126,7 +129,7 @@ const Footer = async () => {
         content.social.website && {
           key: "website",
           href: content.social.website,
-          label: "Spletna stran",
+          label: t.public.footerWebsite,
         },
       ].filter(Boolean) as { key: string; href: string; label: string }[]
     : []
@@ -205,7 +208,7 @@ const Footer = async () => {
           {/* Quick Links */}
           <div className="space-y-4">
             <h2 className="font-heading text-2xl tracking-tight md:text-3xl">
-              Hitre povezave
+              {t.public.footerQuickLinks}
             </h2>
             <ul className="space-y-3 text-sm">
               {quickLinks.map((link) => (
@@ -227,7 +230,7 @@ const Footer = async () => {
           {/* Contact Info */}
           <div className="space-y-4">
             <h2 className="font-heading text-2xl tracking-tight md:text-3xl">
-              Kontakt
+              {t.public.footerContact}
             </h2>
             <ul className="space-y-3 text-sm">
               {(config?.address || config?.city) && (
@@ -307,7 +310,7 @@ const Footer = async () => {
               )}
               {!config?.address && !config?.city && !config?.email && !config?.phone && (
                 <li className="text-muted-foreground">
-                  Kontaktne informacije še niso objavljene.
+                  {t.public.footerContactMissing}
                 </li>
               )}
             </ul>
@@ -316,7 +319,7 @@ const Footer = async () => {
           {/* Business Hours */}
           <div className="space-y-4">
             <h2 className="font-heading text-2xl tracking-tight md:text-3xl">
-              Delovni čas
+              {t.public.footerHours}
             </h2>
             <ul className="text-muted-foreground space-y-2 text-sm">
               {openingHours.map((item) => (
@@ -324,7 +327,7 @@ const Footer = async () => {
                   <span>{item.day}</span>
                   <span
                     className={`font-medium ${
-                      item.value === "Zaprto" ? "text-accent-text" : "text-foreground"
+                      item.value === t.public.footerClosed ? "text-accent-text" : "text-foreground"
                     }`}
                   >
                     {item.value}
@@ -335,11 +338,11 @@ const Footer = async () => {
             <div className="border-primary/20 bg-primary/5 rounded-lg border p-4">
               {profile.website.ctaMode === "booking" ? (
                 <p className="text-primary-text text-xs font-medium">
-                  ✨ Rezervirajte online za zagotovljen termin.
+                  {t.public.footerBookOnlineNote}
                 </p>
               ) : (
                 <p className="text-primary-text text-xs font-medium">
-                  ✨ {profileTerm(profile, "bookingCta", "sl")} — odgovorimo v najkrajšem možnem času.
+                  {t.public.footerInquiryNote(profileTerm(profile, "bookingCta", locale))}
                 </p>
               )}
             </div>
@@ -351,14 +354,23 @@ const Footer = async () => {
           <p className="text-muted-foreground text-center text-sm md:text-left">
             &copy; {new Date().getFullYear()}{" "}
             <span className="from-accent to-primary bg-linear-to-r bg-clip-text font-semibold text-transparent">
-              {org?.name ?? "Poslovna platforma"}
+              {org?.name ?? t.public.footerPlatformName}
             </span>{" "}
-            — Oblikovano s ❤ na Poslovni platformi
+            {t.public.footerBuiltWith}
           </p>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
             {(session
-              ? legalLinks
-              : [...legalLinks, { href: staffLoginHref(slug), label: "Prijava" }]
+              ? [
+                  { href: "/privacy", label: t.public.footerPrivacy },
+                  { href: "/terms", label: t.public.footerTerms },
+                  { href: "/cookies", label: t.public.footerCookies },
+                ]
+              : [
+                  { href: "/privacy", label: t.public.footerPrivacy },
+                  { href: "/terms", label: t.public.footerTerms },
+                  { href: "/cookies", label: t.public.footerCookies },
+                  { href: staffLoginHref(slug), label: t.public.login },
+                ]
             ).map((link) => (
               <Link
                 key={link.label}

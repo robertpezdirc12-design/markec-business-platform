@@ -665,6 +665,7 @@ export function ProductForm({ categories, product, mode = "create" }: ProductFor
                   </p>
                 </div>
                 <Switch
+                  aria-label={t.products.trackInventoryLabel}
                   checked={watchTrackInventory}
                   onCheckedChange={(checked) => setValue("trackInventory", checked)}
                   disabled={isPending}
@@ -679,6 +680,7 @@ export function ProductForm({ categories, product, mode = "create" }: ProductFor
                   </p>
                 </div>
                 <Switch
+                  aria-label={t.products.forSaleLabel}
                   checked={watchForSale}
                   onCheckedChange={(checked) => setValue("forSale", checked)}
                   disabled={isPending}

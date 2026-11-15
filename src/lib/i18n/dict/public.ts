@@ -51,6 +51,24 @@ export const publicSl = {
   // P2 #15 (audit-2026-11): pravne strani brez trdo kodiranih nizov
   backToHome: "← Nazaj na domačo stran",
   lastUpdated: "Zadnja posodobitev:",
+  // EN nakup (plan točka 8): podnožje + iskanje brez trdo kodiranih nizov.
+  searchProductsPlaceholder: "Iskanje izdelkov …",
+  footerQuickLinks: "Hitre povezave",
+  footerContact: "Kontakt",
+  footerHours: "Delovni čas",
+  footerClosed: "Zaprto",
+  footerContactMissing: "Kontaktne informacije še niso objavljene.",
+  footerBookOnlineNote: "✨ Rezervirajte online za zagotovljen termin.",
+  footerInquiryNote: (cta: string) =>
+    `✨ ${cta} — odgovorimo v najkrajšem možnem času.`,
+  footerPrivacy: "Zasebnost",
+  footerTerms: "Pogoji uporabe",
+  footerCookies: "Piškotki",
+  footerWebsite: "Spletna stran",
+  footerDefaultAbout:
+    "Vaš salon lepote — rezervacije terminov, storitve in izbrani izdelki na enem mestu.",
+  footerPlatformName: "Poslovna platforma",
+  footerBuiltWith: "— Oblikovano s ❤ na Poslovni platformi",
 }
 
 export type PublicDict = typeof publicSl
@@ -97,4 +115,21 @@ export const publicEn: PublicDict = {
     `Showing ${shown} of ${total} services — full catalogue on the Services page`,
   backToHome: "← Back to home page",
   lastUpdated: "Last updated:",
+  searchProductsPlaceholder: "Search products …",
+  footerQuickLinks: "Quick links",
+  footerContact: "Contact",
+  footerHours: "Opening hours",
+  footerClosed: "Closed",
+  footerContactMissing: "Contact information has not been published yet.",
+  footerBookOnlineNote: "✨ Book online to secure your appointment.",
+  footerInquiryNote: (cta: string) =>
+    `✨ ${cta} — we will get back to you as soon as possible.`,
+  footerPrivacy: "Privacy",
+  footerTerms: "Terms of use",
+  footerCookies: "Cookies",
+  footerWebsite: "Website",
+  footerDefaultAbout:
+    "Your beauty salon — appointments, services and curated products in one place.",
+  footerPlatformName: "Business platform",
+  footerBuiltWith: "— Crafted with ❤ on the Business Platform",
 }

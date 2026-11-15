@@ -919,16 +919,22 @@ export function mergeSiteContent(stored: unknown, vertical: string): SiteContent
 }
 
 const DAY_NAMES_SL = ["Nedelja", "Ponedeljek", "Torek", "Sreda", "Četrtek", "Petek", "Sobota"]
+const DAY_NAMES_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
-export function formatOpeningHours(hours: OpeningHour[]): { day: string; value: string }[] {
+export function formatOpeningHours(
+  hours: OpeningHour[],
+  locale: "sl" | "en" = "sl"
+): { day: string; value: string }[] {
+  const days = locale === "en" ? DAY_NAMES_EN : DAY_NAMES_SL
+  const closed = locale === "en" ? "Closed" : "Zaprto"
   const ordered = [...hours].sort((a, b) => {
     // Monday first
     const idx = (d: number) => (d === 0 ? 7 : d)
     return idx(a.day) - idx(b.day)
   })
   return ordered.map((h) => ({
-    day: DAY_NAMES_SL[h.day] ?? `Dan ${h.day}`,
-    value: h.open && h.close ? `${h.open} – ${h.close}` : "Zaprto",
+    day: days[h.day] ?? `Dan ${h.day}`,
+    value: h.open && h.close ? `${h.open} – ${h.close}` : closed,
   }))
 }
 

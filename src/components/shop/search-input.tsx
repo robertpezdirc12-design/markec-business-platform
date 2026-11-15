@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { SearchIcon } from "@/components/icons"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useOrgPrefix } from "@/lib/org-path-hooks"
+import { pick, useLocale } from "@/lib/i18n/client-locale"
 
 interface SearchInputProps {
   placeholder?: string
@@ -12,9 +13,12 @@ interface SearchInputProps {
 }
 
 export function SearchInput({
-  placeholder = "Iskanje izdelkov...",
+  placeholder,
   className = "",
 }: SearchInputProps) {
+  const locale = useLocale()
+  const resolvedPlaceholder =
+    placeholder ?? pick(locale, "Iskanje izdelkov …", "Search products …")
   const searchParams = useSearchParams()
   const router = useRouter()
   const prefix = useOrgPrefix()
@@ -56,7 +60,7 @@ export function SearchInput({
       <Input
         onChange={handleInputChange}
         value={inputValue}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         className="pl-9"
       />
     </div>
