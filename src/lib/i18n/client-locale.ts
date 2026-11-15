@@ -8,7 +8,8 @@
 // napačnega jezika — server pravilno izriše ob prvi hidraciji.
 
 import type { Locale } from "./config"
-import { useI18n } from "./provider"
+// T9: useI18n iz ./context (listič) — ./provider vleče celoten slovar.
+import { useI18n } from "./context"
 
 /**
  * Odjemalski jezikovni navor za javni del aplikacije. Vrne trenutni jezik

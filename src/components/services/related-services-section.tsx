@@ -8,7 +8,7 @@ import { CalendarIcon, ClockIcon, CurrencyDollarIcon } from "@/components/icons"
 import { cloudinaryPresets } from "@/lib/utils/cloudinary"
 import { orgPath } from "@/lib/org-path"
 import { formatCurrency } from "@/lib/utils/format"
-import { useI18n } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
 
 interface RelatedService {
   id: string

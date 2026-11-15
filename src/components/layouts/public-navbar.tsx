@@ -18,7 +18,7 @@ import { MenuIcon, CloseIcon, UserIcon, LogoutIcon, CalendarCheckIcon, SettingsI
 import { useNavigationStore } from "@/store/navigation-store"
 import { NavCartButton } from "@/components/shop/nav-cart-button"
 import { orgPath } from "@/lib/org-path"
-import { useI18n } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
 import { LanguageSwitcher } from "@/components/admin/language-switcher"
 
 interface NavLinkItem {

@@ -14,7 +14,7 @@ import { Logo } from "@/components/ui/logo"
 import { Button } from "@/components/ui/button"
 import { DemoTourButton } from "@/components/landing/demo-tour"
 import { PLANS } from "@/lib/plans/registry"
-import { getDictionary } from "@/lib/i18n/dictionaries"
+import { landingSl, landingEn, type LandingDictionary } from "@/lib/i18n/dict/landing"
 import { cn } from "@/lib/utils"
 import type { Locale } from "@/lib/i18n/config"
 
@@ -47,7 +47,9 @@ export function PlatformLanding({
    * MARKEC reklama) — le glava pokaže "Moja plošča" namesto prijave. */
   dashboardHref?: string | null
 }) {
-  const t = getDictionary(locale).landing
+  // T9 (bundle): lokalni slovar namesto getDictionary — slednji vleče VSE
+  // slovarje (settings 60 KB …) v client bundle landinga.
+  const t: LandingDictionary = locale === "en" ? landingEn : landingSl
   const plans = Object.values(PLANS)
   const isEn = locale === "en"
   const otherLangHref = isEn ? "/" : "/en"

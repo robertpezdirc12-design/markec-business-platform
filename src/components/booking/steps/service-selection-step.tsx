@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ClockIcon } from "@/components/icons"
 import { cn } from "@/lib/utils"
 import { ServiceListItem } from "@/lib/interfaces"
-import { useI18n } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
 
 interface ServiceSelectionStepProps {
   services: ServiceListItem[]

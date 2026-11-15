@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/tooltip"
 import { useCartStore } from "@/store/cart-store"
 import { useOrgPrefix } from "@/lib/org-path-hooks"
-import { useI18n } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
 import Link from "next/link"
 
 export function NavCartButton() {

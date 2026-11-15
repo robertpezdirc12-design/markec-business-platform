@@ -9,7 +9,7 @@ import { format, addDays } from "date-fns"
 import { getAvailableTimeSlots } from "@/app/actions/appointments"
 import { TimeSlot } from "@/lib/interfaces"
 import type { BookingResource } from "@/app/actions/appointments"
-import { useI18n } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
 import { getDateFnsLocale } from "@/lib/i18n/date-locale"
 import { cn } from "@/lib/utils"
 import {

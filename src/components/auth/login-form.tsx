@@ -21,7 +21,7 @@ import { SpinnerIcon, GoogleIcon } from "@/components/icons"
 import { toast } from "sonner"
 import { Logo } from "@/components/ui/logo"
 import { loginSchema, type LoginInput } from "@/lib/validations/auth"
-import { useI18n } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
 import { getActiveWorkspaceCount } from "@/app/actions/workspaces"
 import { resendVerification } from "@/app/actions/auth"
 

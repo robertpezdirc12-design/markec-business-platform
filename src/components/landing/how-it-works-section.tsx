@@ -6,7 +6,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { AccentSpan, splitLastWord } from "./section-title"
-import { useI18n } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
 
 // ============================================================
 // "Kako deluje" — public trust section explaining the booking

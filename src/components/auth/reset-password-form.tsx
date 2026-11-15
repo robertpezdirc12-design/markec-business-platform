@@ -25,7 +25,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { resetPassword } from "@/app/actions/auth"
 import { ResetPasswordFormProps } from "@/lib/interfaces"
-import { useI18n } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
 
 export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
   const router = useRouter()

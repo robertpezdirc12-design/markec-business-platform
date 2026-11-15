@@ -2,7 +2,7 @@ import { useFormatPrice } from "@/lib/currency"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ClockIcon } from "@/components/icons"
-import { useI18n } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
 
 interface ServiceStepProps {
   service: {

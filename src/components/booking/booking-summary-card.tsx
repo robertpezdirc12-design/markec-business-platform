@@ -19,7 +19,7 @@ import {
 } from "@/components/icons"
 import { format } from "date-fns"
 import { AvailableStaffMember, TimeSlot } from "@/lib/interfaces"
-import { useI18n } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
 import { getDateFnsLocale } from "@/lib/i18n/date-locale"
 // #79: polog kot pravilo — čisti helper, deljen s strežnikom.
 import { resolveDeposit } from "@/lib/booking/deposit"

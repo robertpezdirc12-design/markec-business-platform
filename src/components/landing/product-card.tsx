@@ -18,7 +18,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { ToteIcon } from "@/components/icons"
 import { useCartStore } from "@/store/cart-store"
-import { useI18n } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
 
 interface ProductCardProps {
   id: string

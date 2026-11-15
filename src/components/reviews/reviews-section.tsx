@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { StarIcon, StarHalfIcon } from "@/components/icons"
 import { cloudinaryPresets } from "@/lib/utils/cloudinary"
 import { displayAuthor } from "@/lib/utils/author"
-import { useI18n } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
 import { splitLastWord } from "@/components/landing/section-title"
 
 interface Review {

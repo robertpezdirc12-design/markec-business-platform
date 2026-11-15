@@ -25,7 +25,7 @@ import {
 } from "@/lib/validations/auth"
 import { forgotPassword } from "@/app/actions/auth"
 import { toast } from "sonner"
-import { useI18n } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
 
 export function ForgotPasswordForm() {
   const { t } = useI18n()

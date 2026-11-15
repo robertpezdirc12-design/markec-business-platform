@@ -4,7 +4,7 @@ import Image from "next/image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AvailableStaffMember } from "@/lib/interfaces"
 import { cloudinaryPresets } from "@/lib/utils/cloudinary"
-import { useI18n } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
 import { cn } from "@/lib/utils"
 
 interface StaffStepProps {

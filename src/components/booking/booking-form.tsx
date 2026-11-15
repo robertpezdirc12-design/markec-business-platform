@@ -24,7 +24,7 @@ import {
 } from "@/app/actions/appointments"
 import { ServiceStep } from "./steps/service-step"
 import { toast } from "sonner"
-import { useI18n } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
 import { checkPromotionCode } from "@/app/actions/checkout-promo"
 // F2.2.2 P0-2: gostova rezervacija brez plačila se vrne na uspešno stran
 // ZA NAJEMNIKA (isto površino, na kateri je oddal obrazec) — gola pot

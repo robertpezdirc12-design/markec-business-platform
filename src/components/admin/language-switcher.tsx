@@ -10,7 +10,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
-import { useI18n, localeLabels, locales } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
+import { localeLabels, locales } from "@/lib/i18n/config"
 
 export function LanguageSwitcher() {
   const { locale, setLocale, t } = useI18n()

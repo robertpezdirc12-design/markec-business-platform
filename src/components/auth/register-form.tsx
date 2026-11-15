@@ -23,7 +23,7 @@ import { toast } from "sonner"
 import { Logo } from "@/components/ui/logo"
 import { registerSchema, type RegisterInput } from "@/lib/validations/auth"
 import { registerUser } from "@/app/actions/auth"
-import { useI18n } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
 
 export function RegisterForm() {
   const router = useRouter()

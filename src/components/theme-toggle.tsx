@@ -1,6 +1,6 @@
 "use client"
 
-import { useI18n } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
 
 import { useSyncExternalStore } from "react"
 import { MoonIcon, SunIcon, DesktopIcon } from "@/components/icons"

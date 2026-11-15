@@ -9,7 +9,7 @@
 
 import { useState } from "react"
 import { X, Tag } from "lucide-react"
-import { useI18n } from "@/lib/i18n/provider"
+import { useI18n } from "@/lib/i18n/context"
 import type { PublicActivePromotion } from "@/lib/promotions/public"
 
 export function PromoBanner({ promos }: { promos: PublicActivePromotion[] }) {
