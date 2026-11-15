@@ -23,11 +23,8 @@ import { requirePermissionOrg } from "@/lib/auth/guards"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import type { Prisma } from "@prisma/client"
-import {
-  consumeOnWorkOrder,
-  VEHICLE_WORKSHOP_CONSUMPTION_OPTS,
-  type ConsumptionResult,
-} from "./work-order-consumption"
+import { consumeOnWorkOrder, type ConsumptionResult } from "./work-order-consumption"
+import { VEHICLE_WORKSHOP_CONSUMPTION_OPTS } from "@/lib/consumption-options"
 
 const VEHICLE_EXT = "vehicle-workshop"
 const VEHICLE_KEY = "vehicle"

@@ -26,11 +26,8 @@ import { z } from "zod"
 import type { Prisma } from "@prisma/client"
 import { nextDocumentNumber, fiscalYearOf } from "@/lib/documents/numbering"
 import { advanceWorkOrder } from "./work-orders"
-import {
-  consumeOnWorkOrder,
-  SEAMSTRESS_CONSUMPTION_OPTS,
-  type ConsumptionResult,
-} from "./work-order-consumption"
+import { consumeOnWorkOrder, type ConsumptionResult } from "./work-order-consumption"
+import { SEAMSTRESS_CONSUMPTION_OPTS } from "@/lib/consumption-options"
 
 const MEASURE_EXT = "seamstress-measurements"
 const MEASURE_KEY = "measurement"

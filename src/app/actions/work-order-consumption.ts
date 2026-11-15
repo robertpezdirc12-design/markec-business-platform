@@ -416,29 +416,6 @@ export async function consumeOnWorkOrder(
 }
 
 // ============================================================
-// Predloge za profile (določijo opcije glede na dejavnost)
+// Konfiguracijske opcije porabe so v @/lib/consumption-options (izven "use server").
+// Next Build ne dovoli izvoženih objektov iz Server Action modulov.
 // ============================================================
-
-/** Opcije za šiviljstvo — uporabi customerId, dokument = QUOTE (osnutek ponudbe). */
-export const SEAMSTRESS_CONSUMPTION_OPTS: ConsumptionOptions = {
-  useWorkOrderCustomer: true,
-  documentType: "QUOTE",
-  documentStatus: "DRAFT",
-  orderNotes: "Poraba materiala na delovnem nalogu (šiviljstvo)",
-  documentNotes: "Šiviljstvo — poraba materiala (sledljivost).",
-  eventMessage: (totalQty, orderShortId, docNumber) =>
-    `Poraba materiala: ${totalQty} kos → naročilo ${orderShortId} / dokument ${docNumber}`,
-  revalidatePaths: ["/dashboard/seamstress", "/dashboard/work-orders"],
-}
-
-/** Opcije za servis vozil — brez customerId na Order, dokument = QUOTE. */
-export const VEHICLE_WORKSHOP_CONSUMPTION_OPTS: ConsumptionOptions = {
-  useWorkOrderCustomer: false,
-  documentType: "QUOTE",
-  documentStatus: "DRAFT",
-  orderNotes: "Poraba delov na delovnem nalogu",
-  documentNotes: "Delovni nalog — poraba delov (sledljivost).",
-  eventMessage: (totalQty, orderShortId, docNumber) =>
-    `Poraba delov: ${totalQty} kos → naročilo ${orderShortId} / dokument ${docNumber}`,
-  revalidatePaths: ["/dashboard/tire-service", "/dashboard/work-orders"],
-}
