@@ -11,6 +11,7 @@ import {
   CalendarIcon,
   PlusIcon,
   EyeIcon,
+  FilterIcon,
 } from "@/components/icons"
 import { getAdminAppointments } from "@/app/actions/appointments"
 import { formatSalonTime } from "@/lib/booking-time"
@@ -20,6 +21,8 @@ import { startOfDay, endOfDay } from "date-fns"
 import { getServerI18n } from "@/lib/i18n/server"
 import { requirePagePermission } from "@/lib/auth/guards"
 import { formatDateStandard } from "@/lib/utils/format"
+import { AdminCalendar } from "@/components/dashboard/admin-calendar"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const statusColors: Record<string, string> = {
   PENDING: "bg-amber-500 text-white",
@@ -125,34 +128,60 @@ export default async function AppointmentsPage() {
         </Card>
       </div>
 
-      {/* Appointments Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.appointments.list.allAppointments}</CardTitle>
-          <CardDescription>
-            {t.appointments.list.totalAppointments(appointments.length)}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {appointments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <CalendarIcon size={48} className="mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-medium">
-                {t.appointments.list.emptyTitle}
-              </h3>
-              <p className="mb-4 text-sm text-muted-foreground">
-                {t.appointments.list.emptyDescription}
-              </p>
-              <Link href="/dashboard/appointments/new">
-                <Button>
-                  <PlusIcon size={16} className="mr-2" />
-                  {t.appointments.list.newAppointment}
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
+      {/* Appointments View */}
+      <Tabs defaultValue="calendar" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="calendar">
+            <CalendarIcon size={16} className="mr-2" />
+            Koledar
+          </TabsTrigger>
+          <TabsTrigger value="table">
+            <FilterIcon size={16} className="mr-2" />
+            Seznam
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Calendar View */}
+        <TabsContent value="calendar">
+          <AdminCalendar
+            appointments={appointments.map((apt) => ({
+              ...apt,
+              startTime: apt.startTime.toISOString(),
+              endTime: apt.endTime.toISOString(),
+            }))}
+            salonTz={salonTz}
+          />
+        </TabsContent>
+
+        {/* Table View */}
+        <TabsContent value="table">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t.appointments.list.allAppointments}</CardTitle>
+              <CardDescription>
+                {t.appointments.list.totalAppointments(appointments.length)}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {appointments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <CalendarIcon size={48} className="mb-4 text-muted-foreground" />
+                  <h3 className="text-lg font-medium">
+                    {t.appointments.list.emptyTitle}
+                  </h3>
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    {t.appointments.list.emptyDescription}
+                  </p>
+                  <Link href="/dashboard/appointments/new">
+                    <Button>
+                      <PlusIcon size={16} className="mr-2" />
+                      {t.appointments.list.newAppointment}
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
                 <thead>
                   <tr className="border-b text-left text-sm text-muted-foreground">
                     <th className="pb-3 font-medium">
@@ -223,12 +252,14 @@ export default async function AppointmentsPage() {
                       </td>
                     </tr>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  </tbody>
+                </table>
+              </div>
+            )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
