@@ -1,4 +1,5 @@
 import { Resend } from "resend"
+import { getEmailConfig } from "./config"
 import { render } from "@react-email/components"
 import { AppointmentCompletedTemplate } from "./templates/appointment-completed-template"
 
@@ -27,6 +28,15 @@ export async function sendAppointmentCompletedEmail({
   totalPrice,
   appointmentId,
 }: SendAppointmentCompletedParams) {
+  const config = getEmailConfig()
+  if (!config) {
+    return {
+      success: false,
+      notConfigured: true,
+      error: "Email service not configured",
+    }
+  }
+
   try {
     const bookingRef = appointmentId.slice(-8).toUpperCase()
 
@@ -43,7 +53,7 @@ export async function sendAppointmentCompletedEmail({
     )
 
     const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL!,
+      from: config.from,
       to: email,
       subject: `Thank You for Visiting - ${serviceName}`,
       html,

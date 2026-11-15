@@ -1,4 +1,5 @@
 import { Resend } from "resend"
+import { getEmailConfig } from "./config"
 import { render } from "@react-email/components"
 import { WaitlistNotifyTemplate } from "./templates/waitlist-notify-template"
 
@@ -24,13 +25,22 @@ export async function sendWaitlistNotifyEmail({
   serviceName,
   bookingUrl,
 }: SendWaitlistNotifyParams) {
+  const config = getEmailConfig()
+  if (!config) {
+    return {
+      success: false,
+      notConfigured: true,
+      error: "Email service not configured",
+    }
+  }
+
   try {
     const html = await render(
       WaitlistNotifyTemplate({ name, businessName, serviceName, bookingUrl })
     )
 
     const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL!,
+      from: config.from,
       to: email,
       subject: `A slot just opened up — ${serviceName ?? businessName}`,
       html,

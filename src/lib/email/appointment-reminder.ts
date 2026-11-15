@@ -1,4 +1,5 @@
 import { Resend } from "resend"
+import { getEmailConfig } from "./config"
 import { render } from "@react-email/components"
 import { AppointmentReminderTemplate } from "./templates/appointment-reminder-template"
 
@@ -33,6 +34,15 @@ export async function sendAppointmentReminderEmail({
   duration,
   reminderType,
 }: SendAppointmentReminderParams) {
+  const config = getEmailConfig()
+  if (!config) {
+    return {
+      success: false,
+      notConfigured: true,
+      error: "Email service not configured",
+    }
+  }
+
   try {
     const html = await render(
       AppointmentReminderTemplate({
@@ -47,7 +57,7 @@ export async function sendAppointmentReminderEmail({
     )
 
     const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL!,
+      from: config.from,
       to: email,
       subject: `Reminder: Your appointment is ${reminderText[reminderType]} - ${serviceName}`,
       html,

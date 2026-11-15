@@ -23,7 +23,7 @@ spodaj, popravi le označene vrzeli in šele nato postavi kljukico.
 
 | Točka | Naslov | Status | Kaj manjka |
 |---|---|---|---|
-| 1 | Varnost in higiena | 🟡 | **rate-limit … NAREJEN**; **backup obnova ✅ (2026-11-15)**; ostane SPF/DKIM/DMARC — brez `RESEND_API_KEY`/`RESEND_FROM_EMAIL` v Vercelu pošiljatelj ni nastavljen |
+| 1 | Varnost in higiena | 🟡 | **rate-limit … NAREJEN**; **backup obnova ✅**; **email senderji 16/16 fail-closed ✅ (2026-11-15)**; ostane le zunanja SPF/DKIM/DMARC + `RESEND_API_KEY`/`RESEND_FROM_EMAIL` |
 | 2 | Katalog dejavnosti (SKD 2025) | ✅ | — (1725 zapisov / 678 podrazredov, preskok, 21 področij, iskalnik) |
 | 3 | Predeloki za dejavnosti | ✅ | le preveriti, da vsak arhetip dobi prave module (dokaz E2E) |
 | 4 | Knjižnica slik | ✅ | **Cloudinary auto-rezanje (2000px + q_auto/f_auto) NAREJEN**; hero zamenjava tu |
@@ -69,8 +69,13 @@ baze iz backupa.
   nasprotujoča si zapisa** (`p=none` in `p=quarantine`), MX zapisa ni, DKIM
   selektorja ni mogoče preveriti. Dodaten blokator: med 30 Vercelovimi
   spremenljivkami manjkata `RESEND_API_KEY` in `RESEND_FROM_EMAIL`, zato
-  pošiljanje e-pošte v produkciji sploh ni vklopljeno (koda vrne
-  `notConfigured: true`). Konfiguracija domene je torej predpogoj, ne le DNS popravek.
+  pošiljanje e-pošte v produkciji sploh ni vklopljeno. **Koda je zdaj utrjena
+  (2026-11-15):** vseh 16 pošiljateljev v `src/lib/email/` je fail-closed prek
+  `getEmailConfig()` — brez ključa ali brez pošiljatelja ne pokličejo Resenda in
+  vrnejo `notConfigured: true` (prej jih je bilo utrjenih le 5, ostali so
+  pošiljali placeholder ključ → 401 in `from: undefined`). Preostali blokator je
+  torej **izključno zunanja konfiguracija**, ne več koda; dodatne spremembe kode
+  ob vnosu ključev niso potrebne.
   **Kje se ureja:** avtoritativni NS sta `ns75.domaincontrol.com` in
   `ns76.domaincontrol.com` (GoDaddy), ne Vercel — `GET /v3/domains/rcbeautysalon.org`
   vrne 403, projekt ima v Vercelu samo `rcbeautysalon-phi.vercel.app`. Zapise je torej

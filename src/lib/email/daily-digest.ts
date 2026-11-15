@@ -1,4 +1,5 @@
 import { Resend } from "resend"
+import { getEmailConfig } from "./config"
 import { render } from "@react-email/components"
 import { DailyDigestTemplate } from "./templates/daily-digest-template"
 
@@ -24,13 +25,22 @@ export async function sendDailyDigestEmail({
   businessName,
   todayLabel,
 }: SendDailyDigestParams) {
+  const config = getEmailConfig()
+  if (!config) {
+    return {
+      success: false,
+      notConfigured: true,
+      error: "Email service not configured",
+    }
+  }
+
   try {
     const html = await render(
       DailyDigestTemplate({ body, businessName, todayLabel })
     )
 
     const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL!,
+      from: config.from,
       to: email,
       subject,
       html,
