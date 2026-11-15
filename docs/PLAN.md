@@ -31,7 +31,7 @@ spodaj, popravi le označene vrzeli in šele nato postavi kljukico.
 | 6 | Predogled, objava, različice | ✅ | **zgodovina objav + vrnitev NAREJEN** + **QR koda NAREJEN** |
 | 7 | Naplačevanje paketov | 🟡 | **javna `/pricing` stran NAREJENA** + **grace tok (opomnik→grace→suspenz) NAREJEN**; ostane samo živi Stripe preizkus |
 | 8 | Jezik in pravni minimum | ✅ | — (E2E EN nakup `e2e/h-en-purchase.spec.ts` zelen; GDPR izvoz/izbris 5/5) |
-| 9 | Kakovost in končni test | 🟡 | **a11y: axe 0 kršitev na 4 javnih straneh (popravljen button-name, živo re-verificirano)**; LCP: 3/4 strani < 1,2 s — landing 3,3 s (ISR follow-up) |
+| 9 | Kakovost in končni test | 🟡 | **a11y: axe 0 kršitev na 4 javnih straneh (popravljen button-name, živo re-verificirano)**; JS bundle: vse javne strani < 400 KB gzip (2026-11-15); LCP: po deploy-u re-meriti (pričakovano landing ≈ 2,0–2,2 s) |
 | 10 | Zaprta beta | ⬜ | ni začeta |
 | 11 | Javni zagon | ⬜ | ni začet |
 | 12+ | Po zagonu | ⬜ | ni začeto |
@@ -276,9 +276,21 @@ postavi ✅.
   - Hladne številke zdaj: pricing 2,33 s ✓ · shop 2,62 s · landing 2,71 s · tenant home 3,08 s.
   - **Preostali vzrok (strukturen)**: ~450 KB JS chunkov deljene javne ovojnice tekmuje z
     render-blocking CSS (25,8 KB) — LCP element je besedilo (H1), ki počaka CSS. Fizika cevi:
-    450 KB @ 1,6 Mbps ≈ 2,3 s. **Naslednji korak (ločen task):** bundle analiza javne ovojnice
-    (kaj vleče Radix/lucide/i18n/store na vse javne strani) + code-splitting pod-fold komponent;
-    cilj < 400 KB JS na javnih straneh.
+    450 KB @ 1,6 Mbps ≈ 2,3 s.
+  - ✅ **NAREJENO (2026-11-15, veja fase1-review): bundle analiza + code-splitting — cilj
+    < 400 KB JS na javnih straneh IZPOLNJEN (transfer/gzip):**
+    - pnpm patch zod: odstranjen locales sodček (47 jezikov; zod 226 → 113 KB),
+    - profilske in plan registri brez zod v client grafu (validate.ts + testi; zod izginil
+      iz prvo-naloženega JS vseh javnih strani),
+    - @radix-ui/react-icons barrel (318 ikon, 204 KB) zamenjan z @/components/icons (Phosphor),
+    - ReviewForm na landing-u prek next/dynamic (react-hook-form + zod + dialog + date-fns ≈ 200 KB
+      se naloži šele ob interakciji).
+    - Meritev prvo-naloženega JS (raw / gzip): landing 1559/438 → **1286/371 KB**, shop 1464/410 →
+      **1218/353 KB**, pricing 1415/394 → **1169/337 KB**; product/cart 580/177 KB nespremenjeno.
+    - Preostanek: ~300 KB raw je React+Next okvir (nepogrešljiv), ~209 KB Phosphor ikone
+      (77 ikon × vse uteži — morebiten naslednji korak: samo-regular uteži), ~200 KB i18n/registry.
+    - **Ostalo:** LCP landinga re-meriti s `scripts/f9-a11y-lcp-prod.mjs` proti PRODUKCIJI po
+      naslednjem deploy-u (pričakovanje: −0,5–0,7 s → landing ≈ 2,0–2,2 s < 2,5 s ✓).
   - Kontekst: Fast-3G + 4× CPU je Lighthouse najslabši primer; na realnem 4G/5G (10–50 Mbps) je
     LCP teh strani ≈ 1–1,5 s — polje (p75) bo mejo 2,5 s prestalo brez težave.
 - ✅ **Dostopnost brez kritičnih napak** — DOKAZANO Z AXE (2026-11-14, produkcija, wcag2a+aa):
@@ -289,9 +301,9 @@ postavi ✅.
   poganjaj po vsaki večji spremembi javnih strani).
 - 🟡 **Varnostni pregled** — itest za org-isolacijo je tu; celoten pregled ni.
 
-**Kaj narediti:** izboljšaj LCP landinga (ISR/prednaložitev) nad 2,5 s, preveri nastavlive
-varnostnega pregleda. "Test mame": oseba brez programiranja objavi stran s svojimi slikami
-in cenami v 15 min. Nato postavi ✅.
+**Kaj narediti:** po deploy-u re-meri LCP landinga (scripts/f9-a11y-lcp-prod.mjs) in pričakuj
+< 2,5 s; če ne, ISR/prednaložitev. Preveri nastavlive varnostnega pregleda. "Test mame":
+oseba brez programiranja objavi stran s svojimi slikami in cenami v 15 min. Nato postavi ✅.
 
 ## 10. ZAPRTA BETA — ⬜
 
