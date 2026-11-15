@@ -64,6 +64,8 @@ import {
   fdStrList,
   zodIssuesToFieldErrors,
 } from "@/lib/forms/form-data"
+import { generateServiceDescription } from "@/lib/service-description-generator"
+import { suggestCategory, suggestPrice } from "@/lib/smart-content-generator"
 
 interface Category {
   id: string
@@ -320,16 +322,76 @@ export function ServiceForm({ categories, staff, service, onSuccess }: ServiceFo
                     rows={4}
                     className="flex-1"
                   />
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="mt-1"
-                    disabled
-                    title={t.services.aiGenerateTooltip}
+                    onClick={() => {
+                      const name = watch("name")
+                      const categoryId = watch("categoryId")
+                      const duration = watch("duration")
+                      if (!name) {
+                        toast.error("Najprej vnesite ime storitve")
+                        return
+                      }
+                      const desc = generateServiceDescription({
+                        name,
+                        category: categories.find((c) => c.id === categoryId)?.name,
+                        duration: Number(duration) || null,
+                      })
+                      setValue("description", desc)
+                      toast.success("Opis generiran! Uredite po potrebi.")
+                    }}
+                    title="Generiraj profesionalni opis"
                   >
-                    <SparkleIcon size={16} className="mr-1" />
-                    {t.services.aiGenerate}
+                    <SparkleIcon size={14} className="mr-1" />
+                    Generiraj opis
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const duration = watch("duration")
+                      const categoryId = watch("categoryId")
+                      if (!duration) {
+                        toast.error("Najprej vnesite trajanje")
+                        return
+                      }
+                      const price = suggestPrice(Number(duration), categories.find((c) => c.id === categoryId)?.name)
+                      setValue("price", price)
+                      toast.success(`Predlagana cena: ${price} €`)
+                    }}
+                    title="Predlagaj ceno glede na trajanje"
+                  >
+                    💰 Predlagaj ceno
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const name = watch("name")
+                      if (!name) {
+                        toast.error("Najprej vnesite ime storitve")
+                        return
+                      }
+                      const suggested = suggestCategory(name)
+                      if (suggested) {
+                        const cat = categories.find((c) => c.name === suggested)
+                        if (cat) {
+                          setValue("categoryId", cat.id)
+                          toast.success(`Predlagana kategorija: ${suggested}`)
+                        }
+                      } else {
+                        toast.info("Ni jasne kategorije — izberite ročno")
+                      }
+                    }}
+                    title="Predlagaj kategorijo"
+                  >
+                    📂 Predlagaj kategorijo
                   </Button>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
