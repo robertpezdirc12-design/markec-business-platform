@@ -12,7 +12,7 @@
 // design store, no per-SKD template code.
 // ============================================================
 
-import type { FontKey } from "@/lib/verticals"
+import { FONT_CSS_VARS, type FontKey } from "@/lib/verticals"
 import type { SectionKey } from "@/lib/site-content"
 
 // ------------------------------------------------------------
@@ -82,6 +82,31 @@ export const DEFAULT_TYPOGRAPHY: ThemeTypography = {
   headingScale: 1,
   baseFontSize: 16,
   fontWeight: "normal",
+}
+
+// ------------------------------------------------------------
+// Varnost (varnostni pregled 2026-11-15): tipografija se vbrizga v
+// <style> (app/layout.tsx). TypeScript tipi pri server action NE ščitijo
+// (vhod je poljuben JSON na žici), zato morajo biti vrednosti pred
+// shranjevanjem in pred izrisom SANITIZIRANE. To je edini lijak:
+// številke omejene na varne intervale, ključe pisav na znane vrednosti.
+// ------------------------------------------------------------
+
+export function sanitizeTypography(raw: unknown): ThemeTypography {
+  const t = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>
+  const num = (v: unknown, def: number, min: number, max: number): number =>
+    typeof v === "number" && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : def
+  const font = (v: unknown, def: FontKey): FontKey =>
+    typeof v === "string" && Object.hasOwn(FONT_CSS_VARS, v) ? (v as FontKey) : def
+  const weight = (v: unknown): ThemeTypography["fontWeight"] =>
+    v === "normal" || v === "medium" || v === "semibold" ? v : "normal"
+  return {
+    fontHeading: font(t.fontHeading, DEFAULT_TYPOGRAPHY.fontHeading),
+    fontBody: font(t.fontBody, DEFAULT_TYPOGRAPHY.fontBody),
+    headingScale: num(t.headingScale, 1, 0.5, 3),
+    baseFontSize: num(t.baseFontSize, 16, 12, 24),
+    fontWeight: weight(t.fontWeight),
+  }
 }
 
 /** HEX → parsed. Nil on invalid. */
@@ -162,6 +187,37 @@ export function validateTheme(theme: SiteTheme): { errors: string[]; warnings: s
   if (linkC != null && linkC < 3) {
     warnings.push(`Povezave (${col.link}) na ozadju (${col.background}) so slabo berljive (${linkC.toFixed(2)}:1).`)
   }
+  // Tipografija (varnost): napačni tipi so ZAVRNJENI — vrednosti se
+  // vbrizgajo v <style> (XSS vektor). Obseg preverja tudi sanitizeTypography.
+  const tRaw = (theme.typography ?? {}) as Record<string, unknown>
+  const badTypo = (cond: boolean, msg: string) => {
+    if (cond) errors.push(`Tipografija: ${msg}`)
+  }
+  badTypo(
+    tRaw.headingScale !== undefined &&
+      (typeof tRaw.headingScale !== "number" || !Number.isFinite(tRaw.headingScale)),
+    "headingScale mora biti število."
+  )
+  badTypo(
+    tRaw.baseFontSize !== undefined &&
+      (typeof tRaw.baseFontSize !== "number" || !Number.isFinite(tRaw.baseFontSize)),
+    "baseFontSize mora biti število."
+  )
+  badTypo(
+    tRaw.fontHeading !== undefined &&
+      !(typeof tRaw.fontHeading === "string" && Object.hasOwn(FONT_CSS_VARS, tRaw.fontHeading)),
+    "neznana pisava naslovov."
+  )
+  badTypo(
+    tRaw.fontBody !== undefined &&
+      !(typeof tRaw.fontBody === "string" && Object.hasOwn(FONT_CSS_VARS, tRaw.fontBody)),
+    "neznana pisava besedila."
+  )
+  badTypo(
+    tRaw.fontWeight !== undefined &&
+      !(tRaw.fontWeight === "normal" || tRaw.fontWeight === "medium" || tRaw.fontWeight === "semibold"),
+    "neveljavna debelina pisave."
+  )
   return { errors, warnings }
 }
 
@@ -189,7 +245,7 @@ export function themeToCssVars(theme: SiteTheme): Record<string, string> {
   if (!effective.link && effective.primary) effective.link = effective.primary
   // F5.3.3.1 — samo eksplicitno nastavljene barve (glej komentar zgoraj).
   const col = effective
-  const typo = { ...DEFAULT_TYPOGRAPHY, ...theme.typography }
+  const typo = sanitizeTypography(theme.typography)
   // tema → globals token (kebab-case). Enobesedni ključi (primary, link,
   // heading, text, background …) ostanejo, zloženke dobijo globals vezaji.
   const tokenKey = (k: keyof ThemeColors): string => {

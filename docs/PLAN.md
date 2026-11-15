@@ -31,7 +31,7 @@ spodaj, popravi le označene vrzeli in šele nato postavi kljukico.
 | 6 | Predogled, objava, različice | ✅ | **zgodovina objav + vrnitev NAREJEN** + **QR koda NAREJEN** |
 | 7 | Naplačevanje paketov | 🟡 | **javna `/pricing` stran NAREJENA** + **grace tok (opomnik→grace→suspenz) NAREJEN**; ostane samo živi Stripe preizkus |
 | 8 | Jezik in pravni minimum | ✅ | — (E2E EN nakup `e2e/h-en-purchase.spec.ts` zelen; GDPR izvoz/izbris 5/5) |
-| 9 | Kakovost in končni test | 🟡 | **a11y: axe 0 kršitev na 4 javnih straneh (živo re-verificirano 2026-11-15)**; JS bundle: vse javne strani < 400 KB gzip; LCP re-merjeno: pricing 2,3 s ✓, ostale 2,8–3,3 s v najhujšem lab primeru (realna 4G/5G 1–1,5 s; optional: ISR) |
+| 9 | Kakovost in končni test | 🟡 | **a11y: 0 kršitev (živo re-verificirano)**; JS bundle: < 400 KB gzip; LCP re-merjeno (pricing 2,3 s ✓, realna 4G/5G 1–1,5 s); **varnostni pregled ✅ — 2 XSS popravljena** (docs/VARNOSTNI-PREGLED-2026-11.md); ostaja: "Test mame" |
 | 10 | Zaprta beta | ⬜ | ni začeta |
 | 11 | Javni zagon | ⬜ | ni začet |
 | 12+ | Po zagonu | ⬜ | ni začeto |
@@ -310,11 +310,18 @@ postavi ✅.
   dostopnega imena — 3 filter-comboboxi shop + loading-gumb navbarja) popravljen (aria-label),
   fix živ na produkciji in re-verificiran. Orodje: `scripts/f9-a11y-lcp-prod.mjs` (ponovno
   poganjaj po vsaki večji spremembi javnih strani).
-- 🟡 **Varnostni pregled** — itest za org-isolacijo je tu; celoten pregled ni.
+- ✅ **Varnostni pregled** — CELOVIT pregled kode opravljen (2026-11-15):
+  `docs/VARNOSTNI-PREGLED-2026-11.md`. Najdena in POPRAVLJENA 2 XSS vektorja (JSON-LD
+  brez ubežnega zapisa v root layoutu; tipografija teme vbrizgana v <style> brez
+  validacije) + regresijski testi (tests/security/theme-injection.test.ts). Preostalo
+  preverjeno čisto (SQL, brute force, gesla, žetoni, webhook, upload, odprte
+  preusmeritve, masovno dodeljevanje, piškotki). Odprta za uporabnika: rotacija
+  Vercel tokena (_deploy.mjs) + DMARC zapis (docs/MAIL-SETUP.md). Priporočila
+  naslednjega kroga: CSP enforce (nonce), magic-bytes pri uploadu.
 
-**Kaj narediti:** po deploy-u re-meri LCP landinga (scripts/f9-a11y-lcp-prod.mjs) in pričakuj
-< 2,5 s; če ne, ISR/prednaložitev. Preveri nastavlive varnostnega pregleda. "Test mame":
-oseba brez programiranja objavi stran s svojimi slikami in cenami v 15 min. Nato postavi ✅.
+**Kaj narediti:** po deploy-u re-meri LCP landinga (scripts/f9-a11y-lcp-prod.mjs) — če kritična
+meja ni izpolnjena, ISR/prednaložitev. "Test mame": oseba brez programiranja objavi stran s
+svojimi slikami in cenami v 15 min. Nato postavi ✅.
 
 ## 10. ZAPRTA BETA — ⬜
 

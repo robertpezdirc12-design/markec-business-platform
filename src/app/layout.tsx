@@ -11,7 +11,7 @@ import { auth } from "@/lib/auth/auth"
 import { getOrgBySlug, getOrgById, getTrustedOrgSlug } from "@/lib/tenant"
 import { prisma } from "@/lib/prisma"
 import { paletteCssVars, paletteDarkTextVars, PALETTES, FONT_CSS_VARS, type Palette, upgradeLegacyDefaultCopy } from "@/lib/verticals"
-import { themeToCssVars, DEFAULT_TYPOGRAPHY, type SiteTheme, type ThemeTypography } from "@/lib/site-design"
+import { themeToCssVars, sanitizeTypography, type SiteTheme } from "@/lib/site-design"
 import { mergeSiteContent } from "@/lib/site-content"
 import { CurrencyProvider } from "@/lib/currency"
 import { platformThemeCss } from "@/lib/platform-theme"
@@ -222,10 +222,9 @@ export default async function RootLayout({
       const f532 = themeToCssVars(config.theme as unknown as SiteTheme)
       const parts = Object.entries(f532).map(([k, v]) => `${k}:${v}`)
       const themeObj = config.theme as Record<string, unknown>
-      const typo = {
-        ...DEFAULT_TYPOGRAPHY,
-        ...(themeObj.typography as Partial<ThemeTypography> | undefined),
-      } satisfies ThemeTypography
+      // Varnost: sanitizirana tipografija (sanitizeTypography) — surove
+      // vrednosti iz baze se NE vbrizgajo v <style> (XSS vektor).
+      const typo = sanitizeTypography(themeObj.typography)
       // pisave: mapiraj FontKey → CSS var (komponente berejo --org-font-heading/body)
       const heading = FONT_CSS_VARS[typo.fontHeading]
       const body = FONT_CSS_VARS[typo.fontBody]
@@ -329,14 +328,17 @@ export default async function RootLayout({
         {jsonLd && (
           <script
             type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            // Varnost: "<" ubežen — JSON v <script> nikoli ne sme vsebovati
+            // konca oznake (lastniška polja (ime/opis) lahko vsebujejo "</script>").
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
           />
         )}
         {platformJsonLd && (
           <>
             <script
               type="application/ld+json"
-              dangerouslySetInnerHTML={{ __html: JSON.stringify(platformJsonLd) }}
+              // Varnost: glej zgoraj — "<" ubežen.
+              dangerouslySetInnerHTML={{ __html: JSON.stringify(platformJsonLd).replace(/</g, "\\u003c") }}
             />
             <meta
               property="og:locale:alternate"
