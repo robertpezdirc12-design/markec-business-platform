@@ -16,10 +16,12 @@ import { sl } from "date-fns/locale"
 
 export async function generateMetadata(): Promise<Metadata> {
   const site = await getPublicSiteData()
-  const orgName = site?.org.name ?? "Salon"
+  const orgName = site?.org.name ?? "Podjetje"
   return {
     title: `Rezervacija potrjena | ${orgName}`,
     description: "Vaš termin je bil uspešno rezerviran",
+    // Začasna stran po plačilu — ne indeksira se (audit 2026-11).
+    robots: { index: false, follow: true },
   }
 }
 

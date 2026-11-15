@@ -34,7 +34,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params
   const site = await getPublicSiteData()
-  const orgName = site?.org.name ?? "Salon"
+  const orgName = site?.org.name ?? "Podjetje"
   const service = site ? await getPublicServiceBySlug(site.org.id, slug) : null
 
   if (!service) {

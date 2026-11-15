@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   title: "Piškotki",
   description:
     "Katere piškotke uporablja platforma: prijava, košarica in temni način — brez sledilnih piškotkov tretjih oseb.",
+  // SEO (audit 2026-11): self-referencirajoč canonical.
+  alternates: { canonical: "/cookies" },
 }
 
 export default async function CookiesPage() {

@@ -25,7 +25,7 @@ import { PublicInquiryForm } from "@/components/public/public-inquiry-form"
 export async function generateMetadata(): Promise<Metadata> {
   const org = await getResolvedOrg()
   return canonicalMetadata(org?.slug, "/inquiry", {
-    title: `Povpraševanje | ${org?.name ?? "Salon"}`,
+    title: `Povpraševanje | ${org?.name ?? "Podjetje"}`,
     description: "Izpolnite obrazec in odgovorimo v najkrajšem možnem času.",
   })
 }

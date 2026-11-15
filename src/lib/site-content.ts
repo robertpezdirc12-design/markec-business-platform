@@ -623,7 +623,7 @@ export function defaultSiteContent(vertical: string): SiteContent {
         title: "Vsako oblačilo, popolno prileganje",
         subtitle:
           "Spremembe, popravila in šivanje po meri — z merilnim listom in dogovorjenim rokom. Oddajte povpraševanje.",
-        primaryCta: { label: "Oddaj povpraševanje", href: "/booking" },
+        primaryCta: { label: "Oddaj povpraševanje", href: "/inquiry" },
         secondaryCta: { label: "Cenik storitev", href: "/services" },
       },
       about: {
@@ -650,7 +650,7 @@ export function defaultSiteContent(vertical: string): SiteContent {
         title: "Oblačilo, ki čaka na popravek?",
         text: "Oddajte povpraševanje — odgovorimo z rokom in ceno v najkrajšem možnem času.",
         buttonLabel: "Oddaj povpraševanje",
-        buttonHref: "/booking",
+        buttonHref: "/inquiry",
       },
     },
     // #100-nadaljevanje: avtomehanik — lastno besedilo (servis vozil + ocene).

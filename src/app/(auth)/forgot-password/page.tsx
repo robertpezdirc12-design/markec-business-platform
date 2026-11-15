@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Pozabljeno geslo | Poslovna platforma",
   description: "Ponastavite geslo za svoj račun.",
   robots: { index: false, follow: false },
+  alternates: { canonical: "/forgot-password" },
 }
 
 export default function ForgotPasswordPage() {

@@ -130,6 +130,9 @@ export async function generateMetadata(): Promise<Metadata> {
       const productDescription =
         "Tvoje podjetje. Tvoja spletna stran. Tvoje stranke. Tvoja platforma. MARKEC ni izdelovalec spletnih strani — je enostaven sistem, v katerem podjetnik brez programiranja upravlja celotno svojo spletno poslovno prisotnost: spletno stran, trgovino, rezervacije in stranke."
       return {
+        // SEO (audit 2026-11): metadataBase omogoča RELATIVNE canonical-e
+        // na vseh platform straneh (prej so se resolvljali na VERCEL_URL).
+        metadataBase: new URL(appUrl),
         title: productTitle,
         description: productDescription,
         alternates: { canonical: appUrl },

@@ -22,6 +22,8 @@ export const metadata: Metadata = {
   title: "Potrditev e-pošte | Poslovna platforma",
   description: "Potrdite e-poštni naslov svojega računa.",
   robots: { index: false, follow: false },
+  // SEO (audit 2026-11): self-referencirajoč canonical.
+  alternates: { canonical: "/verify-email" },
 }
 
 interface VerifyEmailPageProps {

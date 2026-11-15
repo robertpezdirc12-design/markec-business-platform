@@ -841,10 +841,17 @@ export function BrandingEditor() {
           posterUrl: content.hero.posterUrl?.trim() || undefined,
           primaryCta: {
             label: content.hero.primaryCta.label.trim() || "Rezerviraj termin",
-            href: "/booking",
+            // Ohrani obstoječi href (audit 2026-11: prej hardkodirano /booking —
+            // profilni način "Oddaj povpraševanje" mora ostati na /inquiry).
+            href: content.hero.primaryCta.href || "/booking",
           },
           secondaryCta: content.hero.secondaryCta?.label?.trim()
-            ? { label: content.hero.secondaryCta.label.trim(), href: "/shop" }
+            ? {
+                label: content.hero.secondaryCta.label.trim(),
+                // Ohrani obstoječi href (prej hardkodirano /shop).
+                // Privzeto /services (cenik storitev), ne /shop.
+                href: content.hero.secondaryCta?.href || "/services",
+              }
             : null,
         },
         about: {
@@ -1120,7 +1127,8 @@ export function BrandingEditor() {
                 onChange={(e) =>
                   set("hero", {
                     ...content.hero,
-                    secondaryCta: { label: e.target.value, href: "/shop" },
+                    // Ohrani obstoječi href — ga ne prepisuj (audit 2026-11).
+                    secondaryCta: { label: e.target.value, href: content.hero.secondaryCta?.href || "/services" },
                   })
                 }
               />

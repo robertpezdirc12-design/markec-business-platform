@@ -8,7 +8,7 @@ import { StaffAvatar } from "@/components/landing/staff-avatar"
 
 export async function generateMetadata(): Promise<Metadata> {
   const site = await getPublicSiteData()
-  const orgName = site?.org.name ?? "Salon"
+  const orgName = site?.org.name ?? "Podjetje"
   // P1 #26: samo-referencirajoč canonical (/s/{slug}/staff).
   return canonicalMetadata(site?.org.slug, "/staff", {
     title: `${site?.content.team.title ?? "Naša ekipa"} | ${orgName}`,

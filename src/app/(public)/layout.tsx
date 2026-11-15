@@ -255,7 +255,7 @@ gtag('config', '${analyticsId}');`}
         <PublicNavbar
           org={{
             slug: org?.slug ?? null,
-            name: org?.name ?? "Salon",
+            name: org?.name ?? "Podjetje",
             logo: org?.logo ?? null,
           }}
           cta={cta.enabled ? { label: cta.label, href: cta.href } : null}

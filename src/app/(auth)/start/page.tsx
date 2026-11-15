@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: "Ustvari svoje podjetje",
   description:
     "Izberite svojo dejavnost in takoj dobite spletno stran s katalogom, povpraševanji in trgovino. Vsebino urejate sami — objavite, ko ste pripravljeni.",
+  // SEO (audit 2026-11): self-canonical + noindex (onboarding vnosna točka).
+  alternates: { canonical: "/start" },
+  robots: { index: false, follow: true },
 }
 
 // P1 #40 (onboarding audit 2026-11): čarovnik mora poznati sejo —

@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: "Cene | Poslovna platforma",
   description:
     "Izberite paket, ki ustreza vašemu podjetju. BREZPLAČNO za začetek; PRO za rastoča podjetja; SCALE, ko vas nič ne omejuje.",
+  // SEO (audit 2026-11): self-referencirajoč canonical — root layout je
+  // prej vse strani usmerjal na domačo stran.
+  alternates: { canonical: "/pricing" },
 }
 
 function Checkmark() {

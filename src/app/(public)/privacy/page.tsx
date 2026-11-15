@@ -5,7 +5,8 @@ import { getServerI18n } from "@/lib/i18n/server"
 export const metadata: Metadata = {
   title: "Zasebnost",
   description:
-    "Katere osebne podatke obdelujemo pri rezervacijah terminov in naročanju izdelkov ter kaj je vaša pravica (GDPR).",
+    "Katere osebne podatke obdelujemo na platformi MARKEC ter kakšne so vaše pravice (GDPR).",
+  alternates: { canonical: "/privacy" },
 }
 
 export default async function PrivacyPage() {
@@ -13,42 +14,54 @@ export default async function PrivacyPage() {
   return (
     <LegalPage
       title="Politika zasebnosti"
-      updated="2. november 2026"
+      updated="15. november 2026"
       backLabel={t.public.backToHome}
       updatedLabel={t.public.lastUpdated}
       sections={[
         {
+          heading: "Upravljavec",
+          body: [
+            "Upravljavec osebnih podatkov na platformi MARKEC je: MARKEC — Poslovna platforma (v nadaljevanju: upravljavec).",
+            "Kontakt za uveljavljanje pravic (GDPR): prek kontaktnega obrazca na platformi ali na e-poštni naslov, naveden v nogi spletne strani.",
+            "Za vsebino in storitve posameznega ponudnika (podjetja) odgovarja tisti ponudnik kot ločen upravljavec za podatke, ki jih zbira neposredno (npr. pri rezervaciji).",
+          ],
+        },
+        {
           heading: "Katere podatke obdelujemo",
           body: [
-            "Pri rezervaciji termina zberemo vaše ime, e-poštni naslov, telefonsko številko in neobvezne posebne želje. Podatke izkoristimo izključno za izvedbo in potrditev termina ter za komunikacijo o njem.",
-            "Pri naročilu izdelkov obdelujemo naročene izdelke in kontaktne podatke za dostavo.",
-            "Če ustvarite račun, shranimo tudi vaše geslo — izključno kot nepovratno šifriran (bcrypt) zapis.",
+            "Pri rezervaciji termina ali oddaji povpraševanja: ime, e-poštni naslov, telefonsko številko in neobvezne opombe (npr. posebne želje).",
+            "Pri naročilu izdelkov: kontaktne podatke za dostavo in podatke o naročilu.",
+            "Pri ustvarjanju računa: e-poštni naslov in geslo (shranjeno izključno kot nepovratno šifriran zapis — bcrypt).",
+            "Tehnični podatki: IP-naslov, vrsta brskalnika in piškotki, potrebni za delovanje (prijava, košarica, temni način).",
           ],
         },
         {
-          heading: "Kdo obdeluje podatke",
+          heading: "Namen obdelave",
           body: [
-            "Podatke o rezervacijah vidi salon, ki ga obiščete (lastnik in zaposleni), ter upravljavec platforme, ki zagotavlja tehnično delovanje.",
-            "Ne prodajamo in ne posredujemo vaših podatkov tretjim osebam za marketinške namene.",
+            "Podatke obdelujemo izključno za: izvedbo rezervacij in naročil, komunikacijo o statusu (potrditve, opomniki, spremembe), tehnično delovanje platforme in skladnost z zakonskimi obveznostmi (računovodstvo, davki).",
+            "Ne pošiljamo reklamnega gradiva brez vašega izrecnega soglasja. Ne prodajamo vaših podatkov tretjim osebam.",
           ],
         },
         {
-          heading: "E-poštna sporočila",
+          heading: "Kdo dostopa do podatkov",
           body: [
-            "Na vaš e-poštni naslov pošiljamo izključno operativna sporočila: potrditev računa, potrditev termina, opomnik pred terminom in sporočila o spremembi ali odpovedi termina. Ne pošiljamo reklamnega gradiva.",
+            "Podatke vidijo: ponudnik (podjetje), pri katerem rezervirate/naročate (lastnik in pooblaščeni zaposleni), ter upravljavec platforme za tehnično delovanje.",
+            "Zunanji obdelovalci: Stripe (plačila), Resend (e-pošta), Cloudinary (slike) — vsi v skladu z GDPR in pogodbami o obdelavi podatkov.",
           ],
         },
         {
           heading: "Vaše pravice (GDPR)",
           body: [
-            "Na zahtevo lahko zahtevate vpogled, popravek ali izbris svojih podatkov, omejitev obdelave ali prenos podatkov. Obrnite se na salon, kjer imate rezervacijo, ali na upravljavca platforme na prikazanem kontaktnem naslovu.",
-            "Imate tudi pravico do pritožbe pri Informacijskem pooblaščencu RS.",
+            "Imate pravico do: vpogleda v svoje podatke, popravka, izbrisa (»pravica do pozabe«), omejitve obdelave, prenosljivosti podatkov in ugovora obdelavi.",
+            "Zahtevo za uveljavljanje pravic pošljite prek kontaktnega obrazca na platformi ali na e-poštni naslov upravljavca. Odgovorimo v 30 dneh.",
+            "Imate tudi pravico do pritožbe pri Informacijskem pooblaščencu RS (www.ip-rs.si).",
           ],
         },
         {
-          heading: "Hramba podatkov",
+          heading: "Hramba in varnost",
           body: [
-            "Podatke o rezervacijah hranimo, dokler so relevantni za poslovanje salona (zgodovina obiskov) ali dokler ne zahtevate izbrisa.",
+            "Podatke hranimo, dokler so potrebni za namen obdelave ali dokler to zahteva zakonodaja (računovodski dokumenti: 10 let). Podatke o rezervacijah lahko ponudnik hrani kot zgodovino obiskov.",
+            "Tehnični ukrepi: HTTPS/TLS šifriranje, bcrypt za gesla, omejen dostop do baze, varnostne kopije. Dostop do osebnih podatkov imajo le pooblaščene osebe.",
           ],
         },
       ]}

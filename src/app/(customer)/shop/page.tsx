@@ -30,7 +30,7 @@ import { formatCurrency } from "@/lib/utils/format"
 
 export async function generateMetadata(): Promise<Metadata> {
   const site = await getPublicSiteData()
-  const orgName = site?.org.name ?? "Salon"
+  const orgName = site?.org.name ?? "Podjetje"
   const locale = await getLocaleFromCookies()
   // P3 #50: naslov kataloga ne_more prevzeti naslova LANDING sekcije
   // ("Izbrani izdelki") — stran izpiše VSE izdelke, ne samo izbrane.

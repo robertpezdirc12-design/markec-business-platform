@@ -66,7 +66,7 @@ export const publicSl = {
   footerCookies: "Piškotki",
   footerWebsite: "Spletna stran",
   footerDefaultAbout:
-    "Vaš salon lepote — rezervacije terminov, storitve in izbrani izdelki na enem mestu.",
+    "Vaše podjetje — rezervacije, storitve in izbrani izdelki na enem mestu.",
   footerPlatformName: "Poslovna platforma",
   footerBuiltWith: "— Oblikovano s ❤ na Poslovni platformi",
 }
@@ -129,7 +129,7 @@ export const publicEn: PublicDict = {
   footerCookies: "Cookies",
   footerWebsite: "Website",
   footerDefaultAbout:
-    "Your beauty salon — appointments, services and curated products in one place.",
+    "Your business — appointments, services and curated products in one place.",
   footerPlatformName: "Business platform",
   footerBuiltWith: "— Crafted with ❤ on the Business Platform",
 }

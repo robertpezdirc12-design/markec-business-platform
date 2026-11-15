@@ -25,6 +25,8 @@ export async function generateMetadata({
     description:
       "Račun za rezervacije, povpraševanja in nakupe na strani svojega podjetja.",
     robots: { index: false, follow: false },
+    // SEO (audit 2026-11): self-referencirajoč canonical.
+    alternates: { canonical: "/register" },
   }
 }
 

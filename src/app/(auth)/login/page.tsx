@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   description:
     "Prijavite se v svoj račun za upravljanje terminov, ogled storitev in dostop do posebnih funkcij.",
   robots: { index: false, follow: false },
+  // SEO (audit 2026-11): self-referencirajoč canonical (prej → domača stran).
+  alternates: { canonical: "/login" },
 }
 
 /**

@@ -21,7 +21,7 @@ interface StaffDetailPageProps {
 export async function generateMetadata({ params }: StaffDetailPageProps): Promise<Metadata> {
   const { name } = await params
   const site = await getPublicSiteData()
-  const orgName = site?.org.name ?? "Salon"
+  const orgName = site?.org.name ?? "Podjetje"
   const staffMember = site ? await getPublicStaffBySlug(site.org.id, name) : null
 
   if (!staffMember) {

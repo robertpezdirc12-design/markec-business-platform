@@ -23,7 +23,7 @@ const variantSizes: Record<LogoVariant, { width: number; height: number }> = {
 
 export function Logo({ className, variant = "navbar", src, alt }: LogoProps) {
   const { width, height } = variantSizes[variant]
-  const name = alt?.trim() || "Salon"
+  const name = alt?.trim() || "MARKEC"
 
   // No custom logo uploaded — render the salon's initials instead of a
   // generic platform mark (avoids wrong branding for other tenants).

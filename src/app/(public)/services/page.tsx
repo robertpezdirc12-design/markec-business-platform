@@ -14,7 +14,7 @@ import { DEFAULT_CATALOG_IMAGES } from "@/lib/default-assets"
 
 export async function generateMetadata(): Promise<Metadata> {
   const site = await getPublicSiteData()
-  const orgName = site?.org.name ?? "Salon"
+  const orgName = site?.org.name ?? "Podjetje"
   // P1 #26: samo-referencirajoč canonical (/s/{slug}/services).
   return canonicalMetadata(site?.org.slug, "/services", {
     title: `${site?.content.services.title ?? "Storitve"} | ${orgName}`,

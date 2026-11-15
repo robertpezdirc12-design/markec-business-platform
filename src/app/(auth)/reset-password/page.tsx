@@ -8,6 +8,8 @@ export const metadata: Metadata = {
   title: "Ponastavitev gesla | Poslovna platforma",
   description: "Ustvarite novo geslo za svoj račun.",
   robots: { index: false, follow: false },
+  // SEO (audit 2026-11): self-referencirajoč canonical.
+  alternates: { canonical: "/reset-password" },
 }
 
 interface ResetPasswordPageProps {
