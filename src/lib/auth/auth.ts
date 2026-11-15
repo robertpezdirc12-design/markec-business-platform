@@ -35,8 +35,16 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
   // middleware v dev krepil req.url na NEXTAUTH_URL pin (http://localhost:3000)
   // → zaščitena preusmeritev je bila na port 3000, ko strežnik teče na
   // 3001 (ERR_CONNECTION_REFUSED). V dev zaupamo dejanskemu request
-  // hostu; v produkciji je vedenje nespremenjeno (env usmerja, fail-closed).
-  trustHost: process.env.NODE_ENV !== "production",
+  // hostu. V produkciji je vedenje fail-closed: hostu zaupamo le, kadar je
+  // to izrecno omogočeno (AUTH_TRUST_HOST=true) ali ko je Auth.js na
+  // zaupanja vrednem platformnem hostu (VERCEL=1 — samo Vercel). Prej je
+  // bilo `trustHost: NODE_ENV !== "production"` trdno zakodirano na false v
+  // vseh produkcijskih načinih, kar je onemogočalo prijavo v next start in
+  // na Vercel brez spremembe kode.
+  trustHost:
+    process.env.NODE_ENV !== "production" ||
+    process.env.AUTH_TRUST_HOST === "true" ||
+    process.env.VERCEL === "1",
   session: {
     strategy: "jwt",
   },

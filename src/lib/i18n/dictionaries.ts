@@ -1,5 +1,7 @@
 import { Locale } from "./config"
-import { sl as dfSl, enUS as dfEnUS } from "date-fns/locale"
+// T9 (bundle 2026-11): date-fns locale živi v ločenem modulu — client
+// komponente (booking) ga importirajo od tam, da ne vlečejo vseh slovarjev.
+import { getDateFnsLocale } from "./date-locale"
 import { commonSl, commonEn } from "./dict/common"
 import { dashboardSl, dashboardEn } from "./dict/dashboard"
 import { analyticsSl, analyticsEn } from "./dict/analytics"
@@ -82,6 +84,6 @@ export function getDictionary(locale: Locale): Dictionary {
 }
 
 /** date-fns locale object matching our Locale values */
-export function getDateFnsLocale(locale: Locale) {
-  return locale === "sl" ? dfSl : dfEnUS
-}
+// T9: implementacija živi v ./date-locale (client-varen modul); tu samo
+// re-export za obstoječe server porabnike.
+export { getDateFnsLocale }

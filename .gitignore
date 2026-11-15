@@ -34,8 +34,30 @@ docs/einvoicing/artifacts/validator/tmp/
 .thinkrail/
 .freebuff/
 .serena/
+.repomix/
 
 # posnetki zaslona testov + lokalne slike
 screenshots/
 slike/
 dev-*.log
+
+# Diagnostični artefakti povezave / analize (niso del izdelka)
+_diag-*
+_analyze-*
+_where.*
+_*probe*
+semgrep/
+.repomix/
+.workik/
+.next-analysis/
+.next-f26/
+scripts/_tmp-*
+prisma/_*.txt
+prisma/_*.json
+prisma/_analyze_*
+prisma/_extract_models.*
+prisma/_read_migrations.*
+prisma/_PODATKOVNI_MODEL_ANALIZA.md
+
+# Agentski skills (lokalna konfiguracija, ni del repozitorija)
+.agents/

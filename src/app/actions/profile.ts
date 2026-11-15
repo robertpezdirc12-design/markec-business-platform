@@ -7,7 +7,7 @@ import { z } from "zod"
 import { Prisma } from "@prisma/client"
 
 import { getProfile, listProfileOptions } from "@/lib/profiles/registry"
-import { getExtension, type ExtensionDefinition } from "@/lib/profiles/extensions"
+import { CAPABILITY_KEYS, getExtension, type ExtensionDefinition } from "@/lib/profiles/extensions"
 import {
   applySecondaryProfile,
   secondaryContribution,
@@ -20,14 +20,17 @@ import {
   type ConfigSnapshot,
 } from "@/lib/config-history/logic"
 import { recordConfigChange } from "@/lib/config-history/record"
-import { getOrgCustomProfile } from "@/app/actions/custom-profile"
+import { getOrgCustomProfile, type CustomProfileData } from "@/app/actions/custom-profile"
 import { seedProfileCategories } from "@/lib/verticals"
 import {
+  ALL_DASHBOARD_WIDGETS,
   applyOverrides,
+  type ProfileOverrides,
   OVERRIDES_VERSION,
   parseOverrides,
 } from "@/lib/profiles/overrides"
 import type {
+  ActivityProfile,
   CapabilityKey,
   CapabilityState,
   DashboardWidgetKey,
@@ -104,15 +107,15 @@ export async function getOrgProfileOverview(): Promise<OrgProfileOverview | { er
 
     // Check for org-level custom profile (owner-created via Custom Profile Builder).
     // If present, it takes precedence over the registry profile.
-    const raw = (org as any)?.profileOverrides
+    const raw: unknown = (org as { profileOverrides?: unknown } | null)?.profileOverrides
     const customData =
       raw && typeof raw === "object" && !Array.isArray(raw)
-        ? (raw as any).customProfile
+        ? (raw as { customProfile?: CustomProfileData }).customProfile
         : null
 
-    let profile: any
-    let overrides: any
-    let baseProfile: any
+    let profile: ActivityProfile
+    let overrides: ProfileOverrides | null
+    let baseProfile: ActivityProfile
     if (customData && customData.id && customData.label) {
       // Custom profile — build a minimal ActivityProfile-shaped object.
       profile = {
@@ -122,7 +125,12 @@ export async function getOrgProfileOverview(): Promise<OrgProfileOverview | { er
         version: 1,
         palette: customData.palette ?? "coral",
         schemaType: customData.schemaType ?? "LocalBusiness",
-        capabilities: customData.capabilities ?? {},
+        capabilities: {
+          ...getProfile("generic").capabilities,
+          ...Object.fromEntries(
+            Object.entries(customData.capabilities ?? {}).filter(([k]) => (CAPABILITY_KEYS as readonly string[]).includes(k))
+          ),
+        },
         terminology: {
           appointmentSingular: { sl: "Termin", en: "Appointment" },
           appointmentPlural: { sl: "Termini", en: "Appointments" },
@@ -139,11 +147,11 @@ export async function getOrgProfileOverview(): Promise<OrgProfileOverview | { er
           businessGenitive: { sl: "podjetja", en: "the business's" },
           bookingCta: { sl: "Naročajte", en: "Order" },
         },
-        forms: (customData.forms ?? []).map((f: any) => ({
+        forms: (customData.forms ?? []).map((f: CustomProfileData["forms"][number]) => ({
           key: f.key,
           name: f.name,
           description: f.description,
-          fields: (f.fields ?? []).map((field: any) => ({
+          fields: (f.fields ?? []).map((field: CustomProfileData["forms"][number]["fields"][number]) => ({
             key: field.key,
             label: field.label,
             type: field.type,
@@ -153,11 +161,11 @@ export async function getOrgProfileOverview(): Promise<OrgProfileOverview | { er
             placeholder: field.placeholder,
           })),
         })),
-        workflows: (customData.workflows ?? []).map((wf: any) => ({
+        workflows: (customData.workflows ?? []).map((wf: CustomProfileData["workflows"][number]) => ({
           key: wf.key,
           name: wf.name,
           entity: wf.entity,
-          stages: (wf.stages ?? []).map((s: any) => ({
+          stages: (wf.stages ?? []).map((s: CustomProfileData["workflows"][number]["stages"][number]) => ({
             key: s.key,
             name: s.name,
             description: s.description,
@@ -166,12 +174,13 @@ export async function getOrgProfileOverview(): Promise<OrgProfileOverview | { er
             isFinal: s.isFinal,
           })),
         })),
-        dashboardWidgets: customData.dashboardWidgets ?? [],
+        dashboardWidgets: (customData.dashboardWidgets ?? []).filter((w): w is DashboardWidgetKey => ALL_DASHBOARD_WIDGETS.includes(w as DashboardWidgetKey)),
         website: { ctaMode: customData.ctaMode ?? "inquiry" },
         extensions: [],
         catalog: { seedVerticalId: "generic" },
       }
       overrides = null
+      baseProfile = profile
     } else {
       // Base for capability/widget validation = shared profile + secondary-activity
       // union (E2-4) — BEFORE owner overrides, mirroring the resolver order.

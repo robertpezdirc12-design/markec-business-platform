@@ -13,7 +13,7 @@ const read = (p: string) =>
   readFileSync(__dirname + "/../" + p, "utf8").replace(/\r\n/g, "\n")
 
 describe("#90 shema: WaitlistEntry je najemniško zaprt", () => {
-  const schema = read("prisma/schema.prisma")
+  const schema = read("prisma/schema.prisma").replace(/[ \t]+/g, " ")
 
   it("org filter + status sta indeksirana skupaj (vsak seznam je org-scoped pošteden)", () => {
     const block = schema.slice(
@@ -21,7 +21,7 @@ describe("#90 shema: WaitlistEntry je najemniško zaprt", () => {
       schema.indexOf("model Appointment {")
     )
     expect(block).toContain("@@index([organizationId, status])")
-    expect(block).toContain('organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)')
+    expect(block).toContain("organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)")
   })
 
   it("storitev je neobvezna in izgine (SetNull) — vnos ne sledi izbrisani storitvi", () => {
@@ -29,7 +29,7 @@ describe("#90 shema: WaitlistEntry je najemniško zaprt", () => {
       schema.indexOf("model WaitlistEntry"),
       schema.indexOf("model Appointment {")
     )
-    expect(block).toContain("service       Service?   @relation(fields: [serviceId], references: [id], onDelete: SetNull)")
+    expect(block).toContain("service Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)")
   })
 })
 

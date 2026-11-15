@@ -9,7 +9,7 @@ import path from "path"
 // da slučajno ne udari markec_dev/produkcije.
 export default defineConfig({
   test: {
-    include: ["tests/integration/**/*.itest.ts"],
+    include: ["tests/**/*.itest.ts"],
     environment: "node",
     testTimeout: 60000,
     hookTimeout: 60000,

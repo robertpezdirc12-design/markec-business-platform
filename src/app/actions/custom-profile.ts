@@ -1,6 +1,7 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
+import type { Prisma } from "@prisma/client"
 import { requirePermissionOrg } from "@/lib/auth/guards"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
@@ -13,6 +14,8 @@ import { OVERRIDES_ENTITY_KEY } from "@/lib/config-history/logic"
 // Schemas
 // ---------------------------------------------------------------------------
 
+export type CustomFieldDraft = z.infer<typeof CustomFieldSchema>
+
 const CustomFieldSchema = z.object({
   key: z.string().min(1).max(50).regex(/^[a-z][a-z0-9_]*$/),
   label: z.string().min(1).max(100),
@@ -22,6 +25,8 @@ const CustomFieldSchema = z.object({
   unit: z.string().optional(),
   placeholder: z.string().optional(),
 })
+
+export type CustomFormDraft = z.infer<typeof CustomFormSchema>
 
 const CustomFormSchema = z.object({
   key: z.string().min(1).max(50).regex(/^[a-z][a-z0-9-]*$/),
@@ -38,6 +43,8 @@ const CustomWorkflowStageSchema = z.object({
   isFinal: z.boolean().default(false),
   order: z.number().int().optional(),
 })
+
+export type CustomWorkflowDraft = z.infer<typeof CustomWorkflowSchema>
 
 const CustomWorkflowSchema = z.object({
   key: z.string().min(1).max(50).regex(/^[a-z][a-z0-9-]*$/),
@@ -94,9 +101,9 @@ export async function getOrgCustomProfile(): Promise<
   try {
     const { org } = await requirePermissionOrg("settings.manage")
 
-    const raw = (org as any)?.profileOverrides
+    const raw: unknown = (org as { profileOverrides?: unknown } | null)?.profileOverrides
     const custom = raw && typeof raw === "object" && !Array.isArray(raw)
-      ? (raw as any).customProfile
+      ? (raw as { customProfile?: CustomProfileData }).customProfile ?? null
       : null
 
     if (!custom) {
@@ -137,7 +144,7 @@ export async function saveOrgCustomProfile(
     )
 
     const nextOverrides = {
-      ...(previousOverrides as any),
+      ...(previousOverrides as Record<string, unknown>),
       customProfile: profile,
       v: 1,
     }
@@ -179,7 +186,7 @@ export async function removeOrgCustomProfile(): Promise<CustomProfileResult> {
       }))?.profileOverrides
     )
 
-    const nextOverrides = { ...(previousOverrides as any) }
+    const nextOverrides = { ...(previousOverrides as Prisma.InputJsonObject) }
     delete nextOverrides.customProfile
 
     await prisma.$transaction(async (tx) => {

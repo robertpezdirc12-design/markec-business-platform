@@ -43,6 +43,10 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // T9 (bundle analiza 2026-11): analitični build lahko teče PARALELNO z
+  // dev strežnikom —NEXT_DIST_DIR preusmeri izpis (npr. .next-analysis),
+  // da ne poškoduje dev strežnikovega .next. Produkcija ostane ".next".
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   // Turbopack: določi koren projekta eksplicitno (v Windows okolju z več
   // lockfiles je Next sprva izbral napačen koren → ni razrešil tailwindcss).
   turbopack: {

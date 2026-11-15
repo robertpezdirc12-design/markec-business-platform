@@ -123,10 +123,10 @@ describe("#97 struktura: checkout setup, webhook, success, cron, wizard", () => 
   })
 
   it("shema: samo Stripe reference (nikoli podatkov kartice), charge id unikaten", () => {
-    const schema = read("prisma/schema.prisma")
+    const schema = read("prisma/schema.prisma").replace(/[ \t]+/g, " ")
     const block = schema.slice(
-      schema.indexOf("noShowConsent      Boolean"),
-      schema.indexOf("noShowChargeId     String? @unique") + 40
+      schema.indexOf("noShowConsent Boolean"),
+      schema.indexOf("noShowChargeId String? @unique") + 40
     )
     expect(block).toContain("stripeSetupIntentId")
     expect(block).toContain("stripeCustomerId")

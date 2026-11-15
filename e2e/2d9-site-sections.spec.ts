@@ -142,7 +142,7 @@ test.describe("2D-9 — popoln WYSIWYG: sekcije + poslovna izolacija", () => {
   }
 
   test("2D-9 izolacija: sprememba sekcije ene org ne vpliva na drugo javno stran", async ({ page }) => {
-    for (const [key, [, , slug, , label]] of Object.entries(ORGS) as [OrgKey, (string)[]][]) {
+    for (const [key, [, , slug, , label]] of Object.entries(ORGS) as [OrgKey, readonly (string | number)[]][]) {
       await page.goto(`${BASE}/s/${slug}`)
       // Nobena javna stran ne sme vsebovati oznake 2D9 (po revertu).
       const body = await page.locator("body").innerText()

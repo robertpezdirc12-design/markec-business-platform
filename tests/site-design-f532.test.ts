@@ -14,6 +14,9 @@ import {
   DEFAULT_THEME_COLORS,
 } from "../src/lib/site-design"
 import { mergeSiteContent } from "../src/lib/site-content"
+// "nova" pot: navigacijska logika živi v site-content in je tam neposredno
+// dosegljiva (site-design jo samo re-exportera za stare potrošnike).
+import { normalizeNav as normalizeNavFromContent, type NavItem as NavItemFromContent } from "../src/lib/site-content"
 
 // ============================================================
 // F5.3.2 — SITE DESIGN: teme (barve/pisave + kontrast), predloge,
@@ -106,6 +109,18 @@ describe("normalizeNav", () => {
     // nevarne sheme izpadle; varne ostanejo
     expect(nav?.map((n) => n.label)).toEqual(["Varno", "Sidro", "Stran", "Mail"])
     expect(nav?.every((n) => !/^(javascript|data|vbscript):/i.test(n.href))).toBe(true)
+  })
+  it("caps the number of navigation items at MAX_NAV_ITEMS (12)", () => {
+    const many = Array.from({ length: 20 }, (_, i) => ({
+      id: `n${i}`,
+      label: `Item ${i}`,
+      href: `/s${i}`,
+      visible: true,
+      order: i,
+    }))
+    const nav = normalizeNav(many as unknown[])
+    expect(nav).not.toBeNull()
+    expect(nav!.length).toBe(12)
   })
 })
 
@@ -214,6 +229,18 @@ describe("isExternalHref", () => {
 })
 
 describe("isSafeNavHref", () => {
+  it("direct site-content import works identically (new data-owner path)", () => {
+    // Obe poti — star re-export (site-design) in nova (site-content) — dajeta
+    // isto funkcijo brez runtime napak (identiteta re-exporta).
+    const viaContent = normalizeNavFromContent([
+      { label: "D", href: "data:foo", visible: true, order: 0 },
+      { label: "V", href: "#about", visible: true, order: 1 },
+      { label: "S", href: "/shop", visible: true, order: 2 },
+    ] as unknown[])
+    expect(viaContent?.map((n) => n.label)).toEqual(["V", "S"])
+    const item: NavItemFromContent = { id: "x", label: "V", href: "#about", visible: true, order: 0 }
+    expect(item.href).toBe("#about")
+  })
   it("allows internal anchors, relative paths, and safe schemes", () => {
     expect(isSafeNavHref("#about")).toBe(true)
     expect(isSafeNavHref("/shop")).toBe(true)
