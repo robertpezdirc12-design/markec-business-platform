@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test"
 import { PrismaClient } from "@prisma/client"
 import {
+  addStaff,
   createProduct,
   makeTenant,
   publishSite,
@@ -43,11 +44,18 @@ test("G — golden order: switch → publish → guest order → owner reads the
   await page.goto("/dashboard/settings")
   await page.getByRole("tab", { name: "Izgled in vsebina" }).click()
   await page.waitForTimeout(800)
+  // The settings tab opens the VISUAL editor by default — the classic form
+  // (with the activity switch) lives behind the "Klasični obrazec" tab.
+  await page.getByRole("tab", { name: "Klasični obrazec" }).click()
   await page.getByText("Prikaži napredne nastavitve panoge").click()
   await page.waitForTimeout(500)
   const verticalBox = page.getByRole("combobox", { name: "Trenutna panoga" })
   await verticalBox.click()
-  await page.getByRole("option", { name: "Lepotni salon" }).click()
+  // Radix Select with ~80 profile/SKD options — keyboard typeahead jumps
+  // straight to the match (the option list is long and scroll-heavy).
+  await page.keyboard.type("Lepotni salon", { delay: 25 })
+  await page.keyboard.press("Enter")
+  await expect(verticalBox).toContainText("Lepotni salon", { timeout: 15_000 })
   // the new activity REQUIRES services — seed its sample catalog
   // ("dopolni katalog", the #59/#58 flow), otherwise the publish gate
   // honestly blocks ("Katalog je prazen")
@@ -63,6 +71,7 @@ test("G — golden order: switch → publish → guest order → owner reads the
   await page.reload()
   await page.getByRole("tab", { name: "Izgled in vsebina" }).click()
   await page.waitForTimeout(800)
+  await page.getByRole("tab", { name: "Klasični obrazec" }).click()
   await page.getByText("Prikaži napredne nastavitve panoge").click()
   await expect(
     page.getByRole("combobox", { name: "Trenutna panoga" })
@@ -71,6 +80,11 @@ test("G — golden order: switch → publish → guest order → owner reads the
   // ---- a product of their own (beauty seeds services only; the
   //      mandatory-shop gate blocks publish on an empty shop) ----
   await createProduct(page, `Zlati serum ${t.slug}`)
+
+  // ---- staff: the #112-1 publish gate requires an active staff member
+  //      for booking-promising sites (a beekeeping tenant has none — the
+  //      staff capability is disabled for that activity) ----
+  await addStaff(page, `Osebje Zlati ${t.slug}`)
 
   // ---- publish (real publication action) ----
   await publishSite(page)

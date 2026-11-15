@@ -44,14 +44,19 @@ export const VERTICAL_LABELS = {
 
 /**
  * Registers a tenant through the REAL onboarding wizard (/start):
- * step 1 vertical → step 2 company → step 3 owner. The wizard
- * auto-signs-in on success and lands on /dashboard?welcome=1.
+ * step 1 activity picker → step 2 company → step 3 owner. Since 2D-4
+ * the account starts UNVERIFIED — the wizard shows the activation
+ * screen (with the verification link inline in the test environment),
+ * so this helper verifies the e-mail and signs in through the real
+ * /login form, ending on /dashboard.
  */
 export async function registerTenant(page: Page, t: TenantSpec): Promise<void> {
   await page.goto("/start")
 
-  // Step 1: pick the vertical card by its display label
-  await page.getByRole("button", { name: t.verticalLabel }).first().click()
+  // Step 1: activity directory picker (combobox trigger → listbox of
+  // activity cards). Pick the activity card by its display label.
+  await page.getByRole("button", { name: /Izberite dejavnost/ }).first().click()
+  await page.getByRole("option", { name: t.verticalLabel }).first().click()
   await page.getByRole("button", { name: "Naprej" }).click()
 
   // Step 2: company name + URL slug (slug is prefilled from the name;
@@ -73,8 +78,19 @@ export async function registerTenant(page: Page, t: TenantSpec): Promise<void> {
   await page.getByLabel("Potrditev gesla").fill(t.password)
   await page.getByRole("button", { name: /Ustvari podjetje/ }).click()
 
-  // Wizard auto-signs-in and redirects to the dashboard.
-  await page.waitForURL(/dashboard/, { timeout: 60_000 })
+  // 2D-4: no auto sign-in — the activation screen renders the
+  // verification link inline (test env, no e-mail service). Visit it
+  // (the server page verifies on load), then sign in for real.
+  await expect(page.getByText("Podjetje je ustvarjeno!")).toBeVisible({
+    timeout: 30_000,
+  })
+  const verifyUrl = (await page.locator("code").first().textContent())?.trim()
+  expect(verifyUrl, "test env must render the verification link").toBeTruthy()
+  await page.goto(verifyUrl!)
+  await expect(page.getByRole("link", { name: /Prijava/ }).first()).toBeVisible({
+    timeout: 30_000,
+  })
+  await login(page, t.email, t.password)
 }
 
 /** Logs in through the real /login form. */
@@ -84,6 +100,25 @@ export async function login(page: Page, email: string, password: string): Promis
   await page.getByLabel(/Geslo/).first().fill(password)
   await page.getByRole("button", { name: /Prijava/ }).click()
   await page.waitForURL(/dashboard|\/s\//, { timeout: 30_000 })
+}
+
+/**
+ * Adds one active staff member through the real /dashboard/staff form.
+ * Needed since the #112-1 publish gate: a site promising bookings must
+ * have at least one active staff member (beekeeping-origin tenants have
+ * none — the staff capability is disabled for that activity, so the
+ * onboarding creates no staff row).
+ */
+export async function addStaff(page: Page, name: string): Promise<void> {
+  await page.goto("/dashboard/staff/new")
+  await waitHydrated(page, "#name")
+  await page.locator("#name").fill(name)
+  const email = page.locator("#email")
+  if (await email.count()) {
+    await email.fill(`${uniqueId()}.osebje@example.com`)
+  }
+  await submitReactForm(page, page.getByRole("button", { name: /Ustvari člana osebja/ }).first())
+  await page.waitForURL(/dashboard\/staff\/?$/, { timeout: 60_000 })
 }
 
 /**
@@ -178,12 +213,20 @@ export async function createProduct(page: Page, name: string): Promise<void> {
   // Fill the name LAST: the category combobox loads async and remounts
   // the form once, wiping earlier uncontrolled input values.
   const desc = page.locator("#description")
-  if (await desc.count()) await desc.fill("E2E izdelek")
+  if (await desc.count()) await desc.fill("E2E product")
   await page.locator("#price").fill("12")
   const stock = page.locator("#stockQuantity")
   if (await stock.count()) await stock.fill("10")
   await expect(page.locator("#price")).toHaveValue("12")
   await page.waitForTimeout(1500) // let the async category load settle
+  // #78: zaloga se vnaša prek prejema blaga (stocktake), nov izdelek je
+  // zato na 0 enotah in bi bil v trgovini "Ni na zalogi". Izklopi sledenje
+  // zalogi, da je izdelek takoj prodajljiv.
+  const track = page.getByRole("switch", { name: /Sledenje zalogi/ })
+  if (await track.count()) {
+    const checked = await track.getAttribute("aria-checked")
+    if (checked !== "false") await track.click()
+  }
   const nameInput = page.locator("#name")
   await nameInput.fill(name)
   await expect(nameInput).toHaveValue(name)
