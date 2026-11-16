@@ -1,6 +1,7 @@
 import { Suspense } from "react"
 import { AnalyticsDashboard } from "@/components/analytics/analytics-dashboard"
 import { CampaignAnalytics } from "@/components/dashboard/campaign-analytics"
+import { DataConnector } from "@/components/dashboard/data-connector"
 import {
   getKPIData,
   getRevenueChartData,
@@ -68,6 +69,9 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         totalRevenue={0}
         totalSent={0}
       />
+
+      {/* Data Connector */}
+      <DataConnector />
     </div>
   )
 }
