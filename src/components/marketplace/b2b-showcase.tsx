@@ -41,8 +41,8 @@ const features = [
   },
   {
     icon: <Megaphone size={24} />,
-    title: "Marketing orodja",
-    description: "E-pošta, SMS, avtomatizacija, promocije in zvestobe.",
+    title: "Trženjska orodja",
+    description: "E-pošta, SMS, avtomatizacija, promocije in zvestoba.",
   },
   {
     icon: <ChartLineUp size={24} />,

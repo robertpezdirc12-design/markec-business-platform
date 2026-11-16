@@ -47,8 +47,8 @@ const testimonials: Testimonial[] = [
     avatar: "/avatars/dan.jpg",
     rating: 5,
     quote:
-      "Freshini opomniki olajšajo življenje. Našel sem tudi nekaj dobrih brivcev, do katerih nisem vedel, in obstajajo.",
-    service: "Stiženje",
+      "Naši opomniki olajšajo življenje. Našel sem tudi nekaj dobrih brivcev, do katerih nisem vedel, da obstajajo.",
+    service: "Striženje",
     date: "pred 1 tednom",
   },
   {
@@ -58,7 +58,7 @@ const testimonials: Testimonial[] = [
     avatar: "/avatars/dale.jpg",
     rating: 5,
     quote:
-      "Fresho uporabljam že dve leti in je daleč najboljša rezervacijska platforma, ki sem jo uporabil. Toplo priporočam!",
+      "MARKEC uporabljam že dve leti in je daleč najboljša rezervacijska platforma, ki sem jo uporabil. Toplo priporočam!",
     service: "Masaža",
     date: "pred 3 dnevi",
   },
@@ -69,7 +69,7 @@ const testimonials: Testimonial[] = [
     avatar: "/avatars/cameron.jpg",
     rating: 5,
     quote:
-      "Moj nasvet za samoskrbo: Fresha je moja priljubljena aplikacija za masaže in obrazne tretmaje. Z lahko najdem rezervacijo preprosto — to mi je všeč!",
+      "Moj nasvet za samozdravljenje: MARKEC je moja priljubljena aplikacija za masaže in obrazne tretmaje. Z lahkoto najdem rezervacijo — to mi je všeč!",
     service: "Obrazna nega",
     date: "pred 5 dnevi",
   },

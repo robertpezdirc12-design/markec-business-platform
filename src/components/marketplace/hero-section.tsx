@@ -150,7 +150,6 @@ export function HeroSection() {
             <span className="block bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               lokalne storitve
             </span>
-            <span className="block">samoskrbe</span>
           </h1>
 
           {/* Subtitle */}

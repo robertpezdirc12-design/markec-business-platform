@@ -63,3 +63,4 @@ prisma/_PODATKOVNI_MODEL_ANALIZA.md
 
 # Agentski skills (lokalna konfiguracija, ni del repozitorija)
 .agents/
+.open-next/
