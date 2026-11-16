@@ -141,7 +141,7 @@ describe("#71 — /dashboard/orders/[id]", () => {
 
 describe("#72 — bare commerce paths never resolve to a default tenant", () => {
   it("proxy: legacy fallback only behind LEGACY_DEFAULT_SLUG, otherwise 404", () => {
-    const proxy = srcOf("src/proxy.ts")
+    const proxy = srcOf("src/middleware.ts")
     const blockStart = proxy.indexOf("P2 #72 (Opcija A): gola javna pot")
     const blockEnd = proxy.indexOf("const isLoggedIn")
     const block = proxy.slice(blockStart, blockEnd)

@@ -189,7 +189,7 @@ describe("URL locale (<html lang>)", () => {
   })
 
   it("proxy strips the incoming header and sets it only for /en", () => {
-    const proxy = read("src/proxy.ts")
+    const proxy = read("src/middleware.ts")
     expect(proxy).toContain("PLATFORM_LOCALE_HEADER")
     expect(proxy).toContain("requestHeaders.delete(PLATFORM_LOCALE_HEADER)")
     expect(proxy).toContain("platformLocaleForPath(pathname)")
@@ -316,7 +316,7 @@ describe("F2 — server-rendered platform landing", () => {
   })
 
   it("proxy strips the incoming value and excludes tenant/custom-domain roots", () => {
-    const proxy = read("src/proxy.ts")
+    const proxy = read("src/middleware.ts")
     expect(proxy).toContain("requestHeaders.delete(PLATFORM_LANDING_HEADER)")
     expect(proxy).toContain("isPlatformLandingPath(pathname)")
     // a rewritten /s/<slug> -> / pass carries the signed tenant header

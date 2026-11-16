@@ -137,7 +137,7 @@ describe("P1 #83: tenant sitemap isolation", () => {
   })
 
   it("proxy does NOT rewrite /s/<slug>/sitemap.xml nor /s/<slug>/robots.txt", () => {
-    const proxy = read("src/proxy.ts")
+    const proxy = read("src/middleware.ts")
     expect(proxy).toContain('"/sitemap.xml"')
     expect(proxy).toContain('"/robots.txt"')
   })

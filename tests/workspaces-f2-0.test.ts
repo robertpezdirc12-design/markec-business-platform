@@ -51,7 +51,7 @@ describe("F2.0 #1 — aktivna kartica je vstopna, ne slepa ulica", () => {
 
 describe("F2.0 #2 — /workspaces je zaščiten", () => {
   const page = read("src/app/(admin)/workspaces/page.tsx")
-  const proxy = read("src/proxy.ts")
+  const proxy = read("src/middleware.ts")
 
   it("stran sama preveri sejo in preusmeri na /login", () => {
     expect(page).toContain("await auth()")
