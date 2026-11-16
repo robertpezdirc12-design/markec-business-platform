@@ -96,6 +96,7 @@ jobs:
         run: pnpm prisma db push
         env:
           DATABASE_URL: postgresql://markec_test:markec_test_pw@localhost:5433/markec_test?schema=public
+          DIRECT_URL: postgresql://markec_test:markec_test_pw@localhost:5433/markec_test?schema=public
 
       - name: Run unit tests
         run: npx vitest run
