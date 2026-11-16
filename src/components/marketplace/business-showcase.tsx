@@ -33,9 +33,19 @@ interface Business {
   openUntil?: string
   priceRange?: string
   slug: string
+  category?: string
+  city?: string
+  description?: string
+  services?: string[]
 }
 
 interface BusinessShowcaseProps {
+  recommendedBusinesses?: Business[]
+  popularBusinesses?: Business[]
+  newBusinesses?: Business[]
+}
+
+interface CarouselSectionProps {
   title: string
   subtitle?: string
   businesses: Business[]
@@ -43,7 +53,7 @@ interface BusinessShowcaseProps {
 }
 
 // Sample data for demonstration
-const recommendedBusinesses: Business[] = [
+const sampleRecommendedBusinesses: Business[] = [
   {
     id: "1",
     name: "Lassana Kozmetični Salon",
@@ -116,7 +126,7 @@ const recommendedBusinesses: Business[] = [
   },
 ]
 
-const popularBusinesses: Business[] = [
+const samplePopularBusinesses: Business[] = [
   {
     id: "6",
     name: "Monin Lepotni Kotiček",
@@ -189,7 +199,7 @@ const popularBusinesses: Business[] = [
   },
 ]
 
-const newBusinesses: Business[] = [
+const sampleNewBusinesses: Business[] = [
   {
     id: "11",
     name: "LJUBLÉA salon",
@@ -377,7 +387,7 @@ function CarouselSection({
   subtitle,
   businesses,
   variant,
-}: BusinessShowcaseProps) {
+}: CarouselSectionProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const scroll = (direction: "left" | "right") => {
@@ -448,7 +458,16 @@ function CarouselSection({
   )
 }
 
-export function BusinessShowcase() {
+export function BusinessShowcase({
+  recommendedBusinesses = [],
+  popularBusinesses = [],
+  newBusinesses = [],
+}: BusinessShowcaseProps) {
+  // Fallback to sample data if no real data provided
+  const recommended = recommendedBusinesses.length > 0 ? recommendedBusinesses : sampleRecommendedBusinesses
+  const popular = popularBusinesses.length > 0 ? popularBusinesses : samplePopularBusinesses
+  const newBiz = newBusinesses.length > 0 ? newBusinesses : sampleNewBusinesses
+
   return (
     <>
       {/* Recommended */}
@@ -456,7 +475,7 @@ export function BusinessShowcase() {
         <CarouselSection
           title="Priporočeno"
           subtitle="Najbolje ocenjena podjetja v vaši bližini"
-          businesses={recommendedBusinesses}
+          businesses={recommended}
           variant="recommended"
         />
       </div>
@@ -465,7 +484,7 @@ export function BusinessShowcase() {
       <CarouselSection
         title="Priljubljeno"
         subtitle="Podjetja z največ zadovoljnimi strankami"
-        businesses={popularBusinesses}
+        businesses={popular}
         variant="popular"
       />
 
@@ -474,7 +493,7 @@ export function BusinessShowcase() {
         <CarouselSection
           title="Novi v MARKEC"
           subtitle="Nedavno pridružena podjetja"
-          businesses={newBusinesses}
+          businesses={newBiz}
           variant="new"
         />
       </div>

@@ -98,38 +98,51 @@ function StatCard({ stat, index }: { stat: Stat; index: number }) {
   )
 }
 
-const stats: Stat[] = [
-  {
-    icon: <CalendarIcon size={28} />,
-    value: 1000000,
-    suffix: "+",
-    label: "Rezerviranih terminov",
-    description: "Vsak mesec se rezervira na tisoče terminov",
-  },
-  {
-    icon: <Buildings size={28} />,
-    value: 500,
-    suffix: "+",
-    label: "Partnerskih podjetij",
-    description: "Saloni, brivci, wellness centri in zdravniki",
-  },
-  {
-    icon: <Globe size={28} />,
-    value: 85,
-    suffix: "+",
-    label: "Mest po Sloveniji",
-    description: "Od Ljubljane do Maribora, Celja, Kopra...",
-  },
-  {
-    icon: <UsersIcon size={28} />,
-    value: 10000,
-    suffix: "+",
-    label: "Zadovoljnih strank",
-    description: "Ljudje, ki zaupajo MARKEC vsak dan",
-  },
-]
 
-export function BigStatsSection() {
+interface BigStatsSectionProps {
+  totalAppointments?: number
+  totalBusinesses?: number
+  citiesCount?: number
+  totalCustomers?: number
+}
+
+export function BigStatsSection({
+  totalAppointments = 1000000,
+  totalBusinesses = 500,
+  citiesCount = 85,
+  totalCustomers = 10000,
+}: BigStatsSectionProps) {
+  const stats: Stat[] = [
+    {
+      icon: <CalendarIcon size={28} />,
+      value: totalAppointments,
+      suffix: "+",
+      label: "Rezerviranih terminov",
+      description: "Vsak mesec se rezervira na tisoče terminov",
+    },
+    {
+      icon: <Buildings size={28} />,
+      value: totalBusinesses,
+      suffix: "+",
+      label: "Partnerskih podjetij",
+      description: "Saloni, brivci, wellness centri in zdravniki",
+    },
+    {
+      icon: <Globe size={28} />,
+      value: citiesCount,
+      suffix: "+",
+      label: "Mest po Sloveniji",
+      description: "Od Ljubljane do Maribora, Celja, Kopra...",
+    },
+    {
+      icon: <UsersIcon size={28} />,
+      value: totalCustomers,
+      suffix: "+",
+      label: "Zadovoljnih strank",
+      description: "Ljudje, ki zaupajo MARKEC vsak dan",
+    },
+  ]
+
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary-600 to-accent py-20">
       {/* Background Pattern */}
