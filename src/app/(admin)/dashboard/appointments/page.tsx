@@ -12,6 +12,7 @@ import {
   PlusIcon,
   EyeIcon,
   FilterIcon,
+  UsersIcon,
 } from "@/components/icons"
 import { getAdminAppointments } from "@/app/actions/appointments"
 import { formatSalonTime } from "@/lib/booking-time"
@@ -22,6 +23,7 @@ import { getServerI18n } from "@/lib/i18n/server"
 import { requirePagePermission } from "@/lib/auth/guards"
 import { formatDateStandard } from "@/lib/utils/format"
 import { AdminCalendar } from "@/components/dashboard/admin-calendar"
+import { WaitlistManager } from "@/components/dashboard/waitlist-manager"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -140,6 +142,10 @@ export default async function AppointmentsPage() {
             <FilterIcon size={16} className="mr-2" />
             Seznam
           </TabsTrigger>
+          <TabsTrigger value="waitlist">
+            <UsersIcon size={16} className="mr-2" />
+            Čakalna vrsta
+          </TabsTrigger>
         </TabsList>
 
         {/* Calendar View */}
@@ -253,6 +259,11 @@ export default async function AppointmentsPage() {
             )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Waitlist */}
+        <TabsContent value="waitlist">
+          <WaitlistManager entries={[]} />
         </TabsContent>
       </Tabs>
     </div>
