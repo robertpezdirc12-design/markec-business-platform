@@ -122,7 +122,15 @@ async function main() {
     return
   }
 
-  if (!ensureDatabaseUrl(process.env)) process.exit(1)
+  // Če DATABASE_URL ni nastavljen, PRESKOČIMO migracije (ne pade build).
+  // Migracije se izvedejo ob prvem zagonu aplikacije ali ročno.
+  if (!process.env.DATABASE_URL) {
+    console.log(
+      "[migrate-retry] DATABASE_URL ni nastavljen — PRESKOČIM migracije. " +
+        "Build nadaljuje brez migracij (shema se uskladi ob prvem zagonu)."
+    )
+    return
+  }
 
   // Non-production Vercel builds (preview / development) must NEVER run
   // migrations against a shared DATABASE_URL: deploy-time migrations are
