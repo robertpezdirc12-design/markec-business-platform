@@ -202,13 +202,9 @@ export function ServiceForm({ categories, staff, service, onSuccess }: ServiceFo
     formData.append("type", "service")
 
     try {
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error)
-      setImageUrl(data.url)
+      const { uploadImageToR2 } = await import("@/lib/r2-upload-client")
+      const url = await uploadImageToR2(file, "service")
+      setImageUrl(url)
       toast.success(t.services.imageUploadSuccess)
     } catch (error) {
       console.error("Upload error:", error)

@@ -184,7 +184,7 @@ export function ProductForm({ categories, product, mode = "create" }: ProductFor
   // RHF's setValue types the field as required, hence the explicit cast.
   const numberValue = (raw: string) => (raw === "" ? undefined : Number(raw))
 
-  // Handle image upload
+  // Handle image upload (R2)
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -202,22 +202,9 @@ export function ProductForm({ categories, product, mode = "create" }: ProductFor
     setIsUploading(true)
 
     try {
-      const formData = new FormData()
-      formData.append("file", file)
-      formData.append("type", "product")
-
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || t.products.uploadFailed)
-      }
-
-      setImages((prev) => [...prev, data.url])
+      const { uploadImageToR2 } = await import("@/lib/r2-upload-client")
+      const url = await uploadImageToR2(file, "product")
+      setImages((prev) => [...prev, url])
       toast.success(t.products.imageUploadSuccess)
     } catch (error) {
       console.error("Upload error:", error)

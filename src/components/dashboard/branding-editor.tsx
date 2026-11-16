@@ -78,7 +78,7 @@ import {
   type SiteContent,
   type StatContent,
 } from "@/lib/site-content"
-import { uploadImage } from "@/lib/upload-client"
+import { uploadImageToR2 } from "@/lib/r2-upload-client"
 import { PALETTE_OPTIONS } from "@/lib/palettes-client"
 import { listProfileOptions, getProfile } from "@/lib/profiles/registry"
 import { cn } from "@/lib/utils"
@@ -520,7 +520,7 @@ export function BrandingEditor() {
   const handleLogoUpload = async (file: File) => {
     setUploading("logo")
     try {
-      const url = await uploadImage(file, "logo")
+      const url = await uploadImageToR2(file, "branding")
       const res = await updateOrgLogo(url)
       if ("error" in res && typeof res.error === "string") {
         toast.error(res.error)
@@ -558,7 +558,7 @@ export function BrandingEditor() {
     if (!content) return
     setUploading(key)
     try {
-      const url = await uploadImage(file, key)
+      const url = await uploadImageToR2(file, "branding")
       if (key === "hero") {
         set("hero", { ...content.hero, imageUrl: url })
       } else {
@@ -810,7 +810,7 @@ export function BrandingEditor() {
     if (!content) return
     setUploading(`custom-${id}`)
     try {
-      const url = await uploadImage(file, "content")
+      const url = await uploadImageToR2(file, "branding")
       updateCustomSection(id, { imageUrl: url })
       toast.success(b.imageUploaded)
     } catch (err) {
