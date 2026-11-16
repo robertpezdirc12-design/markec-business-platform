@@ -16,6 +16,7 @@ import { requirePagePermission } from "@/lib/auth/guards"
 import { formatCurrency, formatDateStandard } from "@/lib/utils/format"
 import { PromotionActions } from "@/components/dashboard/promotion-actions"
 import { PromotionRedemptionsDialog } from "@/components/dashboard/promotion-redemptions-dialog"
+import { DealsManager } from "@/components/dashboard/deals-manager"
 
 function LifecycleBadge({ lifecycle }: { lifecycle: PromotionListItem["lifecycle"] }) {
   const base =
@@ -193,6 +194,9 @@ export default async function PromotionsPage() {
           )}
         </div>
       </Card>
+
+      {/* Deals Manager */}
+      <DealsManager />
     </div>
   )
 }
