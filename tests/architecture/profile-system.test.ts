@@ -153,7 +153,7 @@ describe("Arhitektura: Kontrola kakovosti", () => {
       "customerSingular",
       "appointmentSingular",
       "serviceSingular",
-    ]
+    ] as const
     
     for (const profile of ALL_PROFILES) {
       for (const term of requiredTerms) {
