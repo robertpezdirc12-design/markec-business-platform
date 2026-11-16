@@ -232,7 +232,7 @@ export function GoogleCalendarSync({
             {/* Conflict resolution */}
             <div>
               <h4 className="mb-3 text-sm font-medium">Reševanje konfliktov</h4>
-              <Select value={conflictMode} onValueChange={(v: string) => setConflictMode(v)}>
+              <Select value={conflictMode} onValueChange={(v) => setConflictMode(v as "manual" | "prefer-google" | "prefer-markec")}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
