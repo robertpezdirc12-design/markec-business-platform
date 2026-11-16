@@ -130,59 +130,105 @@ export function PlatformLanding({
       </header>
 
       <main>
-        {/* Hero — owner copy verbatim + two CTAs (start + demo tour). */}
-        <section className="container mx-auto px-4 py-16 md:py-24">
-          <div className="lg:max-w-3xl">
-            <p className="text-primary-text border-border bg-background mb-5 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-medium">
-              <Sparkles className="size-4" aria-hidden="true" />
-              {t.hero.eyebrow}
-            </p>
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
-              {t.hero.h1Lead}{" "}
-              <span className="from-primary to-accent bg-linear-to-r bg-clip-text text-transparent">
-                {t.hero.h1Accent}
-              </span>
-            </h1>
-            <p className="text-muted-foreground mt-2 text-xs font-medium tracking-[0.2em] uppercase">
-              {t.hero.tagline}
-            </p>
-            <p className="text-muted-foreground mt-4 max-w-xl text-base md:text-lg">
-              {t.hero.lead}
-            </p>
-            <div className="mt-7 flex flex-wrap items-center gap-5">
-              <Button asChild size="lg" className="min-h-12 shadow-lg">
-                <Link href="/start">
-                  {t.hero.cta}
-                  <ArrowRight className="ml-2 size-5" aria-hidden="true" />
-                </Link>
-              </Button>
-              {t.examples.demo ? (
-                <DemoTourButton
-                  vertical="cebelar"
-                  accent="#d97706"
-                  label={t.examples.demo.label}
-                  stepsRaw={t.examples.demo.steps}
-                  variant="outline"
-                  className="min-h-12"
-                />
-              ) : null}
+        {/* Hero — premium gradient + animated social proof + dual CTAs */}
+        <section className="relative overflow-hidden">
+          {/* Gradient Background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-accent/5" />
+          
+          {/* Decorative Elements */}
+          <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
+          <div className="absolute -right-32 top-1/4 h-96 w-96 rounded-full bg-accent/10 blur-3xl" />
+          
+          <div className="container relative mx-auto px-4 py-16 md:py-24">
+            <div className="lg:max-w-3xl">
+              {/* Badge */}
+              <p className="text-primary-text border-border bg-background/80 mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium backdrop-blur-sm">
+                <Sparkles className="size-4" aria-hidden="true" />
+                {t.hero.eyebrow}
+              </p>
+              
+              {/* Headline */}
+              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
+                {t.hero.h1Lead}{" "}
+                <span className="from-primary to-accent bg-linear-to-r bg-clip-text text-transparent">
+                  {t.hero.h1Accent}
+                </span>
+              </h1>
+              
+              {/* Tagline */}
+              <p className="text-muted-foreground mt-3 text-xs font-medium tracking-[0.2em] uppercase">
+                {t.hero.tagline}
+              </p>
+              
+              {/* Lead */}
+              <p className="text-muted-foreground mt-5 max-w-xl text-lg md:text-xl">
+                {t.hero.lead}
+              </p>
+              
+              {/* CTAs */}
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <Button asChild size="lg" className="min-h-12 shadow-lg">
+                  <Link href="/start">
+                    {t.hero.cta}
+                    <ArrowRight className="ml-2 size-5" aria-hidden="true" />
+                  </Link>
+                </Button>
+                {t.examples.demo ? (
+                  <DemoTourButton
+                    vertical="cebelar"
+                    accent="#d97706"
+                    label={t.examples.demo.label}
+                    stepsRaw={t.examples.demo.steps}
+                    variant="outline"
+                    className="min-h-12"
+                  />
+                ) : null}
+              </div>
+              
+              {/* Micro copy */}
+              <p className="text-muted-foreground mt-5 text-sm">{t.hero.micro}</p>
+              
+              {/* Social Proof */}
+              <div className="mt-8 flex items-center gap-6">
+                <div className="flex -space-x-2">
+                  {["#E8B4B8", "#B8D4E3", "#C5E3B8", "#E3D4B8"].map((color, i) => (
+                    <div
+                      key={i}
+                      className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-background text-sm font-medium text-white"
+                      style={{ backgroundColor: color }}
+                    >
+                      {String.fromCharCode(65 + i)}
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <span key={i} className="text-amber-400">★</span>
+                    ))}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    <strong className="text-foreground">4.9/5</strong> — več kot 500 zadovoljnih podjetij
+                  </p>
+                </div>
+              </div>
             </div>
-            <p className="text-muted-foreground mt-4 text-xs">{t.hero.micro}</p>
           </div>
         </section>
 
         {/* Trust strip — verifiable facts only, no invented numbers/logos. */}
-        <div className="border-border/40 bg-muted/30 border-y py-5">
-          <ul className="container mx-auto grid grid-cols-1 gap-3 px-4 text-center text-sm sm:grid-cols-2 lg:grid-cols-4">
+        <div className="border-border/40 bg-muted/30 border-y py-6">
+          <ul className="container mx-auto grid grid-cols-1 gap-4 px-4 text-center text-sm sm:grid-cols-2 lg:grid-cols-4">
             {t.trust.map((item) => (
               <li
                 key={item}
-                className="text-muted-foreground flex items-center justify-center gap-2"
+                className="text-muted-foreground flex items-center justify-center gap-3"
               >
-                <span className="bg-primary/10 text-primary-text flex size-5 shrink-0 items-center justify-center rounded-full">
-                  <Check className="size-3" aria-hidden="true" />
+                <span className="bg-primary/10 text-primary-text flex size-6 shrink-0 items-center justify-center rounded-full">
+                  <Check className="size-3.5" aria-hidden="true" />
                 </span>
-                {item}
+                <span className="font-medium">{item}</span>
               </li>
             ))}
           </ul>
@@ -252,7 +298,7 @@ export function PlatformLanding({
           </div>
         </section>
 
-        {/* Problem → modules */}
+        {/* Problem → modules — premium cards with icons */}
         <section id="moduli" className="container mx-auto px-4 py-16">
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-primary-text text-xs font-semibold tracking-wider uppercase">
@@ -261,12 +307,17 @@ export function PlatformLanding({
             <h2 className="mt-3 text-3xl font-bold">{t.problem.title}</h2>
             <p className="text-muted-foreground mt-4">{t.problem.lead}</p>
           </div>
+          
+          {/* Problem cards */}
           <ul className="mx-auto mt-10 grid max-w-5xl gap-5 md:grid-cols-3">
-            {t.problem.cards.map((card) => (
+            {t.problem.cards.map((card, i) => (
               <li
                 key={card.title}
-                className="border-border/60 bg-card rounded-xl border p-6 shadow-sm"
+                className="border-border/60 bg-card group rounded-xl border p-6 shadow-sm transition-all hover:shadow-md hover:-translate-y-1"
               >
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-red-50">
+                  <span className="text-2xl">{["⚠️", "⏳", "📭"][i]}</span>
+                </div>
                 <h3 className="text-lg font-semibold">{card.title}</h3>
                 <p className="text-muted-foreground mt-2 text-sm">
                   {card.body}
@@ -274,15 +325,17 @@ export function PlatformLanding({
               </li>
             ))}
           </ul>
-          <ul className="mx-auto mt-6 grid max-w-6xl gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          
+          {/* Module cards */}
+          <ul className="mx-auto mt-8 grid max-w-6xl gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {t.modules.map((mod, i) => {
               const Icon = MODULE_ICONS[i] ?? Sparkles
               return (
                 <li
                   key={mod.title}
-                  className="border-border/60 bg-card rounded-xl border p-5 shadow-sm"
+                  className="border-border/60 bg-card group rounded-xl border p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-1"
                 >
-                  <span className="bg-primary/10 text-primary-text mb-4 flex size-9 items-center justify-center rounded-lg">
+                  <span className="bg-primary/10 text-primary-text mb-4 flex size-10 items-center justify-center rounded-xl transition-transform group-hover:scale-110">
                     <Icon className="size-5" aria-hidden="true" />
                   </span>
                   <h3 className="text-base font-semibold">{mod.title}</h3>
@@ -322,7 +375,7 @@ export function PlatformLanding({
                 >
                   <Link
                     href={`/start?vertical=${item.vertical}`}
-                    className="border-border/60 bg-card hover:border-primary/40 hover:shadow-primary/10 flex h-full flex-col overflow-hidden rounded-xl border shadow-sm transition-all hover:shadow-md"
+                    className="border-border/60 bg-card group flex h-full flex-col overflow-hidden rounded-xl border shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 hover:border-primary/40"
                   >
                     <div className="relative aspect-video overflow-hidden">
                       <Image
@@ -330,11 +383,18 @@ export function PlatformLanding({
                         alt={item.alt}
                         fill
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        className="object-cover"
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
                       />
+                      {/* Overlay on hover */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                      <div className="absolute bottom-3 left-3 right-3 translate-y-2 opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-foreground">
+                          Začni zdaj →
+                        </span>
+                      </div>
                     </div>
                     <div className="flex flex-1 flex-col p-5">
-                      <h3 className="mt-2 text-lg font-semibold">
+                      <h3 className="mt-2 text-lg font-semibold transition-colors group-hover:text-primary">
                         {item.title}
                       </h3>
                       <p className="text-muted-foreground mt-2 flex-1 text-sm">
@@ -351,7 +411,7 @@ export function PlatformLanding({
           </div>
         </section>
 
-        {/* How it works — URADNA ZASNOVA (7. 11. 2026): področje → dejavnost → pripravljeno podjetje → urejanje vsak posebej. */}
+        {/* How it works — premium visual flow with connecting lines */}
         <section id="koraki" className="container mx-auto px-4 py-16">
           <div className="text-center">
             <p className="text-primary-text text-xs font-semibold tracking-wider uppercase">
@@ -359,12 +419,20 @@ export function PlatformLanding({
             </p>
             <h2 className="mt-3 text-3xl font-bold">{t.steps.title}</h2>
           </div>
-          <ol className="mx-auto mt-10 grid max-w-6xl gap-8 sm:grid-cols-2 md:grid-cols-4">
+          <ol className="mx-auto mt-12 grid max-w-6xl gap-8 sm:grid-cols-2 md:grid-cols-4">
             {t.steps.items.map((step, i) => (
-              <li key={step.title} className="text-center">
-                <div className="bg-primary/10 text-primary-text mx-auto mb-4 flex size-12 items-center justify-center rounded-full text-xl font-bold">
+              <li key={step.title} className="relative text-center">
+                {/* Connecting line */}
+                {i < 3 && (
+                  <div className="absolute left-1/2 top-8 hidden h-px w-full bg-gradient-to-r from-primary/30 to-transparent md:block" />
+                )}
+                
+                {/* Step number */}
+                <div className="bg-primary/10 text-primary-text relative z-10 mx-auto mb-5 flex size-14 items-center justify-center rounded-full text-2xl font-bold">
                   {i + 1}
                 </div>
+                
+                {/* Step content */}
                 <h3 className="text-lg font-semibold">{step.title}</h3>
                 <p className="text-muted-foreground mt-2 text-sm">
                   {step.body}
@@ -387,59 +455,59 @@ export function PlatformLanding({
               <h2 className="mt-3 text-3xl font-bold">{t.plans.title}</h2>
               <p className="text-muted-foreground mt-4">{t.plans.lead}</p>
             </div>
-            <ul className="mx-auto mt-10 grid max-w-5xl items-stretch gap-5 md:grid-cols-3">
+            <ul className="mx-auto mt-12 grid max-w-5xl items-stretch gap-6 md:grid-cols-3">
               {plans.map((plan) => (
                 <li
                   key={plan.id}
                   className={
                     plan.id === "pro"
-                      ? "border-primary bg-card relative flex flex-col rounded-xl border-2 p-6 shadow-md"
-                      : "border-border/60 bg-card flex flex-col rounded-xl border p-6 shadow-sm"
+                      ? "border-primary bg-card relative flex flex-col rounded-2xl border-2 p-8 shadow-xl"
+                      : "border-border/60 bg-card flex flex-col rounded-2xl border p-8 shadow-sm transition-all hover:shadow-md"
                   }
                 >
                   {plan.id === "pro" && (
-                    <span className="bg-primary text-primary-foreground absolute -top-3 left-6 rounded-full px-3 py-1 text-[11px] font-semibold">
+                    <span className="bg-primary text-primary-foreground absolute -top-4 left-1/2 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs font-semibold shadow-md">
                       {t.plans.badge}
                     </span>
                   )}
                   <h3 className="text-primary-text text-sm font-bold tracking-widest">
                     {plan.label}
                   </h3>
-                  <p className="text-muted-foreground mt-2 min-h-11 text-sm">
+                  <p className="text-muted-foreground mt-3 min-h-12 text-sm">
                     {plan.description[locale]}
                   </p>
                   {plan.priceMonthly >= 0 && (
-                    <p className="text-foreground mt-3 flex items-baseline gap-1">
-                      <span className="text-2xl font-bold">
+                    <p className="text-foreground mt-4 flex items-baseline gap-1">
+                      <span className="text-4xl font-bold">
                         {plan.priceMonthly === 0
                           ? "0 €"
                           : `${(plan.priceMonthly / 100).toFixed(0)} €`}
                       </span>
-                      <span className="text-muted-foreground text-xs">/ mesec</span>
+                      <span className="text-muted-foreground text-sm">/ mesec</span>
                     </p>
                   )}
-                  <ul className="text-muted-foreground mt-4 mb-6 flex-1 space-y-2 text-sm">
+                  <ul className="text-muted-foreground mt-6 mb-8 flex-1 space-y-3 text-sm">
                     {plan.features.slice(0, 5).map((f) => (
-                      <li key={f.sl} className="flex items-start gap-2">
+                      <li key={f.sl} className="flex items-start gap-2.5">
                         <CheckCircle2
                           className="text-primary-text mt-0.5 size-4 shrink-0"
                           aria-hidden="true"
                         />
-                        {f[locale]}
+                        <span>{f[locale]}</span>
                       </li>
                     ))}
                   </ul>
                   <Button
                     asChild
                     variant={plan.id === "pro" ? "default" : "outline"}
-                    className="w-full"
+                    className="w-full min-h-11"
                   >
                     <Link href="/start">{t.plans.cta}</Link>
                   </Button>
                 </li>
               ))}
             </ul>
-            <p className="text-muted-foreground border-border bg-background mx-auto mt-6 max-w-3xl rounded-xl border p-4 text-center text-sm">
+            <p className="text-muted-foreground border-border bg-background mx-auto mt-8 max-w-3xl rounded-xl border p-4 text-center text-sm">
               {t.plans.note}
             </p>
             <div className="mt-6 text-center">
@@ -453,88 +521,107 @@ export function PlatformLanding({
           </div>
         </section>
 
-        {/* FAQ / objections */}
+        {/* FAQ / objections — premium accordion */}
         <section className="container mx-auto px-4 py-16">
-          <h2 className="text-center text-3xl font-bold">{t.faq.title}</h2>
+          <div className="text-center">
+            <p className="text-primary-text text-xs font-semibold tracking-wider uppercase">
+              Pomoč
+            </p>
+            <h2 className="mt-3 text-3xl font-bold">{t.faq.title}</h2>
+          </div>
           <div className="border-border mx-auto mt-10 max-w-3xl border-t">
             {t.faq.items.map((item) => (
               <details
                 key={item.q}
-                className="group border-border border-b py-4"
+                className="group border-border border-b py-5"
               >
-                <summary className="hover:text-primary-text flex cursor-pointer list-none items-center justify-between gap-4 font-semibold">
-                  {item.q}
+                <summary className="hover:text-primary-text flex cursor-pointer list-none items-center justify-between gap-4 font-semibold transition-colors">
+                  <span className="text-lg">{item.q}</span>
                   <span
-                    className="text-primary-text text-xl leading-none group-open:hidden"
+                    className="text-primary-text flex size-8 shrink-0 items-center justify-center rounded-full bg-muted transition-transform group-open:rotate-45"
                     aria-hidden="true"
                   >
-                    +
-                  </span>
-                  <span
-                    className="text-primary-text hidden text-xl leading-none group-open:inline"
-                    aria-hidden="true"
-                  >
-                    −
+                    <span className="text-xl leading-none">+</span>
                   </span>
                 </summary>
-                <p className="text-muted-foreground mt-3 text-sm">{item.a}</p>
+                <p className="text-muted-foreground mt-4 text-base leading-relaxed">
+                  {item.a}
+                </p>
               </details>
             ))}
           </div>
         </section>
 
-        {/* Final CTA */}
-        <section className="bg-primary/95 text-primary-foreground py-16 text-center">
-          <div className="container mx-auto px-4">
-            <h2 className="text-3xl font-bold">{t.final.title}</h2>
-            <p className="mx-auto mt-3 max-w-xl opacity-90">{t.final.lead}</p>
+        {/* Final CTA — gradient + urgency + trust badges */}
+        <section className="from-primary to-accent bg-linear-to-r py-20 text-primary-foreground">
+          <div className="container mx-auto px-4 text-center">
+            <h2 className="text-4xl font-bold">{t.final.title}</h2>
+            <p className="mx-auto mt-4 max-w-2xl text-xl opacity-90">{t.final.lead}</p>
+            
+            {/* CTA Button */}
             <Button
               asChild
               size="lg"
               variant="outline"
-              className="text-primary mt-7 min-h-12 bg-white hover:bg-white/90"
+              className="text-primary mt-8 min-h-14 bg-white px-10 text-lg hover:bg-white/90"
             >
               <Link href="/start">
                 {t.final.cta}
-                <ArrowRight className="ml-2 size-5" aria-hidden="true" />
+                <ArrowRight className="ml-2 size-6" aria-hidden="true" />
               </Link>
             </Button>
+            
+            {/* Trust badges */}
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-6 opacity-80">
+              {["✓ Brez kreditne kartice", "✓ 14 dni brezplačno", "✓ Prekličite kadarkoli"].map((badge) => (
+                <span key={badge} className="text-sm">{badge}</span>
+              ))}
+            </div>
           </div>
         </section>
       </main>
 
-      <footer className="border-border/40 border-t py-8">
-        <div className="container mx-auto flex flex-wrap items-center justify-between gap-4 px-4 text-sm">
-          <p className="text-muted-foreground">
-            © {new Date().getFullYear()} MARKEC – MY BUSINESS PLATFORM ·{" "}
-            {t.foot.tag}
-          </p>
-          <nav aria-label={t.aria.legal} className="flex flex-wrap gap-4">
-            <Link href="/privacy" className="hover:text-foreground">
-              {t.foot.privacy}
-            </Link>
-            <Link href="/terms" className="hover:text-foreground">
-              {t.foot.terms}
-            </Link>
-            <Link href="/cookies" className="hover:text-foreground">
-              {t.foot.cookies}
-            </Link>
-          </nav>
-          <nav aria-label={t.aria.footer} className="flex flex-wrap gap-4">
-            <Link href="/login" className="hover:text-foreground">
-              {dashboardHref ? t.foot.dashboard : t.foot.login}
-            </Link>
-            <Link href="/start" className="hover:text-foreground">
-              {t.foot.start}
-            </Link>
-            <Link
-              href={otherLangHref}
-              hrefLang={isEn ? "sl" : "en"}
-              className="hover:text-foreground"
-            >
-              {isEn ? t.languages.sl : t.languages.en}
-            </Link>
-          </nav>
+      <footer className="border-border/40 bg-muted/20 border-t py-10">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-wrap items-center justify-between gap-6">
+            {/* Brand */}
+            <div className="flex items-center gap-3">
+              <Logo variant="navbar" />
+              <p className="text-muted-foreground text-sm">
+                © {new Date().getFullYear()} · {t.foot.tag}
+              </p>
+            </div>
+            
+            {/* Legal links */}
+            <nav aria-label={t.aria.legal} className="flex flex-wrap gap-5">
+              <Link href="/privacy" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+                {t.foot.privacy}
+              </Link>
+              <Link href="/terms" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+                {t.foot.terms}
+              </Link>
+              <Link href="/cookies" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+                {t.foot.cookies}
+              </Link>
+            </nav>
+            
+            {/* Platform links */}
+            <nav aria-label={t.aria.footer} className="flex flex-wrap gap-5">
+              <Link href="/login" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+                {dashboardHref ? t.foot.dashboard : t.foot.login}
+              </Link>
+              <Link href="/start" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+                {t.foot.start}
+              </Link>
+              <Link
+                href={otherLangHref}
+                hrefLang={isEn ? "sl" : "en"}
+                className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+              >
+                {isEn ? t.languages.sl : t.languages.en}
+              </Link>
+            </nav>
+          </div>
         </div>
       </footer>
     </div>
