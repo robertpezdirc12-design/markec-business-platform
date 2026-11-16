@@ -17,6 +17,7 @@ import { formatCurrency, formatDateStandard } from "@/lib/utils/format"
 import { PromotionActions } from "@/components/dashboard/promotion-actions"
 import { PromotionRedemptionsDialog } from "@/components/dashboard/promotion-redemptions-dialog"
 import { DealsManager } from "@/components/dashboard/deals-manager"
+import { SmartPricing } from "@/components/dashboard/smart-pricing"
 
 function LifecycleBadge({ lifecycle }: { lifecycle: PromotionListItem["lifecycle"] }) {
   const base =
@@ -197,6 +198,9 @@ export default async function PromotionsPage() {
 
       {/* Deals Manager */}
       <DealsManager />
+
+      {/* Smart Pricing */}
+      <SmartPricing />
     </div>
   )
 }
