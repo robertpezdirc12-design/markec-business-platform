@@ -11,6 +11,7 @@ import {
   UsersIcon,
   ClockIcon,
   TrendingUpIcon,
+  CurrencyDollarIcon,
 } from "@/components/icons"
 import { getAdminStaffMembers, getAdminStaffStats } from "@/app/actions/staff"
 import { getServerI18n } from "@/lib/i18n/server"
@@ -19,6 +20,7 @@ import { DeleteStaffButton } from "@/components/dashboard/delete-staff-button"
 import { requirePagePermission } from "@/lib/auth/guards"
 import { TeamSchedule } from "@/components/dashboard/team-schedule"
 import { StaffPerformanceDashboard } from "@/components/dashboard/staff-performance-dashboard"
+import { PayRuns } from "@/components/dashboard/pay-runs"
 
 interface StaffPageProps {
   searchParams: Promise<{ search?: string }>
@@ -103,6 +105,10 @@ export default async function StaffPage({ searchParams }: StaffPageProps) {
           <TabsTrigger value="performance">
             <TrendingUpIcon size={16} className="mr-2" />
             Uspešnost
+          </TabsTrigger>
+          <TabsTrigger value="payroll">
+            <CurrencyDollarIcon size={16} className="mr-2" />
+            Plače
           </TabsTrigger>
         </TabsList>
 
@@ -231,6 +237,11 @@ export default async function StaffPage({ searchParams }: StaffPageProps) {
               },
             }))}
           />
+        </TabsContent>
+
+        {/* Pay Runs */}
+        <TabsContent value="payroll">
+          <PayRuns />
         </TabsContent>
       </Tabs>
     </div>
