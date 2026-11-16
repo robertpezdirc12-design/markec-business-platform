@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Languages,
   PencilLine,
+  Search,
   ShoppingBag,
   Sparkles,
 } from "lucide-react"
@@ -186,6 +187,70 @@ export function PlatformLanding({
             ))}
           </ul>
         </div>
+
+        {/* Marketplace Search — Fresha-inspired discovery entry */}
+        <section className="border-border/40 bg-gradient-to-b from-muted/20 to-background py-12">
+          <div className="container mx-auto px-4">
+            <div className="mx-auto max-w-3xl text-center">
+              <p className="text-primary-text text-xs font-semibold tracking-wider uppercase">
+                Išči storitve
+              </p>
+              <h2 className="mt-3 text-2xl font-bold sm:text-3xl">
+                Rezervirajte lokalne storitve samoskrbe
+              </h2>
+              <p className="text-muted-foreground mt-2">
+                Odkrijte najbolje ocenjene salone, brivce in lepotne strokovnjake.
+              </p>
+            </div>
+
+            {/* Search Bar */}
+            <div className="mx-auto mt-6 flex max-w-2xl flex-col gap-3 rounded-2xl border bg-background p-3 shadow-lg sm:flex-row sm:items-center">
+              <div className="flex flex-1 items-center gap-2 rounded-xl border px-4 py-3">
+                <Search className="size-5 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Kaj iščete? (striženje, masaža...)"
+                  className="flex-1 bg-transparent text-base outline-none"
+                />
+              </div>
+              <Link href="/podjetja">
+                <Button size="lg" className="w-full rounded-xl px-8 sm:w-auto">
+                  Išči
+                </Button>
+              </Link>
+            </div>
+
+            {/* Quick links */}
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              {[
+                "Frizerski saloni",
+                "Kozmetika",
+                "Masaža",
+                "Brivci",
+                "Nohti",
+                "Wellness",
+              ].map((category) => (
+                <Link
+                  key={category}
+                  href={`/podjetja?kategorija=${encodeURIComponent(category)}`}
+                  className="rounded-full border px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+                >
+                  {category}
+                </Link>
+              ))}
+            </div>
+
+            {/* CTA to marketplace */}
+            <div className="mt-6 text-center">
+              <Link
+                href="/podjetja"
+                className="text-primary-text text-sm font-medium hover:underline"
+              >
+                Razišči vsa podjetja →
+              </Link>
+            </div>
+          </div>
+        </section>
 
         {/* Problem → modules */}
         <section id="moduli" className="container mx-auto px-4 py-16">
