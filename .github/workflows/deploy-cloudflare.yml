@@ -148,8 +148,28 @@ jobs:
       # Build — OpenNext for Cloudflare.
       # No .env files in CI, so build-smart.mjs env-hiding is a no-op.
       # Only build-time env is passed; runtime secrets come from Worker bindings.
+      # RETRY: next/font/google fetches its CSS from Google at build time and
+      # Google occasionally answers with extensionless /l/font?kit=…&skey=…
+      # URLs instead of /s/…/<hash>.woff2. Turbopack then fails the whole build
+      # with "next/font/google queries have exactly one entry" (upstream bug
+      # vercel/next.js#99114, still unfixed in 16.1.4 — it hits ~2 % of
+      # responses and varies per family). A clean retry re-rolls the fetch; 3
+      # attempts drop the failure rate to well below 1 %.
       - name: Build with OpenNext
-        run: pnpm run build
+        run: |
+          for attempt in 1 2 3; do
+            echo "### Build attempt $attempt"
+            if pnpm run build; then
+              echo "::notice::Build succeeded on attempt $attempt"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "::warning::Build attempt $attempt failed — cleaning and retrying"
+              rm -rf .next .open-next
+            fi
+          done
+          echo "::error::Build failed after 3 attempts"
+          exit 1
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
@@ -166,9 +186,8 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy .open-next/worker.js --config wrangler.jsonc
 
-      # Set ALL runtime secrets in one step via a shell script.
-      # `echo "$VALUE" | wrangler secret put NAME` is idempotent and
-      # safe to run every deploy — it overwrites the previous value.
+      # Push runtime secrets to the Worker. Idempotent — run every deploy.
+      # Empty GitHub secrets are skipped, see the guard in the script below.
       - name: Configure all Worker secrets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -193,30 +212,43 @@ jobs:
           SECRET_AUTH_GOOGLE_SECRET: ${{ secrets.AUTH_GOOGLE_SECRET }}
         run: |
           set -euo pipefail
-          npx wrangler secret put DATABASE_URL --name markec-business-platform <<< "$SECRET_DATABASE_URL"
-          npx wrangler secret put DIRECT_URL --name markec-business-platform <<< "$SECRET_DIRECT_URL"
-          npx wrangler secret put NEXTAUTH_SECRET --name markec-business-platform <<< "$SECRET_NEXTAUTH_SECRET"
-          npx wrangler secret put AUTH_SECRET --name markec-business-platform <<< "$SECRET_AUTH_SECRET"
-          npx wrangler secret put NEXTAUTH_URL --name markec-business-platform <<< "$SECRET_NEXTAUTH_URL"
-          npx wrangler secret put NEXT_PUBLIC_APP_URL --name markec-business-platform <<< "$SECRET_NEXT_PUBLIC_APP_URL"
-          npx wrangler secret put R2_ACCESS_KEY_ID --name markec-business-platform <<< "$SECRET_R2_ACCESS_KEY_ID"
-          npx wrangler secret put R2_SECRET_ACCESS_KEY --name markec-business-platform <<< "$SECRET_R2_SECRET_ACCESS_KEY"
-          npx wrangler secret put R2_ACCOUNT_ID --name markec-business-platform <<< "$SECRET_R2_ACCOUNT_ID"
-          npx wrangler secret put R2_ENDPOINT --name markec-business-platform <<< "$SECRET_R2_ENDPOINT"
-          npx wrangler secret put R2_BUCKET --name markec-business-platform <<< "$SECRET_R2_BUCKET"
-          npx wrangler secret put R2_PUBLIC_URL --name markec-business-platform <<< "$SECRET_R2_PUBLIC_URL"
-          npx wrangler secret put RESEND_API_KEY --name markec-business-platform <<< "$SECRET_RESEND_API_KEY"
-          npx wrangler secret put RESEND_FROM_EMAIL --name markec-business-platform <<< "$SECRET_RESEND_FROM_EMAIL"
-          npx wrangler secret put STRIPE_SECRET_KEY --name markec-business-platform <<< "$SECRET_STRIPE_SECRET_KEY"
-          npx wrangler secret put NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY --name markec-business-platform <<< "$SECRET_NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
-          # Optional providers — don't fail the deploy if they're empty
-          if [ -n "$SECRET_AUTH_GOOGLE_ID" ]; then
-            npx wrangler secret put AUTH_GOOGLE_ID --name markec-business-platform <<< "$SECRET_AUTH_GOOGLE_ID"
-          fi
-          if [ -n "$SECRET_AUTH_GOOGLE_SECRET" ]; then
-            npx wrangler secret put AUTH_GOOGLE_SECRET --name markec-business-platform <<< "$SECRET_AUTH_GOOGLE_SECRET"
-          fi
-          echo "All secrets configured."
+          WORKER="markec-business-platform"
+
+          # Empty value ⇒ secret is SKIPPED, never overwritten. A missing
+          # GitHub secret must not wipe a working Worker secret (that would
+          # silently break R2 uploads / Stripe / email in production).
+          # printf (not a here-string) avoids baking a trailing newline into
+          # the value — API keys with \n are rejected by the providers.
+          put() {
+            local name="$1" value="$2"
+            if [ -n "$value" ]; then
+              printf '%s' "$value" | npx wrangler secret put "$name" --name "$WORKER"
+              echo "✓ $name"
+            else
+              echo "::notice::$name not provided in GitHub secrets — keeping existing Worker secret"
+            fi
+          }
+
+          put DATABASE_URL "${SECRET_DATABASE_URL:-}"
+          put DIRECT_URL "${SECRET_DIRECT_URL:-}"
+          put NEXTAUTH_SECRET "${SECRET_NEXTAUTH_SECRET:-}"
+          put AUTH_SECRET "${SECRET_AUTH_SECRET:-}"
+          put NEXTAUTH_URL "${SECRET_NEXTAUTH_URL:-}"
+          put NEXT_PUBLIC_APP_URL "${SECRET_NEXT_PUBLIC_APP_URL:-}"
+          put R2_ACCESS_KEY_ID "${SECRET_R2_ACCESS_KEY_ID:-}"
+          put R2_SECRET_ACCESS_KEY "${SECRET_R2_SECRET_ACCESS_KEY:-}"
+          put R2_ACCOUNT_ID "${SECRET_R2_ACCOUNT_ID:-}"
+          put R2_ENDPOINT "${SECRET_R2_ENDPOINT:-}"
+          put R2_BUCKET "${SECRET_R2_BUCKET:-}"
+          put R2_PUBLIC_URL "${SECRET_R2_PUBLIC_URL:-}"
+          put RESEND_API_KEY "${SECRET_RESEND_API_KEY:-}"
+          put RESEND_FROM_EMAIL "${SECRET_RESEND_FROM_EMAIL:-}"
+          put STRIPE_SECRET_KEY "${SECRET_STRIPE_SECRET_KEY:-}"
+          put NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY "${SECRET_NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}"
+          put AUTH_GOOGLE_ID "${SECRET_AUTH_GOOGLE_ID:-}"
+          put AUTH_GOOGLE_SECRET "${SECRET_AUTH_GOOGLE_SECRET:-}"
+
+          echo "Worker secrets configured (empty ones skipped)."
 
       # Health check — verify the Worker responds after deploy
       - name: Health check

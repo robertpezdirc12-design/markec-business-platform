@@ -115,8 +115,22 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm prisma generate
 
+      # Same google-fonts flake as the deploy workflow (vercel/next.js#99114).
       - name: Build with OpenNext
-        run: pnpm run build
+        run: |
+          for attempt in 1 2 3; do
+            echo "### Build attempt $attempt"
+            if pnpm run build; then
+              echo "::notice::Build succeeded on attempt $attempt"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "::warning::Build attempt $attempt failed — cleaning and retrying"
+              rm -rf .next .open-next
+            fi
+          done
+          echo "::error::Build failed after 3 attempts"
+          exit 1
         env:
           DATABASE_URL: postgresql://fake:fake@localhost:5432/fake?schema=public
           NEXTAUTH_SECRET: test-secret-not-real
