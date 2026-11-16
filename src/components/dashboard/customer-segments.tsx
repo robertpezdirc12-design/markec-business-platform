@@ -167,7 +167,7 @@ export function CustomerSegments({
               </div>
               <ul className="space-y-1 text-sm text-muted-foreground">
                 <li>• Reaktivacijska kampanja s popustom</li>
-                <li>• Osebno sporočilo: "Pogrešamo vas!"</li>
+                <li>• Osebno sporočilo: &quot;Pogrešamo vas!&quot;</li>
                 <li>• Vprašanje o izkušnji (feedback)</li>
               </ul>
             </div>

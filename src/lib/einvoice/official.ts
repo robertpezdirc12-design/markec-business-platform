@@ -91,7 +91,7 @@ function run(prog: string, args: string[], opts: { encoding?: BufferEncoding } =
 }
 
 // JSON iz zunanjega validatorja (XSD/Schematron); oblika je preverjena v klicih.
-function parseJson(s: string): any {
+function parseJson(s: string): unknown {
   try { return JSON.parse(s) } catch { return null }
 }
 

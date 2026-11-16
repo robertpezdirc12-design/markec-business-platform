@@ -38,6 +38,11 @@ export async function getMarketingOverview(): Promise<{
   bookingLink: string
   /** #95 (AD-03): koliko naslovov je odjavljenih od tega pošiljatelja. */
   unsubscribedCount: number
+  /** Real segment counts from the database — no hardcoded marketing numbers. */
+  availableTags: string[]
+  customerCounts: Record<string, number>
+  totalCustomers: number
+  marketingConsentCount: number
 }> {
   const { org } = await requirePermissionOrg("customers.manage")
 
@@ -51,8 +56,8 @@ export async function getMarketingOverview(): Promise<{
       },
     }),
     prisma.customer.findMany({
-      where: { organizationId: org.id },
-      select: { tags: true },
+      where: { organizationId: org.id, isArchived: false },
+      select: { tags: true, marketingConsent: true },
     }),
     prisma.marketingUnsubscribe.count({ where: { organizationId: org.id } }),
   ])
@@ -60,6 +65,12 @@ export async function getMarketingOverview(): Promise<{
   const tagOptions = Array.from(new Set(tagRows.flatMap((r) => r.tags))).sort((a, b) =>
     a.localeCompare(b, "sl")
   )
+  const customerCounts = tagOptions.reduce<Record<string, number>>((acc, tag) => {
+    acc[tag] = tagRows.filter((r) => r.tags.includes(tag)).length
+    return acc
+  }, {})
+  const totalCustomers = tagRows.length
+  const marketingConsentCount = tagRows.filter((r) => r.marketingConsent).length
 
   const campaigns: MarketingCampaignView[] = CAMPAIGN_KINDS.map((kind) => {
     const row = byKind.get(kind)
@@ -86,6 +97,10 @@ export async function getMarketingOverview(): Promise<{
     businessName: org.name,
     bookingLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/s/${org.slug}/booking`,
     unsubscribedCount,
+    availableTags: tagOptions,
+    customerCounts,
+    totalCustomers,
+    marketingConsentCount,
   }
 }
 

@@ -6,7 +6,7 @@
 // Like Fresha's "Gift Cards" feature — popular for gifting.
 // ============================================================
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -120,7 +120,16 @@ export function GiftCards({ initialCards = [] }: GiftCardsProps) {
   const [senderName, setSenderName] = useState("")
   const [message, setMessage] = useState("")
 
-  const handleCreate = () => {
+  const resetForm = useCallback(() => {
+    setAmount(50)
+    setCustomAmount("")
+    setRecipientName("")
+    setRecipientEmail("")
+    setSenderName("")
+    setMessage("")
+  }, [])
+
+  const handleCreate = useCallback(() => {
     const finalAmount = customAmount ? Number(customAmount) : amount
     
     if (!finalAmount || finalAmount < 10) {
@@ -146,16 +155,7 @@ export function GiftCards({ initialCards = [] }: GiftCardsProps) {
     setOpen(false)
     resetForm()
     toast.success(`Darilni bon ${newCard.code} ustvarjen!`)
-  }
-
-  const resetForm = () => {
-    setAmount(50)
-    setCustomAmount("")
-    setRecipientName("")
-    setRecipientEmail("")
-    setSenderName("")
-    setMessage("")
-  }
+  }, [customAmount, amount, recipientName, recipientEmail, senderName, message, resetForm])
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code)

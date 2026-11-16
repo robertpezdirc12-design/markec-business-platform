@@ -253,7 +253,7 @@ export function DealsManager({ initialDeals = [] }: DealsManagerProps) {
             {/* Type */}
             <div>
               <Label>Vrsta</Label>
-              <Select value={type} onValueChange={(v: any) => setType(v)}>
+              <Select value={type} onValueChange={(v: string) => setType(v)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

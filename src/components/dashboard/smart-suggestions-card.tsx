@@ -26,17 +26,15 @@ interface Props {
 }
 
 export function SmartSuggestionsCard({ verticalLabel, suggestions }: Props) {
-  const [dismissed, setDismissed] = useState<boolean>(false)
-  const [loaded, setLoaded] = useState(false)
-
-  useEffect(() => {
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false
     try {
-      setDismissed(window.localStorage.getItem(DISMISS_KEY) === "1")
+      return window.localStorage.getItem(DISMISS_KEY) === "1"
     } catch {
-      /* ignore */
+      return false
     }
-    setLoaded(true)
-  }, [])
+  })
+  const [loaded] = useState(true)
 
   if (!loaded || dismissed || suggestions.length === 0) return null
 

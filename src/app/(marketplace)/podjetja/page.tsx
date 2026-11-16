@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { HeroSection } from "@/components/marketplace/hero-section"
 import { BusinessShowcase } from "@/components/marketplace/business-showcase"
 import { TestimonialsSection } from "@/components/marketplace/testimonials-section"
@@ -7,52 +8,102 @@ import { B2BShowcase } from "@/components/marketplace/b2b-showcase"
 import { AppDownloadSection } from "@/components/marketplace/app-download-section"
 import { EnhancedFooter } from "@/components/marketplace/enhanced-footer"
 import {
+  getMarketplaceBusinesses,
   getRecommendedBusinesses,
   getPopularBusinesses,
   getNewBusinesses,
   getMarketplaceStats,
 } from "@/app/actions/marketplace"
 
-// ============================================================
-// MARKETPLACE MAIN PAGE (Fresha-inspired, superior 2026-11-16)
-// Complete marketplace with all sections assembled.
-// Surpasses Fresha with better organization and visual design.
-// ============================================================
-
 export const dynamic = "force-dynamic"
 
 export const metadata = {
   title: "MARKEC — Rezervirajte lokalne storitve",
   description:
-    "Odkrijte najbolje ocenjene salone, brivce, zdravnike in lepotne strokovnjake. Rezervirajte termin v nekaj klikih.",
+    "Odkrijte podjetja po panogi in kraju. Prikazujemo samo podjetja, ki so res prisotna v platformi.",
 }
 
-export default async function MarketplacePage() {
-  // Fetch real data from database
-  const [recommendedBusinesses, popularBusinesses, newBusinesses, stats] =
+type SearchParams = Promise<Record<string, string | string[] | undefined>>
+
+function first(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return value[0] ?? ""
+  return value ?? ""
+}
+
+// Marketplace category pills use human labels, while the database stores
+// vertical ids. Map the six public labels to a search term the DB understands.
+const CATEGORY_QUERY: Record<string, string> = {
+  "Frizerski saloni": "frizer",
+  Kozmetika: "kozmet",
+  Masaža: "masaž",
+  Brivci: "briv",
+  Nohti: "noht",
+  Wellness: "wellness",
+}
+
+export default async function MarketplacePage({
+  searchParams,
+}: {
+  searchParams: SearchParams
+}) {
+  const params = await searchParams
+  const categoryParam = first(params.kategorija)
+  const rawQuery = first(params.q) || categoryParam
+  const query = CATEGORY_QUERY[rawQuery] ?? rawQuery
+  const location = first(params.location)
+  const hasSearch = Boolean(query || location)
+
+  const [searchResults, recommendedBusinesses, popularBusinesses, newBusinesses, stats] =
     await Promise.all([
-      getRecommendedBusinesses(),
-      getPopularBusinesses(),
-      getNewBusinesses(),
+      hasSearch
+        ? getMarketplaceBusinesses({
+            q: query || undefined,
+            city: location || undefined,
+            limit: 24,
+            sort: "rating",
+          })
+        : Promise.resolve([]),
+      hasSearch ? Promise.resolve([]) : getRecommendedBusinesses(),
+      hasSearch ? Promise.resolve([]) : getPopularBusinesses(),
+      hasSearch ? Promise.resolve([]) : getNewBusinesses(),
       getMarketplaceStats(),
     ])
 
   return (
     <div className="min-h-screen">
-      {/* 1. Hero with Search */}
-      <HeroSection />
+      <HeroSection initialQuery={query} initialLocation={location} stats={stats} />
 
-      {/* 2. Business Showcase (Recommended + Popular + New) */}
+      {hasSearch && (
+        <div className="border-border/40 border-b bg-muted/20 py-3">
+          <div className="container mx-auto px-4 text-sm text-muted-foreground">
+            Rezultati za <strong className="text-foreground">{query || "vsa podjetja"}</strong>
+            {location ? ` v ${location}` : ""} · {searchResults.length} podjetij
+            <Link href="/podjetja" className="ml-3 underline">
+              Ponastavi iskanje
+            </Link>
+          </div>
+        </div>
+      )}
+
       <BusinessShowcase
-        recommendedBusinesses={recommendedBusinesses}
+        recommendedBusinesses={hasSearch ? searchResults : recommendedBusinesses}
         popularBusinesses={popularBusinesses}
         newBusinesses={newBusinesses}
+        hideEmptySections={hasSearch}
       />
 
-      {/* 3. Testimonials */}
-      <TestimonialsSection />
+      {!hasSearch && (
+        <>
+          <TestimonialsSection />
+          <B2BShowcase />
+          <AppDownloadSection
+            bookingsCount={stats.totalAppointments}
+            businessesCount={stats.totalBusinesses}
+          />
+          <BrowseByLocation />
+        </>
+      )}
 
-      {/* 4. Big Statistics */}
       <BigStatsSection
         totalAppointments={stats.totalAppointments}
         totalBusinesses={stats.totalBusinesses}
@@ -60,19 +111,6 @@ export default async function MarketplacePage() {
         totalCustomers={stats.totalCustomers}
       />
 
-      {/* 5. B2B Showcase */}
-      <B2BShowcase />
-
-      {/* 6. App Download */}
-      <AppDownloadSection
-        bookingsCount={stats.totalAppointments}
-        businessesCount={stats.totalBusinesses}
-      />
-
-      {/* 7. Browse by Location */}
-      <BrowseByLocation />
-
-      {/* 8. Enhanced Footer */}
       <EnhancedFooter />
     </div>
   )

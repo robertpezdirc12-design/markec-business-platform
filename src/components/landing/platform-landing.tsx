@@ -6,6 +6,8 @@ import {
   Check,
   CheckCircle2,
   Languages,
+  MapPin,
+  Menu,
   PencilLine,
   Search,
   ShoppingBag,
@@ -105,6 +107,44 @@ export function PlatformLanding({
             </Link>
           </nav>
           <span className="flex-1" />
+          {/* Mobile navigation — CSS-only <details> keeps this a server component. */}
+          <details className="group relative lg:hidden">
+            <summary
+              aria-label={t.aria.menu}
+              className="text-muted-foreground hover:text-foreground hover:bg-muted flex size-11 cursor-pointer list-none items-center justify-center rounded-lg border [&::-webkit-details-marker]:hidden"
+            >
+              <Menu className="size-5" aria-hidden="true" />
+            </summary>
+            <div className="border-border bg-background absolute right-0 top-[calc(100%+8px)] z-50 w-56 rounded-xl border p-2 shadow-xl">
+              <Link href="#moduli" className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm">
+                {t.nav.modules}
+              </Link>
+              <Link href="#primeri" className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm">
+                {t.nav.examples}
+              </Link>
+              <Link href="#koraki" className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm">
+                {t.nav.steps}
+              </Link>
+              <Link href="#paketi" className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm">
+                {t.nav.plans}
+              </Link>
+              <Link href="/pricing" className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm">
+                {isEn ? "Pricing" : "Cene"}
+              </Link>
+              <Link
+                href={dashboardHref ?? "/login"}
+                className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm"
+              >
+                {dashboardHref ? t.nav.dashboard : t.nav.login}
+              </Link>
+              <Link
+                href="/start"
+                className="bg-primary text-primary-foreground mt-1 block rounded-lg px-3 py-2.5 text-center text-sm font-semibold"
+              >
+                {t.nav.cta}
+              </Link>
+            </div>
+          </details>
           <div
             role="group"
             aria-label={t.aria.lang}
@@ -189,30 +229,8 @@ export function PlatformLanding({
               {/* Micro copy */}
               <p className="text-muted-foreground mt-5 text-sm">{t.hero.micro}</p>
               
-              {/* Social Proof */}
-              <div className="mt-8 flex items-center gap-6">
-                <div className="flex -space-x-2">
-                  {["#E8B4B8", "#B8D4E3", "#C5E3B8", "#E3D4B8"].map((color, i) => (
-                    <div
-                      key={i}
-                      className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-background text-sm font-medium text-white"
-                      style={{ backgroundColor: color }}
-                    >
-                      {String.fromCharCode(65 + i)}
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <div className="flex items-center gap-1">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <span key={i} className="text-amber-400">★</span>
-                    ))}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    <strong className="text-foreground">4.9/5</strong> — več kot 500 zadovoljnih podjetij
-                  </p>
-                </div>
-              </div>
+              {/* No invented ratings or customer counts. Verified proof is
+                  shown only when it comes from the database. */}
             </div>
           </div>
         </section>
@@ -249,22 +267,36 @@ export function PlatformLanding({
               </p>
             </div>
 
-            {/* Search Bar */}
-            <div className="mx-auto mt-6 flex max-w-2xl flex-col gap-3 rounded-2xl border bg-background p-3 shadow-lg sm:flex-row sm:items-center">
-              <div className="flex flex-1 items-center gap-2 rounded-xl border px-4 py-3">
-                <Search className="size-5 text-muted-foreground" />
+            {/* Search Bar — real query, no dead inputs. */}
+            <form
+              action="/podjetja"
+              method="get"
+              className="mx-auto mt-6 flex max-w-2xl flex-col gap-3 rounded-2xl border bg-background p-3 shadow-lg sm:flex-row sm:items-center"
+            >
+              <label className="flex flex-1 items-center gap-2 rounded-xl border px-4 py-3">
+                <Search className="size-5 shrink-0 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Kaj iščete? (striženje, masaža...)"
-                  className="flex-1 bg-transparent text-base outline-none"
+                  name="q"
+                  aria-label={isEn ? "Service or business" : "Storitev ali podjetje"}
+                  placeholder={isEn ? "What are you looking for?" : "Kaj iščete? (striženje, masaža...)"}
+                  className="min-w-0 flex-1 bg-transparent text-base outline-none"
                 />
-              </div>
-              <Link href="/podjetja">
-                <Button size="lg" className="w-full rounded-xl px-8 sm:w-auto">
-                  Išči
-                </Button>
-              </Link>
-            </div>
+              </label>
+              <label className="flex items-center gap-2 rounded-xl border px-4 py-3 sm:w-40">
+                <MapPin className="size-5 shrink-0 text-muted-foreground" />
+                <input
+                  type="text"
+                  name="location"
+                  aria-label={isEn ? "Location" : "Kraj"}
+                  placeholder={isEn ? "Location" : "Kraj"}
+                  className="min-w-0 w-full bg-transparent text-base outline-none"
+                />
+              </label>
+              <Button type="submit" size="lg" className="w-full rounded-xl px-8 sm:w-auto">
+                {isEn ? "Search" : "Išči"}
+              </Button>
+            </form>
 
             {/* Quick links */}
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">

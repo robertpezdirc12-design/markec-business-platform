@@ -43,6 +43,8 @@ interface BusinessShowcaseProps {
   recommendedBusinesses?: Business[]
   popularBusinesses?: Business[]
   newBusinesses?: Business[]
+  /** Search results: hide sections that have no data instead of showing empty carousels. */
+  hideEmptySections?: boolean
 }
 
 interface CarouselSectionProps {
@@ -52,225 +54,6 @@ interface CarouselSectionProps {
   variant?: "recommended" | "popular" | "new"
 }
 
-// Sample data for demonstration
-const sampleRecommendedBusinesses: Business[] = [
-  {
-    id: "1",
-    name: "Lassana Kozmetični Salon",
-    type: "Kozmetični salon",
-    address: "Ljubljana, Slovenija",
-    rating: 5.0,
-    reviews: 39,
-    image: "/img/presets/makeup.jpg",
-    badge: "Predstavljamo",
-    isOpen: true,
-    openUntil: "20:00",
-    priceRange: "€€",
-    slug: "lassana-kozmeticni-salon",
-  },
-  {
-    id: "2",
-    name: "Lassana Frizerski Salon",
-    type: "Frizerski salon",
-    address: "Ljubljana, Slovenija",
-    rating: 4.9,
-    reviews: 19,
-    image: "/img/presets/beard.jpg",
-    badge: "Predstavljamo",
-    isOpen: true,
-    openUntil: "19:00",
-    priceRange: "€€",
-    slug: "lassana-frizerski-salon",
-  },
-  {
-    id: "3",
-    name: "Wellness Studio Mira",
-    type: "Wellness & Spa",
-    address: "Maribor, Slovenija",
-    rating: 5.0,
-    reviews: 24,
-    image: "/img/presets/reflexology.jpg",
-    badge: "Novo",
-    isOpen: true,
-    openUntil: "21:00",
-    priceRange: "€€€",
-    slug: "wellness-studio-mira",
-  },
-  {
-    id: "4",
-    name: "Barbershop AS",
-    type: "Brivec",
-    address: "Celje, Slovenija",
-    rating: 5.0,
-    reviews: 229,
-    image: "/img/presets/hero-laser.jpg",
-    badge: "Priljubljeno",
-    isOpen: true,
-    openUntil: "18:00",
-    priceRange: "€",
-    slug: "barbershop-as",
-  },
-  {
-    id: "5",
-    name: "Color Nail Studio",
-    type: "Nohti",
-    address: "Kranj, Slovenija",
-    rating: 4.8,
-    reviews: 228,
-    image: "/img/presets/hottowel.jpg",
-    badge: "Ponudbe",
-    isOpen: true,
-    openUntil: "19:00",
-    priceRange: "€€",
-    slug: "color-nail-studio",
-  },
-]
-
-const samplePopularBusinesses: Business[] = [
-  {
-    id: "6",
-    name: "Monin Lepotni Kotiček",
-    type: "Kozmetični salon",
-    address: "Moste, Ljubljana",
-    rating: 5.0,
-    reviews: 2345,
-    image: "/img/presets/wax.jpg",
-    badge: "Ponudbe",
-    isOpen: true,
-    openUntil: "20:00",
-    priceRange: "€€",
-    slug: "monin-lepotni-koticek",
-  },
-  {
-    id: "7",
-    name: "Lassana Frizerski Salon - Derčeva",
-    type: "Frizerski salon",
-    address: "Derčeva ulica 31, Ljubljana",
-    rating: 5.0,
-    reviews: 254,
-    image: "/img/presets/sportmassage.jpg",
-    badge: "Ponudbe",
-    isOpen: true,
-    openUntil: "19:00",
-    priceRange: "€€",
-    slug: "lassana-derceva",
-  },
-  {
-    id: "8",
-    name: "Lassana Frizerski in Kozmetični",
-    type: "Frizerski salon",
-    address: "Slovenska Cesta 27, Ljubljana",
-    rating: 5.0,
-    reviews: 315,
-    image: "/img/presets/aroma.jpg",
-    badge: "Ponudbe",
-    isOpen: true,
-    openUntil: "19:00",
-    priceRange: "€€",
-    slug: "lassana-slovenska",
-  },
-  {
-    id: "9",
-    name: "Lassana Frizerski Salon - Celovška",
-    type: "Frizerski salon",
-    address: "Celovška cesta 49, Ljubljana",
-    rating: 4.9,
-    reviews: 77,
-    image: "/img/presets/hero-atelier.jpg",
-    badge: "Ponudbe",
-    isOpen: true,
-    openUntil: "19:00",
-    priceRange: "€€",
-    slug: "lassana-celovska",
-  },
-  {
-    id: "10",
-    name: "Beauty & Spa Center",
-    type: "Wellness & Spa",
-    address: "Koper, Slovenija",
-    rating: 4.9,
-    reviews: 189,
-    image: "/img/presets/staff-barber.jpg",
-    badge: "Ponudbe",
-    isOpen: true,
-    openUntil: "21:00",
-    priceRange: "€€€",
-    slug: "beauty-spa-center",
-  },
-]
-
-const sampleNewBusinesses: Business[] = [
-  {
-    id: "11",
-    name: "LJUBLÉA salon",
-    type: "Nohti",
-    address: "Vojkova cesta 58, Ljubljana",
-    rating: 5.0,
-    reviews: 14,
-    image: "/img/presets/staff-frizerka.jpg",
-    badge: "Novo",
-    isOpen: true,
-    openUntil: "19:00",
-    priceRange: "€€",
-    slug: "ljublea-salon",
-  },
-  {
-    id: "12",
-    name: "AS Barbershop",
-    type: "Brivec",
-    address: "Štepanjsko naselje, Ljubljana",
-    rating: 5.0,
-    reviews: 229,
-    image: "/img/presets/staff-nails.jpg",
-    badge: "Novo",
-    isOpen: true,
-    openUntil: "18:00",
-    priceRange: "€",
-    slug: "as-barbershop",
-  },
-  {
-    id: "13",
-    name: "Moods head and body",
-    type: "Frizerski salon",
-    address: "Via Archimede 147, Roma",
-    rating: 5.0,
-    reviews: 4,
-    image: "/img/presets/staff-kozmeticka.jpg",
-    badge: "Novo",
-    isOpen: true,
-    openUntil: "20:00",
-    priceRange: "€€",
-    slug: "moods-head-body",
-  },
-  {
-    id: "14",
-    name: "Color Nail",
-    type: "Nohti",
-    address: "Via Andrea Solari 43, Milano",
-    rating: 4.8,
-    reviews: 228,
-    image: "/img/presets/staff-maserka.jpg",
-    badge: "Novo",
-    isOpen: true,
-    openUntil: "19:00",
-    priceRange: "€€",
-    slug: "color-nail",
-  },
-  {
-    id: "15",
-    name: "Studio Beauty",
-    type: "Kozmetični salon",
-    address: "Velenje, Slovenija",
-    rating: 4.9,
-    reviews: 56,
-    image: "/img/presets/staff-sivilja.jpg",
-    badge: "Novo",
-    isOpen: true,
-    openUntil: "20:00",
-    priceRange: "€€",
-    slug: "studio-beauty",
-  },
-]
 
 function BusinessCard({ business }: { business: Business }) {
   const [isFavorite, setIsFavorite] = useState(false)
@@ -386,7 +169,6 @@ function CarouselSection({
   title,
   subtitle,
   businesses,
-  variant,
 }: CarouselSectionProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -411,37 +193,46 @@ function CarouselSection({
               <p className="mt-2 text-muted-foreground">{subtitle}</p>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => scroll("left")}
-              className="rounded-full"
-            >
-              ←
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => scroll("right")}
-              className="rounded-full"
-            >
-              →
-            </Button>
-          </div>
+          {businesses.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => scroll("left")}
+                className="rounded-full"
+              >
+                ←
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => scroll("right")}
+                className="rounded-full"
+              >
+                →
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Carousel */}
+        {/* Carousel / honest empty state */}
         <div
           ref={scrollRef}
           className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          {businesses.map((business) => (
-            <div key={business.id} className="w-72 shrink-0">
-              <BusinessCard business={business} />
-            </div>
-          ))}
+          {businesses.length === 0 ? (
+            <p className="text-muted-foreground py-8 text-sm">
+              Trenutno ni podjetij za prikaz. Podatki se prikažejo, ko so v
+              platformi res prisotni.
+            </p>
+          ) : (
+            businesses.map((business) => (
+              <div key={business.id} className="w-72 shrink-0">
+                <BusinessCard business={business} />
+              </div>
+            ))
+          )}
         </div>
 
         {/* View All */}
@@ -462,41 +253,49 @@ export function BusinessShowcase({
   recommendedBusinesses = [],
   popularBusinesses = [],
   newBusinesses = [],
+  hideEmptySections = false,
 }: BusinessShowcaseProps) {
-  // Fallback to sample data if no real data provided
-  const recommended = recommendedBusinesses.length > 0 ? recommendedBusinesses : sampleRecommendedBusinesses
-  const popular = popularBusinesses.length > 0 ? popularBusinesses : samplePopularBusinesses
-  const newBiz = newBusinesses.length > 0 ? newBusinesses : sampleNewBusinesses
+  // No sample fallbacks. An empty section stays empty and says so.
+  const showRecommended = !hideEmptySections || recommendedBusinesses.length > 0
+  const showPopular = !hideEmptySections || popularBusinesses.length > 0
+  const showNew = !hideEmptySections || newBusinesses.length > 0
 
   return (
     <>
-      {/* Recommended */}
-      <div className="bg-muted/30">
-        <CarouselSection
-          title="Priporočeno"
-          subtitle="Najbolje ocenjena podjetja v vaši bližini"
-          businesses={recommended}
-          variant="recommended"
-        />
-      </div>
+      {showRecommended && (
+        <div className="bg-muted/30">
+          <CarouselSection
+            title={hideEmptySections ? "Rezultati iskanja" : "Priporočeno"}
+            subtitle={
+              hideEmptySections
+                ? "Podjetja, ki ustrezajo vaši poizvedbi"
+                : "Podjetja, ki so trenutno aktivna v platformi"
+            }
+            businesses={recommendedBusinesses}
+            variant="recommended"
+          />
+        </div>
+      )}
 
-      {/* Popular */}
-      <CarouselSection
-        title="Priljubljeno"
-        subtitle="Podjetja z največ zadovoljnimi strankami"
-        businesses={popular}
-        variant="popular"
-      />
-
-      {/* New */}
-      <div className="bg-muted/30">
+      {showPopular && (
         <CarouselSection
-          title="Novi v MARKEC"
-          subtitle="Nedavno pridružena podjetja"
-          businesses={newBiz}
-          variant="new"
+          title="Priljubljeno"
+          subtitle="Podjetja z največ ocenami"
+          businesses={popularBusinesses}
+          variant="popular"
         />
-      </div>
+      )}
+
+      {showNew && (
+        <div className="bg-muted/30">
+          <CarouselSection
+            title="Novi v MARKEC"
+            subtitle="Nedavno pridružena podjetja"
+            businesses={newBusinesses}
+            variant="new"
+          />
+        </div>
+      )}
     </>
   )
 }

@@ -1,16 +1,16 @@
 "use client"
 
 // ============================================================
-// REVIEWS MANAGER (Fresha-inspired 2026-11-15)
-// Manage customer reviews and feedback.
-// Like Fresha's "Reviews" — moderate and respond to reviews.
+// REVIEWS MANAGER — moderation writes to the database.
+// There is no local-only "approve" and no fake response box: the
+// Review model has `isActive` for moderation and no response field,
+// so the UI exposes exactly those two real states.
 // ============================================================
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -18,38 +18,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { toast } from "sonner"
 import {
   StarIcon,
   CheckCircleIcon,
   XCircleIcon,
   FilterIcon,
-  EyeIcon,
 } from "@/components/icons"
-import { Chat as ChatIcon } from "@phosphor-icons/react/dist/ssr"
+import { setReviewVisibility } from "@/app/actions/reviews"
 
 interface Review {
   id: string
   customerName: string
-  customerAvatar?: string | null
   rating: number
   comment: string
   serviceName?: string
   date: string
-  status: "PENDING" | "APPROVED" | "REJECTED"
-  response?: string | null
-}
-
-interface ReviewsManagerProps {
-  reviews: Review[]
+  status: "APPROVED" | "REJECTED"
 }
 
 function StarRating({ rating, size = 14 }: { rating: number; size?: number }) {
@@ -68,68 +53,54 @@ function StarRating({ rating, size = 14 }: { rating: number; size?: number }) {
 }
 
 const statusConfig = {
-  PENDING: { label: "V pregledu", color: "bg-amber-500 text-white" },
-  APPROVED: { label: "Odobreno", color: "bg-green-500 text-white" },
-  REJECTED: { label: "Zavrnjeno", color: "bg-red-500 text-white" },
+  APPROVED: { label: "Objavljeno", color: "bg-green-500 text-white" },
+  REJECTED: { label: "Skrito", color: "bg-red-500 text-white" },
 }
 
-export function ReviewsManager({ reviews }: ReviewsManagerProps) {
+export function ReviewsManager({ reviews }: { reviews: Review[] }) {
   const [items, setItems] = useState<Review[]>(reviews)
   const [filter, setFilter] = useState("all")
-  const [selectedReview, setSelectedReview] = useState<Review | null>(null)
-  const [responseText, setResponseText] = useState("")
+  const [pendingId, setPendingId] = useState<string | null>(null)
 
   const filteredReviews = items.filter((review) => {
     if (filter === "all") return true
     return review.status === filter
   })
 
-  const handleApprove = (id: string) => {
+  async function handleVisibility(review: Review) {
+    const nextStatus = review.status === "APPROVED" ? "REJECTED" : "APPROVED"
+    setPendingId(review.id)
+    const result = await setReviewVisibility(review.id, nextStatus === "APPROVED")
+    setPendingId(null)
+
+    if (!result.success) {
+      toast.error(result.error ?? "Sprememba ni uspela")
+      return
+    }
+
     setItems((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: "APPROVED" as const } : r))
+      prev.map((r) => (r.id === review.id ? { ...r, status: nextStatus } : r))
     )
-    toast.success("Mnenje odobreno")
+    toast.success(nextStatus === "APPROVED" ? "Mnenje je objavljeno" : "Mnenje je skrito")
   }
 
-  const handleReject = (id: string) => {
-    setItems((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: "REJECTED" as const } : r))
-    )
-    toast.success("Mnenje zavrnjeno")
-  }
-
-  const handleRespond = () => {
-    if (!selectedReview || !responseText.trim()) return
-    
-    setItems((prev) =>
-      prev.map((r) =>
-        r.id === selectedReview.id ? { ...r, response: responseText } : r
-      )
-    )
-    setSelectedReview(null)
-    setResponseText("")
-    toast.success("Odgovor objavljen")
-  }
-
-  // Calculate stats
-  const averageRating = items.length > 0
-    ? items.reduce((sum, r) => sum + r.rating, 0) / items.length
-    : 0
-  const pendingCount = items.filter((r) => r.status === "PENDING").length
+  const averageRating =
+    items.length > 0
+      ? items.reduce((sum, r) => sum + r.rating, 0) / items.length
+      : 0
+  const hiddenCount = items.filter((r) => r.status === "REJECTED").length
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Upravljanje mnenj</h2>
           <p className="text-muted-foreground">
-            Pregled in moderacija mnenj strank.
+            Objavljajte in skrivajte mnenja. Sprememba se takoj shrani v bazo.
           </p>
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="pt-6">
@@ -144,37 +115,29 @@ export function ReviewsManager({ reviews }: ReviewsManagerProps) {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="rounded-lg bg-blue-500 p-3 text-white">
-                <ChatIcon size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Skupaj mnenj</p>
-                <p className="text-2xl font-bold">{items.length}</p>
-              </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Skupaj mnenj</p>
+              <p className="text-2xl font-bold">{items.length}</p>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="rounded-lg bg-amber-500 p-3 text-white">
+              <div className="rounded-lg bg-red-500 p-3 text-white">
                 <FilterIcon size={24} />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Čaka na pregled</p>
-                <p className="text-2xl font-bold">{pendingCount}</p>
+                <p className="text-sm text-muted-foreground">Skritih mnenj</p>
+                <p className="text-2xl font-bold">{hiddenCount}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filter */}
       <div className="flex items-center gap-3">
         <Select value={filter} onValueChange={setFilter}>
           <SelectTrigger className="w-48">
@@ -182,134 +145,67 @@ export function ReviewsManager({ reviews }: ReviewsManagerProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Vsa mnenja</SelectItem>
-            <SelectItem value="PENDING">V pregledu</SelectItem>
-            <SelectItem value="APPROVED">Odobrena</SelectItem>
-            <SelectItem value="REJECTED">Zavrnjena</SelectItem>
+            <SelectItem value="APPROVED">Objavljena</SelectItem>
+            <SelectItem value="REJECTED">Skrita</SelectItem>
           </SelectContent>
         </Select>
         <Badge variant="outline">{filteredReviews.length} mnenj</Badge>
       </div>
 
-      {/* Reviews List */}
       <div className="space-y-4">
+        {filteredReviews.length === 0 && (
+          <p className="text-muted-foreground py-8 text-sm">
+            Ni mnenj za prikaz. Mnenja se pojavijo po opravljenih terminih.
+          </p>
+        )}
         {filteredReviews.map((review) => (
           <Card key={review.id}>
             <CardContent className="pt-6">
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-4">
-                  {/* Avatar */}
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold">
                     {review.customerName[0]}
                   </div>
-
                   <div>
-                    {/* Header */}
                     <div className="flex items-center gap-2">
                       <p className="font-semibold">{review.customerName}</p>
                       <Badge className={statusConfig[review.status].color}>
                         {statusConfig[review.status].label}
                       </Badge>
                     </div>
-                    <div className="mt-1 flex items-center gap-3">
+                    <div className="mt-1 flex flex-wrap items-center gap-3">
                       <StarRating rating={review.rating} />
-                      <span className="text-sm text-muted-foreground">
-                        {review.date}
-                      </span>
+                      <span className="text-sm text-muted-foreground">{review.date}</span>
                       {review.serviceName && (
                         <Badge variant="outline">{review.serviceName}</Badge>
                       )}
                     </div>
-
-                    {/* Comment */}
                     <p className="mt-3 text-sm">{review.comment}</p>
-
-                    {/* Response */}
-                    {review.response && (
-                      <div className="mt-3 rounded-lg bg-muted/50 p-3">
-                        <p className="text-xs text-muted-foreground">
-                          Naš odgovor:
-                        </p>
-                        <p className="mt-1 text-sm">{review.response}</p>
-                      </div>
-                    )}
                   </div>
                 </div>
-
-                {/* Actions */}
-                <div className="flex flex-col gap-2">
-                  {review.status === "PENDING" && (
+                <Button
+                  size="sm"
+                  variant={review.status === "APPROVED" ? "outline" : "default"}
+                  disabled={pendingId === review.id}
+                  onClick={() => handleVisibility(review)}
+                >
+                  {review.status === "APPROVED" ? (
                     <>
-                      <Button
-                        size="sm"
-                        onClick={() => handleApprove(review.id)}
-                      >
-                        <CheckCircleIcon size={14} className="mr-1" />
-                        Odobri
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleReject(review.id)}
-                      >
-                        <XCircleIcon size={14} className="mr-1" />
-                        Zavrni
-                      </Button>
+                      <XCircleIcon size={14} className="mr-1" />
+                      Skrij
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircleIcon size={14} className="mr-1" />
+                      Objavi
                     </>
                   )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedReview(review)
-                      setResponseText(review.response || "")
-                    }}
-                  >
-                    <ChatIcon size={14} className="mr-1" />
-                    Odgovori
-                  </Button>
-                </div>
+                </Button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
-
-      {/* Response Dialog */}
-      <Dialog open={!!selectedReview} onOpenChange={() => setSelectedReview(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Odgovori na mnenje</DialogTitle>
-            <DialogDescription>
-              {selectedReview?.customerName} — {selectedReview?.rating} zvezdic
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {/* Original review */}
-            <div className="rounded-lg bg-muted/50 p-3">
-              <p className="text-sm">{selectedReview?.comment}</p>
-            </div>
-
-            {/* Response */}
-            <div>
-              <label className="text-sm font-medium">Vaš odgovor</label>
-              <Textarea
-                value={responseText}
-                onChange={(e) => setResponseText(e.target.value)}
-                placeholder="Hvala za vaše mnenje..."
-                rows={4}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedReview(null)}>
-              Prekliči
-            </Button>
-            <Button onClick={handleRespond}>Objavi odgovor</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

@@ -121,10 +121,9 @@ function ColonyDetailSection({ colonyId }: { colonyId: string; onRefreshRequeste
 
   useEffect(() => {
     let alive = true
-    setLoadErr(null)
     listColonyMoveDetail(colonyId)
       .then((d) => {
-        if (alive) setData(d)
+        if (alive) { setData(d); setLoadErr(null) }
       })
       .catch(() => {
         if (alive) setLoadErr(D.loadError)

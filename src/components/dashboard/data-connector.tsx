@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import {
   Select,
   SelectContent,
@@ -31,6 +30,11 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import {
+  exportBusinessData,
+  type ExportDataType,
+  type ExportFormat,
+} from "@/app/actions/data-export"
+import {
   DownloadIcon,
   FileTextIcon,
   CalendarIcon,
@@ -38,7 +42,6 @@ import {
   UsersIcon,
   ShoppingBagIcon,
   ClockIcon,
-  CheckCircleIcon,
 } from "@/components/icons"
 import { Link as LinkIcon } from "@phosphor-icons/react/dist/ssr"
 
@@ -46,7 +49,7 @@ interface ExportJob {
   id: string
   name: string
   dataType: "appointments" | "customers" | "services" | "products" | "orders" | "revenue"
-  format: "csv" | "excel" | "json"
+  format: ExportFormat
   frequency: "manual" | "daily" | "weekly" | "monthly"
   lastExported?: string | null
   isActive: boolean
@@ -57,47 +60,13 @@ interface DataConnectorProps {
   initialExports?: ExportJob[]
 }
 
+// Export presets only. Counts and last-export dates are filled from the
+// real export result — never invented here.
 const defaultExports: ExportJob[] = [
-  {
-    id: "exp-1",
-    name: "Mesečni prihodki",
-    dataType: "revenue",
-    format: "excel",
-    frequency: "monthly",
-    lastExported: "2026-11-01",
-    isActive: true,
-    recordCount: 1250,
-  },
-  {
-    id: "exp-2",
-    name: "Tedenski termini",
-    dataType: "appointments",
-    format: "csv",
-    frequency: "weekly",
-    lastExported: "2026-11-11",
-    isActive: true,
-    recordCount: 340,
-  },
-  {
-    id: "exp-3",
-    name: "Seznam strank",
-    dataType: "customers",
-    format: "csv",
-    frequency: "manual",
-    lastExported: null,
-    isActive: false,
-    recordCount: 285,
-  },
-  {
-    id: "exp-4",
-    name: "Prodaja izdelkov",
-    dataType: "products",
-    format: "excel",
-    frequency: "monthly",
-    lastExported: "2026-11-01",
-    isActive: true,
-    recordCount: 89,
-  },
+  { id: "exp-1", name: "Mesečni prihodki", dataType: "revenue", format: "csv", frequency: "monthly", lastExported: null, isActive: true, recordCount: 0 },
+  { id: "exp-2", name: "Tedenski termini", dataType: "appointments", format: "csv", frequency: "weekly", lastExported: null, isActive: true, recordCount: 0 },
+  { id: "exp-3", name: "Seznam strank", dataType: "customers", format: "csv", frequency: "manual", lastExported: null, isActive: false, recordCount: 0 },
+  { id: "exp-4", name: "Prodaja izdelkov", dataType: "products", format: "csv", frequency: "monthly", lastExported: null, isActive: true, recordCount: 0 },
 ]
 
 const dataTypeConfig = {
@@ -109,11 +78,10 @@ const dataTypeConfig = {
   revenue: { label: "Prihodki", icon: <CurrencyDollarIcon size={16} />, color: "bg-green-100 text-green-800" },
 }
 
-const frequencyLabels = {
-  manual: "Ročno",
-  daily: "Dnevno",
-  weekly: "Tedensko",
-  monthly: "Mesečno",
+const QUICK_EXPORTS: Record<string, ExportDataType> = {
+  "quick-appointments": "appointments",
+  "quick-customers": "customers",
+  "quick-revenue": "revenue",
 }
 
 export function DataConnector({ initialExports = defaultExports }: DataConnectorProps) {
@@ -129,20 +97,48 @@ export function DataConnector({ initialExports = defaultExports }: DataConnector
   const [newExportFrequency, setNewExportFrequency] = useState<ExportJob["frequency"]>("manual")
 
   const handleExport = async (exportId: string) => {
+    const preset = exports.find((e) => e.id === exportId)
+    const dataType = QUICK_EXPORTS[exportId] ?? preset?.dataType
+    if (!dataType) {
+      toast.error("Neznan tip izvoza")
+      return
+    }
+
     setExporting(exportId)
-    
-    // Simulate export
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    
-    setExports((prev) =>
-      prev.map((e) =>
-        e.id === exportId
-          ? { ...e, lastExported: new Date().toISOString().split("T")[0] }
-          : e
-      )
-    )
+    const result = await exportBusinessData(dataType, preset?.format ?? "csv")
     setExporting(null)
-    toast.success("Izvoz končan! Prenesite datoteko.")
+
+    if (!result.success || !result.content || !result.fileName) {
+      toast.error(result.error ?? "Izvoz ni uspel")
+      return
+    }
+
+    const blob = new Blob([result.content], {
+      type: result.mimeType ?? "text/csv;charset=utf-8",
+    })
+    const url = globalThis.URL.createObjectURL(blob)
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = result.fileName
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    globalThis.URL.revokeObjectURL(url)
+
+    if (preset) {
+      setExports((prev) =>
+        prev.map((e) =>
+          e.id === exportId
+            ? {
+                ...e,
+                recordCount: result.recordCount ?? 0,
+                lastExported: new Date().toISOString().split("T")[0],
+              }
+            : e
+        )
+      )
+    }
+    toast.success(`Izvoženo: ${result.recordCount ?? 0} zapisov`)
   }
 
   const handleAddExport = () => {
@@ -159,19 +155,13 @@ export function DataConnector({ initialExports = defaultExports }: DataConnector
       frequency: newExportFrequency,
       lastExported: null,
       isActive: true,
-      recordCount: Math.floor(Math.random() * 1000) + 50,
+      recordCount: 0,
     }
 
     setExports((prev) => [...prev, newExport])
     setShowAddDialog(false)
     setNewExportName("")
     toast.success("Izvoz ustvarjen")
-  }
-
-  const handleToggle = (id: string) => {
-    setExports((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, isActive: !e.isActive } : e))
-    )
   }
 
   return (
@@ -207,7 +197,7 @@ export function DataConnector({ initialExports = defaultExports }: DataConnector
                 </div>
                 <div>
                   <p className="font-medium">Termini</p>
-                  <p className="text-sm text-muted-foreground">340 zapisov</p>
+                  <p className="text-sm text-muted-foreground">Izvoz iz baze</p>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={() => handleExport("quick-appointments")}>
@@ -226,7 +216,7 @@ export function DataConnector({ initialExports = defaultExports }: DataConnector
                 </div>
                 <div>
                   <p className="font-medium">Stranke</p>
-                  <p className="text-sm text-muted-foreground">285 zapisov</p>
+                  <p className="text-sm text-muted-foreground">Izvoz iz baze</p>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={() => handleExport("quick-customers")}>
@@ -245,7 +235,7 @@ export function DataConnector({ initialExports = defaultExports }: DataConnector
                 </div>
                 <div>
                   <p className="font-medium">Prihodki</p>
-                  <p className="text-sm text-muted-foreground">1.250 zapisov</p>
+                  <p className="text-sm text-muted-foreground">Izvoz iz baze</p>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={() => handleExport("quick-revenue")}>
@@ -261,10 +251,10 @@ export function DataConnector({ initialExports = defaultExports }: DataConnector
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ClockIcon size={20} />
-            Načrtovani izvozi
+            Predloge izvozov
           </CardTitle>
           <CardDescription>
-            Samodejni izvozi podatkov po urniku.
+            Shranjene predloge. Izvoz se vedno zažene ročno.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -279,8 +269,6 @@ export function DataConnector({ initialExports = defaultExports }: DataConnector
                     <div className="flex items-center gap-2">
                       <p className="font-medium">{exp.name}</p>
                       <Badge variant="outline">{exp.format.toUpperCase()}</Badge>
-                      <Badge variant="secondary">{frequencyLabels[exp.frequency]}</Badge>
-                      {!exp.isActive && <Badge variant="secondary">Neaktivno</Badge>}
                     </div>
                     <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
                       <span>{dataTypeConfig[exp.dataType].label}</span>
@@ -297,10 +285,6 @@ export function DataConnector({ initialExports = defaultExports }: DataConnector
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Switch
-                    checked={exp.isActive}
-                    onCheckedChange={() => handleToggle(exp.id)}
-                  />
                   <Button
                     variant="outline"
                     size="sm"
@@ -328,9 +312,9 @@ export function DataConnector({ initialExports = defaultExports }: DataConnector
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { name: "Microsoft Excel", format: "XLSX", color: "bg-green-600" },
+              { name: "Microsoft Excel", format: "CSV", color: "bg-green-600" },
               { name: "Google Sheets", format: "CSV", color: "bg-blue-600" },
-              { name: "Power BI", format: "XLSX/JSON", color: "bg-amber-500" },
+              { name: "Power BI", format: "CSV/JSON", color: "bg-amber-500" },
               { name: "Tableau", format: "CSV/JSON", color: "bg-blue-500" },
             ].map((tool) => (
               <div key={tool.name} className="flex items-center gap-3 rounded-lg border p-3">
@@ -369,7 +353,7 @@ export function DataConnector({ initialExports = defaultExports }: DataConnector
 
             <div>
               <Label>Tip podatkov</Label>
-              <Select value={newExportType} onValueChange={(v: any) => setNewExportType(v)}>
+              <Select value={newExportType} onValueChange={(v: string) => setNewExportType(v as ExportDataType)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -386,13 +370,12 @@ export function DataConnector({ initialExports = defaultExports }: DataConnector
 
             <div>
               <Label>Format</Label>
-              <Select value={newExportFormat} onValueChange={(v: any) => setNewExportFormat(v)}>
+              <Select value={newExportFormat} onValueChange={(v: string) => setNewExportFormat(v as ExportFormat)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="csv">CSV</SelectItem>
-                  <SelectItem value="excel">Excel (XLSX)</SelectItem>
                   <SelectItem value="json">JSON</SelectItem>
                 </SelectContent>
               </Select>
@@ -400,7 +383,7 @@ export function DataConnector({ initialExports = defaultExports }: DataConnector
 
             <div>
               <Label>Pogostost</Label>
-              <Select value={newExportFrequency} onValueChange={(v: any) => setNewExportFrequency(v)}>
+              <Select value={newExportFrequency} onValueChange={(v: string) => setNewExportFrequency(v as ExportJob["frequency"])}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -431,35 +414,16 @@ export function DataConnector({ initialExports = defaultExports }: DataConnector
           <DialogHeader>
             <DialogTitle>API dostop</DialogTitle>
             <DialogDescription>
-              Dostopajte do podatkov prek REST API-ja.
+              Javni REST API še ni vzpostavljen.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="rounded-lg bg-muted/50 p-4">
-              <p className="mb-2 text-sm font-medium">API ključ:</p>
-              <code className="block rounded bg-black p-2 text-xs text-green-400">
-                mk_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
-              </code>
-              <Button variant="outline" size="sm" className="mt-2">
-                Kopiraj ključ
-              </Button>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Primer uporabe:</p>
-              <code className="block rounded bg-black p-3 text-xs text-gray-300">
-                {`curl -H "Authorization: Bearer mk_live_..." \\
-  https://api.markec.si/v1/appointments`}
-              </code>
-            </div>
-
-            <div className="flex items-center gap-2 rounded-lg bg-blue-50 p-3">
-              <CheckCircleIcon size={18} className="text-blue-500" />
-              <p className="text-sm text-blue-800">
-                API dokumentacija: <a href="#" className="underline">docs.markec.si/api</a>
-              </p>
-            </div>
+          <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
+            <p>
+              Trenutno so na voljo resnični izvozi CSV in JSON z zgornjih
+              predlog. API ključi in dokumentacija bodo objavljeni, ko bo
+              avtenticirani API zgrajen — do takrat tukaj ni lažnega ključa.
+            </p>
           </div>
 
           <DialogFooter>

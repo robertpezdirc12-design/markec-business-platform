@@ -38,6 +38,7 @@ export const landingSl = {
   aria: {
     nav: "Glavna navigacija",
     lang: "Izbira jezika",
+    menu: "Odpri meni",
     mock: "Ponazoritev vmesnika MARKEC",
     legal: "Pravne povezave",
     footer: "Platformske povezave",
@@ -136,7 +137,7 @@ export const landingSl = {
     more: "Prikazanih je 5 od 34 dejavnosti, ki so na voljo v platformi — vzorec, ne celoten seznam.",
     // Demo tur (interaktivna "video" predstavitev) — odpre se na klik, brez prijave.
     demo: {
-      label: "Oglej si, kako deluje",
+      label: "Oglej si demo (čebelarstvo)",
       steps: [
         {
           seconds: 6,
@@ -318,6 +319,7 @@ export const landingEn: LandingDictionary = {
   aria: {
     nav: "Main navigation",
     lang: "Language",
+    menu: "Open menu",
     mock: "MARKEC interface illustration",
     legal: "Legal links",
     footer: "Platform links",
@@ -408,7 +410,7 @@ export const landingEn: LandingDictionary = {
     tag: "Ready-made preset",
     more: "Showing 5 of the 34 activities available in the platform — a sample, not the full list.",
     demo: {
-      label: "See how it works",
+      label: "See demo (beekeeping)",
       steps: [
         {
           seconds: 6,

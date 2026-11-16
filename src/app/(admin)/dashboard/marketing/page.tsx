@@ -8,7 +8,7 @@ import { AutomationRules } from "@/components/dashboard/automation-rules"
 import { GiftCards } from "@/components/dashboard/gift-cards"
 import { LoyaltyProgram } from "@/components/dashboard/loyalty-program"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Megaphone, Gift, Star } from "@phosphor-icons/react/dist/ssr"
+import { Gift, Star } from "@phosphor-icons/react/dist/ssr"
 
 // ============================================================
 // #95 — MARKETING AVTOMATIKA (admin)
@@ -40,10 +40,10 @@ export default async function MarketingPage() {
         </p>
         <div className="flex items-center gap-3">
           <EmailBlast
-            availableTags={["VIP", "Redne stranke", "Nove stranke"]}
-            customerCounts={{ "VIP": 12, "Redne stranke": 45, "Nove stranke": 23 }}
-            totalCustomers={120}
-            marketingConsentCount={89}
+            availableTags={overview.availableTags}
+            customerCounts={overview.customerCounts}
+            totalCustomers={overview.totalCustomers}
+            marketingConsentCount={overview.marketingConsentCount}
           />
         </div>
       </div>

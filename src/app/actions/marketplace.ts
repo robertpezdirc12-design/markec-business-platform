@@ -37,6 +37,7 @@ export interface MarketplaceStats {
 export const getMarketplaceBusinesses = cache(
   async (options?: {
     category?: string
+    q?: string
     city?: string
     limit?: number
     offset?: number
@@ -46,6 +47,7 @@ export const getMarketplaceBusinesses = cache(
     try {
       const {
         category,
+        q,
         city,
         limit = 12,
         offset = 0,
@@ -60,6 +62,21 @@ export const getMarketplaceBusinesses = cache(
 
       if (category) {
         where.vertical = category
+      }
+
+      if (q) {
+        where.OR = [
+          { name: { contains: q, mode: "insensitive" } },
+          { vertical: { contains: q, mode: "insensitive" } },
+          { services: { some: { name: { contains: q, mode: "insensitive" } } } },
+          { salonConfig: { is: { city: { contains: q, mode: "insensitive" } } } },
+        ]
+      }
+
+      if (city) {
+        where.salonConfig = {
+          is: { city: { contains: city, mode: "insensitive" } },
+        }
       }
 
       // Build orderBy

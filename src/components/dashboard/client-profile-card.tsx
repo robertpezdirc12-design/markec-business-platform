@@ -91,9 +91,10 @@ export function ClientProfileCard({
 
   // Calculate visit frequency
   const memberSince = new Date(customer.createdAt)
-  const daysSinceMember = Math.floor(
-    (Date.now() - memberSince.getTime()) / (1000 * 60 * 60 * 24)
-  )
+  const [now] = useState(() => Date.now())
+  const daysSinceMember = useMemo(() => Math.floor(
+    (now - memberSince.getTime()) / (1000 * 60 * 60 * 24)
+  ), [memberSince, now])
   const visitFrequency =
     customer.totalVisits && daysSinceMember > 0
       ? Math.round(daysSinceMember / customer.totalVisits)
@@ -277,7 +278,7 @@ export function ClientProfileCard({
                 <p className="text-sm whitespace-pre-wrap">{notes}</p>
               ) : (
                 <p className="text-sm text-muted-foreground italic">
-                  Ni opomb. Kliknite "Dodaj opombo" za beleženje informacij o
+                  Ni opomb. Kliknite &quot;Dodaj opombo&quot; za beleženje informacij o
                   stranki.
                 </p>
               )}

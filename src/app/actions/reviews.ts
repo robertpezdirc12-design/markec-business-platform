@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache"
 import { ReviewFormData } from "@/lib/interfaces"
 import { getPublicOrg, getTrustedOrgSlug } from "@/lib/tenant"
 import { isValidRating, isValidReviewComment } from "@/lib/reviews/rules"
+import { requirePermissionOrg } from "@/lib/auth/guards"
 
 // Create a new review for a service
 export async function createReview(data: ReviewFormData) {
@@ -331,5 +332,36 @@ export async function getServiceReviews(serviceId: string) {
       error: "Pridobivanje ocen ni uspelo.",
       reviews: [],
     }
+  }
+}
+
+/**
+ * Moderate a review by toggling its public visibility.
+ * Scoped to the current organization — a tenant can never hide another
+ * tenant's review by guessing an id.
+ */
+export async function setReviewVisibility(reviewId: string, isActive: boolean) {
+  const { org } = await requirePermissionOrg("customers.manage")
+
+  const review = await prisma.review.findFirst({
+    where: { id: reviewId, organizationId: org.id },
+    select: { id: true },
+  })
+
+  if (!review) {
+    return { success: false, error: "Mnenje ni bilo najdeno." }
+  }
+
+  try {
+    await prisma.review.update({
+      where: { id: reviewId },
+      data: { isActive },
+    })
+    revalidatePath("/dashboard/reviews")
+    revalidatePath("/podjetja")
+    return { success: true }
+  } catch (error) {
+    console.error("Error changing review visibility:", error)
+    return { success: false, error: "Sprememba objave ni uspela." }
   }
 }

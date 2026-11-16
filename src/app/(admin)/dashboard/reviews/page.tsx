@@ -12,7 +12,7 @@ import { getSessionOrg } from "@/lib/tenant"
 
 export default async function ReviewsPage() {
   await requirePagePermission("customers.manage")
-  const [{ t }, org] = await Promise.all([
+  const [, org] = await Promise.all([
     getServerI18n(),
     getSessionOrg(),
   ])
@@ -26,20 +26,22 @@ export default async function ReviewsPage() {
     where: { organizationId: org.id },
     include: {
       user: { select: { name: true } },
+      service: { select: { name: true } },
     },
     orderBy: { createdAt: "desc" },
     take: 50,
   })
 
-  // Transform for the component
+  // The Review model stores moderation as `isActive` — map it to the
+  // two real UI states. No fake PENDING state, no invented response field.
   const formattedReviews = reviews.map((review) => ({
     id: review.id,
     customerName: review.user?.name || "Anonimno",
     rating: review.rating,
     comment: review.comment,
+    serviceName: review.service?.name,
     date: new Date(review.createdAt).toLocaleDateString("sl-SI"),
-    status: "APPROVED" as const,
-    response: null,
+    status: review.isActive ? ("APPROVED" as const) : ("REJECTED" as const),
   }))
 
   return (

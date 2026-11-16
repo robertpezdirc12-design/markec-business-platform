@@ -297,7 +297,7 @@ export function SmartPricing({ initialRules = defaultRules }: SmartPricingProps)
 
             <div>
               <Label>Vrsta</Label>
-              <Select value={newRuleType} onValueChange={(v: any) => setNewRuleType(v)}>
+              <Select value={newRuleType} onValueChange={(v: string) => setNewRuleType(v)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

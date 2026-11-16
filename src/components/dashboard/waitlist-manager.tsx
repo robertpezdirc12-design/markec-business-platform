@@ -10,21 +10,18 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { toast } from "sonner"
+import {
+  deleteWaitlistEntry,
+  markWaitlistBooked,
+  notifyWaitlistEntry,
+} from "@/app/actions/waitlist"
 import {
   ClockIcon,
   UsersIcon,
   CheckCircleIcon,
   XCircleIcon,
   BellIcon,
-  ArrowRightIcon,
 } from "@/components/icons"
 
 interface WaitlistEntry {
@@ -53,27 +50,39 @@ const statusConfig = {
 
 export function WaitlistManager({ entries }: WaitlistManagerProps) {
   const [items, setItems] = useState<WaitlistEntry[]>(entries)
+  const [pendingId, setPendingId] = useState<string | null>(null)
 
-  const handleNotify = (id: string) => {
-    setItems((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, status: "NOTIFIED" as const } : e))
-    )
-    toast.success("Stranka obveščena o prostem terminu!")
+  async function runAction(
+    id: string,
+    action: (id: string) => Promise<{ success: boolean; error?: string }>,
+    nextStatus: WaitlistEntry["status"] | null,
+    successMessage: string
+  ) {
+    setPendingId(id)
+    const result = await action(id)
+    setPendingId(null)
+    if (!result.success) {
+      toast.error(result.error ?? "Dejanje ni uspelo")
+      return
+    }
+    if (nextStatus) {
+      setItems((prev) =>
+        prev.map((e) => (e.id === id ? { ...e, status: nextStatus } : e))
+      )
+    } else {
+      setItems((prev) => prev.filter((e) => e.id !== id))
+    }
+    toast.success(successMessage)
   }
 
-  const handleBook = (id: string) => {
-    setItems((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, status: "BOOKED" as const } : e))
-    )
-    toast.success("Termin rezerviran iz čakalne vrste!")
-  }
+  const handleNotify = (id: string) =>
+    runAction(id, notifyWaitlistEntry, "NOTIFIED", "Stranka obveščena o prostem terminu!")
 
-  const handleCancel = (id: string) => {
-    setItems((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, status: "CANCELLED" as const } : e))
-    )
-    toast.success("Vnos odstranjen iz čakalne vrste")
-  }
+  const handleBook = (id: string) =>
+    runAction(id, markWaitlistBooked, "BOOKED", "Termin rezerviran iz čakalne vrste!")
+
+  const handleCancel = (id: string) =>
+    runAction(id, deleteWaitlistEntry, null, "Vnos odstranjen iz čakalne vrste")
 
   const waitingEntries = items.filter((e) => e.status === "WAITING")
   const notifiedEntries = items.filter((e) => e.status === "NOTIFIED")
@@ -199,6 +208,7 @@ export function WaitlistManager({ entries }: WaitlistManagerProps) {
                         <>
                           <Button
                             size="sm"
+                            disabled={pendingId === entry.id}
                             onClick={() => handleNotify(entry.id)}
                           >
                             <BellIcon size={14} className="mr-1" />
@@ -207,6 +217,7 @@ export function WaitlistManager({ entries }: WaitlistManagerProps) {
                           <Button
                             variant="outline"
                             size="sm"
+                            disabled={pendingId === entry.id}
                             onClick={() => handleBook(entry.id)}
                           >
                             Rezerviraj
@@ -225,6 +236,7 @@ export function WaitlistManager({ entries }: WaitlistManagerProps) {
                       <Button
                         variant="ghost"
                         size="sm"
+                        disabled={pendingId === entry.id}
                         onClick={() => handleCancel(entry.id)}
                       >
                         <XCircleIcon size={14} />

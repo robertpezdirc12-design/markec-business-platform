@@ -1,30 +1,19 @@
 name: Tests
 
 on:
-  push:
-    branches: [main, fase1-review]
   pull_request:
     branches: [main]
+  push:
+    branches: [fase1-review]
+
+permissions:
+  contents: read
 
 jobs:
-  test:
+  # Typecheck + Lint on every PR and push to fase1-review
+  quality:
+    name: Typecheck & Lint
     runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: markec_e2e
-          POSTGRES_PASSWORD: markec_e2e_test_pw
-          POSTGRES_DB: markec_e2e_test
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,8 +24,51 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: ESLint
+        run: pnpm lint
+
+  # Unit + architecture tests with real Postgres
+  test:
+    name: Unit & Architecture Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: markec_test
+          POSTGRES_PASSWORD: markec_test_pw
+          POSTGRES_DB: markec_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -47,41 +79,23 @@ jobs:
       - name: Push schema to test DB
         run: pnpm prisma db push
         env:
-          DATABASE_URL: postgresql://markec_e2e:markec_e2e_test_pw@localhost:5433/markec_e2e_test?schema=public
+          DATABASE_URL: postgresql://markec_test:markec_test_pw@localhost:5433/markec_test?schema=public
 
       - name: Run unit tests
         run: npx vitest run
         env:
-          DATABASE_URL: postgresql://markec_e2e:markec_e2e_test_pw@localhost:5433/markec_e2e_test?schema=public
-
-      - name: TypeScript check
-        run: npx tsc --noEmit
-
-  architecture:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          DATABASE_URL: postgresql://markec_test:markec_test_pw@localhost:5433/markec_test?schema=public
 
       - name: Run architecture tests
         run: npx vitest run tests/architecture tests/plans tests/profiles tests/security
+        env:
+          DATABASE_URL: postgresql://markec_test:markec_test_pw@localhost:5433/markec_test?schema=public
 
-  lint:
+  # Verify the project builds successfully (without deploying)
+  build-check:
+    name: Build Check
     runs-on: ubuntu-latest
-    
+    needs: [quality, test]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -92,11 +106,21 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: "20"
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: ESLint
-        run: pnpm lint
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
+
+      - name: Build with OpenNext
+        run: pnpm run build
+        env:
+          DATABASE_URL: postgresql://fake:fake@localhost:5432/fake?schema=public
+          NEXTAUTH_SECRET: test-secret-not-real
+          AUTH_SECRET: test-secret-not-real
+          NEXT_PUBLIC_APP_URL: https://markec-business-platform.robert-pezdirc12.workers.dev
+          NEXTAUTH_URL: https://markec-business-platform.robert-pezdirc12.workers.dev
+          CI: "true"

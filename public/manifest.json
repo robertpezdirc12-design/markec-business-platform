@@ -86,7 +86,7 @@
       "name": "Moji termini",
       "short_name": "Termini",
       "description": "Ogled mojih rezervacij",
-      "url": "/moji-termini",
+      "url": "/my-appointments",
       "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     }
   ]

@@ -88,7 +88,9 @@ export function OnlineBookingPage({
     const slots: TimeSlot[] = []
     for (let h = 9; h < 18; h++) {
       slots.push({ time: `${h.toString().padStart(2, "0")}:00`, available: true })
-      slots.push({ time: `${h.toString().padStart(2, "0")}:30`, available: Math.random() > 0.3 })
+      // Deterministic availability based on time (no Math.random)
+      const isAvailable = (h % 3 !== 0) && (h % 5 !== 0)
+      slots.push({ time: `${h.toString().padStart(2, "0")}:30`, available: isAvailable })
     }
     return slots
   }, [selectedDate])

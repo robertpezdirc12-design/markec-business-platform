@@ -15,6 +15,7 @@ import {
   UsersIcon,
 } from "@/components/icons"
 import { getAdminAppointments } from "@/app/actions/appointments"
+import { getWaitlistEntries } from "@/app/actions/waitlist"
 import { formatSalonTime } from "@/lib/booking-time"
 import { getSessionSalonTimezone } from "@/lib/tenant"
 import { formatCurrency } from "@/lib/utils/format"
@@ -38,11 +39,13 @@ const statusColors: Record<string, string> = {
 export default async function AppointmentsPage() {
   // Custom roles (E4-6b): server-side page guard
   await requirePagePermission("appointments.view")
-  const [{ t, locale, withBusiness }, salonTz, appointments] = await Promise.all([
-    getServerI18n(),
-    getSessionSalonTimezone(),
-    getAdminAppointments(),
-  ])
+  const [{ t, locale, withBusiness }, salonTz, appointments, waitlistEntries] =
+    await Promise.all([
+      getServerI18n(),
+      getSessionSalonTimezone(),
+      getAdminAppointments(),
+      getWaitlistEntries(),
+    ])
 
   // Calculate stats
   const now = new Date()
@@ -65,6 +68,27 @@ export default async function AppointmentsPage() {
   const revenueToday = todaysAppointments
     .filter((apt) => apt.status === "COMPLETED")
     .reduce((sum, apt) => sum + apt.totalPrice, 0)
+
+  const formattedWaitlist = waitlistEntries.map((entry) => ({
+    id: entry.id,
+    customerName: entry.name,
+    customerEmail: entry.email,
+    customerPhone: entry.phone,
+    serviceName: entry.service?.name ?? "Katerikoli termin",
+    preferredDate: entry.preferredDate
+      ? formatDateStandard(entry.preferredDate, locale)
+      : "Ni določeno",
+    preferredTime: entry.preferredDate
+      ? formatSalonTime(entry.preferredDate, salonTz)
+      : "—",
+    status: (entry.status === "EXPIRED" ? "CANCELLED" : entry.status) as
+      | "WAITING"
+      | "NOTIFIED"
+      | "BOOKED"
+      | "CANCELLED",
+    addedAt: formatDateStandard(entry.createdAt, locale),
+    priority: 1,
+  }))
 
   return (
     <div className="space-y-6">
@@ -263,7 +287,7 @@ export default async function AppointmentsPage() {
 
         {/* Waitlist */}
         <TabsContent value="waitlist">
-          <WaitlistManager entries={[]} />
+          <WaitlistManager entries={formattedWaitlist} />
         </TabsContent>
       </Tabs>
     </div>

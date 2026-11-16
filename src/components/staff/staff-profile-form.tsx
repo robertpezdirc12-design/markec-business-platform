@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
+import { updateStaffSelfProfile } from "@/app/actions/staff"
 import {
   SpinnerIcon,
   UserIcon,
@@ -67,16 +68,13 @@ export function StaffProfileForm({ profile }: StaffProfileFormProps) {
   }
 
   async function onSubmit(data: StaffSelfUpdateFormData) {
-    // TODO: Implement - call updateStaffProfile server action
-    // const result = await updateStaffProfile(data)
-    // if (result.success) {
-    //   toast.success("Profile updated successfully")
-    //   setIsEditing(false)
-    // } else {
-    //   toast.error(result.error || "Failed to update profile")
-    // }
-    console.log("Form data:", data)
+    const result = await updateStaffSelfProfile(data)
+    if (!result.success) {
+      toast.error(result.error ?? "Profil ni bil posodobljen")
+      return
+    }
     toast.success("Profil posodobljen")
+    reset(data)
     setIsEditing(false)
   }
 

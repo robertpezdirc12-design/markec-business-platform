@@ -68,7 +68,7 @@ export function SendEmailButton({
     }
 
     const content = generateEmailContent({
-      type: type as any,
+      type: type as "confirmation" | "reminder" | "followup" | "birthday" | "promo",
       customerName,
       serviceName: serviceName || "storitev",
       date: "datum termina",
