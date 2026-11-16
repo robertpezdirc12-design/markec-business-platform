@@ -5,6 +5,10 @@ import { getMarketingOverview } from "@/app/actions/marketing"
 import { MarketingClient } from "@/components/dashboard/marketing-client"
 import { EmailBlast } from "@/components/dashboard/email-blast"
 import { AutomationRules } from "@/components/dashboard/automation-rules"
+import { GiftCards } from "@/components/dashboard/gift-cards"
+import { LoyaltyProgram } from "@/components/dashboard/loyalty-program"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Megaphone, Gift, Star } from "@phosphor-icons/react/dist/ssr"
 
 // ============================================================
 // #95 — MARKETING AVTOMATIKA (admin)
@@ -51,6 +55,28 @@ export default async function MarketingPage() {
 
       {/* Automation Rules */}
       <AutomationRules />
+
+      {/* Gift Cards & Loyalty */}
+      <Tabs defaultValue="gift-cards" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="gift-cards">
+            <Gift size={16} className="mr-2" />
+            Darilni boni
+          </TabsTrigger>
+          <TabsTrigger value="loyalty">
+            <Star size={16} className="mr-2" />
+            Program zvestobe
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="gift-cards">
+          <GiftCards />
+        </TabsContent>
+
+        <TabsContent value="loyalty">
+          <LoyaltyProgram />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
