@@ -2,77 +2,247 @@ name: Build & Deploy to Cloudflare Workers
 
 on:
   push:
-    branches: [main, fase1-review]
-  workflow_dispatch:  # Ročni sprožilec
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      skip_migrations:
+        description: "Skip database migrations"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 concurrency:
-  group: deploy-cloudflare
-  cancel-in-progress: true
+  group: deploy-cloudflare-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
-  build-and-deploy:
+  # ─────────────────────────────────────────────────────────────
+  # Job 1: Quality gates — typecheck + lint must pass before build
+  # ─────────────────────────────────────────────────────────────
+  quality:
+    name: Typecheck & Lint
     runs-on: ubuntu-latest
-    
     steps:
-      # 1. Checkout kode
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. pnpm setup (MORA biti pred Node.js za cache)
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
 
-      # 3. Node.js setup
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: "20"
+          cache: "pnpm"
 
-      # 4. Namestitev odvisnosti
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # 5. Prisma generate
       - name: Generate Prisma Client
         run: pnpm prisma generate
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: ESLint
+        run: pnpm lint
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 2: Unit + architecture tests
+  # ─────────────────────────────────────────────────────────────
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: markec_test
+          POSTGRES_PASSWORD: markec_test_pw
+          POSTGRES_DB: markec_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
+
+      - name: Push schema to test DB
+        run: pnpm prisma db push
+        env:
+          DATABASE_URL: postgresql://markec_test:markec_test_pw@localhost:5433/markec_test?schema=public
+
+      - name: Run unit tests
+        run: npx vitest run
+        env:
+          DATABASE_URL: postgresql://markec_test:markec_test_pw@localhost:5433/markec_test?schema=public
+
+      - name: Run architecture tests
+        run: npx vitest run tests/architecture tests/plans tests/profiles tests/security
+        env:
+          DATABASE_URL: postgresql://markec_test:markec_test_pw@localhost:5433/markec_test?schema=public
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 3: Build + Deploy — only after quality + tests pass
+  # ─────────────────────────────────────────────────────────────
+  build-and-deploy:
+    name: Build & Deploy
+    needs: [quality, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
+
+      # Migrations BEFORE build — schema must match code.
+      # Uses DIRECT_URL (pooled DATABASE_URL can't run DDL reliably).
+      - name: Run database migrations
+        if: github.event.inputs.skip_migrations != 'true'
+        run: |
+          node scripts/resolve-failed-migrations.mjs || true
+          npx prisma migrate deploy --schema prisma/schema.prisma
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
 
-      # 6. Build (OpenNext + Cloudflare)
-      - name: Build
+      # Build — OpenNext for Cloudflare.
+      # No .env files in CI, so build-smart.mjs env-hiding is a no-op.
+      # Only build-time env is passed; runtime secrets come from Worker bindings.
+      - name: Build with OpenNext
         run: pnpm run build
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          CI: "true"
 
-      # 7. Deploy na Cloudflare Workers
+      # Deploy the Worker
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+          command: deploy .open-next/worker.js --config wrangler.jsonc
+
+      # Set ALL runtime secrets in one step via a shell script.
+      # `echo "$VALUE" | wrangler secret put NAME` is idempotent and
+      # safe to run every deploy — it overwrites the previous value.
+      - name: Configure all Worker secrets
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
-          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
-          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
-
-      # 8. Obvestilo o uspehu
-      - name: Deploy Success
-        if: success()
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SECRET_DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SECRET_DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          SECRET_NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          SECRET_AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          SECRET_NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          SECRET_NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          SECRET_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          SECRET_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          SECRET_R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          SECRET_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          SECRET_R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          SECRET_R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+          SECRET_RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          SECRET_RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          SECRET_STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          SECRET_NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          SECRET_AUTH_GOOGLE_ID: ${{ secrets.AUTH_GOOGLE_ID }}
+          SECRET_AUTH_GOOGLE_SECRET: ${{ secrets.AUTH_GOOGLE_SECRET }}
         run: |
-          echo "✅ Deploy uspešen!"
-          echo "URL: https://markec-business-platform.robert-pezdirc12.workers.dev"
+          set -euo pipefail
+          npx wrangler secret put DATABASE_URL --name markec-business-platform <<< "$SECRET_DATABASE_URL"
+          npx wrangler secret put DIRECT_URL --name markec-business-platform <<< "$SECRET_DIRECT_URL"
+          npx wrangler secret put NEXTAUTH_SECRET --name markec-business-platform <<< "$SECRET_NEXTAUTH_SECRET"
+          npx wrangler secret put AUTH_SECRET --name markec-business-platform <<< "$SECRET_AUTH_SECRET"
+          npx wrangler secret put NEXTAUTH_URL --name markec-business-platform <<< "$SECRET_NEXTAUTH_URL"
+          npx wrangler secret put NEXT_PUBLIC_APP_URL --name markec-business-platform <<< "$SECRET_NEXT_PUBLIC_APP_URL"
+          npx wrangler secret put R2_ACCESS_KEY_ID --name markec-business-platform <<< "$SECRET_R2_ACCESS_KEY_ID"
+          npx wrangler secret put R2_SECRET_ACCESS_KEY --name markec-business-platform <<< "$SECRET_R2_SECRET_ACCESS_KEY"
+          npx wrangler secret put R2_ACCOUNT_ID --name markec-business-platform <<< "$SECRET_R2_ACCOUNT_ID"
+          npx wrangler secret put R2_ENDPOINT --name markec-business-platform <<< "$SECRET_R2_ENDPOINT"
+          npx wrangler secret put R2_BUCKET --name markec-business-platform <<< "$SECRET_R2_BUCKET"
+          npx wrangler secret put R2_PUBLIC_URL --name markec-business-platform <<< "$SECRET_R2_PUBLIC_URL"
+          npx wrangler secret put RESEND_API_KEY --name markec-business-platform <<< "$SECRET_RESEND_API_KEY"
+          npx wrangler secret put RESEND_FROM_EMAIL --name markec-business-platform <<< "$SECRET_RESEND_FROM_EMAIL"
+          npx wrangler secret put STRIPE_SECRET_KEY --name markec-business-platform <<< "$SECRET_STRIPE_SECRET_KEY"
+          npx wrangler secret put NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY --name markec-business-platform <<< "$SECRET_NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
+          # Optional providers — don't fail the deploy if they're empty
+          if [ -n "$SECRET_AUTH_GOOGLE_ID" ]; then
+            npx wrangler secret put AUTH_GOOGLE_ID --name markec-business-platform <<< "$SECRET_AUTH_GOOGLE_ID"
+          fi
+          if [ -n "$SECRET_AUTH_GOOGLE_SECRET" ]; then
+            npx wrangler secret put AUTH_GOOGLE_SECRET --name markec-business-platform <<< "$SECRET_AUTH_GOOGLE_SECRET"
+          fi
+          echo "All secrets configured."
 
-      # 9. Obvestilo o napaki
-      - name: Deploy Failed
-        if: failure()
+      # Health check — verify the Worker responds after deploy
+      - name: Health check
         run: |
-          echo "❌ Deploy spodletel!"
-          echo "Preveri loge zgoraj."
+          URL="https://markec-business-platform.robert-pezdirc12.workers.dev/api/health"
+          for i in $(seq 1 10); do
+            CODE=$(curl -sS -o /dev/null -w "%{http_code}" "$URL" || echo "000")
+            if [ "$CODE" = "200" ]; then
+              echo "Health check passed (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $CODE — retrying in 5s…"
+            sleep 5
+          done
+          echo "::warning::Health check failed after 10 attempts — Worker may need time to stabilize or CPU limits may be hit."
+          exit 1
+
+      # Summary in GitHub Actions UI
+      - name: Deploy summary
+        if: always()
+        run: |
+          echo "## Deploy Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Step | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Quality gates | ${{ needs.quality.result == 'success' && ':white_check_mark: OK' || ':x: FAIL' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ needs.test.result == 'success' && ':white_check_mark: OK' || ':x: FAIL' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build & Deploy | ${{ job.status == 'success' && ':white_check_mark: OK' || ':x: FAIL' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** https://markec-business-platform.robert-pezdirc12.workers.dev" >> $GITHUB_STEP_SUMMARY
