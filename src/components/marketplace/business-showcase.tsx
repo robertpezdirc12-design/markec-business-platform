@@ -324,14 +324,11 @@ function BusinessCard({ business }: { business: Business }) {
 
         {/* Content */}
         <CardContent className="p-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="font-semibold transition-colors group-hover:text-primary">
-                {business.name}
-              </h3>
-              <p className="text-sm text-muted-foreground">{business.type}</p>
-            </div>
-            <div className="flex items-center gap-1">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="line-clamp-2 flex-1 font-semibold leading-tight transition-colors group-hover:text-primary">
+              {business.name}
+            </h3>
+            <div className="flex shrink-0 items-center gap-1">
               <StarIcon
                 size={16}
                 className="text-amber-400"
@@ -343,25 +340,31 @@ function BusinessCard({ business }: { business: Business }) {
             </div>
           </div>
 
+          <p className="mt-1 text-sm text-muted-foreground">{business.type}</p>
+
           <div className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
-            <MapPinIcon size={14} />
-            <span>{business.address}</span>
+            <MapPinIcon size={14} className="shrink-0" />
+            <span className="truncate">{business.address}</span>
           </div>
 
-          <div className="mt-2 flex items-center gap-2">
-            <div className="flex -space-x-1">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-background bg-primary/10 text-[10px]"
-                >
-                  {String.fromCharCode(64 + i)}
-                </div>
-              ))}
+          <div className="mt-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {/* Avatar stack */}
+              <div className="flex -space-x-1.5">
+                {["#E8B4B8", "#B8D4E3", "#C5E3B8"].map((color, i) => (
+                  <div
+                    key={i}
+                    className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-background text-[10px] font-medium text-white"
+                    style={{ backgroundColor: color }}
+                  >
+                    {String.fromCharCode(65 + i)}
+                  </div>
+                ))}
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {business.reviews} mnenj
+              </span>
             </div>
-            <span className="text-xs text-muted-foreground">
-              {business.reviews} mnenj
-            </span>
           </div>
         </CardContent>
       </Card>
