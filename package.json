@@ -5,8 +5,8 @@
   "packageManager": "pnpm@10.34.9",
   "scripts": {
     "dev": "next dev --turbopack -p 3008",
-    "build": "prisma generate && node scripts/migrate-with-retry.mjs && next build",
-    "build:cf": "next build && npx opennextjs-cloudflare build",
+    "build": "node scripts/build-smart.mjs",
+    "build:cf": "prisma generate && node scripts/migrate-with-retry.mjs && npx opennextjs-cloudflare build",
     "build:cloudflare": "next build && npx opennextjs-cloudflare build",
     "preview:cloudflare": "npx wrangler dev",
     "deploy:cloudflare": "npx wrangler deploy",
