@@ -2,6 +2,7 @@ import { getServerI18n } from "@/lib/i18n/server"
 import { listFormDefinitions, listFormSubmissions } from "@/app/actions/forms"
 import { getSessionEffectiveProfile } from "@/lib/profiles/session"
 import { FormsClient } from "@/components/admin/forms/forms-client"
+import { IntakeForms } from "@/components/dashboard/intake-forms"
 import { requirePagePermission } from "@/lib/auth/guards"
 
 // ============================================================
@@ -55,6 +56,9 @@ export default async function FormsPage() {
           deactivateConfirm: f.deactivateConfirm,
         }}
       />
+
+      {/* Intake Forms Templates */}
+      <IntakeForms />
     </div>
   )
 }
