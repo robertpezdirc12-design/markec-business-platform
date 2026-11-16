@@ -21,8 +21,6 @@ jobs:
       # 2. pnpm setup (MORA biti pred Node.js za cache)
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       # 3. Node.js setup
       - name: Setup Node.js
