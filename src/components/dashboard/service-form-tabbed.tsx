@@ -66,6 +66,7 @@ import {
 } from "@/lib/forms/form-data"
 import { generateServiceDescription } from "@/lib/service-description-generator"
 import { suggestCategory, suggestPrice } from "@/lib/smart-content-generator"
+import { QuickBookingLink } from "@/components/dashboard/quick-booking-link"
 
 interface Category {
   id: string
@@ -642,6 +643,17 @@ export function ServiceForm({ categories, staff, service, onSuccess }: ServiceFo
               <CardDescription>{t.services.settingsDesc}</CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Quick Booking Link */}
+              {isEdit && service?.slug && (
+                <div className="mb-4">
+                  <QuickBookingLink
+                    serviceName={service.name}
+                    serviceSlug={service.slug}
+                    orgSlug={""}
+                  />
+                </div>
+              )}
+
               {isEdit && (
                 <div className="border-t pt-4">
                   <Button
