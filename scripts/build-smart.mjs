@@ -26,8 +26,26 @@ if (isInsideOpenNext) {
   execSync("node scripts/migrate-with-retry.mjs", { stdio: "inherit" })
 
   // Run OpenNext build (internally calls pnpm build → next build via OPENNEXT_BUILD=1)
-  execSync("npx opennextjs-cloudflare build", {
-    stdio: "inherit",
-    env: { ...process.env, OPENNEXT_BUILD: "1" },
-  })
+  // Temporarily hide .env so OpenNext doesn't bake local values into next-env.mjs
+  // Cloudflare secrets will be the only source at runtime
+  const fs = await import("node:fs")
+  const envPath = ".env"
+  const envBackup = ".env.cloudflare-backup"
+  let envHidden = false
+  if (fs.existsSync(envPath)) {
+    fs.renameSync(envPath, envBackup)
+    envHidden = true
+    console.log("[build] .env hidden for Cloudflare build (secrets will be used at runtime)")
+  }
+  try {
+    execSync("npx opennextjs-cloudflare build", {
+      stdio: "inherit",
+      env: { ...process.env, OPENNEXT_BUILD: "1" },
+    })
+  } finally {
+    if (envHidden && fs.existsSync(envBackup)) {
+      fs.renameSync(envBackup, envPath)
+      console.log("[build] .env restored")
+    }
+  }
 }
