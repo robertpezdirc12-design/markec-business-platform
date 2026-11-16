@@ -6,6 +6,9 @@ import {
   getPublicTestimonials,
   redirectBareToTenant,
 } from "@/lib/public-site"
+
+// Force dynamic rendering — pridobivanje podatkov iz baze ob zahtevku
+export const dynamic = "force-dynamic"
 import { HomeContent } from "@/components/landing/home-content"
 import { PlatformLanding } from "@/components/landing/platform-landing"
 import { resolveCtaLinks, resolveCtaSectionHref } from "@/lib/public-cta"
