@@ -18,6 +18,8 @@ import {
   LockIcon,
 } from "@/components/icons"
 import { getUserById, getCustomerTotalSpent } from "@/app/actions/users"
+import { SendEmailButton } from "@/components/dashboard/send-email-button"
+import { ClientProfileCard } from "@/components/dashboard/client-profile-card"
 import { ResetPasswordDialog } from "@/components/dashboard/reset-password-dialog"
 import { auth } from "@/lib/auth/auth"
 import { formatSalonTime } from "@/lib/booking-time"
@@ -260,6 +262,33 @@ export default async function UserDetailsPage({ params }: PageProps) {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Send Email */}
+          <SendEmailButton
+            customerName={user.name || "Stranka"}
+            customerEmail={user.email}
+            businessName="MARKEC"
+          />
+
+          {/* Client Profile 360° */}
+          {user.customer && (
+            <ClientProfileCard
+              customer={{
+                id: user.customer.id,
+                name: user.name || "",
+                email: user.email,
+                phone: user.customer.phone,
+                notes: user.customer.notes,
+                tags: user.customer.tags || [],
+                marketingConsent: user.customer.marketingConsent || false,
+                marketingUnsubscribe: false,
+                createdAt: user.createdAt,
+                totalVisits: appointments.length,
+                totalSpent: totalSpent,
+                averageVisitValue: appointments.length > 0 ? Math.round(totalSpent / appointments.length) : 0,
+              }}
+            />
+          )}
+
           {/* User Profile Card */}
           <Card>
             <CardHeader>

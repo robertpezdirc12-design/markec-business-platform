@@ -3,6 +3,8 @@ import { getServerI18n } from "@/lib/i18n/server"
 import { requirePagePermission } from "@/lib/auth/guards"
 import { getMarketingOverview } from "@/app/actions/marketing"
 import { MarketingClient } from "@/components/dashboard/marketing-client"
+import { EmailBlast } from "@/components/dashboard/email-blast"
+import { AutomationRules } from "@/components/dashboard/automation-rules"
 
 // ============================================================
 // #95 — MARKETING AVTOMATIKA (admin)
@@ -32,12 +34,23 @@ export default async function MarketingPage() {
           Odjavljenih naslovov:{" "}
           <span className="text-foreground font-medium">{overview.unsubscribedCount}</span>
         </p>
+        <div className="flex items-center gap-3">
+          <EmailBlast
+            availableTags={["VIP", "Redne stranke", "Nove stranke"]}
+            customerCounts={{ "VIP": 12, "Redne stranke": 45, "Nove stranke": 23 }}
+            totalCustomers={120}
+            marketingConsentCount={89}
+          />
+        </div>
       </div>
 
       <MarketingClient
         campaigns={overview.campaigns}
         bookingLink={overview.bookingLink}
       />
+
+      {/* Automation Rules */}
+      <AutomationRules />
     </div>
   )
 }

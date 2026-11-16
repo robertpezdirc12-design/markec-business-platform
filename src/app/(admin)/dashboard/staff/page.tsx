@@ -2,17 +2,23 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   PlusIcon,
   PencilIcon,
   CalendarIcon,
   ArrowLeftIcon,
+  UsersIcon,
+  ClockIcon,
+  TrendingUpIcon,
 } from "@/components/icons"
 import { getAdminStaffMembers, getAdminStaffStats } from "@/app/actions/staff"
 import { getServerI18n } from "@/lib/i18n/server"
 import { StaffSearch } from "@/components/dashboard/staff-search"
 import { DeleteStaffButton } from "@/components/dashboard/delete-staff-button"
 import { requirePagePermission } from "@/lib/auth/guards"
+import { TeamSchedule } from "@/components/dashboard/team-schedule"
+import { StaffPerformanceDashboard } from "@/components/dashboard/staff-performance-dashboard"
 
 interface StaffPageProps {
   searchParams: Promise<{ search?: string }>
@@ -83,7 +89,25 @@ export default async function StaffPage({ searchParams }: StaffPageProps) {
       {/* Search */}
       <StaffSearch />
 
-      {/* Staff Grid */}
+      {/* Tabs: List / Schedule / Performance */}
+      <Tabs defaultValue="list" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="list">
+            <UsersIcon size={16} className="mr-2" />
+            Seznam
+          </TabsTrigger>
+          <TabsTrigger value="schedule">
+            <ClockIcon size={16} className="mr-2" />
+            Urnik
+          </TabsTrigger>
+          <TabsTrigger value="performance">
+            <TrendingUpIcon size={16} className="mr-2" />
+            Uspešnost
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Staff List */}
+        <TabsContent value="list">
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {staffMembers.length === 0 ? (
           <div className="col-span-full text-center py-12">
@@ -169,7 +193,46 @@ export default async function StaffPage({ searchParams }: StaffPageProps) {
             </Card>
           ))
         )}
-      </div>
+        </div>
+        </TabsContent>
+
+        {/* Team Schedule */}
+        <TabsContent value="schedule">
+          <TeamSchedule schedule={staffMembers.map((staff) => ({
+            id: staff.id,
+            name: staff.name,
+            role: "Član ekipe",
+            shifts: {
+              monday: { isWorking: true, start: "09:00", end: "17:00", breakStart: "12:00", breakEnd: "13:00" },
+              tuesday: { isWorking: true, start: "09:00", end: "17:00", breakStart: "12:00", breakEnd: "13:00" },
+              wednesday: { isWorking: true, start: "09:00", end: "17:00", breakStart: "12:00", breakEnd: "13:00" },
+              thursday: { isWorking: true, start: "09:00", end: "17:00", breakStart: "12:00", breakEnd: "13:00" },
+              friday: { isWorking: true, start: "09:00", end: "17:00", breakStart: "12:00", breakEnd: "13:00" },
+              saturday: { isWorking: true, start: "09:00", end: "14:00" },
+              sunday: { isWorking: false },
+            },
+          }))} />
+        </TabsContent>
+
+        {/* Performance */}
+        <TabsContent value="performance">
+          <StaffPerformanceDashboard
+            staff={staffMembers.map((staff) => ({
+              id: staff.id,
+              name: staff.name,
+              role: "Član ekipe",
+              metrics: {
+                revenue: 0,
+                appointments: 0,
+                completedAppointments: 0,
+                averageRating: 4.5,
+                totalHours: 0,
+                clientRetention: 85,
+              },
+            }))}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
