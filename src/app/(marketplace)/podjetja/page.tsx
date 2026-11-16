@@ -19,6 +19,8 @@ import {
 // Surpasses Fresha with better organization and visual design.
 // ============================================================
 
+export const dynamic = "force-dynamic"
+
 export const metadata = {
   title: "MARKEC — Rezervirajte lokalne storitve",
   description:
