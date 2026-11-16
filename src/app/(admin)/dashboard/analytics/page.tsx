@@ -1,5 +1,6 @@
 import { Suspense } from "react"
 import { AnalyticsDashboard } from "@/components/analytics/analytics-dashboard"
+import { CampaignAnalytics } from "@/components/dashboard/campaign-analytics"
 import {
   getKPIData,
   getRevenueChartData,
@@ -45,7 +46,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     ])
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 space-y-8">
       <Suspense fallback={<AnalyticsSkeleton />}>
         <AnalyticsDashboard
           data={{
@@ -60,6 +61,13 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
           period={validPeriod}
         />
       </Suspense>
+
+      {/* Campaign Analytics */}
+      <CampaignAnalytics
+        campaigns={[]}
+        totalRevenue={0}
+        totalSent={0}
+      />
     </div>
   )
 }
