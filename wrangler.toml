@@ -1,0 +1,76 @@
+# Cloudflare Workers configuration for MARKEC
+# Generated for OpenNext Cloudflare deployment
+
+name = "markec-business-platform"
+main = ".open-next/worker.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Workers configuration
+workers_dev = true
+
+# Observability
+[observability]
+enabled = true
+
+# Assets (static files from .next/static and public)
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+# Environment variables (non-secret)
+[vars]
+NODE_ENV = "production"
+
+# Secrets are set via `wrangler secret put` or Cloudflare dashboard:
+# - DATABASE_URL
+# - DIRECT_URL
+# - AUTH_SECRET
+# - NEXTAUTH_SECRET
+# - STRIPE_SECRET_KEY
+# - STRIPE_WEBHOOK_SECRET
+# - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+# - RESEND_API_KEY
+# - RESEND_FROM_EMAIL
+# - CLOUDINARY_CLOUD_NAME
+# - CLOUDINARY_API_KEY
+# - CLOUDINARY_API_SECRET
+# - R2_ACCOUNT_ID
+# - R2_ACCESS_KEY_ID
+# - R2_SECRET_ACCESS_KEY
+# - R2_ENDPOINT
+# - R2_BUCKET
+# - R2_PUBLIC_URL
+
+# Self-reference binding (required by OpenNext for internal routing)
+# The worker name MUST match the "name" field above
+[[services]]
+binding = "WORKER_SELF_REFERENCE"
+service = "markec-business-platform"
+
+# D1 database (if using Cloudflare D1 instead of Neon)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "markec-db"
+# database_id = "<your-d1-database-id>"
+
+# R2 storage (for images)
+# [[r2_buckets]]
+# binding = "IMAGES"
+# bucket_name = "markec-images"
+
+# KV namespace (for caching)
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = "<your-kv-namespace-id>"
+
+# Routes (custom domain)
+# [[routes]]
+# pattern = "markec.si/*"
+# custom_domain = true
+
+# Build configuration (handled by CI/CD, not wrangler)
+# [build]
+# command = "pnpm run build"
+# cwd = "."
+# watch_dir = ["src", "prisma", "public"]
