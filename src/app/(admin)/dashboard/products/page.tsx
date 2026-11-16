@@ -7,6 +7,7 @@ import {
   PlusIcon,
   PencilIcon,
   ArrowLeftIcon,
+  ShoppingBagIcon,
 } from "@/components/icons"
 import {
   getAdminProducts,
@@ -18,6 +19,8 @@ import { getAllCategories } from "@/app/actions/services"
 import { prisma } from "@/lib/prisma"
 import { getSessionOrg } from "@/lib/tenant"
 import { ProductSearch } from "@/components/dashboard/product-search"
+import { InventoryManager } from "@/components/dashboard/inventory-manager"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DeliveryDialogButton } from "@/components/dashboard/delivery-dialog-button"
 import { DeleteProductButton } from "@/components/dashboard/delete-product-button"
 import { getServerI18n } from "@/lib/i18n/server"
@@ -181,6 +184,21 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
       {/* Search */}
       <ProductSearch />
+
+      {/* Tabs: List / Inventory */}
+      <Tabs defaultValue="list" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="list">
+            <PackageIcon size={16} className="mr-2" />
+            Seznam
+          </TabsTrigger>
+          <TabsTrigger value="inventory">
+            <ShoppingBagIcon size={16} className="mr-2" />
+            Zaloga
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="list">
 
       {/* #78: filtri (čipi + kategorija) in razvrščanje — server-rendered
           povezave, delujejo brez JS-a, stanje je v URL-ju. */}
@@ -418,6 +436,22 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        {/* Inventory */}
+        <TabsContent value="inventory">
+          <InventoryManager items={products.map((p) => ({
+            id: p.id,
+            name: p.name,
+            sku: p.sku || p.id.slice(-8),
+            currentStock: p.stockQuantity,
+            minStock: 5,
+            maxStock: 100,
+            price: p.price,
+            category: "Izdelek",
+          }))} />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
