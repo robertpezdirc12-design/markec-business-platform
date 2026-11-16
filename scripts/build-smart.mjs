@@ -22,8 +22,13 @@ if (isInsideOpenNext) {
     execSync("prisma generate", { stdio: "inherit" })
   }
 
-  // Run migrations (skips if DATABASE_URL not set)
-  execSync("node scripts/migrate-with-retry.mjs", { stdio: "inherit" })
+  // Run migrations (skips if DATABASE_URL not set OR if CI=true)
+  const isCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true"
+  if (isCI) {
+    console.log("[build] CI environment detected — skipping migrations (run separately)")
+  } else {
+    execSync("node scripts/migrate-with-retry.mjs", { stdio: "inherit" })
+  }
 
   // Run OpenNext build (internally calls pnpm build → next build via OPENNEXT_BUILD=1)
   // Hide ALL local env files so OpenNext cannot bake secrets (R2 keys,
