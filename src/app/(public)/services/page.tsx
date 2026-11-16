@@ -6,6 +6,7 @@ import { canonicalMetadata } from "@/lib/seo"
 import { orgPath } from "@/lib/org-path"
 import { HeroVideo } from "@/components/services/hero-video"
 import { ServicesList } from "@/components/services/services-list"
+import { ServicesPriceList } from "@/components/services/services-price-list"
 import { Suspense } from "react"
 import { ServicesListSkeleton } from "@/components/services/services-list-skeleton"
 import { BookingButton } from "@/components/services/booking-button"
@@ -132,6 +133,26 @@ export default async function ServicesPage() {
               staff={staff}
             />
           </Suspense>
+        </div>
+      </section>
+
+      {/* Price List Section */}
+      <section className="py-12">
+        <div className="container mx-auto px-4">
+          <ServicesPriceList
+            categories={Object.entries(servicesByCategory).map(([categoryName, services]) => ({
+              name: categoryName,
+              items: services.map((service) => ({
+                name: service.name,
+                description: service.description,
+                price: service.price.toNumber(),
+                duration: service.duration,
+                isFeatured: service.isFeatured,
+                bookingUrl: orgPath(slug, `/booking?service=${service.slug}`),
+              })),
+            }))}
+            showBookButton={false}
+          />
         </div>
       </section>
 
