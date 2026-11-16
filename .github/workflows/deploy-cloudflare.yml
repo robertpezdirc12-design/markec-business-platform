@@ -1,0 +1,80 @@
+name: Build & Deploy to Cloudflare Workers
+
+on:
+  push:
+    branches: [main, fase1-review]
+  workflow_dispatch:  # Ročni sprožilec
+
+concurrency:
+  group: deploy-cloudflare
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Checkout kode
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Node.js setup
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      # 3. pnpm setup
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      # 4. Namestitev odvisnosti
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 5. Prisma generate
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      # 6. Build (OpenNext + Cloudflare)
+      - name: Build
+        run: pnpm run build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+
+      # 7. Deploy na Cloudflare Workers
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+
+      # 8. Obvestilo o uspehu
+      - name: Deploy Success
+        if: success()
+        run: |
+          echo "✅ Deploy uspešen!"
+          echo "URL: https://markec-business-platform.robert-pezdirc12.workers.dev"
+
+      # 9. Obvestilo o napaki
+      - name: Deploy Failed
+        if: failure()
+        run: |
+          echo "❌ Deploy spodletel!"
+          echo "Preveri loge zgoraj."
