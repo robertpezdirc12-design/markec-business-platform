@@ -226,9 +226,9 @@ export function AutomationRules({ initialRules = defaultRules }: AutomationRules
             <div>
               <p className="font-medium text-blue-800">Nasvet za avtomatizacije</p>
               <ul className="mt-2 space-y-1 text-sm text-blue-700">
-                <li>• Vklopite "Sledenje po terminu" za povečanje ponovnih obiskov</li>
-                <li>• "Čestitka ob rojstnem dnevu" gradi zvestobo strank</li>
-                <li>• "Reaktivacija" pomaga pri pridobivanju izgubljenih strank</li>
+                <li>• Vklopite &quot;Sledenje po terminu&quot; za povečanje ponovnih obiskov</li>
+                <li>• &quot;Čestitka ob rojstnem dnevu&quot; gradi zvestobo strank</li>
+                <li>• &quot;Reaktivacija&quot; pomaga pri pridobivanju izgubljenih strank</li>
               </ul>
             </div>
           </div>
