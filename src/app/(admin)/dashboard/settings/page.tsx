@@ -15,6 +15,7 @@ import { PublicationCard } from "@/components/dashboard/publication-card"
 import { PlanUsageCard } from "@/components/dashboard/plan-usage-card"
 import { DomainsCard } from "@/components/dashboard/domains-card"
 import { SettingsTabs } from "@/components/dashboard/settings-tabs"
+import { GoogleCalendarSync } from "@/components/dashboard/google-calendar-sync"
 import { ContentManager } from "@/components/dashboard/content/content-manager"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getServerI18n } from "@/lib/i18n/server"
@@ -111,6 +112,9 @@ export default async function SettingsPage({
           />
           {/* E4-2b: owner-supplied analytics (GA4) — optional, honest default = no script. */}
           <AnalyticsIntegrationCard initialValue={settings.analyticsMeasurementId ?? null} />
+          
+          {/* Google Calendar Sync */}
+          <GoogleCalendarSync />
         </div>
       }
     />

@@ -2,9 +2,10 @@ import { requirePagePermission } from "@/lib/auth/guards"
 import { listCustomers } from "@/app/actions/customers"
 import { CustomersManager } from "@/components/dashboard/customers/customers-manager"
 import { CustomerSegments } from "@/components/dashboard/customer-segments"
+import { ClientImport } from "@/components/dashboard/client-import"
 import { getServerI18n } from "@/lib/i18n/server"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { UsersIcon, TagIcon } from "@/components/icons"
+import { UsersIcon, TagIcon, UploadIcon } from "@/components/icons"
 
 interface PageProps {
   searchParams: Promise<{ search?: string; archived?: string; tag?: string }>
@@ -35,6 +36,10 @@ export default async function CustomersPage({ searchParams }: PageProps) {
           <TabsTrigger value="segments">
             <TagIcon size={16} className="mr-2" />
             Segmenti
+          </TabsTrigger>
+          <TabsTrigger value="import">
+            <UploadIcon size={16} className="mr-2" />
+            Uvoz
           </TabsTrigger>
         </TabsList>
 
@@ -85,6 +90,10 @@ export default async function CustomersPage({ searchParams }: PageProps) {
               },
             ]}
           />
+        </TabsContent>
+
+        <TabsContent value="import">
+          <ClientImport />
         </TabsContent>
       </Tabs>
     </div>
