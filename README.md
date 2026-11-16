@@ -284,3 +284,4 @@ Proprietary — vse pravice pridržane.
 ---
 
 Zgrajeno z ❤️ — Next.js 16, React 19, Tailwind CSS v4 · 🇸🇮 po slovensko
+# Trigger deploy Mon Nov 16 14:30:06     2026
