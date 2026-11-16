@@ -38,7 +38,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "pnpm"
 
       - name: Install dependencies
@@ -83,7 +83,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "pnpm"
 
       - name: Install dependencies
@@ -125,7 +125,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "pnpm"
 
       - name: Install dependencies
@@ -178,12 +178,18 @@ jobs:
           NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
           CI: "true"
 
-      # Deploy the Worker
+      # Deploy the Worker.
+      # Node ≥ 22.12 is required by wrangler 4 — with Node 20 the action silently
+      # falls back to wrangler 3.90, which cannot bundle the pnpm/Next 16 output
+      # ("Unable to extract npm package name from …/.pnpm/…").
+      # wranglerVersion is pinned to the version in package.json so CI and local
+      # deploys use the same bundler.
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.163.0"
           command: deploy .open-next/worker.js --config wrangler.jsonc
 
       # Push runtime secrets to the Worker. Idempotent — run every deploy.
