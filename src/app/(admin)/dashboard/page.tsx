@@ -41,6 +41,7 @@ import { GuidedEntryGate } from "@/components/dashboard/guided-entry"
 import { SetupChecklistCard } from "@/components/dashboard/setup-checklist"
 import { PlanCompactCard } from "@/components/dashboard/plan-compact-card"
 import { QuickActions } from "@/components/dashboard/quick-actions"
+import { ReportsDashboard } from "@/components/dashboard/reports-dashboard"
 import {
   buildSetupChecklist,
   parseSetupChecklistUi,
@@ -777,6 +778,35 @@ export default async function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Business Reports Summary */}
+      <ReportsDashboard
+        metrics={{
+          revenue: {
+            today: revenueStats?.revenue?.total || 0,
+            thisWeek: 0,
+            thisMonth: revenueStats?.revenue?.total || 0,
+            lastMonth: 0,
+            change: revenueStats?.revenue?.change || 0,
+          },
+          appointments: {
+            today: todaysAppointments?.length || 0,
+            thisWeek: 0,
+            thisMonth: 0,
+            completed: todaysAppointments?.filter((a) => a.status === "COMPLETED").length || 0,
+            cancelled: todaysAppointments?.filter((a) => a.status === "CANCELLED").length || 0,
+            noShow: todaysAppointments?.filter((a) => a.status === "NO_SHOW").length || 0,
+          },
+          customers: {
+            total: 0,
+            new: 0,
+            returning: 0,
+            averageVisitValue: 0,
+          },
+          services: { top: [] },
+          products: { top: [] },
+        }}
+      />
 
       {/* Plan status — compact card showing current plan + top usage bars.
           Moved from Settings (2026-11-15) — plan is STATUS, not config. */}
