@@ -3,9 +3,11 @@ import { listCustomers } from "@/app/actions/customers"
 import { CustomersManager } from "@/components/dashboard/customers/customers-manager"
 import { CustomerSegments } from "@/components/dashboard/customer-segments"
 import { ClientImport } from "@/components/dashboard/client-import"
+import { BulkActions } from "@/components/dashboard/bulk-actions"
+import { EmailTemplatesEditor } from "@/components/dashboard/email-templates-editor"
 import { getServerI18n } from "@/lib/i18n/server"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { UsersIcon, TagIcon, UploadIcon } from "@/components/icons"
+import { UsersIcon, TagIcon, UploadIcon, EnvelopeIcon } from "@/components/icons"
 
 interface PageProps {
   searchParams: Promise<{ search?: string; archived?: string; tag?: string }>
@@ -40,6 +42,10 @@ export default async function CustomersPage({ searchParams }: PageProps) {
           <TabsTrigger value="import">
             <UploadIcon size={16} className="mr-2" />
             Uvoz
+          </TabsTrigger>
+          <TabsTrigger value="templates">
+            <EnvelopeIcon size={16} className="mr-2" />
+            E-pošta
           </TabsTrigger>
         </TabsList>
 
@@ -94,6 +100,10 @@ export default async function CustomersPage({ searchParams }: PageProps) {
 
         <TabsContent value="import">
           <ClientImport />
+        </TabsContent>
+
+        <TabsContent value="templates">
+          <EmailTemplatesEditor />
         </TabsContent>
       </Tabs>
     </div>
