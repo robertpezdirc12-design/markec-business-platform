@@ -82,16 +82,25 @@ jobs:
         run: pnpm prisma db push
         env:
           DATABASE_URL: postgresql://markec_test:markec_test_pw@localhost:5433/markec_test?schema=public
+          # schema.prisma zahteva tudi directUrl (P1012 brez njega) — testna
+          # baza je lokalna, zato je ista vrednost pravilna.
+          DIRECT_URL: postgresql://markec_test:markec_test_pw@localhost:5433/markec_test?schema=public
 
       - name: Run unit tests
         run: npx vitest run
         env:
           DATABASE_URL: postgresql://markec_test:markec_test_pw@localhost:5433/markec_test?schema=public
+          # schema.prisma zahteva tudi directUrl (P1012 brez njega) — testna
+          # baza je lokalna, zato je ista vrednost pravilna.
+          DIRECT_URL: postgresql://markec_test:markec_test_pw@localhost:5433/markec_test?schema=public
 
       - name: Run architecture tests
         run: npx vitest run tests/architecture tests/plans tests/profiles tests/security
         env:
           DATABASE_URL: postgresql://markec_test:markec_test_pw@localhost:5433/markec_test?schema=public
+          # schema.prisma zahteva tudi directUrl (P1012 brez njega) — testna
+          # baza je lokalna, zato je ista vrednost pravilna.
+          DIRECT_URL: postgresql://markec_test:markec_test_pw@localhost:5433/markec_test?schema=public
 
   # Verify the project builds successfully (without deploying)
   build-check:
