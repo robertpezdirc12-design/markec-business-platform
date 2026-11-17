@@ -295,9 +295,9 @@ export function WorkOrderDetailClient({
     })
   }
 
-  const candidates = linkableAppointments.filter(
-    (a) => !a.linkedToOrderId || a.linkedToOrderId === order.id
-  )
+  // Kandidati so le termini, ki še niso povezani z nobenim naročilom —
+  // že povezan termin se ne sme ponujati znova (klik ne bi naredil nič).
+  const candidates = linkableAppointments.filter((a) => !a.linkedToOrderId)
 
   const money = order.money.summary
   const eur = (n: number) =>
