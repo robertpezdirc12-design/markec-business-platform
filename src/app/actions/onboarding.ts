@@ -501,3 +501,19 @@ export async function createSalonOrganization(input: CreateSalonInput): Promise<
     }
   }
 }
+
+/**
+ * Kako stranke stopijo v stik prek spletne strani za izbrano panogo?
+ *
+ * Čarovnik je doslej vsem panogam ponudil »Da — spletna rezervacija«, tudi
+ * šiviljstvu, kjer javna stran ponuja povpraševanje in ne koledarja. Tu
+ * vrnemo dejanski način iz profilnega registra, da vprašanje v čarovniku
+ * obljubi to, kar stran res počne.
+ */
+export async function getVerticalContactMode(
+  verticalId: string
+): Promise<"booking" | "inquiry" | "order"> {
+  const profile = getProfile(verticalId)
+  const mode = profile.website?.ctaMode
+  return mode === "inquiry" || mode === "order" ? mode : "booking"
+}

@@ -37,7 +37,11 @@ import {
 } from "@/lib/skd/catalog"
 import { ActivityDirectoryPicker } from "@/components/onboarding/activity-directory-picker"
 import { PendingVerifyScreen } from "@/components/onboarding/pending-verify-screen"
-import { checkSlugAvailability, createSalonOrganization } from "@/app/actions/onboarding"
+import {
+  checkSlugAvailability,
+  createSalonOrganization,
+  getVerticalContactMode,
+} from "@/app/actions/onboarding"
 import {
   WIZARD_DRAFT_KEY,
   clearDraftRaw,
@@ -239,6 +243,38 @@ export function StartWizard({
   // E4-4 — resume offer (set once on mount from localStorage; null = none).
   // While pending, storage still belongs to the saved draft.
   const [resumeOffer, setResumeOffer] = useState<WizardDraftEnvelope | null>(null)
+
+  // Q2 se prilagodi panogi: šiviljstvo odda povpraševanje, ne rezervacije.
+  const [contactMode, setContactMode] = useState<"booking" | "inquiry" | "order">(
+    "booking"
+  )
+  useEffect(() => {
+    if (!vertical) return
+    let active = true
+    getVerticalContactMode(vertical)
+      .then((mode) => {
+        if (active) setContactMode(mode)
+      })
+      .catch(() => {
+        /* ob napaki ostane privzeti način rezervacije */
+      })
+    return () => {
+      active = false
+    }
+  }, [vertical])
+
+  const contactQuestion =
+    contactMode === "inquiry"
+      ? "Želite, da stranke povpraševanje oddajo prek spleta (24/7)?"
+      : contactMode === "order"
+        ? "Želite, da stranke naročilo oddajo prek spleta (24/7)?"
+        : "Želite, da stranke termine rezervirajo prek spleta (24/7)?"
+  const contactYesLabel =
+    contactMode === "inquiry"
+      ? "Da — spletno povpraševanje"
+      : contactMode === "order"
+        ? "Da — spletno naročilo"
+        : "Da — spletna rezervacija"
 
   const selectedVertical = useMemo(
     () => ACTIVITY_OPTIONS.find((v) => v.id === vertical) ?? null,
@@ -932,17 +968,15 @@ export function StartWizard({
                 )}
 
                 {/* Q2 — spletna rezervacija */}
-                <p className="mt-5 text-sm font-medium">
-                  Želite, da stranke termine rezervirajo prek spleta (24/7)?
-                </p>
+                <p className="mt-5 text-sm font-medium">{contactQuestion}</p>
                 <div
                   role="radiogroup"
-                  aria-label="Želite, da stranke termine rezervirajo prek spleta (24/7)?"
+                  aria-label={contactQuestion}
                   className="mt-2 flex flex-wrap gap-2"
                 >
                   {(
                     [
-                      ["yes", "Da — spletna rezervacija"],
+                      ["yes", contactYesLabel],
                       ["no", "Ne — po dogovoru"],
                     ] as const
                   ).map(([value, label]) => (
@@ -964,9 +998,17 @@ export function StartWizard({
                     </button>
                   ))}
                 </div>
+                {onlineBooking === "yes" && contactMode !== "booking" && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Stranka odda obrazec na vaši strani, vi pa jo potrdite in
+                    prevzamete v delovno naročilo.
+                  </p>
+                )}
                 {onlineBooking === "no" && (
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Objava strani bo še vedno priporočena — brez obljub o spletnih rezervacijah.
+                    {contactMode === "booking"
+                      ? "Objava strani bo še vedno priporočena — brez obljub o spletnih rezervacijah."
+                      : "Stranke vas bodo kontaktirale po telefonu ali e-pošti — stran lahko vseeno objavite."}
                   </p>
                 )}
               </div>
@@ -983,7 +1025,9 @@ export function StartWizard({
             <p className="mt-2 text-muted-foreground">
               {authed
                 ? "Podjetje povežemo z vašim obstoječim računom — brez nove prijave."
-                : "S tem računom upravljate svoje podjetje, rezervacije in trgovino."}
+                : contactMode === "booking"
+                  ? "S tem računom upravljate svoje podjetje, rezervacije in trgovino."
+                  : "S tem računom upravljate svoje podjetje, povpraševanja in naročila."}
             </p>
 
             <div className="mt-6 space-y-4">
