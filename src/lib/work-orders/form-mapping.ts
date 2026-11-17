@@ -62,3 +62,39 @@ export function parseFormDueDate(values: Record<string, unknown>): Date | null {
   const parsed = new Date(raw)
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
+
+/** Polja merilnega lista (skladna z extensionom `seamstress-measurements`). */
+export const MEASUREMENT_FIELDS = [
+  "chest_cm",
+  "waist_cm",
+  "hips_cm",
+  "shoulder_cm",
+  "sleeve_cm",
+  "inseam_cm",
+  "height_cm",
+] as const
+
+/**
+ * Iz vrednosti obrazca pobere samo polja merilnega lista in jih pretvori v
+ * števila (cm). Vrne `null`, kadar obrazec ni merilni list — takrat se
+ * merilni zapis ne ustvarja.
+ */
+export function extractMeasurementValues(
+  values: Record<string, unknown>
+): Record<string, number> | null {
+  const out: Record<string, number> = {}
+  for (const key of MEASUREMENT_FIELDS) {
+    const raw = values[key]
+    if (raw === undefined || raw === null || raw === "") continue
+    const n = Number(String(raw).replace(",", "."))
+    if (Number.isFinite(n) && n > 0 && n < 300) out[key] = n
+  }
+  return Object.keys(out).length > 0 ? out : null
+}
+
+/** Datum meritve (YYYY-MM-DD) — danes, če obrazec datuma ne vsebuje. */
+export function measurementDate(values: Record<string, unknown>): string {
+  const raw = values.measured_at ?? values.measurement_date ?? values.date
+  if (typeof raw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
+  return new Date().toISOString().slice(0, 10)
+}

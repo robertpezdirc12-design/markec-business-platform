@@ -2,6 +2,8 @@
 
 import {
   buildWorkOrderTitle,
+  extractMeasurementValues,
+  measurementDate,
   parseFormDueDate,
 } from "@/lib/work-orders/form-mapping"
 import { prisma } from "@/lib/prisma"
@@ -476,6 +478,16 @@ export async function createWorkOrderFromSubmission(
   // le kot tekst v opombah, naročilo pa je kazalo »Rok: —«.
   const dueDate = parseFormDueDate(values)
 
+  // 1) Stranka: javna oddaja je nima, zato je naročilo kazalo »Stranka: —«
+  //    in ni bilo ponovnega obiska. Poiščemo po e-pošti/telefonu, sicer
+  //    ustvarimo kartoteko samo s tem, kar je obiskovalec res vpisal.
+  const measurementValues = extractMeasurementValues(values)
+  const customerId = await resolveCustomerForSubmission({
+    organizationId: org.id,
+    existingId: sub.customerId,
+    contact,
+  })
+
   const firstStage = definition.stages[0]
   const summary = Object.entries(values)
     .slice(0, 12)
@@ -487,17 +499,43 @@ export async function createWorkOrderFromSubmission(
       where: { organizationId: org.id },
       _max: { number: true },
     })
+    const number = (max._max.number ?? 0) + 1
+
+    // 2) Merilni list: obrazec vsebuje mere (chest_cm …), zato jih shranimo
+    //    kot zapis meritve na stranki (append-only zgodovina) in nanj
+    //    povežemo naročilo. Prej so mere obstale le kot tekst v opombah.
+    let linkedRecordId: string | null = null
+    if (measurementValues) {
+      const record = await tx.extensionRecord.create({
+        data: {
+          organizationId: org.id,
+          extensionId: "seamstress-measurements",
+          entityKey: "measurement",
+          title: `Merilni list – ${contact.name?.trim() || contact.email || "stranka"}`,
+          data: {
+            ...measurementValues,
+            measured_at: measurementDate(values),
+            order_ref: `#${String(number).padStart(3, "0")}`,
+          },
+          customerId,
+        },
+        select: { id: true },
+      })
+      linkedRecordId = record.id
+    }
+
     return tx.workOrder.create({
       data: {
         organizationId: org.id,
-        number: (max._max.number ?? 0) + 1,
+        number,
         title,
         status: "OPEN",
         priority: "NORMAL",
         notes: contact.email || contact.phone
           ? `Kontakt: ${contact.name ?? ""} ${contact.email ?? ""} ${contact.phone ?? ""}\n\n${summary}`
           : summary,
-        customerId: sub.customerId,
+        customerId,
+        linkedRecordId,
         dueDate,
         workflowDefinitionId: definition.id,
         currentStageKey: firstStage.key,
@@ -524,4 +562,50 @@ export async function createWorkOrderFromSubmission(
   revalidatePath("/dashboard/work-orders")
   revalidatePath("/dashboard")
   return { ok: true, workOrderId: created.id }
+}
+
+/**
+ * Najde ali ustvari kartoteko stranke za javno oddajo.
+ *
+ * Iskanje je org-scoped (najemnik nikoli ne vidi tuje stranke) in poteka po
+ * e-pošti, nato po telefonu. Če se ne ujema noben, se ustvari nova stranka
+ * samo s podatki, ki jih je obiskovalec res vpisal.
+ */
+async function resolveCustomerForSubmission(input: {
+  organizationId: string
+  existingId: string | null
+  contact: PublicSubmissionContact
+}): Promise<string | null> {
+  if (input.existingId) return input.existingId
+
+  const email = input.contact.email?.trim() || null
+  const phone = input.contact.phone?.trim() || null
+  const name = input.contact.name?.trim() || null
+  if (!email && !phone) return null
+
+  const match = await prisma.customer.findFirst({
+    where: {
+      organizationId: input.organizationId,
+      ...(email ? { email } : { phone }),
+    },
+    select: { id: true, name: true },
+  })
+  if (match) {
+    // Ime dopolnimo le, če ga kartoteka še nima — nikoli ne prepišemo.
+    if (!match.name && name) {
+      await prisma.customer.update({ where: { id: match.id }, data: { name } })
+    }
+    return match.id
+  }
+
+  const createdCustomer = await prisma.customer.create({
+    data: {
+      organizationId: input.organizationId,
+      name: name ?? email ?? phone ?? "Stranka",
+      email,
+      phone,
+    },
+    select: { id: true },
+  })
+  return createdCustomer.id
 }

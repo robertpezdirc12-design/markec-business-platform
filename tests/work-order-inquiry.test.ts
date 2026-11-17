@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest"
 import { buildWorkOrderTitle, parseFormDueDate } from "@/lib/work-orders/form-mapping"
 import { allowVerificationFallback } from "@/lib/email/config"
+import {
+  extractMeasurementValues,
+  measurementDate,
+} from "@/lib/work-orders/form-mapping"
 
 // ============================================================
 // Regresijski testi — QA šiviljskega toka (2026-11-18)
@@ -86,5 +90,40 @@ describe("allowVerificationFallback", () => {
         EMAIL_VERIFICATION_FALLBACK: "0",
       })
     ).toBe(false)
+  })
+})
+
+describe("extractMeasurementValues", () => {
+  it("pobere mere iz merilnega lista", () => {
+    expect(
+      extractMeasurementValues({
+        chest_cm: "92",
+        waist_cm: "74,5",
+        hips_cm: "98",
+        notes: "ni mere",
+      })
+    ).toEqual({ chest_cm: 92, waist_cm: 74.5, hips_cm: 98 })
+  })
+
+  it("obrazec brez mer vrne null (naročilo brez merilnega zapisa)", () => {
+    expect(
+      extractMeasurementValues({ garment_type: "Hlače", modifications: "Skrajšati" })
+    ).toBeNull()
+  })
+
+  it("odvrže nesmiselne vrednosti", () => {
+    expect(extractMeasurementValues({ chest_cm: "0" })).toBeNull()
+    expect(extractMeasurementValues({ chest_cm: "999" })).toBeNull()
+    expect(extractMeasurementValues({ chest_cm: "abc" })).toBeNull()
+  })
+})
+
+describe("measurementDate", () => {
+  it("uporabi datum meritve iz obrazca", () => {
+    expect(measurementDate({ measured_at: "2026-11-17" })).toBe("2026-11-17")
+  })
+
+  it("sicer vrne današnji datum v obliki YYYY-MM-DD", () => {
+    expect(measurementDate({})).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   })
 })
