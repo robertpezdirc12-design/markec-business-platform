@@ -24,16 +24,29 @@
 // `Object.prototype.__name` doesn't exist in edge environments.
 // Polyfill it globally before any application imports begin.
 // ============================================================
-Object.prototype.__name = function (name) {
-  if (typeof this.name !== "undefined" && typeof Object.getOwnPropertyDescriptor(this, "name") !== "undefined") {
-    Object.defineProperty(this, "name", {
-      value: name,
-      enumerable: true,
-      configurable: true,
-      writable: true,
-    })
-  }
-  return this
+// NE sme biti enumerable: enumerable lastnost na Object.prototype se
+// pojavi v vsaki `for ... in` zanki v aplikaciji. Polyfill zato
+// definiramo z defineProperty (non-enumerable) in samo, če manjka.
+if (typeof Object.prototype.__name === "undefined") {
+  Object.defineProperty(Object.prototype, "__name", {
+    value: function (name) {
+      if (typeof this === "function" && name) {
+        try {
+          Object.defineProperty(this, "name", {
+            value: name,
+            configurable: true,
+            writable: true,
+          })
+        } catch {
+          // Function.name je lahko zaklenjen — takrat ime ostane, kar je.
+        }
+      }
+      return this
+    },
+    enumerable: false,
+    configurable: true,
+    writable: true,
+  })
 }
 
 import openNextWorker, {
