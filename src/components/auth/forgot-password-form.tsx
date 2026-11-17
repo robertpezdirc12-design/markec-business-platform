@@ -66,9 +66,9 @@ export function ForgotPasswordForm() {
             <div className="mb-6 flex justify-center">
               <Logo variant="auth" />
             </div>
-            <CardTitle className="text-center text-2xl">
+            <h1 className="text-center text-2xl font-semibold leading-none tracking-tight">
               {t.auth.forgot.fallbackTitle}
-            </CardTitle>
+            </h1>
             <CardDescription className="text-center">
               {t.auth.forgot.fallbackDescription}
             </CardDescription>

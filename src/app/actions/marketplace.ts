@@ -1,6 +1,7 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
+import { DEFAULT_BUSINESS_IMAGE } from "@/lib/default-assets"
 import { cache } from "react"
 
 export interface MarketplaceBusiness {
@@ -143,7 +144,7 @@ export const getMarketplaceBusinesses = cache(
           address: org.salonConfig?.city || "Slovenija",
           rating: Math.round(avgRating * 10) / 10,
           reviews: org._count.reviews,
-          image: org.logo || "/img/presets/default.jpg",
+          image: org.logo || DEFAULT_BUSINESS_IMAGE,
           badge: variant === "new" ? ("Novo" as const) : undefined,
           isOpen: true,
           openUntil: "20:00",
@@ -319,7 +320,7 @@ export const searchBusinesses = cache(
           address: org.salonConfig?.city || "Slovenija",
           rating: Math.round(avgRating * 10) / 10,
           reviews: org._count.reviews,
-          image: org.logo || "/img/presets/default.jpg",
+          image: org.logo || DEFAULT_BUSINESS_IMAGE,
           isOpen: true,
           slug: org.slug,
           category: org.vertical || "splošno",

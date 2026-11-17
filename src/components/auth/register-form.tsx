@@ -90,9 +90,9 @@ export function RegisterForm() {
             <div className="mb-6 flex justify-center">
               <Logo variant="auth" />
             </div>
-            <CardTitle className="text-center text-2xl">
+            <h1 className="text-center text-2xl font-semibold leading-none tracking-tight">
               {t.auth.register.fallbackTitle}
-            </CardTitle>
+            </h1>
             <CardDescription className="text-center">
               {t.auth.register.fallbackDescription}
             </CardDescription>
@@ -127,9 +127,9 @@ export function RegisterForm() {
           <div className="mb-6 flex justify-center">
             <Logo variant="auth" />
           </div>
-          <CardTitle className="text-center text-2xl">
+          <h1 className="text-center text-2xl font-semibold leading-none tracking-tight">
             {t.auth.register.createAccountTitle}
-          </CardTitle>
+          </h1>
           <CardDescription className="text-center">
             {t.auth.register.getStarted}
           </CardDescription>

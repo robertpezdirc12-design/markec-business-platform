@@ -14,6 +14,14 @@
 /** Upload fallback when NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME is unset (dev). */
 export const FALLBACK_CLOUD_NAME = ""
 
+/**
+ * Fallback image for a business without a logo (marketplace cards, business
+ * directories). Points at a file that ACTUALLY exists — the previous
+ * `/img/presets/default.jpg` was never committed, so every business without a
+ * logo rendered a broken image (6 broken images on /podjetja).
+ */
+export const DEFAULT_BUSINESS_IMAGE = "/img/presets/workspace.jpg"
+
 /** Default hero media (landing + services page fallbacks). */
 export const DEFAULT_HERO = {
   videoWebm: "/img/media/hero/hero-bg.webm",

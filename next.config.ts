@@ -37,7 +37,10 @@ const securityHeaders = [
       "base-uri 'self'",
       "form-action 'self'",
       "object-src 'none'",
-      "upgrade-insecure-requests",
+      // 'upgrade-insecure-requests' NAMENOMA ni tukaj: v
+      // Report-Only politiki jo brskalnik ignorira in v konzolo
+      // zapiše napako na VSAKI strani. Doda se šele v enforced CSP,
+      // ko bo ta preklopljena iz report-only.
     ].join("; "),
   },
 ];

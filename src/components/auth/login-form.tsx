@@ -151,9 +151,9 @@ export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: 
               </Link>
             )}
           </div>
-          <CardTitle className="text-center text-2xl">
+          <h1 className="text-center text-2xl font-semibold leading-none tracking-tight">
             {t.auth.login.welcomeBack}
-          </CardTitle>
+          </h1>
           <CardDescription className="text-center">
             {t.auth.login.signInSubtitle}
           </CardDescription>

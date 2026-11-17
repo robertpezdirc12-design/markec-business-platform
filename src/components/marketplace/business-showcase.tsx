@@ -59,7 +59,7 @@ function BusinessCard({ business }: { business: Business }) {
   const [isFavorite, setIsFavorite] = useState(false)
 
   return (
-    <Link href={`/podjetja/${business.slug}`}>
+    <Link href={`/s/${business.slug}`}>
       <Card className="group overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
         {/* Image */}
         <div className="relative aspect-[4/3] overflow-hidden">
