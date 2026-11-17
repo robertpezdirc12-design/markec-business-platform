@@ -4,7 +4,9 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [fase1-review]
+    # main: kakovost na vsak push (Cloudflare deploy je od 2026-11-17 ročni).
+    # fase1-review: zgodovinska veja, obdržana za nazaj.
+    branches: [main, fase1-review]
 
 permissions:
   contents: read

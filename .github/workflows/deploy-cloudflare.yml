@@ -1,8 +1,10 @@
 name: Build & Deploy to Cloudflare Workers
 
 on:
-  push:
-    branches: [main]
+  # 2026-11-17: Vercel je primarni deployer, zato Cloudflare deploy NI več
+  # na vsak push (dva polna builda na push). Sproži ga ročno:
+  #   Actions → Build & Deploy to Cloudflare Workers → Run workflow
+  # Kakovost na vsak push pokriva workflow "Tests" (tests.yml).
   workflow_dispatch:
     inputs:
       skip_migrations:
