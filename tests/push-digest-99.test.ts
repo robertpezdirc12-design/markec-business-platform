@@ -117,14 +117,15 @@ describe("#99 struktura: SW, akcije, sprožilci, cron", () => {
     expect(send).toContain("isPushConfigured")
   })
 
-  it("cron: digest je 4. job, ritem usklajen z Cloudflare triggerjem (dnevno)", () => {
+  it("cron: digest je 4. job, ritem usklajen z Vercel cronom (dnevno, en sam timer)", () => {
     const cron = read("src/app/api/cron/tick/route.ts")
     expect(cron).toContain('"send-daily-digest"')
     expect(cron).not.toContain("15 min")
-    // Timer je Cloudflare Cron Trigger (vercel.json je odstranjen — dvojni
-    // dnevni tek ne sme obstajati).
-    const wrangler = read("wrangler.jsonc")
-    expect(wrangler).toContain("0 3 * * *")
+    // Timer je Vercel cron (2026-11-17: Vercel je primarni deployer).
+    expect(read("vercel.json")).toContain("0 3 * * *")
+    // Cloudflare NE sme imeti svojega triggerja — dvojni dnevni tek ne sme
+    // obstajati (podvojeni opomniki/marketing).
+    expect(read("wrangler.jsonc")).not.toContain('"crons"')
   })
 
   it("UI: kartica v nastavitvah je poštena brez ključev; SW registracija tiha", () => {

@@ -24,18 +24,21 @@ const read = (p: string) =>
 // P1 #76 — sistemski časovnik
 // ------------------------------------------------------------
 describe("P1 #76: scheduler exists and is safe", () => {
-  it("wrangler.jsonc declares the daily cron trigger that calls /api/cron/tick", () => {
-    // The app is deployed to Cloudflare Workers; the only system timer is a
-    // Cloudflare Cron Trigger (the old vercel.json cron entry is gone — it
-    // would have fired a SECOND daily run if Vercel deployed again).
-    const raw = read("wrangler.jsonc")
-    expect(raw).toContain("triggers")
-    // #76 follow-up (commit 1e5f6b4): the schedule is daily at 03:00 UTC.
+  it("vercel.json declares the daily cron that calls /api/cron/tick", () => {
+    // 2026-11-17: Vercel is the primary deployer, so it owns the only system
+    // timer. Cloudflare keeps NO triggers block — two schedulers at 03:00 UTC
+    // would run the reminder/marketing jobs twice (duplicate e-mail).
+    const raw = read("vercel.json")
+    expect(raw).toContain("/api/cron/tick")
+    // #76 follow-up: the schedule is daily at 03:00 UTC.
     expect(raw).toContain("0 3 * * *")
-    // The trigger alone does nothing — worker.js forwards it to the route.
+    // The route itself is the thing under test; worker.js keeps the
+    // equivalent `scheduled` handler (inert without a triggers block).
     const worker = read("worker.js")
     expect(worker).toContain("/api/cron/tick")
     expect(worker).toContain("CRON_SECRET")
+    // Exactly one scheduler: Cloudflare must not declare triggers.
+    expect(read("wrangler.jsonc")).not.toContain('"crons"')
   })
 
   it("cron route refuses requests without a valid Bearer CRON_SECRET", () => {

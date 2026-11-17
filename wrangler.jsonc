@@ -8,12 +8,12 @@
   "observability": {
     "enabled": true
   },
-  // The app's only system timer (/api/cron/tick). `worker.js` implements
-  // the `scheduled` handler that calls the route through the self binding.
-  // 03:00 UTC daily — same cadence the product documented for Vercel cron.
-  "triggers": {
-    "crons": ["0 3 * * *"]
-  },
+  // The app's only system timer (/api/cron/tick) is owned by VERCEL CRON
+  // (see vercel.json) — Vercel is the primary deployer. `worker.js` still
+  // implements the `scheduled` handler, but it is INERT here on purpose:
+  // two schedulers at 03:00 UTC would fire the reminder/marketing jobs
+  // twice and risk duplicate e-mail. Re-add a "triggers" block here only
+  // after removing the cron entry from vercel.json.
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"

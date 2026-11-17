@@ -8,10 +8,15 @@
 //
 // The only system timer in the product is `/api/cron/tick`
 // (reminders, stale PENDING expiry, no-show marking, marketing,
-// daily digest, rate-limit purge, billing grace). Before this
-// wrapper existed the route was reachable but nothing called it:
-// the schedule lived in `vercel.json`, which is dead config now
-// that the app runs on Cloudflare Workers.
+// daily digest, rate-limit purge, billing grace).
+//
+// IMPORTANT (2026-11-17): the schedule is owned by VERCEL CRON
+// (`vercel.json`, daily 03:00 UTC) because Vercel is the primary
+// deployer — Cloudflare is the secondary one. `wrangler.jsonc` has
+// NO "triggers" block on purpose: two schedulers at the same minute
+// would run the reminder/marketing jobs twice and could send
+// duplicate e-mail. The `scheduled` handler below is therefore
+// INERT until a triggers block is added back.
 //
 // The handler calls the route through the WORKER_SELF_REFERENCE
 // service binding (declared in wrangler.jsonc) with the same
@@ -75,6 +80,7 @@ async function runCronTick(cron, env) {
 export default {
   fetch: openNextWorker.fetch,
 
+  // Inerten, dokler wrangler.jsonc nima "triggers" (timer ima Vercel).
   async scheduled(controller, env) {
     await runCronTick(controller.cron, env)
   },
