@@ -64,7 +64,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
       </CardHeader>
       <CardContent>
         {data.length > 0 ? (
-          <div className="[&_.recharts-cartesian-axis-tick-value]:fill-muted-foreground [&_.recharts-cartesian-grid_line]:stroke-border/50">
+          <div className="[&_.recharts-cartesian-axis-tick-value]:fill-muted-foreground [&_.recharts-cartesian-grid_line]:stroke-border/50 [&_svg]:overflow-visible">
             <AreaChart
               className="h-72"
               data={data}
@@ -72,6 +72,11 @@ export function RevenueChart({ data }: RevenueChartProps) {
               categories={["appointments", "products", "prepaid"]}
               colors={["rose", "amber", "emerald"]}
               valueFormatter={(value) => fmt(value)}
+              // P1 #107: denarne oznake osi Y so se odrezale na levem robu
+              // ("),00 €") — privzeta širina osi (48 px) je premajhna za
+              // "450,00 €". `overflow-visible` na SVG poskrbi, da tudi
+              // daljši zneski (npr. "12.450,00 €") niso odrezani.
+              yAxisWidth={80}
               showLegend={false}
               showAnimation
               curveType="monotone"

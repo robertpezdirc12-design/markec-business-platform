@@ -1,4 +1,11 @@
 import Link from "next/link"
+import type { Metadata } from "next"
+
+// P1 #107: naslov zavihka (prej samo ime salona).
+export const metadata: Metadata = {
+  title: "Storitve",
+  description: "Katalog storitev, trajanje in cene.",
+}
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import {

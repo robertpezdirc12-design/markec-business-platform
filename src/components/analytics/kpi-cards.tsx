@@ -31,6 +31,7 @@ export function KPICards({ data }: KPICardsProps) {
   const cards: {
     title: string
     metric: string
+    value: number
     change: number | null
     noData?: boolean
     icon: typeof CurrencyDollarIcon
@@ -40,6 +41,7 @@ export function KPICards({ data }: KPICardsProps) {
     {
       title: t.analytics.kpi.totalRevenue,
       metric: fmt(data.totalRevenue),
+      value: data.totalRevenue,
       change: data.revenueChange,
       icon: CurrencyDollarIcon,
       color: "text-emerald-600 dark:text-emerald-400",
@@ -48,6 +50,7 @@ export function KPICards({ data }: KPICardsProps) {
     {
       title: t.analytics.kpi.appointments,
       metric: data.totalAppointments.toLocaleString(),
+      value: data.totalAppointments,
       change: data.appointmentsChange,
       icon: CalendarCheckIcon,
       color: "text-blue-600 dark:text-blue-400",
@@ -56,6 +59,7 @@ export function KPICards({ data }: KPICardsProps) {
     {
       title: t.analytics.kpi.productOrders,
       metric: data.totalOrders.toLocaleString(),
+      value: data.totalOrders,
       change: data.ordersChange,
       icon: ShoppingBagIcon,
       color: "text-amber-600 dark:text-amber-400",
@@ -64,6 +68,7 @@ export function KPICards({ data }: KPICardsProps) {
     {
       title: t.analytics.kpi.customers,
       metric: data.totalCustomers.toLocaleString(),
+      value: data.totalCustomers,
       change: data.customersChange,
       icon: UsersIcon,
       color: "text-purple-600 dark:text-purple-400",
@@ -72,6 +77,7 @@ export function KPICards({ data }: KPICardsProps) {
     {
       title: t.analytics.kpi.enquiries,
       metric: data.totalEnquiries.toLocaleString(),
+      value: data.totalEnquiries,
       change: data.enquiriesChange,
       noData: enquiryDisplay.kind === "no-data",
       icon: EnvelopeIcon,
@@ -94,7 +100,7 @@ export function KPICards({ data }: KPICardsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold tracking-tight">{card.metric}</div>
-            <ChangeBadge change={card.change} noData={card.noData} />
+            <ChangeBadge change={card.change} noData={card.noData} current={card.value} />
           </CardContent>
         </Card>
       ))}
@@ -105,18 +111,26 @@ export function KPICards({ data }: KPICardsProps) {
 function ChangeBadge({
   change,
   noData = false,
+  current,
 }: {
   change: number | null
   noData?: boolean
+  /** Trenutna vrednost kartice — pri 0 NE izpisujemo sporočila o
+   * primerjavi (na novem podjetju je bilo "Ni prejšnjih podatkov"
+   * ponovljeno na vseh petih karticah in ni povedalo ničesar). */
+  current?: number
 }) {
   const { t } = useI18n()
 
   // P1 #5 (walkthrough): ni prejšnjega obdobja → pošteno "Ni prejšnjih podatkov",
   // ne izmišljen +100 % / -100 %.
   if (noData || change === null) {
+    if (current === 0) return null
     return (
-      <div className="mt-2 text-sm text-muted-foreground">
-        {noData && change !== null ? t.analytics.kpi.noEnquiryData : t.analytics.kpi.noPreviousData}
+      <div className="text-muted-foreground mt-2 text-sm">
+        {noData && change !== null
+          ? t.analytics.kpi.noEnquiryData
+          : t.analytics.kpi.noPreviousData}
       </div>
     )
   }

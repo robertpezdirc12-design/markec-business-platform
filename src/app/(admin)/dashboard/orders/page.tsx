@@ -12,6 +12,7 @@ import { getSessionOrg } from "@/lib/tenant"
 import { requirePagePermission } from "@/lib/auth/guards"
 import { getBatchAvailabilityForLine } from "@/app/actions/traceability"
 import { formatCurrency } from "@/lib/utils/format"
+import { shortOrderNumber } from "@/lib/orders/number"
 
 const statusColors: Record<string, string> = {
   PENDING: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
@@ -161,7 +162,11 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
                   {orders.map((order) => (
                     <tr key={order.id} className="border-b last:border-0">
                       <td className="py-4">
-                        <p className="font-mono font-medium text-sm">{order.id.slice(0, 8)}...</p>
+                        {/* P1 #107: ista človeška številka kot pri stranki in
+                            na potrditvi naročila (ne razrezan CUID). */}
+                        <p className="font-mono text-sm font-medium">
+                          #{shortOrderNumber(order.id)}
+                        </p>
                       </td>
                       {/* P2 #70: kontakt, ki pripada TO naročilu — gostova
                           polja imajo prednost pred stranko, sicer bi

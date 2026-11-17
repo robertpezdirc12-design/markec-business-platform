@@ -7,6 +7,7 @@
 // ============================================================
 
 import { useState, useMemo } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -362,19 +363,26 @@ export function AdminCalendar({ appointments, salonTz }: AdminCalendarProps) {
                             const height = Math.max(duration * SLOT_HEIGHT, 30)
 
                             return (
-                              <div
+                              // P1 #107: dogodek v koledarju je bil navaden <div>
+                              // — zanj se ni dalo odpreti termina in tipkovnica/
+                              // bralnik zaslona ga nista dosegla. Zdaj je
+                              // povezava na podrobnosti termina (fokus + Enter),
+                              // z opisnim aria-label namesto samo title.
+                              <Link
                                 key={apt.id}
-                                className={`absolute left-1 right-1 rounded border-l-2 px-1 py-0.5 text-xs ${statusColors[apt.status] || "bg-gray-100"}`}
+                                href={`/dashboard/appointments/${apt.id}`}
+                                aria-label={`${format(apt.startTimeDate, "HH:mm")} — ${apt.customer?.name || apt.guestName || "Gost"}: ${apt.services.map((s) => s.service.name).join(", ")} (${apt.status})`}
+                                className={`absolute left-1 right-1 block overflow-hidden rounded border-l-2 px-1 py-0.5 text-xs transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${statusColors[apt.status] || "bg-gray-100"}`}
                                 style={{ top, height, overflow: "hidden" }}
                                 title={`${format(apt.startTimeDate, "HH:mm")} — ${apt.customer?.name || apt.guestName || "Gost"} | ${apt.services.map((s) => s.service.name).join(", ")}`}
                               >
-                                <div className="font-medium truncate">
+                                <div className="truncate font-medium">
                                   {apt.customer?.name || apt.guestName || "Gost"}
                                 </div>
                                 <div className="truncate opacity-75">
                                   {apt.services.map((s) => s.service.name).join(", ")}
                                 </div>
-                              </div>
+                              </Link>
                             )
                           })}
                         </div>

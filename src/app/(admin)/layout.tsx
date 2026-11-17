@@ -11,8 +11,25 @@ import { auth } from "@/lib/auth/auth"
 import { redirect } from "next/navigation"
 import { getEffectivePermissions } from "@/lib/permissions/effective"
 import { prisma } from "@/lib/prisma"
+import type { Metadata } from "next"
 
 export const dynamic = "force-dynamic"
+
+/**
+ * P1 #107 — NASLOVI ZAVIHKOV V NADZORNI PLOŠČI.
+ *
+ * Prej je korenski layout (ki nosi ime salona) določal naslov vsem
+ * podstranem brez lastnega `metadata` — v zavihku brskalnika je pisalo
+ * samo "Salon harmonija (demo)", kar pri več odprtih zavihkih ni
+ * uporabno in ne pove, na kateri strani si. Tu je privzeti naslov in
+ * predloga za podstrani ("Stranke" → "Stranke | Poslovna platforma").
+ */
+export const metadata: Metadata = {
+  title: {
+    default: "Nadzorna plošča | Poslovna platforma",
+    template: "%s | Poslovna platforma",
+  },
+}
 
 export default async function AdminLayout({
   children,

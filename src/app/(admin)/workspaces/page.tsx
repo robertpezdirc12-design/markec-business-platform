@@ -5,7 +5,7 @@ import { getWorkspacePicker } from "@/app/actions/workspaces"
 import { WorkspacePicker } from "@/components/admin/workspace-picker"
 
 export const metadata: Metadata = {
-  title: "Izberi poslovni prostor | MARKEC",
+  title: { absolute: "Izberi poslovni prostor | MARKEC" },
   robots: { index: false, follow: false },
 }
 

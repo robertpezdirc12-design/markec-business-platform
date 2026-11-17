@@ -1,4 +1,11 @@
+import type { Metadata } from "next"
 import { requirePagePermission } from "@/lib/auth/guards"
+
+// P1 #107: naslov zavihka (prej samo ime salona).
+export const metadata: Metadata = {
+  title: "Stranke",
+  description: "CRM — kartoteka strank, zgodovina obiskov in segmenti.",
+}
 import { listCustomers } from "@/app/actions/customers"
 import { CustomersManager } from "@/components/dashboard/customers/customers-manager"
 import { CustomerSegments } from "@/components/dashboard/customer-segments"

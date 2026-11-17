@@ -17,6 +17,7 @@ import { getCustomerOrders } from "@/app/actions/orders"
 import { formatCurrency } from "@/lib/utils/format"
 import { getPublicOrg } from "@/lib/tenant"
 import { orgPath } from "@/lib/org-path"
+import { shortOrderNumber } from "@/lib/orders/number"
 
 export const metadata: Metadata = {
   title: "Moja naročila | Poslovna platforma",
@@ -91,7 +92,11 @@ export default async function MyOrdersPage() {
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                       <div className="flex items-center gap-2">
                         <ReceiptIcon size={18} className="text-muted-foreground" />
-                        <span className="font-semibold">{order.id}</span>
+                        {/* P1 #107: človeška številka (ista kot na potrditvi,
+                            "DEDI7DDK") namesto surovega CUID-a. */}
+                        <span className="font-mono font-semibold">
+                          #{shortOrderNumber(order.id)}
+                        </span>
                       </div>
                       <div className="text-muted-foreground flex items-center gap-2 text-sm">
                         <CalendarIcon size={16} />

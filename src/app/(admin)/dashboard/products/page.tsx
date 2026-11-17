@@ -33,7 +33,7 @@ import { stockTone } from "@/lib/inventory/low-stock"
 // P1 #107: stran ni imela svojega naslova (v zavihku je ostalo golo ime
 // organizacije) — dodan metadata z jasnim naslovom.
 export const metadata = {
-  title: "Izdelki | Poslovna platforma",
+  title: "Izdelki",
   description:
     "Upravljajte katalog izdelkov, zaloge in cene trgovine.",
 }

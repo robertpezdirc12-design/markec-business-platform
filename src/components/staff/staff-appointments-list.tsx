@@ -223,8 +223,11 @@ export function StaffAppointmentsList({
                             variant="ghost"
                             size="icon"
                             disabled={isPending}
+                            // P1 #107: ikona brez imena — bralnik zaslona je
+                            // bral samo "gumb". Vsaka vrstica ima svoj kontekst.
+                            aria-label={`Dejanja za termin ${format(new Date(appointment.startTime), "d. MMMM ob HH:mm", { locale: sl })}`}
                           >
-                            <SettingsIcon size={20} />
+                            <SettingsIcon size={20} aria-hidden="true" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">

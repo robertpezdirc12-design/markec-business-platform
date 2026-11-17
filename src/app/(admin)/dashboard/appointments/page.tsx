@@ -1,4 +1,11 @@
 import Link from "next/link"
+import type { Metadata } from "next"
+
+// P1 #107: admin strani brez naslova so v zavihku kazale samo ime salona.
+export const metadata: Metadata = {
+  title: "Termini",
+  description: "Pregled in upravljanje vseh rezervacij salona.",
+}
 import { Button } from "@/components/ui/button"
 import {
   Card,

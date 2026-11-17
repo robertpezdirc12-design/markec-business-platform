@@ -102,7 +102,9 @@ export function StaffHeader({ user }: StaffHeaderProps) {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/api/auth/signout" className="cursor-pointer text-destructive">
+                {/* P1 #107: /logout je naša slovenska stran za odjavo
+                    (NextAuth privzeta /api/auth/signout je Angleška). */}
+                <Link href="/logout" className="cursor-pointer text-destructive">
                   <LogoutIcon size={16} className="mr-2" />
                   Odjava
                 </Link>

@@ -5,7 +5,7 @@ import { requireUnrestrictedPage } from "@/lib/auth/guards"
 import { RolesClient, type RoleRow, type MemberRow } from "@/components/dashboard/roles-client"
 
 export const metadata: Metadata = {
-  title: "Vloge | Poslovna platforma",
+  title: "Vloge",
   description: "Vloge po meri in dovoljenja članov salona (G8)",
 }
 

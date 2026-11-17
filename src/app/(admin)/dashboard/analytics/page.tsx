@@ -16,8 +16,11 @@ import { AnalyticsSkeleton } from "@/components/analytics/analytics-skeleton"
 import { requirePagePermission } from "@/lib/auth/guards"
 
 export const metadata = {
-  title: "Analytics | Poslovna platforma",
-  description: "Business performance analytics and reports",
+  // P1 #107: slovenski naslov namesto mešanice "Analytics | Poslovna
+  // platforma" — preostanek iz zgodnjega prevoda.
+  title: "Analitika",
+  description:
+    "Pregled uspešnosti poslovanja — prihodki, termini, naročila in stranke.",
 }
 
 interface AnalyticsPageProps {

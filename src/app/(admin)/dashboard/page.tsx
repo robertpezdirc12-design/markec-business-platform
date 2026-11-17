@@ -296,8 +296,11 @@ export default async function AdminDashboard() {
               <p className="text-muted-foreground text-xs">
                 {/* P1 #5 + P2 #13 (walkthrough): null = brez prejšnjega meseca →
                   "Ni prejšnjih podatkov"; trenutna vrednost 0 → delta skrit
-                  ("-100 %" ob 0,00 € straši lastnika). */}
+                  ("-100 %" ob 0,00 € straši lastnika).
+                  P1 #107: ob vrednosti 0 tudi sporočila o primerjavi NE
+                  izpisujemo — na novem podjetju je bilo to 4× odveč. */}
                 {revenueStats.revenue.change === null &&
+                  revenueStats.revenue.total > 0 &&
                   t.dashboard.noPreviousData}
                 {revenueStats.revenue.change !== null &&
                   revenueStats.revenue.total > 0 && (
@@ -366,8 +369,11 @@ export default async function AdminDashboard() {
                 {stats.orders.total.toLocaleString("sl-SI")}
               </div>
               <p className="text-muted-foreground text-xs">
-                {/* P1 #5 + P2 #13 (walkthrough) — pošteno sporočanje spremembe */}
-                {stats.orders.change === null && t.dashboard.noPreviousData}
+                {/* P1 #5 + P2 #13 (walkthrough) — pošteno sporočanje spremembe.
+                    P1 #107: pri 0 naročilih sporočila ne izpisujemo. */}
+                {stats.orders.change === null &&
+                  stats.orders.total > 0 &&
+                  t.dashboard.noPreviousData}
                 {stats.orders.change !== null && stats.orders.total > 0 && (
                   <>
                     {formatChange(stats.orders.change)}{" "}

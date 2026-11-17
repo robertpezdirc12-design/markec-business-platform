@@ -44,6 +44,9 @@ export const authConfig = {
   pages: {
     signIn: "/login",
     error: "/login",
+    // P1 #107: NextAuth privzeta stran za odjavo je angleška ("Sign out").
+    // Preusmerimo jo na lastno slovensko stran /logout.
+    signOut: "/logout",
   },
   // Middleware only verifies/reads a session — it must not carry the
   // credentials provider (bcrypt + Prisma) or the OAuth provider.

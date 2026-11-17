@@ -10,7 +10,9 @@ export const analyticsSl = {
     enquiries: "Povpraševanja",
     vsLastPeriod: "v primerjavi s prejšnjim obdobjem",
     noEnquiryData: "Ni povpraševanj v tem obdobju",
-    noPreviousData: "Ni prejšnjih podatkov",
+    // P1 #107: krajša oblika — na novem podjetju se je stavek ponovil
+    // na vsaki kartici in ni povedal nič novega.
+    noPreviousData: "Brez primerjave",
   },
   period: {
     label: "Obdobje",
@@ -90,7 +92,7 @@ export const analyticsEn: AnalyticsDict = {
     enquiries: "Enquiries",
     vsLastPeriod: "vs last period",
     noEnquiryData: "No enquiries in this period",
-    noPreviousData: "No previous data",
+    noPreviousData: "No comparison",
   },
   period: {
     label: "Period",

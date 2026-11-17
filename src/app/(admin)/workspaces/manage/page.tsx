@@ -6,7 +6,7 @@ import { WorkspaceManager } from "@/components/admin/workspace-manager"
 import { listProfileOptions } from "@/lib/profiles/registry"
 
 export const metadata: Metadata = {
-  title: "Moja podjetja in poslovni prostori | MARKEC",
+  title: { absolute: "Moja podjetja in poslovni prostori | MARKEC" },
   robots: { index: false, follow: false },
 }
 
