@@ -169,6 +169,10 @@ export const productsSl = {
   initialStockHint:
     "Za nakup na voljo dodajte začetno zalogo (prejem blaga).",
   initialStockAction: "Prejem blaga",
+  initialStockHelp:
+    "Začetna zaloga je takoj na voljo za spletno prodajo. Kasnejše spremembe potekajo prek Prejema blaga in Inventure.",
+  initialStockHelpEdit:
+    "Zaloga se spreminja prek Prejema blaga, prodaje in Inventure — ne ročno tukaj.",
   createFailed: "Napaka pri ustvarjanju izdelka",
   updateSuccess: "Izdelek je uspešno posodobljen",
   updateFailed: "Napaka pri posodabljanju izdelka",
@@ -344,6 +348,10 @@ export const productsEn: ProductsDict = {
   initialStockHint:
     "Add initial stock (goods receipt) so customers can buy it.",
   initialStockAction: "Goods receipt",
+  initialStockHelp:
+    "Initial stock is immediately available for online sale. Later changes go through Goods receipt and Stocktake.",
+  initialStockHelpEdit:
+    "Stock changes through Goods receipt, sales and Stocktake — not manually here.",
   createFailed: "Failed to create product",
   updateSuccess: "Product updated successfully",
   updateFailed: "Failed to update product",

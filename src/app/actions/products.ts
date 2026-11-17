@@ -298,7 +298,7 @@ export const getProductById = cache(async (id: string) => {
 // Create product
 export async function createProduct(data: CreateProductInput) {
   try {
-    const { org } = await requirePermissionOrg("products.manage")
+    const { session, org } = await requirePermissionOrg("products.manage")
 
     // Plan entitlements (EPIC #3 E3-3): block NEW products at the plan
     // limit — never touches existing content (downgrade tolerance).
@@ -336,6 +336,24 @@ export async function createProduct(data: CreateProductInput) {
         ...(categoryId && { category: { connect: { id: categoryId } } }),
       },
     })
+
+    // P1 #107: začetna zaloga mora pustiti sled v knjigi gibanj — sicer bi
+    // bil prvi vnos edini "neevidentirani" premik v celotni zgodovini
+    // izdelka (prejem/prodaja/inventura pišejo vedno).
+    const initialStock = productData.stockQuantity ?? 0
+    if (initialStock > 0 && product.trackInventory) {
+      await prisma.stockMovement.create({
+        data: {
+          organizationId: org.id,
+          productId: product.id,
+          direction: "IN",
+          quantity: initialStock,
+          source: "MANUAL",
+          note: "Začetna zaloga ob ustvarjanju izdelka",
+          createdById: session.user.id,
+        },
+      })
+    }
 
     revalidatePath("/dashboard/products")
     revalidatePath("/shop")

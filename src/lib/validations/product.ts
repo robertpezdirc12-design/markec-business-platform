@@ -17,8 +17,11 @@ const productBaseSchema = z.object({
     .nullable(),
   sku: z.string().optional(),
   trackInventory: z.boolean(),
+  // P1 #107: začetna zaloga ob ustvarjanju (samo create — na posodobitvi
+  // jo strežniška shema izloči; zaloga se spreminja prek knjige gibanj).
   stockQuantity: z
     .number()
+    .int("Zaloga mora biti celo število")
     .min(0, "Stock quantity must be positive")
     .optional(),
   images: z.array(z.string()).optional(),

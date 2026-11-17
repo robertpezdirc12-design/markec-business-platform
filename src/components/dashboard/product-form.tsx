@@ -150,6 +150,12 @@ export function ProductForm({ categories, product, mode = "create" }: ProductFor
       categoryId: product?.categoryId || "",
       isActive: product?.isActive ?? true,
       isFeatured: product?.isFeatured ?? false,
+      // P1 #107: pri NOVEM izdelku je začetno zalogo mogoče vnesti takoj —
+      // prej je bila oznaka "Količina na zalogi" brez vnosnega polja, zato
+      // je vsak nov izdelek nastal z zalogo 0 ("Ni na zalogi").
+      // Pri urejanju obstoječega izdelka zaloge NE urejamo tu — zanjo
+      // obstaja knjiga gibanj (Prejem blaga / Inventura).
+      stockQuantity: product ? undefined : 0,
       // #78: retail layer
       barcode: product?.barcode || "",
       brand: product?.brand || "",
@@ -176,6 +182,7 @@ export function ProductForm({ categories, product, mode = "create" }: ProductFor
   const watchVatRate = watch("vatRate")
   const watchForSale = watch("forSale")
   const watchReorderPoint = watch("reorderPoint")
+  const watchStockQuantity = watch("stockQuantity")
 
   // All text/number fields are CONTROLLED — the React 19 `action={}`
   // pathway resets uncontrolled inputs after every action submission,
@@ -265,6 +272,10 @@ export function ProductForm({ categories, product, mode = "create" }: ProductFor
         compareAtPrice: fdNum(formData, "compareAtPrice"),
         sku: fdOptStr(formData, "sku"),
         trackInventory: fdBool(formData, "trackInventory"),
+        // P1 #107: začetna zaloga (samo pri ustvarjanju).
+        stockQuantity: isEditMode
+          ? undefined
+          : (fdNum(formData, "stockQuantity") ?? 0),
         images: images.length > 0 ? images : undefined,
         categoryId: fdOptStr(formData, "categoryId"),
         isActive: fdBool(formData, "isActive"),
@@ -315,7 +326,10 @@ export function ProductForm({ categories, product, mode = "create" }: ProductFor
           // "Test mame" (2026-11-15): nov izdelek s sledenjem zaloge je brez
           // začetne zaloge javno "Ni na zalogi" (gumb onemogočen) — lastnika
           // takoj usmerimo na prejem blaga, da je izdelek kupljiv.
-          if (!isEditMode && result.product?.trackInventory) {
+          // P1 #107: opozorilo je smiselno SAMO, ko začetna zaloga ni bila
+          // vnesena (polje je zdaj v obrazcu).
+          const initialStock = parsed.data.stockQuantity ?? 0
+          if (!isEditMode && result.product?.trackInventory && initialStock <= 0) {
             toast.info(t.products.initialStockHint, {
               duration: 12_000,
               action: {
@@ -585,7 +599,39 @@ export function ProductForm({ categories, product, mode = "create" }: ProductFor
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="stockQuantity">{t.products.stockQuantityLabel}</Label>
-                  <p className="text-sm text-muted-foreground">{product?.stockQuantity ?? 0}</p>
+                  {isEditMode ? (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        {product?.stockQuantity ?? 0}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {t.products.initialStockHelpEdit}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Input
+                        id="stockQuantity"
+                        name="stockQuantity"
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                        value={watchStockQuantity ?? ""}
+                        onChange={(e) => {
+                          setValue(
+                            "stockQuantity",
+                            numberValue(e.target.value) as unknown as number
+                          )
+                          clearErrors("stockQuantity")
+                        }}
+                        disabled={isPending}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {t.products.initialStockHelp}
+                      </p>
+                    </>
+                  )}
                 </div>
                 {/* #78: črtna koda — prejem blaga z skeniranjem. */}
                 <div className="space-y-2">

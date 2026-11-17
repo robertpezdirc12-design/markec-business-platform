@@ -50,6 +50,15 @@ export const productServerSchema = z.object({
     .nullable(),
   forSale: z.boolean().optional(),
   reorderPoint: z.number().int().min(0).max(1_000_000).optional().nullable(),
+  // P1 #107: začetna zaloga ob USTVARJANJU izdelka. Samo create — pri
+  // posodobitvi zaloge ni dovoljeno spreminjati na ta način (zato jo
+  // spodnja update shema izloči); zanjo obstaja knjiga gibanj.
+  stockQuantity: z
+    .number()
+    .int("Zaloga mora biti celo število")
+    .min(0, "Zaloga ne sme biti negativna")
+    .max(1_000_000, "Zaloga je prevelika")
+    .optional(),
   trackInventory: z.boolean().optional(),
   images: z.array(z.string().max(500)).max(12, "Največ 12 slik").optional(),
   categoryId: z.string().max(40).optional(),
@@ -59,8 +68,13 @@ export const productServerSchema = z.object({
 
 export type ProductServerInput = z.infer<typeof productServerSchema>
 
-/** Posodobitev: vsa polja neobvezna (isto belo listo, brez zahtevanih). */
-export const productServerUpdateSchema = productServerSchema.partial()
+/** Posodobitev: vsa polja neobvezna (isto belo listo, brez zahtevanih).
+ * Zaloga (`stockQuantity`) je NAMENOMA izločena — edina pot do spremembe
+ * zaloge je knjiga gibanj (Prejem blaga / prodaja / Inventura), sicer bi
+ * nastali neevidentirani popravki brez sledi. */
+export const productServerUpdateSchema = productServerSchema
+  .partial()
+  .omit({ stockQuantity: true })
 
 /** Varno parsanje: vrne podatke ALI človeku razumljivo sporočilo prve napake.
  * Overloada: create zahteva vsa obvezna polja, update je delna bela lista. */
