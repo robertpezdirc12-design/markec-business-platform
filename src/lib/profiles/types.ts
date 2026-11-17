@@ -42,6 +42,12 @@ export interface CapabilityMatrix {
    * dejavnosti (prijava brez računa, živa vrsta, javni status).
    */
   walkIn: CapabilityState
+  /**
+   * WP-1 (Blagajna): dnevna denarna seja (odpiranje/zapiranje, prodaje,
+   * drobni stroški, odstopanje) — eno jedro za VSE dejavnosti.
+   * Prodaja vedno piše v Order (enotna denarna pot); seja je le okno.
+   */
+  cashRegister: CapabilityState
 }
 
 export type CapabilityKey = keyof CapabilityMatrix

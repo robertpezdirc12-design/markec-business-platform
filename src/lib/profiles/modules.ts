@@ -34,6 +34,7 @@ const MODULE_LABELS: Record<string, { sl: string; en: string }> = {
   documents: { sl: "Dokumenti (ponudbe, računi)", en: "Documents (quotes, invoices)" },
   delivery: { sl: "Dostava", en: "Delivery" },
   walkIn: { sl: "Walk-in vrsta (brez računa)", en: "Walk-in queue (no account)" },
+  cashRegister: { sl: "Blagajna (dnevna seja)", en: "Cash register (daily session)" },
 }
 
 /** Fixed order for the wizard's "what you get" list. */
@@ -52,6 +53,7 @@ const MODULE_ORDER: CapabilityKey[] = [
   "documents",
   "delivery",
   "walkIn",
+  "cashRegister",
 ]
 
 /**

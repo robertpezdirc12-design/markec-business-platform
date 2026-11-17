@@ -29,7 +29,17 @@ export default async function RecordsPage() {
           {t.common.nav.records}
         </h1>
         <p className="text-muted-foreground">
-          {t.recordsPage.subtitle}
+          {/* Imena evidenc izhajajo iz dejansko omogočenih razširitev te
+              dejavnosti — brez generičnih primerov (šivilji ne kažemo vozil). */}
+          {entities.length > 0
+            ? t.recordsPage.subtitleWith.replace(
+                "{list}",
+                entities
+                  .slice(0, 3)
+                  .map((e) => e.name)
+                  .join(", ")
+              )
+            : t.recordsPage.subtitle}
         </p>
       </div>
 

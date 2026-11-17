@@ -64,8 +64,13 @@ const directSaleSchema = z.object({
   lines: z.array(lineSchema).min(1).max(100),
   // Optional existing customer (org-scoped, validated server-side).
   customerId: z.string().min(1).max(64).nullable().optional(),
-  paymentMethod: z.enum(["offline", "cash", "transfer", "online"]).optional(),
+  // WP-1 (Blagajna): "card" = kartica na blagajni → PAID (denar takoj prejet),
+  // enako kot gotovina. "online" ostaja rezerviran za Stripe pot.
+  paymentMethod: z.enum(["offline", "cash", "card", "transfer", "online"]).optional(),
   notes: z.string().max(500).nullable().optional(),
+  // WP-1 (Blagajna): vezava na odprto denarno sejo iste org (null/ni =
+  // prodaja brez seje). Validacija (OPEN + org) poteka v isti transakciji.
+  cashSessionId: z.string().min(1).max(64).nullable().optional(),
 })
 
 export interface DirectSaleResult {
@@ -165,11 +170,21 @@ export async function createDirectOrder(input: z.input<typeof directSaleSchema>)
 
   // 2D-1P §6 — plačilni status neposredne prodaje:
   //   • online nikoli v neposredni prodaji (ni dejanskega plačila tu).
-  //   • gotovina/offline: PAID šele ob zaključeni prodaji (takoj).
+  //   • gotovina/offline/kartica (WP-1): PAID šele ob zaključeni prodaji (takoj).
   //   • nakazilo (transfer): PENDING — ni označeno prejeto, dokler ni potrjeno.
   const method = data.paymentMethod ?? "offline"
   if (method === "online") return { success: false, error: "ONLINE_NOT_SUPPORTED" }
   const orderStatus: "PAID" | "PENDING" = method === "transfer" ? "PENDING" : "PAID"
+
+  // WP-1 (Blagajna): če je podana seja, mora biti OPEN in iste org —
+  // preverimo PRED transakcijo (brez sklenjene seje prodaja ne veže).
+  if (data.cashSessionId) {
+    const sess = await prisma.cashSession.findFirst({
+      where: { id: data.cashSessionId, organizationId: org.id },
+      select: { status: true },
+    })
+    if (!sess || sess.status !== "OPEN") return { success: false, error: "SESSION_NOT_OPEN" }
+  }
 
   try {
     const order = await prisma.$transaction(async (tx) => {
@@ -270,6 +285,8 @@ export async function createDirectOrder(input: z.input<typeof directSaleSchema>)
           status: orderStatus,
           paymentMethod: method,
           notes: data.notes?.trim() || "Neposredna prodaja (brez spletnega plačila).",
+          // WP-1 (Blagajna): vezava na denarno sejo (org + OPEN že validiran zgoraj).
+          ...(data.cashSessionId ? { cashSessionId: data.cashSessionId } : {}),
           items: {
             create: data.lines.map((l) => {
               const unit = l.productVariantId
@@ -340,6 +357,7 @@ export async function createDirectOrder(input: z.input<typeof directSaleSchema>)
     if (msg === "BATCH_ALLOCATION_MISMATCH") return { success: false, error: "BATCH_ALLOCATION_MISMATCH" }
     if (msg === "BATCH_INSUFFICIENT") return { success: false, error: "BATCH_INSUFFICIENT" }
     if (msg === "BATCH_NOT_FOUND") return { success: false, error: "BATCH_NOT_FOUND" }
+    if (msg === "SESSION_NOT_OPEN") return { success: false, error: "SESSION_NOT_OPEN" }
     // Nobena druga napaka ne sme pustiti delnega stanja → transakcija se rollbacka.
     return { success: false, error: "TRANSACTION_FAILED" }
   }

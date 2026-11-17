@@ -22,9 +22,10 @@ const read = (p: string) =>
   readFileSync(__dirname + "/../" + p, "utf8").replace(/\r\n/g, "\n")
 
 describe("#100 8.C katalog modulov (integriteta)", () => {
-  it("14 modulov (13 capabilityjev + walkIn), unikatni id-ji", () => {
-    expect(MODULES.length).toBe(14)
-    expect(new Set(MODULES.map((m) => m.id)).size).toBe(14)
+  // WP-1: blagajna je 15. modul (14 capabilityjev + walkIn).
+  it("15 modulov (14 capabilityjev + walkIn), unikatni id-ji", () => {
+    expect(MODULES.length).toBe(15)
+    expect(new Set(MODULES.map((m) => m.id)).size).toBe(15)
     for (const m of MODULES) {
       expect(MODULE_IDS.has(m.id)).toBe(true)
       expect(m.nameSl.length).toBeGreaterThan(2)

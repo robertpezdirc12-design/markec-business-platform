@@ -42,6 +42,8 @@ const capabilitySchema = z.object({
   // #98 (AD-02): walk-in vrsta — samostojen izbirni modul za VSE
   // dejavnosti (prijava brez računa, živa vrsta, javni status).
   walkIn: capabilityState,
+  // WP-1 (Blagajna): dnevna denarna seja — eno jedro za VSE dejavnosti.
+  cashRegister: capabilityState,
 })
 
 const termSchema = z.object({ sl: z.string().min(1), en: z.string().min(1) })

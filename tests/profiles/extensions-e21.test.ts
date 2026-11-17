@@ -105,6 +105,7 @@ describe("E2-1 — capability extension registry", () => {
       documents: 0,
       delivery: 0,
       walkIn: 0, // #98: 15. capability (AD-02)
+      cashRegister: 0, // WP-1: 16. capability (blagajna — eno jedro, vse dejavnosti)
     } satisfies Record<keyof CapabilityMatrix, number>)
     expect([...CAPABILITY_KEYS].sort()).toEqual(matrixKeys.sort())
   })

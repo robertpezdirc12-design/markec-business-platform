@@ -1,8 +1,11 @@
 export const recordsSl = {
-  subtitle: "Posebni registri vaše dejavnosti (vozila, serije, mere …) — določeni s profilom dejavnosti.",
+  // Kopija je bila generična in je šivilji kazala »vozila«. Zdaj so
+  // primeri izpeljani iz DEJANSKIH evidenc njene dejavnosti (glej stran).
+  subtitle: "Posebni registri vaše dejavnosti — določeni s profilom dejavnosti.",
+  subtitleWith: "Posebni registri vaše dejavnosti ({list}) — določeni s profilom dejavnosti.",
   emptyTitle: "Ni posebnih evidenc",
   emptyHint:
-    "Vaš profil dejavnosti ne vključuje razširitev s posebnimi entitetami. Razširitve (npr. evidenca vozil, serije proizvodnje) se omogočijo prek profila dejavnosti.",
+    "Vaš profil dejavnosti ne vključuje razširitev s posebnimi evidencami. Razširitve se omogočijo prek profila dejavnosti.",
   addRecord: "Dodaj vnos",
   editRecord: "Uredi vnos",
   deleteRecord: "Izbriši",
@@ -72,7 +75,8 @@ export const recordsSl = {
 }
 
 export const recordsEn = {
-  subtitle: "Activity-specific registries (vehicles, batches, measurements …) — driven by your activity profile.",
+  subtitle: "Activity-specific registries — driven by your activity profile.",
+  subtitleWith: "Activity-specific registries ({list}) — driven by your activity profile.",
   emptyTitle: "No specialized records",
   emptyHint:
     "Your activity profile does not include extensions with specialized entities. Extensions (e.g. vehicle registry, production batches) are enabled via the activity profile.",

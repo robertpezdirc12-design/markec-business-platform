@@ -42,12 +42,13 @@ import {
   LockIcon,
   HouseIcon,
   WrenchIcon,
+  WalletIcon,
 } from "@/components/icons"
 import { usePermissions } from "@/components/admin/permissions-provider"
 import type { PermissionKey } from "@/lib/permissions/roles"
 
 interface NavItem {
-  nameKey: "dashboard" | "analytics" | "appointments" | "waitlist" | "walkIn" | "customers" | "marketing" | "services" | "products" | "categories" | "packages" | "promotions" | "shopOrders" | "workOrders" | "documents" | "einvoices" | "forms" | "records" | "projects" | "apiculture" | "tireService" | "traceability" | "seamstress" | "staff" | "roles" | "settings"
+  nameKey: "dashboard" | "analytics" | "appointments" | "waitlist" | "walkIn" | "customers" | "marketing" | "services" | "products" | "categories" | "packages" | "promotions" | "shopOrders" | "workOrders" | "documents" | "einvoices" | "cashRegister" | "forms" | "records" | "projects" | "apiculture" | "tireService" | "traceability" | "seamstress" | "staff" | "roles" | "settings"
   href: string
   icon: React.ComponentType<{ size?: number; className?: string }>
   /** Capability that must not be "disabled" for this item to render. */
@@ -78,6 +79,10 @@ const navigation: NavItem[] = [
   { nameKey: "documents", href: "/dashboard/documents", icon: FileTextIcon, capability: "documents", permission: "finances.view", group: "common" },
   // F5.5.4.6.2 — e-računi (priprava/validacija/arhiv)
   { nameKey: "einvoices", href: "/dashboard/einvoices", icon: ReceiptIcon, permission: "finances.view", group: "common" },
+  // WP-1 (Blagajna) — eno jedro za VSE dejavnosti (capability cashRegister),
+  // skupna poslovna funkcija (neodvisna od aktivne dejavnosti). Pravica:
+  // orders.manage (prodaje so naročila — ista denarna pot kot neposredna prodaja).
+  { nameKey: "cashRegister", href: "/dashboard/cash-register", icon: WalletIcon, capability: "cashRegister", permission: "orders.manage", group: "common" },
   { nameKey: "staff", href: "/dashboard/staff", icon: UserCogIcon, capability: "staff", permission: "staff.manage", group: "common" },
   // Custom roles (G8) — admin-only
   { nameKey: "roles", href: "/dashboard/roles", icon: LockIcon, group: "common" },

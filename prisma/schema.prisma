@@ -115,6 +115,11 @@ model Organization {
   // #98 (AD-02): walk-in vrsta — živa vrsta brez računa.
   walkInEntries WalkInEntry[]
 
+  // WP-1 (Blagajna): denarne seje in drobni stroški (org-scoped direktno,
+  // da cross-tenant preverjanje ne zahteva joina prek seje).
+  cashSessions CashSession[]
+  cashExpenses CashExpense[]
+
   // #100 8.A (M1): članstva — en lastnik lahko vodi VEČ podjetij iz enega
   // računa; vloga je PER ORGANIZACIJO. Legacy User.organizationId/role
   // ostaneta napovednika privzetega podjetja (dvojno branje M2, cleanup
@@ -381,6 +386,11 @@ model User {
   // ADMIN/STAFF behaviour is fully preserved.
   customRoleId String?
   customRole   CustomRole? @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
+
+  // WP-1 (Blagajna): denarne seje (odprte/zaprla) in knjiženi drobni stroški.
+  openedCashSessions     CashSession[]
+  closedCashSessions     CashSession[]  @relation("closedCashSessions")
+  recordedCashExpenses   CashExpense[]  @relation("recordedCashExpenses")
 
   @@index([email])
   @@index([role])
@@ -1306,6 +1316,12 @@ model Order {
 
   notes String? @db.Text
 
+  // WP-1 (Blagajna): vezava na denarno sejo, ko je prodaja knjižena NA
+  // BLAGAJNI (null = prodaja brez seje, npr. neposredna iz UI-ja naročil).
+  // Jedro ostaja čisto: prodaja vedno piše v Order (enotna denarna pot),
+  // seja je le dnevno okno za odštevanje predala.
+  cashSessionId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1319,11 +1335,14 @@ model Order {
   prepaidRedemptions PrepaidRedemption[]
   // F5.5.4.1 — dokumenti (računi/ponudbe), izpeljani iz tega naročila.
   documents          Document[]
+  // WP-1 (Blagajna): denarna seja, v kateri je bila prodaja knjižena.
+  cashSession        CashSession?        @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
 
   @@index([customerId])
   @@index([organizationId])
   @@index([status])
   @@index([createdAt])
+  @@index([cashSessionId])
 }
 
 model OrderItem {
@@ -2812,4 +2831,91 @@ model WarrantyClaim {
 
   @@index([organizationId])
   @@index([warrantyId])
+}
+
+// ============================================================
+// WP-1 (BLAGAJNA) — denarna seja in drobni stroški. ENO jedro za VSE
+// dejavnosti (profilsko se razlikuje samo capability-vidnost).
+//
+// Odločitev (2D vzorec): blagajna NIKOLI ne duplira prodaje — vsaka
+// prodaja je zapis v obstoječem Order modelu (enotna denarna pot, isti
+// transakcijski vzorec kot neposredna prodaja). Seja je dnevno KNJIŽBENO
+// OKNO: odprta z začetnim fondom, prodaje se vežejo nanjo (Order.
+// cashSessionId), drobni stroški pa so CashExpense. Pri zaprtju se
+// pričakovan stanje predala izračuna (fund + gotovinske prodaje − stroški)
+// in primerja z ošteviljenim stanjem (variance). Nobenega drugega denarnega
+// zapisa ne piše.
+// ============================================================
+
+model CashSession {
+  id             String    @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Odprla (obvezno) / zaprla (ob zaprtju) — avtorizacija: vloga + pravica
+  // orders.manage (prodaje so naročila, seja je le njihovo dnevno okno).
+  openedById String
+  openedBy   User? @relation(fields: [openedById], references: [id], onDelete: SetNull)
+  closedById String?
+  closedBy   User? @relation("closedCashSessions", fields: [closedById], references: [id], onDelete: SetNull)
+
+  // Opcionalno: kateri zaposleni je vodil blagajno (mehka referenca —
+  // izbris zaposlenega ne sme pobrisati denarne zgodovine).
+  staffId String?
+
+  // OPEN | CLOSED (polstring, vzorec kot WorkOrder/WalkInEntry status).
+  status String @default("OPEN")
+
+  openedAt   DateTime @default(now())
+  closedAt   DateTime?
+
+  // Ošteviljen ODPRIJNI fond predala (privzeto 0 — šef ne mora imeti fonda).
+  openingFloat Decimal @default(0) @db.Decimal(10, 2)
+
+  // Zaprtje: ošteviljeno stanje + snapshot izračuna (za zgodovino, brez
+  // ponovnih seštevank ob vsakem branju).
+  // cashSales = prodaje, knjižene v sejo s paymentMethod cash|offline|card
+  // (v predal pride le cash|offline — zato cashSalesTotal loči "predal" od
+  // „kartica“; transfer prodaja v sejo ne vpliva na gotovinski predal).
+  salesCount     Int      @default(0) // število prodaj v seji (vse metode)
+  cashSalesTotal Decimal  @default(0) @db.Decimal(10, 2) // cash + offline (gotovina v predalu)
+  cardSalesTotal Decimal  @default(0) @db.Decimal(10, 2)
+  transferSalesTotal Decimal @default(0) @db.Decimal(10, 2)
+  expensesTotal  Decimal  @default(0) @db.Decimal(10, 2)
+  expectedAmount Decimal? @db.Decimal(10, 2) // openingFloat + cashSales − stroški (le gotovinski predal)
+  actualAmount   Decimal? @db.Decimal(10, 2) // ošteviljeno stanje predala
+  varianceAmount Decimal? @db.Decimal(10, 2) // actual − expected (negativno = manjka)
+
+  notes String?
+
+  orders   Order[]
+  expenses CashExpense[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, openedAt])
+  @@index([staffId])
+}
+
+model CashExpense {
+  id             String   @id @default(cuid())
+  organizationId String // org-scoped direktno (cross-tenant test brez joina)
+  sessionId      String
+  session        CashSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  label String // npr. "Drobci za predal", "Nakup embalaže"
+
+  // drobci | nakup | drugo (polstring — lastnik dodaja kategorije brez migracije)
+  category String @default("drugo")
+
+  amount Decimal @db.Decimal(10, 2)
+
+  // Kdo je knjižil (audit; SetNull da izbris uporabnika ne pobriše zgodovine).
+  recordedById String
+  recordedBy   User? @relation("recordedCashExpenses", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([sessionId])
 }

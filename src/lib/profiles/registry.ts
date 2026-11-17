@@ -43,6 +43,7 @@ function salonCapabilities(): CapabilityMatrix {
     documents: "disabled",
     delivery: "disabled",
     walkIn: "optional", // #98: modul je na voljo vsaki dejavnosti (AD-02)
+    cashRegister: "required", // WP-1: blagajna (eno jedro, capability-vidnost)
   }
 }
 
@@ -382,6 +383,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "disabled",
       delivery: "optional",
     walkIn: "optional", // #98: modul je na voljo vsaki dejavnosti (AD-02)
+    cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       orderSingular: "Naročilo",
@@ -427,6 +429,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "optional",
       delivery: "optional",
     walkIn: "optional", // #98: modul je na voljo vsaki dejavnosti (AD-02)
+    cashRegister: "required", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       businessSingular: "atelje",
@@ -517,6 +520,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "optional",
       delivery: "disabled",
     walkIn: "optional", // #98: modul je na voljo vsaki dejavnosti (AD-02)
+    cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       businessSingular: "servis",
@@ -593,6 +597,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "optional",
       delivery: "disabled",
       walkIn: "optional", // #98: modul je na voljo vsaki dejavnosti (AD-02)
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       businessSingular: "avtoservis",
@@ -667,6 +672,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "optional",
       delivery: "optional",
     walkIn: "optional", // #98: modul je na voljo vsaki dejavnosti (AD-02)
+    cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       businessSingular: "čebelarstvo",
@@ -726,6 +732,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "optional",
       delivery: "optional",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       orderSingular: "Naročilo",
@@ -767,6 +774,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "required",
       delivery: "optional",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Pregled",
@@ -815,6 +823,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "optional",
       delivery: "optional",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Termin",
@@ -863,6 +872,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "optional",
       delivery: "disabled",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Servisni termin",
@@ -911,6 +921,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "optional",
       delivery: "disabled",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Termin",
@@ -959,6 +970,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "required",
       delivery: "optional",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Pregled",
@@ -1007,6 +1019,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "optional",
       delivery: "optional",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       orderSingular: "Naročilo",
@@ -1053,6 +1066,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "optional",
       delivery: "required",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Termin",
@@ -1101,6 +1115,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "optional",
       delivery: "optional",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Rezervacija",
@@ -1149,6 +1164,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "required",
       delivery: "optional",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Srečanje",
@@ -1197,6 +1213,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "optional",
       delivery: "optional",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Konsultacija",
@@ -1245,6 +1262,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "required",
       delivery: "disabled",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Svetovalni termin",
@@ -1293,6 +1311,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "required",
       delivery: "disabled",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Pregled",
@@ -1341,6 +1360,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "required",
       delivery: "disabled",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Svetovanje",
@@ -1389,6 +1409,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "optional",
       delivery: "optional",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Termin",
@@ -1437,6 +1458,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "required",
       delivery: "disabled",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Zasedanje",
@@ -1485,6 +1507,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "optional",
       delivery: "disabled",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Vpis",
@@ -1533,6 +1556,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "required",
       delivery: "optional",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Pregled",
@@ -1581,6 +1605,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "optional",
       delivery: "optional",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Vpis",
@@ -1629,6 +1654,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "optional",
       delivery: "optional",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Termin",
@@ -1677,6 +1703,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "optional",
       delivery: "disabled",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Termin",
@@ -1725,6 +1752,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       documents: "required",
       delivery: "disabled",
       walkIn: "optional",
+      cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
     terminology: terms({
       appointmentSingular: "Srečanje",

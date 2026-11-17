@@ -48,6 +48,8 @@ export { ReceiptIcon } from "./receipt-icon"
 export { FileTextIcon } from "./file-text-icon"
 export { PrinterIcon } from "./printer-icon"
 export { CreditCardIcon } from "./credit-card-icon"
+// WP-1 (Blagajna)
+export { WalletIcon } from "./wallet-icon"
 
 // Calendar & Time
 export { CalendarIcon } from "./calendar-icon"

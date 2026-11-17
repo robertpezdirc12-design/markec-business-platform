@@ -156,6 +156,17 @@ export const MODULES: ModuleDef[] = [
     capabilities: ["walkIn"],
     dependsOn: [],
   },
+  {
+    id: "cashRegister",
+    nameSl: "Blagajna",
+    nameEn: "Cash register",
+    descriptionSl:
+      "Dnevna denarna seja: odpiranje z začetnim fondom, prodaje (gotovina/kartica/nakazilo), drobni stroški in odstopanje ob zaprtju.",
+    descriptionEn:
+      "Daily cash session: opening float, sales (cash/card/transfer), small expenses and closing variance.",
+    capabilities: ["cashRegister"],
+    dependsOn: [],
+  },
 ]
 
 /** IDs v hitrem nizu (validacija vnosa). */

@@ -58,6 +58,7 @@ export const CAPABILITY_KEYS = [
   "documents",
   "delivery",
   "walkIn",
+  "cashRegister",
 ] as const satisfies readonly CapabilityKey[]
 
 // ------------------------------------------------------------
