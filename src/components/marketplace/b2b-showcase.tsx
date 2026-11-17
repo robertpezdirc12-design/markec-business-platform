@@ -56,31 +56,14 @@ const features = [
   },
 ]
 
-const businessTestimonials = [
-  {
-    name: "Ana Novak",
-    role: "Lastnica salona",
-    company: "Lassana Kozmetični Salon",
-    quote:
-      "MARKEC je popolnoma spremenil naše poslovanje. Rezervacije so samodejne, stranke so zadovoljne, prihodki pa so se povečali za 30%.",
-    rating: 5,
-  },
-  {
-    name: "Marko Kovač",
-    role: "Brivec",
-    company: "Barbershop AS",
-    quote:
-      "Končno imam vse na enem mestu. Koledar, stranke, marketing — vse deluje brezhibno. Priporočam vsakemu brivcu.",
-    rating: 5,
-  },
-  {
-    name: "Maja Horvat",
-    role: "Wellness terapevtka",
-    company: "Wellness Studio Mira",
-    quote:
-      "Najboljša odločitev za moj studio. Spletna trgovina mi je prinesla dodatne prihodke, marketing orodja pa privabljajo nove stranke.",
-    rating: 5,
-  },
+// Audit 2026-11-17: tu je bil seznam IZMIŠLJENIH strank ("Ana Novak,
+// Lassana Kozmetični Salon", "+30% prihodkov" …). Platforma takih strank
+// nima, zato so izjave odstranjene; na njihovem mestu so preverljiva
+// dejstva o izdelku.
+const platformFacts = [
+  "Spletna stran, rezervacije in trgovina v enem računu",
+  "Urejanje brez kodiranja — cene, slike in besedila sami",
+  "Podatki gostujejo v EU; plačila prek vašega Stripe računa",
 ]
 
 export function B2BShowcase() {
@@ -211,45 +194,26 @@ export function B2BShowcase() {
 
           {/* Testimonials */}
           <div>
-            {/* Rating */}
+            {/* Preverljiva dejstva (prej: "5/5 na Capterra / 1250 mnenj"
+                in izmišljene stranke — platforma ni na Capterru). */}
             <div className="mb-8">
-              <div className="flex items-center gap-2">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <StarIcon key={i} size={24} className="text-amber-400" weight="fill" />
-                ))}
-              </div>
-              <p className="mt-2 text-2xl font-bold">Odlično 5/5</p>
+              <p className="text-2xl font-bold">Kaj dobite</p>
               <p className="text-muted-foreground">
-                Več kot 1250 mnenj na Capterra
+                Brez obljub, ki jih ne moremo dokazati.
               </p>
             </div>
 
-            {/* Testimonials */}
-            <div className="space-y-6">
-              {businessTestimonials.map((testimonial) => (
+            <div className="space-y-4">
+              {platformFacts.map((fact) => (
                 <div
-                  key={testimonial.name}
-                  className="rounded-xl border bg-background p-4"
+                  key={fact}
+                  className="flex items-start gap-3 rounded-xl border bg-background p-4"
                 >
-                  <div className="mb-2 flex items-center gap-1">
-                    {Array.from({ length: testimonial.rating }).map((_, i) => (
-                      <StarIcon key={i} size={14} className="text-amber-400" weight="fill" />
-                    ))}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    &ldquo;{testimonial.quote}&rdquo;
-                  </p>
-                  <div className="mt-3 flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-medium">
-                      {testimonial.name[0]}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">{testimonial.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {testimonial.role}, {testimonial.company}
-                      </p>
-                    </div>
-                  </div>
+                  <CheckCircleIcon
+                    size={20}
+                    className="mt-0.5 shrink-0 text-green-500"
+                  />
+                  <p className="text-sm text-muted-foreground">{fact}</p>
                 </div>
               ))}
             </div>
