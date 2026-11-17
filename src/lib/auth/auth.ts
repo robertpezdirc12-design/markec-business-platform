@@ -5,6 +5,7 @@ import { compare } from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { UserRole } from "@prisma/client"
 import { rateLimit, getClientIp, loginLimits } from "@/lib/rate-limit"
+import { authConfig } from "./auth.config"
 
 // Custom error for email not verified
 class EmailNotVerifiedError extends CredentialsSignin {
@@ -31,27 +32,12 @@ declare module "next-auth" {
 // #40: obstoječ račun, ki ustvari podjetje, dobi organizationId + role ADMIN
 // v ISTI seji (dashboard takoj dostopen).
 export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
-  // F2.2.2 P1-6 (dev okolje): brez nastavljenega trustHost je NextAuth
-  // middleware v dev krepil req.url na NEXTAUTH_URL pin (http://localhost:3000)
-  // → zaščitena preusmeritev je bila na port 3000, ko strežnik teče na
-  // 3001 (ERR_CONNECTION_REFUSED). V dev zaupamo dejanskemu request
-  // hostu. V produkciji je vedenje fail-closed: hostu zaupamo le, kadar je
-  // to izrecno omogočeno (AUTH_TRUST_HOST=true) ali ko je Auth.js na
-  // zaupanja vrednem platformnem hostu (VERCEL=1 — samo Vercel). Prej je
-  // bilo `trustHost: NODE_ENV !== "production"` trdno zakodirano na false v
-  // vseh produkcijskih načinih, kar je onemogočalo prijavo v next start in
-  // na Vercel brez spremembe kode.
-  trustHost:
-    process.env.NODE_ENV !== "production" ||
-    process.env.AUTH_TRUST_HOST === "true" ||
-    process.env.VERCEL === "1",
-  session: {
-    strategy: "jwt",
-  },
-  pages: {
-    signIn: "/login",
-    error: "/login",
-  },
+  // Edge-safe base (trustHost / session strategy / pages / session callback)
+  // je v auth.config.ts, da ga middleware lahko uporabi BREZ Prisma +
+  // bcrypt + rate-limiterja v edge bundlu (Vercel 1 MB omejitev).
+  // Tukaj dodamo samo tisto, kar potrebuje Node runtime: providerje in
+  // callbacks, ki segajo v bazo.
+  ...authConfig,
   providers: [
     // Google OAuth (prijava z Google računom). Fail-closed: provider je vpisan
     // SAMO, če sta ID in Secret nastavljena v okolju — sicer gumba niti ne
@@ -127,6 +113,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
     }),
   ],
   callbacks: {
+    ...authConfig.callbacks,
     // Google OAuth: brez Prisma adapterja ta callback preslika Google račun na
     // lokalnega uporabnika (find-or-create po verified e-pošti) in poveže Account.
     // Credentials prijavo to ne zadeva (preskočimo, vrnemo true).
@@ -219,14 +206,6 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         }
       }
       return token
-    },
-    async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id as string
-        session.user.role = token.role as UserRole
-        session.user.organizationId = (token.organizationId as string | null) ?? null
-      }
-      return session
     },
   },
 })

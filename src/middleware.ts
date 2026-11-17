@@ -1,4 +1,5 @@
-import { auth } from "@/lib/auth/auth"
+import NextAuth from "next-auth"
+import { authConfig } from "@/lib/auth/auth.config"
 import { NextResponse } from "next/server"
 import { isPlatformAdminEmail, PLATFORM_ADMIN_EMAILS_ENV } from "@/lib/platform/access"
 import {
@@ -344,6 +345,15 @@ async function runTenantGates(opts: {
 // header, branding or theme.
 const CUSTOM_DOMAIN_HEADER_DENYLIST =
   /^\/(?:dashboard|staff-portal|my-account|platform|login|register|start|forgot-password|reset-password|verify-email|en)(\/|$)/
+
+// Middleware runs BEFORE the request reaches Node code and only needs to
+// READ the session from the JWT cookie, so it builds its own NextAuth
+// instance from the edge-safe auth.config.ts. Importing the full `auth`
+// from @/lib/auth/auth would drag Prisma Client + bcryptjs + the DB rate
+// limiter into the edge bundle (1.11 MB — over Vercel's 1 MB Edge Function
+// limit). Behaviours (trustHost, session callback, pages) are shared via
+// the config file, so the two instances cannot drift apart.
+const { auth } = NextAuth(authConfig)
 
 export default auth(async (req) => {
   const { pathname } = req.nextUrl
