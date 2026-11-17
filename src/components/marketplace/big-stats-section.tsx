@@ -186,7 +186,10 @@ export function BigStatsSection({
             // neverificirani trditvi (platforma ni na Capterru). Zamenjano z
             // dejstvi, ki jih uporabnik lahko preveri sam.
             { icon: <CheckCircleIcon size={20} />, text: "Brez pogodbe in vezave" },
-            { icon: <CheckCircleIcon size={20} />, text: "Podatki v EU (Neon)" },
+            // Produkcijska baza (Neon) teče v regiji aws-us-east-1 — trditev
+          // »podatki v EU« bi bila napačna. Namesto nje preverljivo dejstvo:
+          // vsak najemnik lahko svoje podatke izvozi (GDPR izvoz).
+          { icon: <CheckCircleIcon size={20} />, text: "Izvoz svojih podatkov kadarkoli" },
             { icon: <UsersIcon size={20} />, text: "24/7 podpora" },
           ].map((badge) => (
             <div
