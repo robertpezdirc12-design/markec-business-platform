@@ -104,7 +104,6 @@ export function CommandPalette() {
     [profile.capabilities, profile.extensions, permissions, isAdmin]
   )
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const label = useCallback(
     (item: DashboardNavItem) =>
       item.termKey ? term(item.termKey) : t.common.nav[item.nameKey],
@@ -291,7 +290,7 @@ export function CommandPalette() {
                           className={cn(
                             "flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition-colors",
                             index === activeIndex
-                              ? "bg-accent text-accent-foreground"
+                              ? "bg-primary/10 text-foreground"
                               : "hover:bg-muted/60"
                           )}
                         >
