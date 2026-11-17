@@ -219,11 +219,18 @@ export function ServiceForm({
       .replace(/(^-|-$)/g, "")
   }
 
+  // P1 #107 — slug se generira iz imena SAMO dokler ga uporabnik ni
+  // ročno spremenil. Prej je vsaka tipka v polju "Ime" povozila ročno
+  // vnesen slug (v produkciji je tako nastal javni naslov
+  // `/services/barvanje-koreninbarvanje-korenin`).
+  const [slugTouched, setSlugTouched] = useState(isEditMode)
+
   // Handle name change and auto-generate slug
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value
     setValue("name", name)
-    setValue("slug", generateSlug(name))
+    // Ročno urejenega sluga ne prepišemo — uporabnik ga je izbral zavestno.
+    if (!slugTouched) setValue("slug", generateSlug(name))
     clearErrors("name")
     clearErrors("slug")
   }
@@ -479,6 +486,8 @@ export function ServiceForm({
                   placeholder={t.services.slugPlaceholder}
                   value={watchSlug}
                   onChange={(e) => {
+                    // Ročni vnos = uporabnik prevzame nadzor nad slugom.
+                    setSlugTouched(true)
                     setValue("slug", e.target.value)
                     clearErrors("slug")
                   }}

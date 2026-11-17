@@ -10,6 +10,7 @@ import { UnauthorizedError, requirePermissionOrg } from "@/lib/auth/guards"
 import { getPublicOrg, getResolvedOrg } from "@/lib/tenant"
 import { enforcePlanLimit } from "@/lib/plans/resolve"
 import { getLocaleFromCookies } from "@/lib/i18n/server"
+import { uniqueServiceSlug } from "@/lib/services/slug"
 
 export type UpdateServiceInput = Partial<CreateServiceInput>
 
@@ -593,6 +594,17 @@ export async function createService(data: CreateServiceInput) {
     // Extract staffIds and categoryId from data
     const { staffIds, categoryId, ...serviceData } = data
 
+    // P1 #107: slug je JAVNI del naslova (/services/<slug>) — normaliziramo
+    // ga na strežniku in zagotovimo unikatnost znotraj salona. Prej je bil
+    // sprejet tak, kot ga je poslal obrazec (tudi prazen ali podvojen).
+    serviceData.slug = await uniqueServiceSlug(
+      serviceData.slug || serviceData.name,
+      async (slug) =>
+        (await prisma.service.count({
+          where: { slug, organizationId: org.id },
+        })) > 0
+    )
+
     // Validate the category belongs to this organization
     if (categoryId) {
       const category = await prisma.category.findFirst({
@@ -658,11 +670,22 @@ export async function updateService(id: string, data: UpdateServiceInput) {
     // Verify ownership before mutating
     const existing = await prisma.service.findFirst({
       where: { id, organizationId: org.id },
-      select: { id: true },
+      select: { id: true, slug: true },
     })
     if (!existing) {
       return { success: false, error: "Service not found" }
     }
+
+    // P1 #107: enaka normalizacija kot pri ustvarjanju, vendar unikatnost
+    // preverjamo brez TEGA zapisa (sicer bi lastna storitev "zasedla" slug
+    // in bi vsako shranjevanje dodalo -2, -3 …).
+    serviceData.slug = await uniqueServiceSlug(
+      serviceData.slug || serviceData.name || existing.slug,
+      async (slug) =>
+        (await prisma.service.count({
+          where: { slug, organizationId: org.id, NOT: { id } },
+        })) > 0
+    )
 
     // Validate the category belongs to this organization
     if (categoryId) {
