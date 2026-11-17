@@ -174,6 +174,7 @@ export function HomeContent({
         primaryCta={primaryCta}
         secondaryCta={secondaryCta}
         toHref={toHref}
+        hours={content.openingHours}
       />
     ) : layout.heroVariant === "minimal" ? (
       <MinimalHero
@@ -181,6 +182,7 @@ export function HomeContent({
         primaryCta={primaryCta}
         secondaryCta={secondaryCta}
         toHref={toHref}
+        hours={content.openingHours}
       />
     ) : null
 

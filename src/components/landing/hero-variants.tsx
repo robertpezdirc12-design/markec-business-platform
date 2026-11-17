@@ -15,7 +15,8 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import type { CtaLink } from "@/lib/site-content"
+import type { CtaLink, OpeningHour } from "@/lib/site-content"
+import { OpenStatusPill } from "@/components/public/open-status-pill"
 
 interface HeroContentShape {
   eyebrow?: string
@@ -27,6 +28,8 @@ interface HeroContentShape {
 
 interface HeroVariantProps {
   content: HeroContentShape
+  /** Tedenski delovni čas — značka »Odprto do …« tudi v teh različicah. */
+  hours?: OpeningHour[]
   primaryCta: CtaLink
   secondaryCta: CtaLink | null | undefined
   toHref: (href: string) => string
@@ -35,7 +38,7 @@ interface HeroVariantProps {
 
 /** Split hero: levo besedilo (visoka tipografija), desno fotografija.
  *  Uporaba: dejavnosti, ki delujejo na obravnavanih stvareh (mehanik/servis). */
-export function SplitHero({ content, primaryCta, secondaryCta, toHref, accentTitle }: HeroVariantProps) {
+export function SplitHero({ content, primaryCta, secondaryCta, toHref, accentTitle, hours }: HeroVariantProps) {
   const title = accentTitle ?? content.title
   return (
     <section className="from-primary to-primary/80 relative overflow-hidden bg-linear-to-br text-white">
@@ -46,6 +49,9 @@ export function SplitHero({ content, primaryCta, secondaryCta, toHref, accentTit
               {content.eyebrow}
             </p>
           )}
+          <div className="mb-4">
+            <OpenStatusPill hours={hours} className="bg-white/15 text-white" />
+          </div>
           <h1 className="font-heading text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
             {title}
           </h1>
@@ -89,7 +95,7 @@ export function SplitHero({ content, primaryCta, secondaryCta, toHref, accentTit
 
 /** Minimal hero: kompaktna, bela pasica z besedilom v središču.
  *  Uporaba: atelje/šivilja, pridelovalec, konzultanti. */
-export function MinimalHero({ content, primaryCta, secondaryCta, toHref }: HeroVariantProps) {
+export function MinimalHero({ content, primaryCta, secondaryCta, toHref, hours }: HeroVariantProps) {
   return (
     <section className="border-border/40 border-b bg-background py-16 lg:py-20">
       <div className="container mx-auto max-w-3xl px-4 text-center">
@@ -98,6 +104,9 @@ export function MinimalHero({ content, primaryCta, secondaryCta, toHref }: HeroV
             {content.eyebrow}
           </p>
         )}
+        <div className="mb-3 flex justify-center">
+          <OpenStatusPill hours={hours} />
+        </div>
         <h1 className="font-heading text-3xl font-semibold text-foreground sm:text-4xl lg:text-5xl">
           {content.title}
         </h1>
