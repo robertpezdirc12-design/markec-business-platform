@@ -54,7 +54,7 @@ export default async function MarketplacePage({
   const categoryParam = first(params.kategorija)
   const rawQuery = first(params.q) || categoryParam
   const query = CATEGORY_QUERY[rawQuery] ?? rawQuery
-  const location = first(params.location)
+  const location = first(params.location) || first(params.mesto)
   const hasSearch = Boolean(query || location)
 
   // Vse iz statičnega snapshot-a — brez Prisma, brez fetch-a, brez DB.
@@ -102,7 +102,7 @@ export default async function MarketplacePage({
             bookingsCount={stats.totalAppointments}
             businessesCount={stats.totalBusinesses}
           />
-          <BrowseByLocation />
+          <BrowseByLocation businesses={snapshot.businesses} />
         </>
       )}
 

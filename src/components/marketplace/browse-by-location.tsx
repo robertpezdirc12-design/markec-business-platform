@@ -12,6 +12,7 @@ import {
   ArrowRightIcon,
 } from "@/components/icons"
 import { Heart } from "@phosphor-icons/react/dist/ssr"
+import { MARKETPLACE_CATEGORIES, countByCategory } from "@/lib/marketplace/categories"
 
 const countries = [
   "Slovenija",
@@ -42,22 +43,19 @@ const citiesByCountry: Record<string, string[]> = {
   Nemčija: ["München", "Berlin", "Hamburg", "Frankfurt", "Köln"],
 }
 
-const categories = [
-  { name: "Kozmetični saloni", icon: "💅", count: 96 },
-  { name: "Frizerski saloni", icon: "✂️", count: 128 },
-  { name: "Nohti", icon: "💅", count: 68 },
-  { name: "Salon za urejanje obrvi & trepalnic", icon: "👁️", count: 45 },
-  { name: "Masažni saloni", icon: "💆", count: 74 },
-  { name: "Salon za depilacijo", icon: "🌸", count: 52 },
-  { name: "Medspas", icon: "🧖", count: 38 },
-  { name: "Brivci", icon: "💈", count: 89 },
-  { name: "Termalne & savne", icon: "♨️", count: 24 },
-  { name: "Wellness", icon: "🌿", count: 42 },
-  { name: "Zdravniki", icon: "⚕️", count: 65 },
-  { name: "Fizioterapija", icon: "💪", count: 38 },
-]
+// Audit 2026-11-18: seznam je bil lepotni in z IZMIŠLJENIMI števci
+// (96, 128, 68 …), čeprav v platformi ni toliko podjetij. Zdaj so
+// kategorije en vir (src/lib/marketplace/categories.ts), števci pa
+// prihajajo iz resničnega snapshot-a (0 se ne izpiše).
+const categories = MARKETPLACE_CATEGORIES
 
-export function BrowseByLocation() {
+export function BrowseByLocation({
+  businesses = [],
+}: {
+  /** Resnična podjetja iz snapshot-a — za poštene števce po kategoriji. */
+  businesses?: { type?: string | null; category?: string | null }[]
+}) {
+  const counts = countByCategory(businesses)
   return (
     <section className="bg-muted/30 py-16">
       <div className="container mx-auto px-4">
@@ -97,16 +95,18 @@ export function BrowseByLocation() {
               <h4 className="mb-4 font-semibold text-primary">Kategorije</h4>
               <ul className="space-y-3">
                 {categories.slice(0, 8).map((cat) => (
-                  <li key={cat.name}>
+                  <li key={cat.slug}>
                     <Link
-                      href={`/podjetja?kategorija=${encodeURIComponent(cat.name)}`}
+                      href={`/kategorije/${cat.slug}`}
                       className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
                       <span>{cat.icon}</span>
-                      <span>{cat.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        ({cat.count})
-                      </span>
+                      <span>{cat.label}</span>
+                      {counts[cat.slug] > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          ({counts[cat.slug]})
+                        </span>
+                      )}
                     </Link>
                   </li>
                 ))}
@@ -119,12 +119,12 @@ export function BrowseByLocation() {
                 <h4 className="mb-4 font-semibold text-primary">{city}</h4>
                 <ul className="space-y-3">
                   {categories.slice(0, 8).map((cat) => (
-                    <li key={cat.name}>
+                    <li key={cat.slug}>
                       <Link
-                        href={`/podjetja?kategorija=${encodeURIComponent(cat.name)}&mesto=${encodeURIComponent(city)}`}
+                        href={`/kategorije/${cat.slug}?mesto=${encodeURIComponent(city)}`}
                         className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                       >
-                        <span>{cat.name} v {city}</span>
+                        <span>{cat.label} v {city}</span>
                       </Link>
                     </li>
                   ))}
@@ -140,12 +140,12 @@ export function BrowseByLocation() {
           <div className="flex flex-wrap gap-3">
             {categories.map((cat) => (
               <Link
-                key={cat.name}
-                href={`/podjetja?kategorija=${encodeURIComponent(cat.name)}`}
+                key={cat.slug}
+                href={`/kategorije/${cat.slug}`}
                 className="flex items-center gap-2 rounded-full border bg-background px-4 py-2 text-sm transition-all hover:border-primary hover:bg-primary/5 hover:shadow-md"
               >
                 <span>{cat.icon}</span>
-                <span>{cat.name}</span>
+                <span>{cat.label}</span>
               </Link>
             ))}
           </div>
