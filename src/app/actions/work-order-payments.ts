@@ -32,8 +32,9 @@ export interface PaymentActionResult {
   path?: string
 }
 
+// "use server" modul sme izvažati SAMO async funkcije — zato tu ni
+// nobenih izvoženih konstant (načini plačila so v shemi zod spodaj).
 const MANUAL_METHODS = ["cash", "card", "transfer"] as const
-const ALL_METHODS = [...MANUAL_METHODS, "stripe"] as const
 
 /** Preveri, da naročilo pripada temu podjetju, in vrne ključne podatke. */
 async function loadOrder(orderId: string, organizationId: string) {
@@ -285,6 +286,3 @@ export async function getDebtorsOverview(): Promise<DebtorsOverview> {
     },
   }
 }
-
-/** Vsi veljavni načini plačila (za UI). */
-export const WORK_ORDER_PAYMENT_METHODS = ALL_METHODS
