@@ -8,7 +8,9 @@ const isInsideOpenNext = process.env.OPENNEXT_BUILD === "1"
 const isWindows = process.platform === "win32"
 
 if (isInsideOpenNext) {
-  // Called from opennextjs-cloudflare build — only run next build
+  // Called from opennextjs-cloudflare build — only run next build.
+  // The marketplace snapshot was already generated in the outer step (while
+  // DATABASE_URL was available); here we just compile it into the bundle.
   console.log("[build] Inside OpenNext — running next build")
   execSync("next build", { stdio: "inherit" })
 } else {
@@ -29,6 +31,14 @@ if (isInsideOpenNext) {
   } else {
     execSync("node scripts/migrate-with-retry.mjs", { stdio: "inherit" })
   }
+
+  // Generate the public marketplace snapshot while DATABASE_URL is still
+  // available. This moves the 5 live DB queries off the Worker request path
+  // ( Workers Free 10 ms CPU limit → error 1101/1102 ) into build time.
+  // The script never fails the build — it writes an empty snapshot if the
+  // DB is unreachable, so local/offline builds still succeed.
+  console.log("[build] generating marketplace snapshot")
+  execSync("node scripts/generate-marketplace-snapshot.mjs", { stdio: "inherit" })
 
   // Run OpenNext build (internally calls pnpm build → next build via OPENNEXT_BUILD=1)
   // Hide ALL local env files so OpenNext cannot bake secrets (R2 keys,

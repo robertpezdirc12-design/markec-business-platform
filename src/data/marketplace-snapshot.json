@@ -1,0 +1,11 @@
+{
+  "generatedAt": null,
+  "businesses": [],
+  "stats": {
+    "totalBusinesses": 0,
+    "totalAppointments": 0,
+    "totalCustomers": 0,
+    "citiesCount": 0,
+    "averageRating": 0
+  }
+}
