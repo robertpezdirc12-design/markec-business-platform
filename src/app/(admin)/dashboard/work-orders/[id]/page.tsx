@@ -76,6 +76,8 @@ export default async function WorkOrderDetailPage({
           quote: w.detail.quote,
           quoteSave: w.detail.quoteSave,
           quoteSaved: w.detail.quoteSaved,
+          money: w.detail.money,
+          share: w.detail.share,
         }}
         errorLabels={w.errors}
         locale={locale}

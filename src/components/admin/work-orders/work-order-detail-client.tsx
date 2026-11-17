@@ -16,6 +16,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import {
+  getOrCreateWorkOrderShareLink,
+  recordWorkOrderPayment,
+  setWorkOrderDeposit,
+} from "@/app/actions/work-order-payments"
+import {
   advanceWorkOrder,
   cancelWorkOrder,
   addWorkOrderNote,
@@ -57,6 +62,44 @@ interface Labels {
   quote: string
   quoteSave: string
   quoteSaved: string
+  /** Denar na naročilu + javna povezava za stranko. */
+  money: {
+    title: string
+    hint: string
+    deposit: string
+    depositSave: string
+    paid: string
+    balance: string
+    total: string
+    stateLabels: Record<string, string>
+    recordTitle: string
+    amount: string
+    method: string
+    methodCash: string
+    methodCard: string
+    methodTransfer: string
+    note: string
+    record: string
+    recorded: string
+    history: string
+    noPayments: string
+    methodStripe: string
+    methodOther: string
+  }
+  share: {
+    title: string
+    hint: string
+    create: string
+    created: string
+    copy: string
+    copied: string
+    open: string
+    rotate: string
+    approved: string
+    declined: string
+    waiting: string
+    reason: string
+  }
 }
 
 interface WorkOrderDetailClientProps {
@@ -82,6 +125,14 @@ export function WorkOrderDetailClient({
   const [quoteDue, setQuoteDue] = useState(
     order.dueDate ? order.dueDate.slice(0, 10) : ""
   )
+  // Denar na naročilu (depozit + prejeta plačila) in javna povezava.
+  const [depositInput, setDepositInput] = useState(
+    order.money.depositAmount === null ? "" : String(order.money.depositAmount)
+  )
+  const [payAmount, setPayAmount] = useState("")
+  const [payMethod, setPayMethod] = useState<"cash" | "card" | "transfer">("cash")
+  const [payNote, setPayNote] = useState("")
+  const [sharePath, setSharePath] = useState<string | null>(order.share.path)
   const recordsLinkLabel = locale === "sl" ? "Odpri evidence" : "Open records"
 
   const stages = order.workflow?.stages ?? []
@@ -153,6 +204,62 @@ export function WorkOrderDetailClient({
       }
     })
   }
+
+  const saveDeposit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmed = depositInput.trim().replace(",", ".")
+    startTransition(async () => {
+      const res = await setWorkOrderDeposit(order.id, {
+        amount: trimmed === "" ? null : trimmed,
+      })
+      if (res.ok) {
+        toast.success(labels.quoteSaved)
+        router.refresh()
+      } else toast.error(errorText(res.error))
+    })
+  }
+
+  const submitPayment = (e: React.FormEvent) => {
+    e.preventDefault()
+    startTransition(async () => {
+      const res = await recordWorkOrderPayment(order.id, {
+        amount: payAmount,
+        method: payMethod,
+        note: payNote || null,
+      })
+      if (res.ok) {
+        toast.success(labels.money.recorded)
+        setPayAmount("")
+        setPayNote("")
+        router.refresh()
+      } else toast.error(errorText(res.error))
+    })
+  }
+
+  const createShareLink = (rotate = false) => {
+    startTransition(async () => {
+      const res = await getOrCreateWorkOrderShareLink(order.id, { rotate })
+      if (res.ok && res.path) {
+        setSharePath(res.path)
+        toast.success(labels.share.created)
+        router.refresh()
+      } else toast.error(errorText(res.error))
+    })
+  }
+
+  const copyShareLink = () => {
+    if (!sharePath) return
+    const url = `${window.location.origin}${sharePath}`
+    navigator.clipboard?.writeText(url)
+    toast.success(labels.share.copied)
+  }
+
+  const money = order.money.summary
+  const eur = (n: number) =>
+    `${n.toLocaleString(locale === "en" ? "en-GB" : "sl-SI", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })} €`
 
   const fmtDate = (iso: string | null) => {
     if (!iso) return "—"
@@ -263,6 +370,203 @@ export function WorkOrderDetailClient({
             </CardContent>
           </Card>
         )}
+
+        {/* Denar na naročilu: depozit, prejeta plačila in preostanek */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">{labels.money.title}</CardTitle>
+            <p className="text-muted-foreground text-sm">{labels.money.hint}</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+              <div>
+                <p className="text-muted-foreground text-xs">{labels.money.total}</p>
+                <p className="font-semibold tabular-nums">
+                  {money.total === null ? "—" : eur(money.total)}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">{labels.money.deposit}</p>
+                <p className="font-semibold tabular-nums">
+                  {money.depositAmount === null ? "—" : eur(money.depositAmount)}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">{labels.money.paid}</p>
+                <p className="font-semibold tabular-nums">{eur(money.paid)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">{labels.money.balance}</p>
+                <p
+                  className={cn(
+                    "font-semibold tabular-nums",
+                    money.state === "PAID" && "text-emerald-600",
+                    money.state === "PARTIAL" && "text-amber-600"
+                  )}
+                >
+                  {eur(money.balance)}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-muted-foreground text-xs">
+              {labels.money.stateLabels[money.state] ?? money.state}
+            </p>
+
+            {isOpen && (
+              <form onSubmit={saveDeposit} className="flex flex-wrap items-end gap-2 border-t pt-3">
+                <div className="min-w-32 flex-1">
+                  <label htmlFor="deposit-amount" className="text-muted-foreground mb-1 block text-xs">
+                    {labels.money.deposit}
+                  </label>
+                  <Input
+                    id="deposit-amount"
+                    inputMode="decimal"
+                    placeholder="npr. 20,00"
+                    value={depositInput}
+                    onChange={(e) => setDepositInput(e.target.value)}
+                  />
+                </div>
+                <Button type="submit" size="sm" variant="outline" disabled={pending}>
+                  {labels.money.depositSave}
+                </Button>
+              </form>
+            )}
+
+            {isOpen && (
+              <form onSubmit={submitPayment} className="space-y-2 border-t pt-3">
+                <p className="text-sm font-medium">{labels.money.recordTitle}</p>
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="w-28">
+                    <label htmlFor="pay-amount" className="text-muted-foreground mb-1 block text-xs">
+                      {labels.money.amount}
+                    </label>
+                    <Input
+                      id="pay-amount"
+                      inputMode="decimal"
+                      value={payAmount}
+                      onChange={(e) => setPayAmount(e.target.value)}
+                    />
+                  </div>
+                  <div className="min-w-32 flex-1">
+                    <label htmlFor="pay-method" className="text-muted-foreground mb-1 block text-xs">
+                      {labels.money.method}
+                    </label>
+                    <select
+                      id="pay-method"
+                      value={payMethod}
+                      onChange={(e) =>
+                        setPayMethod(e.target.value as "cash" | "card" | "transfer")
+                      }
+                      className="border-input bg-background flex h-10 w-full rounded-md border px-3 text-sm"
+                    >
+                      <option value="cash">{labels.money.methodCash}</option>
+                      <option value="card">{labels.money.methodCard}</option>
+                      <option value="transfer">{labels.money.methodTransfer}</option>
+                    </select>
+                  </div>
+                  <div className="min-w-40 flex-[2]">
+                    <label htmlFor="pay-note" className="text-muted-foreground mb-1 block text-xs">
+                      {labels.money.note}
+                    </label>
+                    <Input
+                      id="pay-note"
+                      value={payNote}
+                      onChange={(e) => setPayNote(e.target.value)}
+                    />
+                  </div>
+                  <Button type="submit" size="sm" disabled={pending || !payAmount}>
+                    {labels.money.record}
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            <div className="border-t pt-3">
+              <p className="text-sm font-medium">{labels.money.history}</p>
+              {order.money.payments.length === 0 ? (
+                <p className="text-muted-foreground text-sm">{labels.money.noPayments}</p>
+              ) : (
+                <ul className="mt-1 space-y-1 text-sm">
+                  {order.money.payments.map((p) => (
+                    <li key={p.id} className="flex justify-between border-b py-1 last:border-0">
+                      <span className="text-muted-foreground">
+                        {fmtDate(p.paidAt)} ·{" "}
+                        {p.method === "stripe"
+                          ? labels.money.methodStripe
+                          : p.method === "cash"
+                            ? labels.money.methodCash
+                            : p.method === "card"
+                              ? labels.money.methodCard
+                              : p.method === "transfer"
+                                ? labels.money.methodTransfer
+                                : labels.money.methodOther}
+                        {p.note ? ` · ${p.note}` : ""}
+                      </span>
+                      <span className="font-medium tabular-nums">{eur(p.amount)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Javna povezava za stranko: potrditev predračuna + depozit */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">{labels.share.title}</CardTitle>
+            <p className="text-muted-foreground text-sm">{labels.share.hint}</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm">
+              {order.share.customerApprovedAt
+                ? `${labels.share.approved} · ${fmtDate(order.share.customerApprovedAt)}`
+                : order.share.customerDeclinedAt
+                  ? `${labels.share.declined} · ${fmtDate(order.share.customerDeclinedAt)}`
+                  : labels.share.waiting}
+              {order.share.declineReason
+                ? ` — ${labels.share.reason}: ${order.share.declineReason}`
+                : ""}
+            </p>
+
+            {sharePath ? (
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <code className="bg-muted min-w-0 flex-1 truncate rounded px-2 py-1 text-xs">
+                    {sharePath}
+                  </code>
+                  <Button type="button" size="sm" variant="outline" onClick={copyShareLink}>
+                    {labels.share.copy}
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" asChild>
+                    <Link href={sharePath} target="_blank" rel="noopener noreferrer">
+                      {labels.share.open}
+                    </Link>
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={pending}
+                    onClick={() => createShareLink(true)}
+                  >
+                    {labels.share.rotate}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                disabled={pending}
+                onClick={() => createShareLink(false)}
+              >
+                {labels.share.create}
+              </Button>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Stage stepper */}
         {stages.length > 0 && (

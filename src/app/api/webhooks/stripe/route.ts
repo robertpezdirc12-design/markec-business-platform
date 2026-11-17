@@ -192,6 +192,78 @@ export async function POST(req: Request) {
       }
     }
 
+    // PREDRAČUN → STRANKA (2026-11-18): depozit na delovnem naročilu.
+    // Denar gre na najemnikov Stripe račun; tu zabeležimo PLAČILO kot
+    // append-only vrstico (WorkOrderPayment) in pokrijemo depozit.
+    // Idempotenca: stripeSessionId je @unique → ponovna dostava ne podvoji.
+    if (metadata.type === "work_order_deposit" && metadata.workOrderId) {
+      try {
+        const workOrder = await prisma.workOrder.findFirst({
+          where: { id: metadata.workOrderId, organizationId: metadata.orgId },
+          select: { id: true, organizationId: true, depositAmount: true, title: true },
+        })
+        if (!workOrder) {
+          console.error(
+            `Webhook: work order ${metadata.workOrderId} not found for org ${metadata.orgId}`
+          )
+          return NextResponse.json({ received: true })
+        }
+
+        const amount = (session.amount_total ?? 0) / 100
+        if (amount <= 0) return NextResponse.json({ received: true })
+
+        const inserted = await prisma.workOrderPayment.createMany({
+          data: [
+            {
+              organizationId: workOrder.organizationId,
+              workOrderId: workOrder.id,
+              amount,
+              method: "stripe",
+              stripeSessionId: session.id,
+              stripePaymentIntentId:
+                typeof session.payment_intent === "string"
+                  ? session.payment_intent
+                  : null,
+            },
+          ],
+          skipDuplicates: true,
+        })
+
+        if (inserted.count > 0) {
+          await prisma.workOrderEvent.create({
+            data: {
+              organizationId: workOrder.organizationId,
+              workOrderId: workOrder.id,
+              type: "NOTE",
+              message: `Depozit plačan prek spleta: ${amount.toFixed(2)} €`,
+              actorEmail: null,
+            },
+          })
+
+          const sum = await prisma.workOrderPayment.aggregate({
+            where: { workOrderId: workOrder.id },
+            _sum: { amount: true },
+          })
+          const paid = Number(sum._sum.amount ?? 0)
+          const deposit =
+            workOrder.depositAmount === null ? null : Number(workOrder.depositAmount)
+          if (deposit !== null && deposit > 0 && paid >= deposit) {
+            await prisma.workOrder.updateMany({
+              where: { id: workOrder.id, depositPaidAt: null },
+              data: { depositPaidAt: new Date() },
+            })
+          }
+          console.log(`Webhook: work order ${workOrder.id} deposit paid (${amount} €)`)
+        } else {
+          console.log(`Webhook: work order deposit ${session.id} already recorded`)
+        }
+        return NextResponse.json({ received: true })
+      } catch (error) {
+        console.error("Webhook: error recording work order deposit:", error)
+        return NextResponse.json({ received: true })
+      }
+    }
+
     // Handle product orders (e-commerce checkout)
     if (metadata.type === "product_order" && metadata.orderId) {
       try {

@@ -48,7 +48,7 @@ import { usePermissions } from "@/components/admin/permissions-provider"
 import type { PermissionKey } from "@/lib/permissions/roles"
 
 interface NavItem {
-  nameKey: "dashboard" | "analytics" | "appointments" | "waitlist" | "walkIn" | "customers" | "marketing" | "services" | "products" | "categories" | "packages" | "promotions" | "shopOrders" | "workOrders" | "documents" | "einvoices" | "cashRegister" | "forms" | "records" | "projects" | "apiculture" | "tireService" | "traceability" | "seamstress" | "staff" | "roles" | "settings"
+  nameKey: "dashboard" | "analytics" | "appointments" | "waitlist" | "walkIn" | "customers" | "marketing" | "services" | "products" | "categories" | "packages" | "promotions" | "shopOrders" | "workOrders" | "documents" | "einvoices" | "cashRegister" | "payments" | "forms" | "records" | "projects" | "apiculture" | "tireService" | "traceability" | "seamstress" | "staff" | "roles" | "settings"
   href: string
   icon: React.ComponentType<{ size?: number; className?: string }>
   /** Capability that must not be "disabled" for this item to render. */
@@ -83,6 +83,9 @@ const navigation: NavItem[] = [
   // skupna poslovna funkcija (neodvisna od aktivne dejavnosti). Pravica:
   // orders.manage (prodaje so naročila — ista denarna pot kot neposredna prodaja).
   { nameKey: "cashRegister", href: "/dashboard/cash-register", icon: WalletIcon, capability: "cashRegister", permission: "orders.manage", group: "common" },
+  // PREDRAČUN → STRANKA (2026-11-18): pregled neplačanih naročil
+  // (dolžniki) — denar je na naročilih, zato ista pravica kot zanje.
+  { nameKey: "payments", href: "/dashboard/payments", icon: ReceiptIcon, capability: "workOrders", permission: "workorders.manage", group: "common" },
   { nameKey: "staff", href: "/dashboard/staff", icon: UserCogIcon, capability: "staff", permission: "staff.manage", group: "common" },
   // Custom roles (G8) — admin-only
   { nameKey: "roles", href: "/dashboard/roles", icon: LockIcon, group: "common" },

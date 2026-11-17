@@ -1,5 +1,6 @@
 "use server"
 
+import { tenantReturnBase } from "@/lib/tenant/return-base"
 import { getStripeForOrg } from "@/lib/stripe"
 import { auth } from "@/lib/auth/auth"
 import { headers } from "next/headers"
@@ -51,25 +52,9 @@ import Stripe from "stripe"
 // neizvožena.
 // ------------------------------------------------------------
 async function bookingReturnBase(): Promise<string> {
-  let origin: string | null = null
-  try {
-    const h = await headers()
-    const host = h.get("x-forwarded-host") ?? h.get("host")
-    const proto = h.get("x-forwarded-proto") ?? "http"
-    if (host) origin = `${proto}://${host}`
-  } catch {
-    // Brez request konteksta (kron/test) — pade naprej na env.
-  }
-  if (!origin) return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-  try {
-    // Preverjena custom domena: najemnikov naslov je GOLI niz poti.
-    if (await getCustomDomainOrg()) return origin
-    const slug = await getTrustedOrgSlug()
-    if (slug) return `${origin}${orgPath(slug, "")}`
-  } catch {
-    // DB ni na voljo — kar glasfulo staro vedenje (env origin).
-  }
-  return origin
+  // Izdvojeno v src/lib/tenant/return-base.ts — uporablja tudi plačilo
+  // depozita na delovnem naročilu (ista pravila za custom domene).
+  return tenantReturnBase()
 }
 
 export async function createCheckoutSession(

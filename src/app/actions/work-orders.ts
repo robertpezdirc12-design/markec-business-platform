@@ -1,5 +1,6 @@
 "use server"
 
+import { summarizePayments, type PaymentSummary } from "@/lib/work-orders/payment-summary"
 import { prisma } from "@/lib/prisma"
 import { requirePermissionOrg } from "@/lib/auth/guards"
 import { revalidatePath } from "next/cache"
@@ -257,6 +258,30 @@ export interface WorkOrderDetail {
   } | null
   events: WorkOrderEventItem[]
   sourceSubmissionId: string | null
+  /** Predračun → stranka: javna povezava, potrditev, depozit. */
+  share: {
+    /** Relativna pot javne povezave (null = še ni ustvarjena). */
+    path: string | null
+    customerApprovedAt: string | null
+    customerDeclinedAt: string | null
+    declineReason: string | null
+  }
+  /** Denar na naročilu: načrtovani depozit + prejeta plačila. */
+  money: {
+    depositAmount: number | null
+    depositPaidAt: string | null
+    payments: WorkOrderPaymentItem[]
+    summary: PaymentSummary
+  }
+}
+
+export interface WorkOrderPaymentItem {
+  id: string
+  amount: number
+  method: string
+  note: string | null
+  paidAt: string
+  stripeSessionId: string | null
 }
 
 /** Full detail of one work order (org-scoped) with the audit trail. */
@@ -270,6 +295,7 @@ export async function getWorkOrderDetail(id: string): Promise<WorkOrderDetail | 
       workflowDefinition: { include: { stages: { orderBy: { order: "asc" } } } },
       linkedRecord: true,
       events: { orderBy: { createdAt: "asc" } },
+      payments: { orderBy: { paidAt: "asc" } },
     },
   })
   if (!order) return null
@@ -304,6 +330,29 @@ export async function getWorkOrderDetail(id: string): Promise<WorkOrderDetail | 
     priority: order.priority,
     dueDate: order.dueDate?.toISOString() ?? null,
     total: toNumber(order.total),
+    share: {
+      path: order.publicToken ? `order/${order.publicToken}` : null,
+      customerApprovedAt: order.customerApprovedAt?.toISOString() ?? null,
+      customerDeclinedAt: order.customerDeclinedAt?.toISOString() ?? null,
+      declineReason: order.declineReason,
+    },
+    money: {
+      depositAmount: toNumber(order.depositAmount),
+      depositPaidAt: order.depositPaidAt?.toISOString() ?? null,
+      payments: order.payments.map((p) => ({
+        id: p.id,
+        amount: toNumber(p.amount) ?? 0,
+        method: p.method,
+        note: p.note,
+        paidAt: p.paidAt.toISOString(),
+        stripeSessionId: p.stripeSessionId,
+      })),
+      summary: summarizePayments({
+        total: toNumber(order.total),
+        depositAmount: toNumber(order.depositAmount),
+        payments: order.payments.map((p) => toNumber(p.amount) ?? 0),
+      }),
+    },
     notes: order.notes,
     createdAt: order.createdAt.toISOString(),
     customer: order.customer

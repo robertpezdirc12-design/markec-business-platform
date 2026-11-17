@@ -118,6 +118,7 @@ model Organization {
   // WP-1 (Blagajna): denarne seje in drobni stroški (org-scoped direktno,
   // da cross-tenant preverjanje ne zahteva joina prek seje).
   cashSessions CashSession[]
+  workOrderPayments WorkOrderPayment[]
   cashExpenses CashExpense[]
 
   // #100 8.A (M1): članstva — en lastnik lahko vodi VEČ podjetij iz enega
@@ -395,6 +396,7 @@ model User {
   @@index([email])
   @@index([role])
   @@index([customRoleId])
+  recordedWorkOrderPayments WorkOrderPayment[] @relation("recordedWorkOrderPayments")
 }
 
 model NotificationPreferences {
@@ -1513,6 +1515,20 @@ model WorkOrder {
   total   Decimal?  @db.Decimal(10, 2)
   notes   String?   @db.Text
 
+  // PREDRAČUN → STRANKA (2026-11-18)
+  // Javna povezava, na kateri stranka vidi predračun, potrdi ceno/rok in
+  // (če ima najemnik svoj Stripe) plača depozit. Žeton je edina skrivnost
+  // povezave — 32 naključnih bajtov, unikaten v celotni bazi.
+  publicToken        String?   @unique
+  customerApprovedAt DateTime?
+  customerDeclinedAt DateTime?
+  declineReason      String?   @db.Text
+
+  // DENAR NA NAROČILU: načrtovani depozit + vsa prejeta plačila
+  // (WorkOrderPayment). Preostanek = total − Σ(payments).
+  depositAmount Decimal?  @db.Decimal(10, 2)
+  depositPaidAt DateTime?
+
   // Origin: the public form submission that produced this order (if any)
   sourceSubmissionId String? @unique
 
@@ -1528,6 +1544,7 @@ model WorkOrder {
   events             WorkOrderEvent[]
   documents          Document[]
   projects           Project[]
+  payments           WorkOrderPayment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1537,6 +1554,7 @@ model WorkOrder {
   @@index([organizationId, status])
   @@index([customerId])
   @@index([dueDate])
+  @@index([organizationId, depositPaidAt])
 }
 
 /// Append-only audit trail for a work order: creation, stage
@@ -2894,6 +2912,46 @@ model CashSession {
   @@index([organizationId, status])
   @@index([organizationId, openedAt])
   @@index([staffId])
+}
+
+// ============================================================
+// PLAČILA NA DELOVNEM NAROČILU (2026-11-18)
+//
+// Denar na naročilu je ločen od naročila samega: vsako prejeto plačilo
+// (depozit prek Stripe, gotovina/kartica/nakazilo pri prevzemu) je svoja
+// vrstica. Preostanek se NIKOLI ne prepisuje — izračuna se kot
+// total − Σ(amount). Zato je zgodovina denarja append-only in revizijsko
+// sledljiva (kdo, kdaj, kako).
+// ============================================================
+model WorkOrderPayment {
+  id             String @id @default(cuid())
+  organizationId String
+  workOrderId    String
+
+  amount Decimal @db.Decimal(10, 2)
+
+  // stripe | cash | card | transfer
+  method String
+
+  // Stripe reference (samo za method = "stripe"); session id je unikaten,
+  // da webhook ob ponovitvi ne zapiše dvojnega plačila.
+  stripeSessionId       String? @unique
+  stripePaymentIntentId String?
+
+  note String?
+
+  // null = plačilo je vnesla stranka prek javne povezave (Stripe);
+  // sicer uporabnik, ki je plačilo zabeležil ročno.
+  recordedById String?
+  recordedBy   User?   @relation("recordedWorkOrderPayments", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  paidAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workOrder    WorkOrder    @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, paidAt])
+  @@index([workOrderId])
 }
 
 model CashExpense {

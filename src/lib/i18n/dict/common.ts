@@ -37,6 +37,7 @@ export const commonSl = {
     documents: "Dokumenti",
     einvoices: "Elektronski računi",
     cashRegister: "Blagajna",
+    payments: "Plačila",
     forms: "Obrazci",
     records: "Evidence",
     projects: "Projekti",
@@ -92,6 +93,29 @@ export const commonSl = {
   },
   table: {
     noData: "Ni podatkov za prikaz",
+  },
+  // PREDRAČUN → STRANKA (2026-11-18) — denar na delovnih naročilih.
+  paymentsPage: {
+    title: "Plačila in preostanki",
+    description:
+      "Odprta naročila z neporavnanim preostankom. Plačila se beležijo na posameznem naročilu, depozit pa stranka plača prek svoje povezave.",
+    totalOutstanding: "Skupaj odprto",
+    overdue: "Zapadlo",
+    orders: "Naročil z dolgom",
+    empty: "Vsa naročila so poravnana.",
+    emptyHint: "Ko bo naročilo imelo znesek in še ne bo plačano, se pojavi tukaj.",
+    columns: {
+      order: "Naročilo",
+      customer: "Stranka",
+      due: "Rok",
+      total: "Znesek",
+      paid: "Plačano",
+      balance: "Preostanek",
+      deposit: "Odprt depozit",
+      action: "Dejanje",
+    },
+    open: "Odpri naročilo",
+    overdueBadge: "Zapadlo",
   },
   // WP-1 (Blagajna) — eno jedro za vse dejavnosti.
   cashRegister: {
@@ -252,6 +276,7 @@ export const commonEn: CommonDict = {
     documents: "Documents",
     einvoices: "Electronic invoices",
     cashRegister: "Cash register",
+    payments: "Payments",
     forms: "Forms",
     records: "Records",
     projects: "Projects",
@@ -307,6 +332,29 @@ export const commonEn: CommonDict = {
   },
   table: {
     noData: "No data to display",
+  },
+  // QUOTE → CUSTOMER (2026-11-18) — money on work orders.
+  paymentsPage: {
+    title: "Payments & balances",
+    description:
+      "Open orders with an outstanding balance. Payments are recorded on each order; the deposit is paid by the customer through their own link.",
+    totalOutstanding: "Total outstanding",
+    overdue: "Overdue",
+    orders: "Orders with balance",
+    empty: "All orders are settled.",
+    emptyHint: "An order appears here once it has a total and is not yet paid.",
+    columns: {
+      order: "Order",
+      customer: "Customer",
+      due: "Due",
+      total: "Total",
+      paid: "Paid",
+      balance: "Balance",
+      deposit: "Deposit open",
+      action: "Action",
+    },
+    open: "Open order",
+    overdueBadge: "Overdue",
   },
   // WP-1 (Cash register) — one core for all activities.
   cashRegister: {
