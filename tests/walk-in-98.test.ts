@@ -129,8 +129,11 @@ describe("#98 struktura: javna stran, akcije, proxy, navigacija", () => {
   })
 
   it("sidebar + i18n: vhod vhodno-viden samo z zmožnostjo walkIn", () => {
-    const sidebar = read("src/components/admin/sidebar.tsx")
-    expect(sidebar).toContain('nameKey: "walkIn", href: "/dashboard/walk-in"')
+    // 2026-11-18: navigacija je v enem viru resnice (sidebar + ⌘K paleta).
+    const nav = read("src/lib/navigation/dashboard-nav.ts")
+    expect(nav).toContain('nameKey: "walkIn"')
+    expect(nav).toContain('href: "/dashboard/walk-in"')
+    expect(nav).toContain('capability: "walkIn"')
     const common = read("src/lib/i18n/dict/common.ts")
     expect(common).toContain('walkIn: "Walk-in vrsta"')
     expect(common).toContain('walkIn: "Walk-in queue"')

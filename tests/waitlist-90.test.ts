@@ -90,10 +90,16 @@ describe("#90 email: povezava v rezervacijo, ne lažno potrdilo", () => {
 
 describe("#90 navigacija: pod isto zmožnostjo kot termini", () => {
   it("sidebar item ima capability appointments + permission appointments.view", () => {
-    const sidebar = read("src/components/admin/sidebar.tsx")
-    expect(sidebar).toMatch(
-      /nameKey: "waitlist", href: "\/dashboard\/waitlist".*?capability: "appointments", permission: "appointments\.view"/
+    // 2026-11-18: navigacija je preseljena v en vir resnice
+    // (src/lib/navigation/dashboard-nav.ts), ki ga uporabljata tako
+    // stranski meni kot ukazna paleta — pravilo ostaja isto.
+    const nav = read("src/lib/navigation/dashboard-nav.ts")
+    expect(nav).toMatch(
+      /nameKey: "waitlist",[\s\S]{0,200}?capability: "appointments",[\s\S]{0,120}?permission: "appointments\.view"/
     )
+    // in stranski meni jo res uporablja (ne lastne kopije)
+    const sidebar = read("src/components/admin/sidebar.tsx")
+    expect(sidebar).toContain("DASHBOARD_NAV")
   })
 
   it("admin stran varuje requirePagePermission(appointments.view)", () => {

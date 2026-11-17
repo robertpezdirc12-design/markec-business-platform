@@ -12,7 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { ChevronDown } from "lucide-react"
@@ -43,78 +43,52 @@ import {
   HouseIcon,
   WrenchIcon,
   WalletIcon,
+  StarIcon,
 } from "@/components/icons"
 import { usePermissions } from "@/components/admin/permissions-provider"
-import type { PermissionKey } from "@/lib/permissions/roles"
+import {
+  DASHBOARD_NAV,
+  NAV_SECTIONS,
+  isNavItemActive,
+  isNavItemVisible,
+  type DashboardNavItem,
+  type NavSectionKey,
+} from "@/lib/navigation/dashboard-nav"
 
-interface NavItem {
-  nameKey: "dashboard" | "analytics" | "appointments" | "waitlist" | "walkIn" | "customers" | "marketing" | "services" | "products" | "categories" | "packages" | "promotions" | "shopOrders" | "workOrders" | "documents" | "einvoices" | "cashRegister" | "payments" | "forms" | "records" | "projects" | "apiculture" | "tireService" | "traceability" | "seamstress" | "staff" | "roles" | "settings"
-  href: string
-  icon: React.ComponentType<{ size?: number; className?: string }>
-  /** Capability that must not be "disabled" for this item to render. */
-  capability?: CapabilityKey
-  /** Item renders when ANY of these capabilities is enabled (§11: packages combine services AND products). */
-  anyCapabilities?: CapabilityKey[]
-  /** Item renders only when the profile enables at least one extension with entities (§13). */
-  requiresExtensions?: boolean
-  /** Item renders only when the profile enables THIS extension id (E2-3: projects). */
-  extension?: string
-  /** Terminology key overriding the generic dictionary label. */
-  termKey?: "appointmentPlural" | "servicePlural" | "productPlural" | "orderPlural"
-  /** Custom-role permission required (G8). Absent → visible to all members. */
-  permission?: PermissionKey
-  /** F5.2: zadostuje KATERIKOLI od navedenih ključev (kategorije: products.manage ALI services.manage). */
-  anyPermission?: PermissionKey[]
-  /** F7.2: logična skupina — "common" (skupne, A) ali "activity" (dejavnost, B). */
-  group?: "common" | "activity"
+/** Ikone po poti — podatki navigacije so čisti (brez React komponent). */
+const NAV_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+  "/dashboard": LayoutDashboardIcon,
+  "/dashboard/analytics": ChartBarIcon,
+  "/dashboard/appointments": CalendarIcon,
+  "/dashboard/waitlist": ClockIcon,
+  "/dashboard/walk-in": UsersIcon,
+  "/dashboard/customers": UsersIcon,
+  "/dashboard/reviews": StarIcon,
+  "/dashboard/marketing": EnvelopeIcon,
+  "/dashboard/services": ScissorsIcon,
+  "/dashboard/products": PackageIcon,
+  "/dashboard/categories": FolderIcon,
+  "/dashboard/packages": ToteIcon,
+  "/dashboard/promotions": TagIcon,
+  "/dashboard/orders": ShoppingBagIcon,
+  "/dashboard/work-orders": ReceiptIcon,
+  "/dashboard/documents": FileTextIcon,
+  "/dashboard/einvoices": ReceiptIcon,
+  "/dashboard/cash-register": WalletIcon,
+  "/dashboard/payments": ReceiptIcon,
+  "/dashboard/forms": SlidersIcon,
+  "/dashboard/records": StackIcon,
+  "/dashboard/projects": FolderIcon,
+  "/dashboard/apiculture": HouseIcon,
+  "/dashboard/tire-service": WrenchIcon,
+  "/dashboard/traceability": StackIcon,
+  "/dashboard/seamstress": ScissorsIcon,
+  "/dashboard/staff": UserCogIcon,
+  "/dashboard/roles": LockIcon,
+  "/dashboard/settings": SettingsIcon,
 }
 
-const navigation: NavItem[] = [
-  // ===== A: SKUPNE POSLOVNE FUNKCIJE ===== (neodvisne od aktivne dejavnosti)
-  { nameKey: "dashboard", href: "/dashboard", icon: LayoutDashboardIcon, group: "common" },
-  { nameKey: "analytics", href: "/dashboard/analytics", icon: ChartBarIcon, capability: "analytics", permission: "analytics.view", group: "common" },
-  { nameKey: "customers", href: "/dashboard/customers", icon: UsersIcon, capability: "customers", permission: "customers.manage", group: "common" },
-  { nameKey: "marketing", href: "/dashboard/marketing", icon: EnvelopeIcon, capability: "customers", permission: "customers.manage", group: "common" },
-  // Documents (quotes/invoices) — gated by the documents capability (§13)
-  { nameKey: "documents", href: "/dashboard/documents", icon: FileTextIcon, capability: "documents", permission: "finances.view", group: "common" },
-  // F5.5.4.6.2 — e-računi (priprava/validacija/arhiv)
-  { nameKey: "einvoices", href: "/dashboard/einvoices", icon: ReceiptIcon, permission: "finances.view", group: "common" },
-  // WP-1 (Blagajna) — eno jedro za VSE dejavnosti (capability cashRegister),
-  // skupna poslovna funkcija (neodvisna od aktivne dejavnosti). Pravica:
-  // orders.manage (prodaje so naročila — ista denarna pot kot neposredna prodaja).
-  { nameKey: "cashRegister", href: "/dashboard/cash-register", icon: WalletIcon, capability: "cashRegister", permission: "orders.manage", group: "common" },
-  // PREDRAČUN → STRANKA (2026-11-18): pregled neplačanih naročil
-  // (dolžniki) — denar je na naročilih, zato ista pravica kot zanje.
-  { nameKey: "payments", href: "/dashboard/payments", icon: ReceiptIcon, capability: "workOrders", permission: "workorders.manage", group: "common" },
-  { nameKey: "staff", href: "/dashboard/staff", icon: UserCogIcon, capability: "staff", permission: "staff.manage", group: "common" },
-  // Custom roles (G8) — admin-only
-  { nameKey: "roles", href: "/dashboard/roles", icon: LockIcon, group: "common" },
-  { nameKey: "settings", href: "/dashboard/settings", icon: SettingsIcon, permission: "settings.manage", group: "common" },
-
-  // ===== B: FUNKCIJE AKTIVNE DEJAVNOSTI (capability/extension gated) =====
-  { nameKey: "appointments", href: "/dashboard/appointments", icon: CalendarIcon, capability: "appointments", termKey: "appointmentPlural", permission: "appointments.view", group: "activity" },
-  { nameKey: "waitlist", href: "/dashboard/waitlist", icon: ClockIcon, capability: "appointments", permission: "appointments.view", group: "activity" },
-  { nameKey: "walkIn", href: "/dashboard/walk-in", icon: UsersIcon, capability: "walkIn", permission: "appointments.view", group: "activity" },
-  { nameKey: "services", href: "/dashboard/services", icon: ScissorsIcon, capability: "services", termKey: "servicePlural", permission: "services.manage", group: "activity" },
-  { nameKey: "products", href: "/dashboard/products", icon: PackageIcon, capability: "shop", termKey: "productPlural", permission: "products.manage", group: "activity" },
-  { nameKey: "categories", href: "/dashboard/categories", icon: FolderIcon, anyCapabilities: ["shop", "services"], anyPermission: ["products.manage", "services.manage"], group: "activity" },
-  { nameKey: "packages", href: "/dashboard/packages", icon: ToteIcon, anyCapabilities: ["shop", "services"], permission: "products.manage", group: "activity" },
-  { nameKey: "promotions", href: "/dashboard/promotions", icon: TagIcon, anyCapabilities: ["shop", "services"], permission: "promotions.manage", group: "activity" },
-  { nameKey: "workOrders", href: "/dashboard/work-orders", icon: ReceiptIcon, capability: "workOrders", termKey: "orderPlural", permission: "workorders.manage", group: "activity" },
-  { nameKey: "shopOrders", href: "/dashboard/orders", icon: ShoppingBagIcon, capability: "shop", permission: "orders.manage", group: "activity" },
-  { nameKey: "forms", href: "/dashboard/forms", icon: SlidersIcon, capability: "forms", permission: "inquiries.manage", group: "activity" },
-  { nameKey: "records", href: "/dashboard/records", icon: StackIcon, requiresExtensions: true, permission: "workorders.manage", group: "activity" },
-  // N1 — čebelarska nadzorna plošča (Z1): prikaže se SAMO profilom z
-  // razširitvijo bee-apiary (čebelar). Vodi na živo pregledno ploščo.
-  { nameKey: "apiculture", href: "/dashboard/apiculture", icon: HouseIcon, extension: "bee-apiary", permission: "workorders.manage", group: "activity" },
-  // 2D-1P — sledljivost pridelka (pridelek → serija → zaloga → prodaja → izvor).
-  { nameKey: "traceability", href: "/dashboard/traceability", icon: StackIcon, extension: "batch-production", permission: "products.manage", group: "activity" },
-  // 2D-1S — delavnica vozil & vulkanizerija (tire-service): živa plošča.
-  { nameKey: "tireService", href: "/dashboard/tire-service", icon: WrenchIcon, extension: "vehicle-workshop", permission: "workorders.manage", group: "activity" },
-  // 2D-2B — šiviljstvo (seamstress): živa plošča, gated na merilno razširitev.
-  { nameKey: "seamstress", href: "/dashboard/seamstress", icon: ScissorsIcon, extension: "seamstress-measurements", permission: "workorders.manage", group: "activity" },
-  { nameKey: "projects", href: "/dashboard/projects", icon: FolderIcon, extension: "projects", permission: "workorders.manage", group: "activity" },
-]
+const COLLAPSED_KEY = "markec.nav.collapsed"
 
 interface SidebarNavProps {
   onNavigate?: () => void
@@ -125,86 +99,108 @@ function SidebarNav({ onNavigate }: SidebarNavProps) {
   const { t, term, profile } = useI18n()
   const { permissions, isAdmin } = usePermissions()
 
-  // Capability-gated navigation (EPIC #1 §21): irrelevant modules never render.
-  // G8: items may additionally require a custom-role permission; the
-  // "roles" item is admin-only. Members WITHOUT a custom role hold the
-  // full legacy set (see effectivePermissionKeys), so their chrome is
-  // byte-for-byte unchanged.
-  const itemVisible = (item: NavItem) => {
-    if (item.nameKey === "roles" && !isAdmin) return false
-    if (item.permission && !permissions.includes(item.permission)) {
-      return false
+  // Capability/permission gate (EPIC #1 §21 + G8) — pravilo živi v
+  // src/lib/navigation/dashboard-nav.ts, da ga uporablja tudi ⌘K paleta.
+  const visibleItems = useMemo(
+    () =>
+      DASHBOARD_NAV.filter((item) =>
+        isNavItemVisible(item, {
+          capabilities: profile.capabilities as unknown as Record<string, string>,
+          extensions: profile.extensions,
+          permissions,
+          isAdmin,
+        })
+      ),
+    [profile.capabilities, profile.extensions, permissions, isAdmin]
+  )
+
+  // Zložene skupine (2026-11-18): 23 postavk v enem stolpcu je bilo
+  // neobvladljivih — zdaj 6 skupin, stanje se ohrani med obiski.
+  const [collapsed, setCollapsed] = useState<NavSectionKey[]>([])
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(COLLAPSED_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed)) setCollapsed(parsed.filter(Boolean))
+      }
+    } catch {
+      /* localStorage ni na voljo — ostane privzeto (vse odprto) */
     }
-    if (item.anyPermission?.length && !item.anyPermission.some((k) => permissions.includes(k))) {
-      return false
-    }
-    if (item.extension) {
-      return profile.extensions.includes(item.extension)
-    }
-    if (item.requiresExtensions) {
-      return profile.extensions.length > 0
-    }
-    if (item.anyCapabilities?.length) {
-      return item.anyCapabilities.some(
-        (cap) => profile.capabilities[cap] !== "disabled"
-      )
-    }
-    if (!item.capability) return true
-    return profile.capabilities[item.capability] !== "disabled"
+  }, [])
+
+  const toggleSection = (key: NavSectionKey) => {
+    setCollapsed((prev) => {
+      const next = prev.includes(key)
+        ? prev.filter((k) => k !== key)
+        : [...prev, key]
+      try {
+        window.localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next))
+      } catch {
+        /* shramba ni na voljo — zlaganje velja samo v tej seji */
+      }
+      return next
+    })
   }
 
-  // F7.2: dve jasno ločeni skupini — A Skupne poslovne funkcije, B Dejavnost.
-  const commonItems = navigation.filter(
-    (item) => item.group === "common" && itemVisible(item)
-  )
-  const activityItems = navigation.filter(
-    (item) => item.group !== "common" && itemVisible(item)
-  )
-
-  const renderItem = (item: NavItem) => {
-    const isActive =
-      pathname === item.href ||
-      (item.href !== "/dashboard" && pathname.startsWith(item.href))
-    const IconComponent = item.icon
-    const label = item.termKey ? term(item.termKey) : t.common.nav[item.nameKey]
+  const renderItem = (item: DashboardNavItem) => {
+    const isActive = isNavItemActive(item, pathname)
+    const IconComponent = NAV_ICONS[item.href] ?? LayoutDashboardIcon
+    const label = item.termKey
+      ? term(item.termKey)
+      : t.common.nav[item.nameKey]
     return (
       <Link
         key={item.nameKey}
         href={item.href}
         onClick={onNavigate}
+        aria-current={isActive ? "page" : undefined}
         className={cn(
-          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
           isActive
             ? "bg-primary text-primary-foreground shadow-sm"
             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
         )}
       >
         <IconComponent size={18} className={cn(isActive && "text-primary-foreground")} />
-        {label}
+        <span className="truncate">{label}</span>
       </Link>
     )
   }
 
   return (
-    <nav aria-label="Glavna navigacija" className="space-y-1 px-3">
-      {/* A: SKUPNE POSLOVNE FUNKCIJE */}
-      {commonItems.length > 0 && (
-        <div>
-          <p className="px-3 pt-1 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-            Skupno
-          </p>
-          {commonItems.map(renderItem)}
-        </div>
-      )}
-      {/* B: FUNKCIJE AKTIVNE DEJAVNOSTI */}
-      {activityItems.length > 0 && (
-        <div className="mt-1">
-          <p className="px-3 pt-1 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-            Dejavnost
-          </p>
-          {activityItems.map(renderItem)}
-        </div>
-      )}
+    <nav aria-label="Glavna navigacija" className="space-y-2 px-3">
+      {NAV_SECTIONS.map((section) => {
+        const items = visibleItems.filter((item) => item.section === section)
+        if (items.length === 0) return null
+        // Skupina, v kateri je aktivna stran, je VEDNO odprta — sicer bi
+        // uporabnik po navigaciji videl prazno mesto brez razlage.
+        const hasActive = items.some((item) => isNavItemActive(item, pathname))
+        const isCollapsed = collapsed.includes(section) && !hasActive
+        const label = t.common.navGroups?.[section] ?? section
+        return (
+          <div key={section}>
+            <button
+              type="button"
+              onClick={() => toggleSection(section)}
+              aria-expanded={!isCollapsed}
+              aria-controls={`nav-section-${section}`}
+              className="text-muted-foreground hover:text-foreground flex w-full items-center justify-between gap-2 rounded-md px-3 pt-1 pb-1 text-[11px] font-semibold tracking-wide uppercase transition-colors"
+            >
+              <span>{label}</span>
+              <ChevronDown
+                size={12}
+                className={cn("shrink-0 transition-transform", isCollapsed && "-rotate-90")}
+              />
+            </button>
+            {!isCollapsed && (
+              <div id={`nav-section-${section}`} className="space-y-0.5">
+                {items.map(renderItem)}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </nav>
   )
 }
