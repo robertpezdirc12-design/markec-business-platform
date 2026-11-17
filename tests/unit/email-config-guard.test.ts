@@ -216,7 +216,7 @@ describe("statična invarianta nad src/lib/email", () => {
   it("noben sender ne uporablja RESEND_FROM_EMAIL! in vsak ima config guard", () => {
     const dir = path.resolve(process.cwd(), "src/lib/email")
     const files = fs.readdirSync(dir).filter((f) => f.endsWith(".ts") && f !== "config.ts")
-    expect(files.length).toBe(16)
+    expect(files.length).toBe(17)
     for (const file of files) {
       const src = fs.readFileSync(path.join(dir, file), "utf8")
       expect(src, `${file} še vedno uporablja RESEND_FROM_EMAIL!`).not.toContain("RESEND_FROM_EMAIL!")

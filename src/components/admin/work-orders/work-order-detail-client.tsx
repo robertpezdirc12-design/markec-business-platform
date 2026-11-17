@@ -21,6 +21,11 @@ import {
   setWorkOrderDeposit,
 } from "@/app/actions/work-order-payments"
 import {
+  linkAppointmentToOrder,
+  unlinkAppointmentFromOrder,
+  type LinkableAppointment,
+} from "@/app/actions/work-order-fittings"
+import {
   advanceWorkOrder,
   cancelWorkOrder,
   addWorkOrderNote,
@@ -86,6 +91,18 @@ interface Labels {
     methodStripe: string
     methodOther: string
   }
+  fittings: {
+    title: string
+    hint: string
+    none: string
+    pick: string
+    pickPlaceholder: string
+    link: string
+    linked: string
+    unlink: string
+    alreadyLinked: string
+    noCandidates: string
+  }
   share: {
     title: string
     hint: string
@@ -107,6 +124,8 @@ interface WorkOrderDetailClientProps {
   labels: Labels
   errorLabels: Record<string, string>
   locale: string
+  /** Prihodnji termini, ki jih je mogoče povezati kot priblon. */
+  linkableAppointments: LinkableAppointment[]
 }
 
 export function WorkOrderDetailClient({
@@ -114,6 +133,7 @@ export function WorkOrderDetailClient({
   labels,
   errorLabels,
   locale,
+  linkableAppointments,
 }: WorkOrderDetailClientProps) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -133,6 +153,7 @@ export function WorkOrderDetailClient({
   const [payMethod, setPayMethod] = useState<"cash" | "card" | "transfer">("cash")
   const [payNote, setPayNote] = useState("")
   const [sharePath, setSharePath] = useState<string | null>(order.share.path)
+  const [fittingId, setFittingId] = useState("")
   const recordsLinkLabel = locale === "sl" ? "Odpri evidence" : "Open records"
 
   const stages = order.workflow?.stages ?? []
@@ -254,6 +275,30 @@ export function WorkOrderDetailClient({
     toast.success(labels.share.copied)
   }
 
+  const linkFitting = () => {
+    if (!fittingId) return
+    startTransition(async () => {
+      const res = await linkAppointmentToOrder(order.id, fittingId)
+      if (res.ok) {
+        toast.success(labels.fittings.linked)
+        setFittingId("")
+        router.refresh()
+      } else toast.error(errorText(res.error))
+    })
+  }
+
+  const unlinkFitting = (appointmentId: string) => {
+    startTransition(async () => {
+      const res = await unlinkAppointmentFromOrder(order.id, appointmentId)
+      if (res.ok) router.refresh()
+      else toast.error(errorText(res.error))
+    })
+  }
+
+  const candidates = linkableAppointments.filter(
+    (a) => !a.linkedToOrderId || a.linkedToOrderId === order.id
+  )
+
   const money = order.money.summary
   const eur = (n: number) =>
     `${n.toLocaleString(locale === "en" ? "en-GB" : "sl-SI", {
@@ -370,6 +415,75 @@ export function WorkOrderDetailClient({
             </CardContent>
           </Card>
         )}
+
+        {/* Pribloni — termini, povezani s tem naročilom */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">
+              {labels.fittings.title} ({order.fittings.length})
+            </CardTitle>
+            <p className="text-muted-foreground text-sm">{labels.fittings.hint}</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {order.fittings.length === 0 ? (
+              <p className="text-muted-foreground text-sm">{labels.fittings.none}</p>
+            ) : (
+              <ul className="space-y-1 text-sm">
+                {order.fittings.map((f) => (
+                  <li key={f.id} className="flex items-center justify-between gap-3 border-b py-1 last:border-0">
+                    <span className="min-w-0">
+                      <span className="font-medium">{fmtDate(f.startTime)}</span>
+                      {f.services.length > 0 ? ` · ${f.services.join(", ")}` : ""}
+                      {f.staffName ? ` · ${f.staffName}` : ""}
+                    </span>
+                    {isOpen && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={pending}
+                        onClick={() => unlinkFitting(f.id)}
+                      >
+                        {labels.fittings.unlink}
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {isOpen &&
+              (candidates.length === 0 ? (
+                <p className="text-muted-foreground text-xs">{labels.fittings.noCandidates}</p>
+              ) : (
+                <div className="flex flex-wrap items-end gap-2 border-t pt-3">
+                  <div className="min-w-48 flex-1">
+                    <label htmlFor="fitting-pick" className="text-muted-foreground mb-1 block text-xs">
+                      {labels.fittings.pick}
+                    </label>
+                    <select
+                      id="fitting-pick"
+                      value={fittingId}
+                      onChange={(e) => setFittingId(e.target.value)}
+                      className="border-input bg-background flex h-10 w-full rounded-md border px-3 text-sm"
+                    >
+                      <option value="">{labels.fittings.pickPlaceholder}</option>
+                      {candidates.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {fmtDate(a.startTime)}
+                          {a.services.length ? ` · ${a.services.join(", ")}` : ""}
+                          {a.customerName ? ` · ${a.customerName}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <Button type="button" size="sm" variant="outline" disabled={pending || !fittingId} onClick={linkFitting}>
+                    {labels.fittings.link}
+                  </Button>
+                </div>
+              ))}
+          </CardContent>
+        </Card>
 
         {/* Denar na naročilu: depozit, prejeta plačila in preostanek */}
         <Card>

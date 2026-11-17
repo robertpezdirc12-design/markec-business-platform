@@ -1090,6 +1090,11 @@ model Appointment {
   status    AppointmentStatus @default(PENDING)
   notes     String?           @db.Text
 
+  // PRIBION (2026-11-18): termin je lahko priblonski termin delovnega
+  // naročila. Povezava je mehka (SetNull) — izbris naročila ne pobriše
+  // termina, izbris termina ne naročila.
+  workOrderId String?
+
   // Optional physical resource (E2-7, G7): a `workspace` ExtensionRecord
   // (extensionId "workspace-resources") acting as the room/chair/station
   // for this appointment. Only offered when the org profile enables the
@@ -1173,6 +1178,10 @@ model Appointment {
   @@index([startTime])
   @@index([status])
   @@index([depositPaid])
+
+  workOrder WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+
+  @@index([workOrderId])
 }
 
 model AppointmentService {
@@ -1545,6 +1554,7 @@ model WorkOrder {
   documents          Document[]
   projects           Project[]
   payments           WorkOrderPayment[]
+  appointments       Appointment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

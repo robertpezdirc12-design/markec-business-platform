@@ -1,5 +1,7 @@
 "use server"
 
+import { shouldNotifyReady } from "@/lib/work-orders/ready-notification"
+import { sendWorkOrderReadyEmail } from "@/lib/email/work-order-ready"
 import { summarizePayments, type PaymentSummary } from "@/lib/work-orders/payment-summary"
 import { prisma } from "@/lib/prisma"
 import { requirePermissionOrg } from "@/lib/auth/guards"
@@ -266,6 +268,14 @@ export interface WorkOrderDetail {
     customerDeclinedAt: string | null
     declineReason: string | null
   }
+  /** Priblonski termini, povezani s tem naročilom. */
+  fittings: {
+    id: string
+    startTime: string
+    status: string
+    services: string[]
+    staffName: string | null
+  }[]
   /** Denar na naročilu: načrtovani depozit + prejeta plačila. */
   money: {
     depositAmount: number | null
@@ -296,6 +306,17 @@ export async function getWorkOrderDetail(id: string): Promise<WorkOrderDetail | 
       linkedRecord: true,
       events: { orderBy: { createdAt: "asc" } },
       payments: { orderBy: { paidAt: "asc" } },
+      // Priblonski termini (mehka povezava Appointment.workOrderId).
+      appointments: {
+        orderBy: { startTime: "asc" },
+        select: {
+          id: true,
+          startTime: true,
+          status: true,
+          services: { select: { service: { select: { name: true } } } },
+          staff: { select: { user: { select: { name: true } } } },
+        },
+      },
     },
   })
   if (!order) return null
@@ -336,6 +357,13 @@ export async function getWorkOrderDetail(id: string): Promise<WorkOrderDetail | 
       customerDeclinedAt: order.customerDeclinedAt?.toISOString() ?? null,
       declineReason: order.declineReason,
     },
+    fittings: order.appointments.map((a) => ({
+      id: a.id,
+      startTime: a.startTime.toISOString(),
+      status: a.status,
+      services: a.services.map((s) => s.service.name),
+      staffName: a.staff?.user?.name ?? null,
+    })),
     money: {
       depositAmount: toNumber(order.depositAmount),
       depositPaidAt: order.depositPaidAt?.toISOString() ?? null,
@@ -506,6 +534,8 @@ export async function advanceWorkOrder(
     where: { id, organizationId: org.id },
     include: {
       workflowDefinition: { include: { stages: { orderBy: { order: "asc" } } } },
+      // Obvestilo »pripravljeno za prevzem« potrebuje naslov in ime stranke.
+      customer: { select: { email: true, name: true } },
     },
   })
   if (!order) return { ok: false, error: "NOT_FOUND" }
@@ -547,7 +577,105 @@ export async function advanceWorkOrder(
   revalidatePath("/dashboard/work-orders")
   revalidatePath(`/dashboard/work-orders/${id}`)
   revalidatePath("/dashboard")
+
+  // PRIPRAVLJENO ZA PREVZEM (2026-11-18): ko naročilo preide v stopnjo
+  // predaje, stranka dobi e-pošto z rokom, zneskom in povezavo do svojega
+  // naročila. Brez nastavljenega e-poštnega servisa se ne pošlje nič —
+  // prehod zato NIKOLI ne pade (obvestilo je dodatna vrednost, ne pogoj).
+  if (
+    shouldNotifyReady({
+      fromStageKey: current.key,
+      toStageKey: target.key,
+      toStageName: target.name,
+    })
+  ) {
+    await notifyOrderReady({
+      organizationId: org.id,
+      orderId: order.id,
+      orderNumber: order.number,
+      orderTitle: order.title,
+      dueDate: order.dueDate,
+      total: order.total === null ? null : Number(order.total),
+      customerEmail: order.customer?.email ?? null,
+      customerName: order.customer?.name ?? null,
+      publicToken: order.publicToken,
+      orgSlug: org.slug,
+      orgName: org.name,
+    })
+  }
+
   return { ok: true, id: order.id }
+}
+
+/**
+ * Pošlje »pripravljeno za prevzem« (best effort).
+ *
+ * Zabeleži dogodek v zgodovino naročila ne glede na to, ali je e-pošta
+ * nastavljena — lastnik mora videti, kaj se je zgodilo s strankino
+ * pošto (poslano / ni nastavljeno / brez naslova).
+ */
+async function notifyOrderReady(params: {
+  organizationId: string
+  orderId: string
+  orderNumber: number
+  orderTitle: string
+  dueDate: Date | null
+  total: number | null
+  customerEmail: string | null
+  customerName: string | null
+  publicToken: string | null
+  orgSlug: string | null
+  orgName: string
+}): Promise<void> {
+  const dueDateLabel = params.dueDate
+    ? params.dueDate.toLocaleDateString("sl-SI", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : null
+  const totalLabel =
+    params.total === null
+      ? null
+      : `${params.total.toLocaleString("sl-SI", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} €`
+  const publicUrl =
+    params.publicToken && params.orgSlug
+      ? `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/s/${params.orgSlug}/order/${params.publicToken}`
+      : null
+
+  let message = "Naročilo pripravljeno za prevzem"
+  if (!params.customerEmail) {
+    message += " — stranka nima e-pošte, obvestite jo po telefonu"
+  } else {
+    const result = await sendWorkOrderReadyEmail({
+      email: params.customerEmail,
+      businessName: params.orgName,
+      customerName: params.customerName,
+      orderNumber: params.orderNumber,
+      orderTitle: params.orderTitle,
+      dueDateLabel,
+      totalLabel,
+      publicUrl,
+    })
+    message += result.success
+      ? ` — obvestilo poslano na ${params.customerEmail}`
+      : result.notConfigured
+        ? " — e-pošta ni nastavljena, obvestilo ni bilo poslano"
+        : ` — obvestila ni bilo mogoče poslati (${result.error ?? "neznana napaka"})`
+  }
+
+  await prisma.workOrderEvent.create({
+    data: {
+      organizationId: params.organizationId,
+      workOrderId: params.orderId,
+      type: "NOTE",
+      message,
+      actorEmail: null,
+    },
+  })
 }
 
 /**

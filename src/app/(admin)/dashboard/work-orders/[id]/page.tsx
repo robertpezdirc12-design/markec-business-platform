@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { getWorkOrderDetail } from "@/app/actions/work-orders"
+import { getLinkableAppointments } from "@/app/actions/work-order-fittings"
 import { getServerI18n } from "@/lib/i18n/server"
 import { WorkOrderDetailClient } from "@/components/admin/work-orders/work-order-detail-client"
 import { requirePagePermission } from "@/lib/auth/guards"
@@ -20,9 +21,10 @@ export default async function WorkOrderDetailPage({
   // Custom roles (E4-6b): server-side page guard
   await requirePagePermission("workorders.manage")
   const { id } = await params
-  const [{ t, locale }, order] = await Promise.all([
+  const [{ t, locale }, order, linkable] = await Promise.all([
     getServerI18n(),
     getWorkOrderDetail(id),
+    getLinkableAppointments().catch(() => []),
   ])
   const w = t.workForms.workOrders
 
@@ -77,8 +79,10 @@ export default async function WorkOrderDetailPage({
           quoteSave: w.detail.quoteSave,
           quoteSaved: w.detail.quoteSaved,
           money: w.detail.money,
+          fittings: w.detail.fittings,
           share: w.detail.share,
         }}
+        linkableAppointments={linkable}
         errorLabels={w.errors}
         locale={locale}
       />
