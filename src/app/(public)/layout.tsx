@@ -122,6 +122,7 @@ export default async function PublicLayout({
     if (gate === "hidden") {
       return <MaintenanceScreen />
     }
+    const previewSections = await availableSectionsFor(org)
     // E4-2b: owner preview of an UNPUBLISHED site — intentionally NO
     // analytics script (visits here are not public traffic and the
     // owner's measurement ID is scoped to the published site only).
@@ -134,9 +135,10 @@ export default async function PublicLayout({
             logo: org.logo,
           }}
           cta={null}
-          availableSections={await availableSectionsFor(org)}
+          availableSections={previewSections}
           nav={await navFor()}
           capabilitiesEnabled={capabilitiesFor()}
+          shopEnabled={previewSections.shop}
         />
         <CartOrgScope slug={org.slug} />
         <div className="bg-amber-100 text-amber-950 border-b border-amber-200 px-4 py-2 text-center text-sm font-medium dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
@@ -174,6 +176,11 @@ export default async function PublicLayout({
   const walkInEnabled = org
     ? isCapabilityEnabled(resolvePublicEffectiveProfile(org), "walkIn")
     : false
+
+  // Košarica se ravna po resnični sekciji trgovine (objavljeni izdelki +
+  // capability), ne po sami capability — šiviljstvo ima trgovino
+  // »optional«, a brez izdelkov, zato košarica nima smisla.
+  const publishedSections = org ? await availableSectionsFor(org) : undefined
 
   // F5.3.2 — lastnik-u-urejljiv glavni meni + capability imena (za nav gate).
   // Navigacija se upodobi SAMO za objavljene/nepreview kontekste; preview in
@@ -259,12 +266,11 @@ gtag('config', '${analyticsId}');`}
             logo: org?.logo ?? null,
           }}
           cta={cta.enabled ? { label: cta.label, href: cta.href } : null}
-          availableSections={
-            org ? await availableSectionsFor(org) : undefined
-          }
+          availableSections={publishedSections}
           walkInEnabled={walkInEnabled}
           nav={await navFor()}
           capabilitiesEnabled={capabilitiesFor()}
+          shopEnabled={publishedSections?.shop ?? false}
         />
         <CartOrgScope slug={org?.slug ?? null} />
         <main id="main" tabIndex={-1}>{children}</main>

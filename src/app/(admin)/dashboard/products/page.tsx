@@ -22,11 +22,21 @@ import { ProductSearch } from "@/components/dashboard/product-search"
 import { InventoryManager } from "@/components/dashboard/inventory-manager"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DeliveryDialogButton } from "@/components/dashboard/delivery-dialog-button"
+import { StarterMaterialsButton } from "@/components/dashboard/starter-materials-button"
+import { getSessionEffectiveProfile } from "@/lib/profiles/session"
 import { DeleteProductButton } from "@/components/dashboard/delete-product-button"
 import { getServerI18n } from "@/lib/i18n/server"
 import { requirePagePermission } from "@/lib/auth/guards"
 import { formatCurrency } from "@/lib/utils/format"
 import { stockTone } from "@/lib/inventory/low-stock"
+
+// P1 #107: stran ni imela svojega naslova (v zavihku je ostalo golo ime
+// organizacije) — dodan metadata z jasnim naslovom.
+export const metadata = {
+  title: "Izdelki | Poslovna platforma",
+  description:
+    "Upravljajte katalog izdelkov, zaloge in cene trgovine.",
+}
 
 // #78: the products list is now a QUERY, not a dump — filtri (search,
 // kategorija, stanje zaloge), sortiranje in paginacija (25 na stran)
@@ -90,12 +100,16 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const sort = parseSort(sp.sort)
   const page = Math.max(1, Number(sp.page) || 1)
 
-  const [{ t }, result, stats, categories] = await Promise.all([
+  const [{ t }, result, stats, categories, profile] = await Promise.all([
     getServerI18n(),
     getAdminProducts({ search, categoryId, stock, sort, page }),
     getProductStats(),
     getAllCategories(),
+    // Audit 2026-11-18: prazna zaloga pri šiviljstvu dobi voden korak
+    // (materiali), ne splošnega »ni izdelkov«.
+    getSessionEffectiveProfile(),
   ])
+  const isSeamstress = profile.extensions.includes("seamstress-measurements")
   const products = result.products
 
   // #78: Prejem blaga — sledeni izdelki za izbirnik (ostri take, ker je
@@ -322,12 +336,35 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           {products.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">{t.products.noProductsFound}</p>
-              <Link href="/dashboard/products/new" className="mt-4 inline-block">
-                <Button>
-                  <PlusIcon size={16} className="mr-2" />
-                  {t.products.addFirstProduct}
-                </Button>
-              </Link>
+              {/* Audit 2026-11-18: pri šiviljstvu prazna zaloga ni
+                  »ni izdelkov«, ampak manjkajoči materiali. Lastnica dobi
+                  voden korak: pripravljen seznam materialov z eno potezo
+                  ali ročni vnos. */}
+              {isSeamstress && stats.totalProducts === 0 ? (
+                <div className="mx-auto mt-6 max-w-md space-y-3 rounded-lg border border-dashed p-6">
+                  <p className="font-medium">Začnite z materiali za šivanje</p>
+                  <p className="text-muted-foreground text-sm">
+                    Blago, zadrge, gumbi in vrvica se porabljajo na delovnem
+                    nalogu. Dodajte pripravljen seznam ali vnesite svoje.
+                  </p>
+                  <div className="flex flex-col items-center justify-center gap-2 sm:flex-row">
+                    <StarterMaterialsButton />
+                    <Link href="/dashboard/products/new">
+                      <Button variant="outline" className="min-h-11">
+                        <PlusIcon size={16} className="mr-2" />
+                        Vnesi svoj material
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <Link href="/dashboard/products/new" className="mt-4 inline-block">
+                  <Button>
+                    <PlusIcon size={16} className="mr-2" />
+                    {t.products.addFirstProduct}
+                  </Button>
+                </Link>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">

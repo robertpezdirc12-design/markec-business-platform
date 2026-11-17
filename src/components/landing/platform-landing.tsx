@@ -92,35 +92,35 @@ export function PlatformLanding({
           </Link>
           <nav
             aria-label={t.aria.nav}
-            className="text-muted-foreground ml-4 hidden items-center gap-5 text-sm lg:flex"
+            className="text-muted-foreground ml-4 hidden items-center gap-3 text-sm lg:flex xl:gap-5"
           >
             <Link
               href="#moduli"
-              className="hover:text-foreground flex min-h-9 items-center"
+              className="hover:text-foreground flex min-h-9 items-center whitespace-nowrap"
             >
               {t.nav.modules}
             </Link>
             <Link
               href="#primeri"
-              className="hover:text-foreground flex min-h-9 items-center"
+              className="hover:text-foreground flex min-h-9 items-center whitespace-nowrap"
             >
               {t.nav.examples}
             </Link>
             <Link
               href="#koraki"
-              className="hover:text-foreground flex min-h-9 items-center"
+              className="hover:text-foreground flex min-h-9 items-center whitespace-nowrap"
             >
               {t.nav.steps}
             </Link>
             <Link
               href="#paketi"
-              className="hover:text-foreground flex min-h-9 items-center"
+              className="hover:text-foreground flex min-h-9 items-center whitespace-nowrap"
             >
               {t.nav.plans}
             </Link>
             <Link
               href="/pricing"
-              className="hover:text-foreground flex min-h-9 items-center"
+              className="hover:text-foreground flex min-h-9 items-center whitespace-nowrap"
             >
               Cene
             </Link>
@@ -199,7 +199,7 @@ export function PlatformLanding({
           </div>
           <Link
             href={dashboardHref ?? "/login"}
-            className="text-muted-foreground hover:text-foreground hidden text-sm md:inline"
+            className="text-muted-foreground hover:text-foreground hidden text-sm whitespace-nowrap md:inline"
           >
             {dashboardHref ? t.nav.dashboard : t.nav.login}
           </Link>

@@ -51,9 +51,18 @@ interface PublicNavbarProps {
   nav?: import("@/lib/site-design").NavItem[]
   /** F5.3.2 — capability imena, ki so v workspaceu omogočena. */
   capabilitiesEnabled?: string[]
+  /**
+   * Audit 2026-11-18: profil brez trgovine (npr. šiviljstvo) NE sme kazati
+   * košarice — prej je ikona vodila v prazno trgovino, kar je nasprotovalo
+   * obljubi strani ("oddajte povpraševanje"). Privzeto true (starejši klici).
+   */
+  shopEnabled?: boolean
 }
 
-export function PublicNavbar({ org, cta, availableSections, walkInEnabled, nav, capabilitiesEnabled }: PublicNavbarProps) {
+export function PublicNavbar({ org, cta, availableSections, walkInEnabled, nav, capabilitiesEnabled, shopEnabled }: PublicNavbarProps) {
+  // Brez eksplicitnega podatka se košarica ravna po tem, ali stran sploh
+  // ima sekcijo trgovine (podatki iz resolveAvailableSections).
+  const showCart = shopEnabled ?? availableSections?.shop ?? true
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { data: session, status } = useSession()
@@ -161,7 +170,7 @@ export function PublicNavbar({ org, cta, availableSections, walkInEnabled, nav, 
           <div className="flex items-center gap-1.5 xl:gap-2 ml-3 xl:ml-4 pl-3 xl:pl-4 border-l border-border/50">
             <LanguageSwitcher />
             <ThemeToggle />
-            <NavCartButton />
+            {showCart && <NavCartButton />}
             {/*
              * Auth surface rule (interface logic): the salon's customer-facing
              * interface must NOT offer login to anonymous visitors — booking is
@@ -254,7 +263,7 @@ export function PublicNavbar({ org, cta, availableSections, walkInEnabled, nav, 
         <div className="flex items-center gap-2 lg:hidden">
           <LanguageSwitcher />
           <ThemeToggle />
-          <NavCartButton />
+          {showCart && <NavCartButton />}
           <button
             className="text-foreground/70 hover:text-primary-text transition-colors p-2 -mr-2"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

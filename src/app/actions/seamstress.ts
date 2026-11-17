@@ -26,6 +26,7 @@ import { z } from "zod"
 import type { Prisma } from "@prisma/client"
 import { nextDocumentNumber, fiscalYearOf } from "@/lib/documents/numbering"
 import { advanceWorkOrder } from "./work-orders"
+import { createProduct } from "./products"
 import { consumeOnWorkOrder, type ConsumptionResult } from "./work-order-consumption"
 import { SEAMSTRESS_CONSUMPTION_OPTS } from "@/lib/consumption-options"
 
@@ -620,4 +621,68 @@ export async function markReadyForDelivery(workOrderId: string): Promise<{ ok: b
 /** Premakne na zaključeno (skupaj s plačilom, če je zaporedje omogoča). */
 export async function completeOrder(workOrderId: string): Promise<{ ok: boolean; error?: string }> {
   return advanceWorkOrder(workOrderId, "done")
+}
+// ============================================================
+// Vodeni začetek zaloge materialov
+// ============================================================
+
+/**
+ * Standardni materiali za šivanje (enaki kot v referenčnem seed-u).
+ * Kupec, ki šele začne, ne ve, kaj vpisati v »Izdelek« — zato mu
+ * ponudimo pripravljen seznam z eno potezo.
+ */
+const STARTER_MATERIALS = [
+  { name: "Blago bombaž (m²)", price: 12, sku: "BOMBAZ-M2", stock: 40 },
+  { name: "Blago svila (m²)", price: 22, sku: "SVILA-M2", stock: 20 },
+  { name: "Vrvica bombaž (m)", price: 1.5, sku: "VRVICA-M", stock: 100 },
+  { name: "Zadrga kovinska (kos)", price: 3, sku: "ZADRGA-K", stock: 50 },
+  { name: "Gumbi (set)", price: 2, sku: "GUMBI-SET", stock: 60 },
+] as const
+
+/**
+ * Doda pripravljene materiale v zalogo. Idempotentno: material s prostim
+ * SKU-jem, ki v organizaciji že obstaja, se ne podvoji.
+ * Uporablja obstoječo createProduct pot (plan omejitve, validacija).
+ *
+ * Opomba: modul je `"use server"`, zato je seznam zgoraj NEEKSPORTAN —
+ * "use server" modul sme izvažati samo async funkcije (build to preveri).
+ */
+export async function addStarterMaterials(): Promise<{
+  ok: boolean
+  created: number
+  skipped: number
+  error?: string
+}> {
+  const { org } = await requirePermissionOrg("products.manage")
+
+  let created = 0
+  let skipped = 0
+  for (const m of STARTER_MATERIALS) {
+    const existing = await prisma.product.findFirst({
+      where: { organizationId: org.id, sku: m.sku },
+      select: { id: true },
+    })
+    if (existing) {
+      skipped += 1
+      continue
+    }
+    const res = await createProduct({
+      name: m.name,
+      price: m.price,
+      sku: m.sku,
+      trackInventory: true,
+      stockQuantity: m.stock,
+      isActive: true,
+      // Material se ne prodaja na spletu — porablja se na delovnem nalogu.
+      forSale: false,
+    })
+    if (!res.success) {
+      return { ok: false, created, skipped, error: res.error }
+    }
+    created += 1
+  }
+
+  revalidatePath("/dashboard/products")
+  revalidatePath("/dashboard/seamstress")
+  return { ok: true, created, skipped }
 }

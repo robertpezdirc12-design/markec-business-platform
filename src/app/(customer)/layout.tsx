@@ -27,6 +27,13 @@ export default async function CustomerLayout({
     notFound()
   }
 
+  // Audit 2026-11-18: košarica se pokaže SAMO, ko stran res ima sekcijo
+  // trgovine (objavljeni izdelki + capability). Šiviljski profil ima
+  // trgovino »optional«, a brez izdelkov — ikona je vodila v prazno
+  // trgovino, kar je nasprotovalo obljubi strani (povpraševanje).
+  const sections = org ? await resolveAvailableSections(org.id, org) : undefined
+  const shopEnabled = sections?.shop ?? false
+
   // Publication gate (EPIC #3 E3-1): same rule as the (public) layout —
   // drafts/unpublished tenants are private; owner sees a preview, everyone
   // else a neutral maintenance screen (also covers /shop and /inquiry).
@@ -47,7 +54,8 @@ export default async function CustomerLayout({
           // P2 #46: ista pravila kot na domači strani — navigacija mora biti
           // identična na VSAKIH javnih poteh (prej je /shop pokazal "Storitve",
           // ki domača stran ni prikazala).
-          availableSections={await resolveAvailableSections(org.id, org)}
+          availableSections={sections}
+          shopEnabled={shopEnabled}
         />
         <CartOrgScope slug={org.slug} />
         <div className="bg-amber-100 text-amber-950 border-b border-amber-200 px-4 py-2 text-center text-sm font-medium dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
@@ -80,9 +88,8 @@ export default async function CustomerLayout({
           logo: org?.logo ?? null,
         }}
         cta={cta.enabled ? { label: cta.label, href: cta.href } : null}
-        availableSections={
-          org ? await resolveAvailableSections(org.id, org) : undefined
-        }
+        availableSections={sections}
+        shopEnabled={shopEnabled}
       />
       <CartOrgScope slug={org?.slug ?? null} />
       <main>{children}</main>
