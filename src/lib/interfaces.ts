@@ -601,6 +601,8 @@ export interface AppointmentCardProps {
         imageUrl: string | null
       }
     }>
+    /** P1 #107: ali lahko salon izterja polog prek spleta (Stripe). */
+    onlinePaymentEnabled?: boolean
   }
   isPast?: boolean
   isNew?: boolean

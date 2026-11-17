@@ -53,6 +53,11 @@ export function AppointmentCard({
   // Cancel confirmation dialog state
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
 
+  // P1 #107: spletno plačilo je mogoče le, ko ima salon svoj Stripe ključ.
+  // Brez njega kartica NE sme zahtevati "dokončajte plačilo" — polog se
+  // poravna v salonu (enaka zgodba kot v rezervacijskem obrazcu).
+  const canPayOnline = appointment.onlinePaymentEnabled !== false
+
   const totalDuration = appointment.services.reduce(
     (sum, s) => sum + s.service.duration,
     0
@@ -130,7 +135,12 @@ export function AppointmentCard({
       }
     > = {
       CONFIRMED: { variant: "default", label: "Potrjen" },
-      PENDING: { variant: "secondary", label: "Čakanje na plačilo" },
+      // P1 #107: brez spletnih plačil termin ne "čaka na plačilo", ampak na
+      // potrditev salona (znesek se plača ob obisku).
+      PENDING: {
+        variant: "secondary",
+        label: canPayOnline ? "Čakanje na plačilo" : "Čakanje na potrditev",
+      },
       COMPLETED: { variant: "outline", label: "Zaključen" },
       CANCELLED: { variant: "destructive", label: "Odpovedan" },
       NO_SHOW: { variant: "destructive", label: "Ni se pojavil" },
@@ -203,7 +213,7 @@ export function AppointmentCard({
                     </div>
                   </div>
                 </div>
-              ) : (
+              ) : canPayOnline ? (
                 <div className="mt-4 rounded-lg border-2 border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/20">
                   <div className="flex items-center gap-2">
                     <WarningCircleIcon
@@ -217,6 +227,27 @@ export function AppointmentCard({
                       </p>
                       <p className="text-amber-800 dark:text-amber-200">
                         Za potrditev termina dokončajte plačilo
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-muted/50 mt-4 rounded-lg border p-3">
+                  <div className="flex items-center gap-2">
+                    <CurrencyDollarIcon
+                      size={20}
+                      className="text-muted-foreground shrink-0"
+                      weight="regular"
+                    />
+                    <div className="text-sm">
+                      <p className="font-semibold">
+                        Plačilo v salonu
+                        {appointment.depositAmount > 0
+                          ? `: ${fmt(appointment.depositAmount)}`
+                          : ""}
+                      </p>
+                      <p className="text-muted-foreground">
+                        Termin je potrjen — znesek poravnate ob obisku.
                       </p>
                     </div>
                   </div>
@@ -248,7 +279,7 @@ export function AppointmentCard({
               </div>
             )}
             <div className="flex w-full gap-2">
-              {!appointment.depositPaid && (
+              {!appointment.depositPaid && canPayOnline && (
                 <Button
                   className="flex-1 shadow-lg transition-all hover:scale-105"
                   onClick={handlePayNow}

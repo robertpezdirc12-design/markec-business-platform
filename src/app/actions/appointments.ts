@@ -51,6 +51,7 @@ import { sendAppointmentExpiredEmail } from "@/lib/email/appointment-expired"
 import { getSessionOrg, getPublicOrg, getResolvedOrg, getTrustedOrgSlug } from "@/lib/tenant"
 import { requirePermissionOrg, UnauthorizedError } from "@/lib/auth/guards"
 import { pickIdentityMatch } from "@/lib/customers/identity"
+import { isOrgStripeConfigured } from "@/lib/stripe"
 import { notifyOrgOwners } from "@/lib/push/send"
 import { buildPushPayload } from "@/lib/push/core"
 import { hasPermission } from "@/lib/permissions/roles"
@@ -862,8 +863,45 @@ export async function createAppointment(
       })
 
       if (userWithCustomer?.customer) {
-        // Use existing customer profile
+        // Use existing customer profile.
+        // P1 #107: samostojno registrirana stranka ima Customer BREZ
+        // organizationId (registracija ne ve, v kateri salon bo šla).
+        // Brez tega prevzema takšna stranka nikoli ne pride v CRM salona
+        // ("Moje stranke" filtrira po organizationId) — in vsaka naslednja
+        // rezervacija bi ustvarila še eno "skrito" stranko.
+        // Pravilo: prevzamemo SAMO prazno organizacijo (null). Stranke, ki
+        // že pripadajo drugemu salonu, NE prepisujemo (brez kraje CRM
+        // podatkov med najemniki).
         customerId = userWithCustomer.customer.id
+        if (!userWithCustomer.customer.organizationId) {
+          await prisma.customer.update({
+            where: { id: userWithCustomer.customer.id },
+            data: {
+              organizationId: org.id,
+              // Manjkajoče kontaktne podatke dopolnimo iz rezervacije
+              // (telefon se tako zapomni za naslednjič).
+              ...(userWithCustomer.customer.phone
+                ? {}
+                : data.guestPhone
+                  ? { phone: data.guestPhone }
+                  : {}),
+              ...(userWithCustomer.customer.name
+                ? {}
+                : { name: session.user.name || data.guestName || "Stranka" }),
+            },
+          })
+        } else if (
+          userWithCustomer.customer.organizationId === org.id &&
+          !userWithCustomer.customer.phone &&
+          data.guestPhone
+        ) {
+          // Telefon dopolnimo tudi pri že vezani stranki (nikoli ne
+          // prepišemo obstoječe vrednosti).
+          await prisma.customer.update({
+            where: { id: userWithCustomer.customer.id },
+            data: { phone: data.guestPhone },
+          })
+        }
       } else {
         // Create new customer profile for authenticated user
         const customer = await prisma.customer.create({
@@ -1355,15 +1393,37 @@ export async function getUserAppointments() {
           },
         },
       },
+      // P1 #107: ali salon sploh lahko sprejme spletno plačilo? Kartica
+      // termina tega ne more uganiti, zato pošljemo izpeljan boolean
+      // (ključa salonа NE pošiljamo na odjemalca).
+      organization: { select: { stripeSecretKey: true } },
     },
     orderBy: { startTime: "desc" }, // Most recent first
   })
 
-  // Convert Prisma Decimals to numbers for price fields
+  // P1 #107 — meja RSC: na odjemalca gre lahko samo plain JSON. Prisma
+  // Decimal (totalPrice, depositAmount, tipAmount, commissionAmount,
+  // promotionDiscount) NISO serializabilni in so prej sprožali opozorilo
+  // "Only plain objects can be passed to Client Components". Vrnemo
+  // ekspliciten DTO — brez Decimal-ov in brez Stripe ključa.
   return appointments.map((apt) => ({
-    ...apt,
+    id: apt.id,
+    startTime: apt.startTime,
+    endTime: apt.endTime,
+    status: apt.status,
+    notes: apt.notes,
+    depositPaid: apt.depositPaid,
     totalPrice: apt.totalPrice.toNumber(),
     depositAmount: apt.depositAmount.toNumber(),
+    tipAmount: apt.tipAmount ? apt.tipAmount.toNumber() : 0,
+    promotionDiscount: apt.promotionDiscount
+      ? apt.promotionDiscount.toNumber()
+      : 0,
+    staff: apt.staff,
+    services: apt.services,
+    organizationId: apt.organizationId,
+    // Polog je smiseln le, če ga salon lahko izterja prek spleta.
+    onlinePaymentEnabled: isOrgStripeConfigured(apt.organization),
   }))
 }
 

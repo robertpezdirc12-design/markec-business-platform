@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import type { Metadata } from "next"
 import { auth } from "@/lib/auth/auth"
 import { getUserAppointments } from "@/app/actions/appointments"
 import { AppointmentsList } from "@/components/appointments/appointments-list"
@@ -10,6 +11,13 @@ import { orgPath } from "@/lib/org-path"
 
 interface MyAppointmentsPageProps {
   searchParams: Promise<{ new?: string }>
+}
+
+// P1 #107: stran je imela naslov platforme ("MARKEC – MY BUSINESS PLATFORM")
+// namesto naslova strani — zmedeno v zavihku in pri deljenju povezave.
+export const metadata: Metadata = {
+  title: "Moji termini | Poslovna platforma",
+  description: "Preglejte in upravljajte svoje rezervirane termine.",
 }
 
 export default async function MyAppointmentsPage(
@@ -47,6 +55,13 @@ export default async function MyAppointmentsPage(
       apt.status === "COMPLETED"
   )
 
+  // P1 #107: sporočilo o plačilu mora biti resnično — če salon ne more
+  // izterjati pologa prek spleta, NE trdimo "dokončajte plačilo".
+  const newAppointment = newAppointmentId
+    ? appointments.find((apt) => apt.id === newAppointmentId)
+    : undefined
+  const newNeedsOnlinePayment = newAppointment?.onlinePaymentEnabled === true
+
   return (
     <div className="from-muted/30 via-background to-muted/20 min-h-screen bg-linear-to-b py-12">
       <div className="container mx-auto max-w-5xl px-4">
@@ -67,8 +82,9 @@ export default async function MyAppointmentsPage(
               ✓ Termin uspešno rezerviran!
             </p>
             <p className="mt-1 text-sm text-green-800 dark:text-green-200">
-              Vaš termin je bil ustvarjen. Dokončajte plačilo za potrditev
-              rezervacije.
+              {newNeedsOnlinePayment
+                ? "Vaš termin je bil ustvarjen. Dokončajte plačilo za potrditev rezervacije."
+                : "Vaš termin je bil ustvarjen. Znesek poravnate v salonu ob obisku."}
             </p>
           </div>
         )}
