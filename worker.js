@@ -31,6 +31,47 @@
 
 import openNextWorker from "./.open-next/worker.js"
 
+// ============================================================
+// REQUEST-SCOPED PRISMA (Cloudflare Workers)
+//
+// workerd's AsyncLocalStorage implements `run()` and `getStore()` but NOT
+// `enterWith()`. So the per-request Prisma client cannot be created lazily
+// via enterWith inside src/lib/prisma.ts — it throws:
+//   "asyncLocalStorage.enterWith() is not implemented"
+//
+// Instead we establish the request scope HERE at the Worker boundary:
+// every fetch gets a fresh mutable holder, and openNextWorker.fetch runs
+// inside als.run(holder, ...). Prisma reads the same instance from
+// globalThis and lazily creates the client into the holder on first use.
+//
+// This is what fixes "Cannot perform I/O on behalf of a different request":
+// each request owns its Neon WebSocket pool, never shared across requests.
+// ============================================================
+const PRISMA_ALS_KEY = Symbol.for("markec.prisma.als")
+
+function getRequestStorage() {
+  const ALS = globalThis.AsyncLocalStorage
+  if (typeof ALS !== "function") return null
+  let als = globalThis[PRISMA_ALS_KEY]
+  if (!als) {
+    als = new ALS()
+    globalThis[PRISMA_ALS_KEY] = als
+  }
+  // workerd implements run()/getStore() but not enterWith(); run() is enough.
+  return typeof als.run === "function" ? als : null
+}
+
+async function handleFetch(request, env, ctx) {
+  const als = getRequestStorage()
+  if (!als) {
+    // Runtime without ALS (e.g. local Node): fall back to the shared client.
+    return openNextWorker.fetch(request, env, ctx)
+  }
+  return als.run({ client: undefined }, () =>
+    openNextWorker.fetch(request, env, ctx)
+  )
+}
+
 // Durable Object classes are resolved by wrangler through the
 // entry point's exports — keep re-exporting them.
 export {
@@ -78,7 +119,7 @@ async function runCronTick(cron, env) {
 }
 
 export default {
-  fetch: openNextWorker.fetch,
+  fetch: handleFetch,
 
   // Inerten, dokler wrangler.jsonc nima "triggers" (timer ima Vercel).
   async scheduled(controller, env) {

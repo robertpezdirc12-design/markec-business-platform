@@ -15,32 +15,29 @@ import { neonConfig } from "@neondatabase/serverless"
 // je I/O objekt vezan na zahtevo, ki ga je ustvarila.
 //
 // Popravek: vsaka zahteva dobi SVOJ PrismaClient (in svoj pool).
-// AsyncLocalStorage hrani instanco za trajanje zahteve; Proxy
-// posreduje vse klice (vključno z $transaction) pravilnemu clientu.
-// Nobena obstoječa klicna točka se ne spremeni.
 //
-// POMBEMBNO (Turbopack): NE uvažamo `node:async_hooks` statično —
-// Turbopack bi modul potegnil v client chunk (prek "use server"
-// action uvozov) in build bi padel z "does not support external
-// modules (request: node:async_hooks)". Next.js in OpenNext že
-// izpostavita `globalThis.AsyncLocalStorage` (glej
-// next/dist/server/node-environment-baseline.js in OpenNext banner),
-// zato uporabimo global. V čistem Node/test okolju brez globala
-// pademo nazaj na en client (tam ni Workers omejitve med zahtevami).
+// POMBEMBNO — workerd AsyncLocalStorage:
+//   workerd implementira `run()` in `getStore()`, NE pa `enterWith()`.
+//   Zato ME UPOBLJAMO enterWith(). Namesto tega worker.js ob vsaki
+//   zahtevi ustvari svež "holder" objekt in zavije klic v
+//   `als.run(holder, () => openNextWorker.fetch(...))`. Mi samo
+//   preberemo holder iz iste instanceof prek global symbola in vanj
+//   leno ustvarimo client ob prvem dostopu.
+//
+// Turbopack: NE uvažamo `node:async_hooks` statično — potegnilo bi se
+// v client chunk (prek "use server" uvozov) in build bi padel. ALS
+// instanco da na globalThis worker.js.
 // ============================================================
+
+type RequestHolder = { client?: PrismaClient }
 
 type ScopedStorage<T> = {
   getStore(): T | undefined
-  enterWith(value: T): void
 }
 
-type ALSConstructor = new <T>() => ScopedStorage<T>
+const PRISMA_ALS_KEY = Symbol.for("markec.prisma.als")
 
-type WithALS = typeof globalThis & {
-  AsyncLocalStorage?: ALSConstructor
-}
-
-let requestStorage: ScopedStorage<PrismaClient> | undefined
+let requestStorage: ScopedStorage<RequestHolder> | undefined
 let nodeFallbackClient: PrismaClient | undefined
 let serverSingletonClient: PrismaClient | undefined
 
@@ -67,11 +64,15 @@ export function isWorkersRuntime(
 
 const onWorkers = isWorkersRuntime()
 
-function getStorage(): ScopedStorage<PrismaClient> | undefined {
+function getStorage(): ScopedStorage<RequestHolder> | undefined {
   if (requestStorage) return requestStorage
-  const ALS = (globalThis as WithALS).AsyncLocalStorage
-  if (typeof ALS !== "function") return undefined
-  requestStorage = new ALS<PrismaClient>()
+  // worker.js ustvari ALS instanco in vsako zahtevo zavije v als.run(holder, …).
+  // Mi samo BEREMO — workerd nima enterWith(), zato ga nikoli ne kličemo.
+  const als = (
+    globalThis as unknown as Record<symbol, ScopedStorage<RequestHolder> | undefined>
+  )[PRISMA_ALS_KEY]
+  if (!als || typeof als.getStore !== "function") return undefined
+  requestStorage = als
   return requestStorage
 }
 
@@ -105,15 +106,15 @@ function getClient(): PrismaClient {
 
   const storage = getStorage()
   if (storage) {
-    const existing = storage.getStore()
-    if (existing) return existing
-
-    const created = createPrismaClient()
-    storage.enterWith(created)
-    return created
+    const holder = storage.getStore()
+    if (holder) {
+      if (!holder.client) holder.client = createPrismaClient()
+      return holder.client
+    }
   }
 
-  // Workers brez globalnega AsyncLocalStorage: en client (robni primer).
+  // Workers brez aktivnega request-holderja (npr. cron/self-fetch izven
+  // fetch ovijalke): en client kot varni fallback.
   if (!nodeFallbackClient) nodeFallbackClient = createPrismaClient()
   return nodeFallbackClient
 }
@@ -121,8 +122,8 @@ function getClient(): PrismaClient {
 /**
  * Prisma client.
  *
- * Workers: proxy leno ustvari client ob prvem dostopu znotraj zahteve in
- * ga zadrži v AsyncLocalStorage — vsaka zahteva dobi svež client, zato ni
+ * Workers: proxy leno ustvari client v request-holderju (ki ga worker.js
+ * postavi prek als.run) — vsaka zahteva dobi svež client, zato ni
  * cross-request I/O napak. Vse metode so vezane na client (`this`).
  *
  * Vercel/Node: en sam modulski client, ki živi med zahtevami.
@@ -148,7 +149,8 @@ export async function releasePrisma(): Promise<void> {
   if (!onWorkers) return
 
   const storage = getStorage()
-  const client = storage?.getStore() ?? nodeFallbackClient
+  const holder = storage?.getStore()
+  const client = holder?.client ?? nodeFallbackClient
   if (client) {
     await client.$disconnect().catch(() => undefined)
   }
