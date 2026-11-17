@@ -247,14 +247,37 @@ jobs:
           # silently break R2 uploads / Stripe / email in production).
           # printf (not a here-string) avoids baking a trailing newline into
           # the value — API keys with \n are rejected by the providers.
+          #
+          # RETRY: Cloudflare refuses secret edits while a NEWER Worker version
+          # exists that is not the deployed one:
+          #   "Secret edit failed. You attempted to modify a secret, but the
+          #    latest version of your Worker isn't currently deployed."
+          # That happens when something else publishes versions in parallel
+          # (e.g. the Cloudflare Git build integration, which also builds on
+          # every push). The condition clears by itself, so we retry instead
+          # of failing a deploy whose code is already live.
           put() {
-            local name="$1" value="$2"
-            if [ -n "$value" ]; then
-              printf '%s' "$value" | npx wrangler secret put "$name" --name "$WORKER"
-              echo "✓ $name"
-            else
+            local name="$1" value="$2" output attempt
+            if [ -z "$value" ]; then
               echo "::notice::$name not provided in GitHub secrets — keeping existing Worker secret"
+              return 0
             fi
+            for attempt in 1 2 3 4 5 6; do
+              if output=$(printf '%s' "$value" | npx wrangler secret put "$name" --name "$WORKER" 2>&1); then
+                echo "✓ $name"
+                return 0
+              fi
+              if printf '%s' "$output" | grep -q "latest version of your Worker isn't currently deployed"; then
+                echo "::warning::$name — Worker version not settled (attempt $attempt/6), retrying in 20s"
+                sleep 20
+                continue
+              fi
+              printf '%s\n' "$output"
+              echo "::error::Failed to set $name"
+              return 1
+            done
+            echo "::error::$name could not be set — the latest Worker version is not deployed. Check whether the Cloudflare Git build integration is enabled for this repo (GitHub Actions must be the only deployer)."
+            return 1
           }
 
           put DATABASE_URL "${SECRET_DATABASE_URL:-}"
