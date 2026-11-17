@@ -17,22 +17,56 @@
  */
 export function getPlatformHostsFromEnv(): string[] {
   const hosts: string[] = []
+
+  // PLATFORM_HOSTS: eksplicitni seznam (vejica), za STABILNE platformne
+  // hoste, ki jih okolje ne pozna samo. Nujno: `VERCEL_URL` je
+  // PER-DEPLOYMENT (markec-…-kcvz5guck.vercel.app), zato bi stabilni
+  // produkcijski alias (markec-…-designs-projects.vercel.app) obravnavali
+  // kot host najemnika → koren platforme 404. Enako velja za lastne do-
+  // mene platforme (npr. markec.si, ko bo DNS). Prazno = ni spremembe.
+  for (const raw of (process.env.PLATFORM_HOSTS ?? "").split(",")) {
+    const host = hostFromEnvValue(raw)
+    if (host) hosts.push(host)
+  }
+
   const candidates = [
     process.env.NEXT_PUBLIC_APP_URL,
     process.env.NEXTAUTH_URL,
     process.env.VERCEL_URL,
   ]
   for (const candidate of candidates) {
-    if (!candidate) continue
-    try {
-      // hostname (not host): no port — matches hostFromHostHeader output
-      const host = new URL(candidate).hostname.toLowerCase()
-      if (host) hosts.push(host)
-    } catch {
-      // Not a URL (e.g. VERCEL_URL is a bare host) — treat as a host.
-      const bare = candidate.trim().toLowerCase().replace(/:\d+$/, "")
-      if (bare) hosts.push(bare)
-    }
+    const host = hostFromEnvValue(candidate)
+    if (host) hosts.push(host)
   }
   return hosts
+}
+
+/**
+ * Normaliziraj vrednost iz okolja v goli hostname (brez sheme, poti in
+ * porta) — ista oblika, kot jo vrne `hostFromHostHeader`, da primerjava
+ * `isPlatformHost` deluje. Vrne null za prazno/neveljavno vrednost.
+ */
+function hostFromEnvValue(value: string | undefined): string | null {
+  if (!value) return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  // Samo vrednost s shemo (https://…) gre skozi URL parser. Brez tega bi
+  // "markec.si:3008" URL parser razumel kot shemo "markec.si" (hostname
+  // prazen) in bi host tiho izginil.
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) {
+    try {
+      // hostname (not host): no port — matches hostFromHostHeader output
+      return new URL(trimmed).hostname.toLowerCase() || null
+    } catch {
+      return null
+    }
+  }
+
+  // Goli host (VERCEL_URL je brez sheme): odstrani morebitno pot in port.
+  const bare = trimmed
+    .toLowerCase()
+    .replace(/\/.*$/, "")
+    .replace(/:\d+$/, "")
+  return bare || null
 }
