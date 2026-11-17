@@ -105,10 +105,13 @@ async function main() {
         address: org.salonConfig?.city || "Slovenija",
         rating: Math.round(avgRating * 10) / 10,
         reviews: org._count.reviews,
-        image: org.logo || "/img/presets/default.jpg",
-        isOpen: true,
-        openUntil: "20:00",
-        priceRange: "€€",
+        // Brez logotipa ostane `null` — nadomestno sliko po dejavnosti
+        // izbere prikaz (verticalCardImage v src/lib/marketplace/snapshot.ts).
+        // Prej je vsako podjetje dobilo ISTO splošno sliko, ki ni obstajala.
+        image: org.logo || null,
+        // isOpen/openUntil/priceRange sta bila VEDNO "true"/"20:00"/"€€" za
+        // vsa podjetja — izmišljeni podatki. Odstranjeno; kartica ju izpiše
+        // le, ko ju ima (in ko ju bo snapshot znal res izračunati).
         slug: org.slug,
         category: org.vertical || "splošno",
         city: org.salonConfig?.city || "Slovenija",

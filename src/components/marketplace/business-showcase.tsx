@@ -8,6 +8,7 @@
 // ============================================================
 
 import { useState, useRef } from "react"
+import { verticalCardImage } from "@/lib/marketplace/card-image"
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -27,7 +28,8 @@ interface Business {
   address: string
   rating: number
   reviews: number
-  image: string
+  /** Logotip ali null — takrat se uporabi slika po dejavnosti. */
+  image?: string | null
   badge?: "Predstavljamo" | "Novo" | "Priljubljeno" | "Ponudbe"
   isOpen?: boolean
   openUntil?: string
@@ -43,8 +45,8 @@ interface BusinessShowcaseProps {
   recommendedBusinesses?: Business[]
   popularBusinesses?: Business[]
   newBusinesses?: Business[]
-  /** Search results: hide sections that have no data instead of showing empty carousels. */
-  hideEmptySections?: boolean
+  /** Iskalni način: naslov prve sekcije je "Rezultati iskanja". */
+  isSearchResults?: boolean
 }
 
 interface CarouselSectionProps {
@@ -64,7 +66,7 @@ function BusinessCard({ business }: { business: Business }) {
         {/* Image */}
         <div className="relative aspect-[4/3] overflow-hidden">
           <img
-            src={business.image}
+            src={business.image || verticalCardImage(business.category)}
             alt={business.name}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
@@ -97,12 +99,14 @@ function BusinessCard({ business }: { business: Business }) {
             />
           </button>
 
-          {/* Price Range */}
-          <div className="absolute bottom-3 right-3">
-            <Badge variant="outline" className="bg-background/90 backdrop-blur-sm">
-              {business.priceRange}
-            </Badge>
-          </div>
+          {/* Cenovni razred — samo ko je znan (prej vedno "€€") */}
+          {business.priceRange && (
+            <div className="absolute bottom-3 right-3">
+              <Badge variant="outline" className="bg-background/90 backdrop-blur-sm">
+                {business.priceRange}
+              </Badge>
+            </div>
+          )}
 
           {/* Open Status */}
           {business.isOpen && (
@@ -121,16 +125,18 @@ function BusinessCard({ business }: { business: Business }) {
             <h3 className="line-clamp-2 flex-1 font-semibold leading-tight transition-colors group-hover:text-primary">
               {business.name}
             </h3>
-            <div className="flex shrink-0 items-center gap-1">
-              <StarIcon
-                size={16}
-                className="text-amber-400"
-                weight="fill"
-              />
-              <span className="text-sm font-semibold">
-                {business.rating.toFixed(1)}
-              </span>
-            </div>
+            {/* Ocena samo z dejanskimi mnenji — prej je vsaka kartica
+                kazala "0.0" s polno zvezdico, kar izgleda kot slaba ocena. */}
+            {business.reviews > 0 ? (
+              <div className="flex shrink-0 items-center gap-1">
+                <StarIcon size={16} className="text-amber-400" weight="fill" />
+                <span className="text-sm font-semibold">
+                  {business.rating.toFixed(1)}
+                </span>
+              </div>
+            ) : (
+              <span className="text-muted-foreground shrink-0 text-xs">Novo</span>
+            )}
           </div>
 
           <p className="mt-1 text-sm text-muted-foreground">{business.type}</p>
@@ -142,20 +148,16 @@ function BusinessCard({ business }: { business: Business }) {
 
           <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {/* Avatar stack */}
-              <div className="flex -space-x-1.5">
-                {["#E8B4B8", "#B8D4E3", "#C5E3B8"].map((color, i) => (
-                  <div
-                    key={i}
-                    className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-background text-[10px] font-medium text-white"
-                    style={{ backgroundColor: color }}
-                  >
-                    {String.fromCharCode(65 + i)}
-                  </div>
-                ))}
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {business.reviews} mnenj
+              {/* Prej so bili tu trije izmišljeni avatarji "A/B/C" — enaki na
+                  vseh karticah. Zdaj samo resnično število mnenj. */}
+              <span className="text-muted-foreground text-xs">
+                {business.reviews === 0
+                  ? "Brez mnenj"
+                  : business.reviews === 1
+                    ? "1 mnenje"
+                    : business.reviews === 2
+                      ? "2 mnenji"
+                      : `${business.reviews} mnenj`}
               </span>
             </div>
           </div>
@@ -253,21 +255,25 @@ export function BusinessShowcase({
   recommendedBusinesses = [],
   popularBusinesses = [],
   newBusinesses = [],
-  hideEmptySections = false,
+  /** Iskalni način: naslov prve sekcije je "Rezultati iskanja". */
+  isSearchResults = false,
 }: BusinessShowcaseProps) {
   // No sample fallbacks. An empty section stays empty and says so.
-  const showRecommended = !hideEmptySections || recommendedBusinesses.length > 0
-  const showPopular = !hideEmptySections || popularBusinesses.length > 0
-  const showNew = !hideEmptySections || newBusinesses.length > 0
+  // Prazna vrstica (karusel brez kartic) ni nikoli uporabna — prej se je
+  // v načinu brskanja izpisala kot prazna sekcija z naslovom. Zato se
+  // sekcije prikažejo samo, ko imajo vsebino (ne glede na način).
+  const showRecommended = recommendedBusinesses.length > 0
+  const showPopular = popularBusinesses.length > 0
+  const showNew = newBusinesses.length > 0
 
   return (
     <>
       {showRecommended && (
         <div className="bg-muted/30">
           <CarouselSection
-            title={hideEmptySections ? "Rezultati iskanja" : "Priporočeno"}
+            title={isSearchResults ? "Rezultati iskanja" : "Priporočeno"}
             subtitle={
-              hideEmptySections
+              isSearchResults
                 ? "Podjetja, ki ustrezajo vaši poizvedbi"
                 : "Podjetja, ki so trenutno aktivna v platformi"
             }

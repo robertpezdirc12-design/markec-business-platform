@@ -91,7 +91,7 @@ export default async function MarketplacePage({
         recommendedBusinesses={hasSearch ? filtered : showcase.recommended}
         popularBusinesses={hasSearch ? [] : showcase.popular}
         newBusinesses={hasSearch ? [] : showcase.new}
-        hideEmptySections={hasSearch}
+        isSearchResults={hasSearch}
       />
 
       {!hasSearch && (

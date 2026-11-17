@@ -15,8 +15,9 @@ export interface SnapshotBusiness {
   address: string
   rating: number
   reviews: number
-  image: string
-  isOpen: boolean
+  /** Logotip podjetja; null = slike še ni naložilo. */
+  image: string | null
+  isOpen?: boolean
   openUntil?: string
   priceRange?: string
   slug: string
@@ -82,18 +83,39 @@ export function filterBusinesses(
  * Razdeli podjetja v tri kategorije za prikaz brez iskanja — brez DB.
  */
 export function getShowcase(businesses: SnapshotBusiness[]) {
-  const byRating = [...businesses].sort(
-    (a, b) => b.rating - a.rating || b.reviews - a.reviews
-  )
-  const byReviews = [...businesses].sort((a, b) => b.reviews - a.reviews)
-  // "Novo" — snapshot je že v vrstnem redu createdAt desc iz generatorja.
-  const newest = [...businesses]
+  // Audit 2026-11-17 (dve napaki hkrati):
+  //  1. Vsaka kategorija je vzela prvih 6 iz SVOJEGA vrstnega reda — pri
+  //     majhnem katalogu so bile to ISTE kartice trikrat (18 kartic za 6
+  //     podjetij).
+  //  2. "Priporočeno"/"Priljubljeno" sta vsebovali tudi podjetja z 0 mnenj,
+  //     čeprav podnaslov obeta ocene.
+  // Zdaj: priporočena/priljubljena so SAMO podjetja z dejanskimi mnenji,
+  // vsako podjetje dobi natanko eno mesto, ostala (brez mnenj) so "Novo".
+  const withReviews = businesses.filter((b) => b.reviews > 0)
 
-  return {
-    recommended: byRating.slice(0, 6),
-    popular: byReviews.slice(0, 6),
-    new: newest.slice(0, 6),
-  }
+  // Kadar je ocenjenih podjetij malo, "Priporočeno" ne sme pojesti vseh,
+  // sicer "Priljubljeno" ostane prazno — zato približno pol/pol (največ 6).
+  const recommendedLimit = Math.min(
+    6,
+    Math.max(1, Math.ceil(withReviews.length / 2))
+  )
+  const recommended = [...withReviews]
+    .sort((a, b) => b.rating - a.rating || b.reviews - a.reviews)
+    .slice(0, recommendedLimit)
+  const recommendedIds = new Set(recommended.map((b) => b.id))
+
+  const popular = withReviews
+    .filter((b) => !recommendedIds.has(b.id))
+    .sort((a, b) => b.reviews - a.reviews || b.rating - a.rating)
+    .slice(0, 6)
+  const popularIds = new Set(popular.map((b) => b.id))
+
+  // "Novo" — v vrstnem redu createdAt desc iz generatorja (novi najprej).
+  const fresh = businesses
+    .filter((b) => !recommendedIds.has(b.id) && !popularIds.has(b.id))
+    .slice(0, 6)
+
+  return { recommended, popular, new: fresh }
 }
 
 /** Človeku berljiv datum generiranja snapshot-a (za pošteno oznako). */
