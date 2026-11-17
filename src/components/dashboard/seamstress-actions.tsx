@@ -123,10 +123,12 @@ export function SeamstressActions({ measurements, customers }: Props) {
             <DialogDescription>Nova meritev stranke (append-only — zgodovina se ohrani).</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
-            <div>
-              <Label>Stranka</Label>
+            <div className="grid gap-2">
+              {/* Radix Select je gumb (combobox) — povezava z oznako gre
+                  prek aria-labelledby, ne prek label[for]. */}
+              <Label id="meas-customer-label">Stranka</Label>
               <Select value={form.customerId} onValueChange={(v) => set("customerId", v)}>
-                <SelectTrigger><SelectValue placeholder="Izberite stranko" /></SelectTrigger>
+                <SelectTrigger aria-labelledby="meas-customer-label"><SelectValue placeholder="Izberite stranko" /></SelectTrigger>
                 <SelectContent>
                   {knownCustomers.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -134,29 +136,32 @@ export function SeamstressActions({ measurements, customers }: Props) {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Datum meritve</Label>
-              <Input type="date" value={form.measuredAt} onChange={(e) => set("measuredAt", e.target.value)} />
+            <div className="grid gap-2">
+              <Label htmlFor="meas-date">Datum meritve</Label>
+              <Input id="meas-date" type="date" value={form.measuredAt} onChange={(e) => set("measuredAt", e.target.value)} />
             </div>
+            {/* Audit 2026-11-18: polja so bila brez oznak, povezanih s poljem
+                (label[for]) — bralnik zaslona je prebral le "število", ne pa
+                "Obseg prsi". Zdaj ima vsako polje svoj id + oznako. */}
             <div className="grid grid-cols-2 gap-2">
-              <div><Label>Obseg prsi (cm)</Label><Input type="number" value={form.chestCm} onChange={(e) => set("chestCm", e.target.value)} /></div>
-              <div><Label>Obseg pasu (cm)</Label><Input type="number" value={form.waistCm} onChange={(e) => set("waistCm", e.target.value)} /></div>
-              <div><Label>Obseg bokov (cm)</Label><Input type="number" value={form.hipsCm} onChange={(e) => set("hipsCm", e.target.value)} /></div>
-              <div><Label>Širina ramen (cm)</Label><Input type="number" value={form.shoulderCm} onChange={(e) => set("shoulderCm", e.target.value)} /></div>
-              <div><Label>Dolžina rokava (cm)</Label><Input type="number" value={form.sleeveCm} onChange={(e) => set("sleeveCm", e.target.value)} /></div>
-              <div><Label>Notr. dolžina hlač (cm)</Label><Input type="number" value={form.inseamCm} onChange={(e) => set("inseamCm", e.target.value)} /></div>
-              <div><Label>Višina (cm)</Label><Input type="number" value={form.heightCm} onChange={(e) => set("heightCm", e.target.value)} /></div>
-              <div><Label>Meril (osebje)</Label><Input value={form.byStaff} onChange={(e) => set("byStaff", e.target.value)} /></div>
+              <div className="grid gap-2"><Label htmlFor="meas-chest">Obseg prsi (cm)</Label><Input id="meas-chest" type="number" inputMode="decimal" step="0.5" min="0" value={form.chestCm} onChange={(e) => set("chestCm", e.target.value)} /></div>
+              <div className="grid gap-2"><Label htmlFor="meas-waist">Obseg pasu (cm)</Label><Input id="meas-waist" type="number" inputMode="decimal" step="0.5" min="0" value={form.waistCm} onChange={(e) => set("waistCm", e.target.value)} /></div>
+              <div className="grid gap-2"><Label htmlFor="meas-hips">Obseg bokov (cm)</Label><Input id="meas-hips" type="number" inputMode="decimal" step="0.5" min="0" value={form.hipsCm} onChange={(e) => set("hipsCm", e.target.value)} /></div>
+              <div className="grid gap-2"><Label htmlFor="meas-shoulder">Širina ramen (cm)</Label><Input id="meas-shoulder" type="number" inputMode="decimal" step="0.5" min="0" value={form.shoulderCm} onChange={(e) => set("shoulderCm", e.target.value)} /></div>
+              <div className="grid gap-2"><Label htmlFor="meas-sleeve">Dolžina rokava (cm)</Label><Input id="meas-sleeve" type="number" inputMode="decimal" step="0.5" min="0" value={form.sleeveCm} onChange={(e) => set("sleeveCm", e.target.value)} /></div>
+              <div className="grid gap-2"><Label htmlFor="meas-inseam">Notr. dolžina hlač (cm)</Label><Input id="meas-inseam" type="number" inputMode="decimal" step="0.5" min="0" value={form.inseamCm} onChange={(e) => set("inseamCm", e.target.value)} /></div>
+              <div className="grid gap-2"><Label htmlFor="meas-height">Višina (cm)</Label><Input id="meas-height" type="number" inputMode="decimal" step="0.5" min="0" value={form.heightCm} onChange={(e) => set("heightCm", e.target.value)} /></div>
+              <div className="grid gap-2"><Label htmlFor="meas-by-staff">Meril (osebje)</Label><Input id="meas-by-staff" value={form.byStaff} onChange={(e) => set("byStaff", e.target.value)} /></div>
             </div>
-            <div>
-              <Label>Povezano naročilo / delovni nalog</Label>
-              <Input value={form.orderRef} onChange={(e) => set("orderRef", e.target.value)} />
+            <div className="grid gap-2">
+              <Label htmlFor="meas-order-ref">Povezano naročilo / delovni nalog</Label>
+              <Input id="meas-order-ref" value={form.orderRef} onChange={(e) => set("orderRef", e.target.value)} />
             </div>
-            <div>
-              <Label>Opombe</Label>
-              <Textarea value={form.notes} onChange={(e) => set("notes", e.target.value)} />
+            <div className="grid gap-2">
+              <Label htmlFor="meas-notes">Opombe</Label>
+              <Textarea id="meas-notes" value={form.notes} onChange={(e) => set("notes", e.target.value)} />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
             <Button onClick={submitMeasure} disabled={isPending}>Shrani meritev</Button>
           </div>
         </DialogContent>
@@ -172,10 +177,10 @@ export function SeamstressActions({ measurements, customers }: Props) {
             <DialogDescription>Iz povpraševanja stranke — ustvari delovno naročilo v proizvodnem procesu.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
-            <div>
-              <Label>Stranka</Label>
+            <div className="grid gap-2">
+              <Label id="order-customer-label">Stranka</Label>
               <Select value={order.customerId} onValueChange={(v) => setOrderField("customerId", v)}>
-                <SelectTrigger><SelectValue placeholder="Izberite stranko" /></SelectTrigger>
+                <SelectTrigger aria-labelledby="order-customer-label"><SelectValue placeholder="Izberite stranko" /></SelectTrigger>
                 <SelectContent>
                   {knownCustomers.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -183,14 +188,14 @@ export function SeamstressActions({ measurements, customers }: Props) {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Naziv naročila</Label>
-              <Input value={order.title} onChange={(e) => setOrderField("title", e.target.value)} placeholder="npr. Obleka po meri" />
+            <div className="grid gap-2">
+              <Label htmlFor="order-title">Naziv naročila</Label>
+              <Input id="order-title" value={order.title} onChange={(e) => setOrderField("title", e.target.value)} placeholder="npr. Obleka po meri" />
             </div>
-            <div>
-              <Label>Merilni list (neobvezno)</Label>
+            <div className="grid gap-2">
+              <Label id="order-measurement-label">Merilni list (neobvezno)</Label>
               <Select value={order.measurementId} onValueChange={(v) => setOrderField("measurementId", v)}>
-                <SelectTrigger><SelectValue placeholder="Brez merilnega lista" /></SelectTrigger>
+                <SelectTrigger aria-labelledby="order-measurement-label"><SelectValue placeholder="Brez merilnega lista" /></SelectTrigger>
                 <SelectContent>
                   {measurements.map((m) => (
                     <SelectItem key={m.id} value={m.id}>{`${m.customerName ?? "?"} · ${m.measuredAt ?? "—"}`}</SelectItem>
@@ -198,15 +203,15 @@ export function SeamstressActions({ measurements, customers }: Props) {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Specifikacija / opis izdelka</Label>
-              <Textarea value={order.description} onChange={(e) => setOrderField("description", e.target.value)} placeholder="Vrsta oblačila, material, želene spremembe…" />
+            <div className="grid gap-2">
+              <Label htmlFor="order-description">Specifikacija / opis izdelka</Label>
+              <Textarea id="order-description" value={order.description} onChange={(e) => setOrderField("description", e.target.value)} placeholder="Vrsta oblačila, material, želene spremembe…" />
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div><Label>Dogovorjena cena (€)</Label><Input type="number" value={order.agreedPrice} onChange={(e) => setOrderField("agreedPrice", e.target.value)} /></div>
-              <div><Label>Rok izdelave</Label><Input type="date" value={order.deadline} onChange={(e) => setOrderField("deadline", e.target.value)} /></div>
+              <div className="grid gap-2"><Label htmlFor="order-price">Dogovorjena cena (€)</Label><Input id="order-price" type="number" inputMode="decimal" step="0.01" min="0" value={order.agreedPrice} onChange={(e) => setOrderField("agreedPrice", e.target.value)} /></div>
+              <div className="grid gap-2"><Label htmlFor="order-deadline">Rok izdelave</Label><Input id="order-deadline" type="date" value={order.deadline} onChange={(e) => setOrderField("deadline", e.target.value)} /></div>
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
             <Button onClick={submitOrder} disabled={isPending}>Ustvari naročilo</Button>
           </div>
         </DialogContent>
