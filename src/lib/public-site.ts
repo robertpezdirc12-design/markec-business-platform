@@ -13,6 +13,7 @@ import { mergeSiteContent, type SiteContent } from "@/lib/site-content"
 import { upgradeLegacyImagery, upgradeLegacyDefaultCopy } from "@/lib/verticals"
 import { parsePublishState } from "@/lib/publication"
 import { resolveEffectiveProfile } from "@/lib/profiles/resolve"
+import { isCapabilityEnabled } from "@/lib/profiles/registry"
 import { sectionsForProfile, type HomeSectionFlags } from "@/lib/home-sections"
 import { computeAvailableStock } from "@/lib/inventory/stock"
 import type { Organization, SalonConfig } from "@prisma/client"
@@ -471,23 +472,34 @@ export async function resolveAvailableSections(
   // P3 #62: staff is counted like services/products — the "Ekipa" anchor
   // is dead when the tenant has no active members.
   // P2 #75: reviews se šteje enako — sidro „Mnenja" je mrtvo pri 0 ocen.
-  const [featuredServices, featuredProducts, activeStaff, activeReviews] = await Promise.all([
-    prisma.service.count({
-      where: { organizationId, isActive: true, isFeatured: true },
-    }),
-    prisma.product.count({
-      where: { organizationId, isActive: true, isFeatured: true },
-    }),
-    prisma.staff.count({ where: { organizationId, isActive: true } }),
-    prisma.review.count({ where: { organizationId, isActive: true } }),
-  ])
-  return sectionsForProfile(
-    {
-      services: featuredServices > 0,
-      shop: featuredProducts > 0,
-      team: activeStaff > 0,
-      reviews: activeReviews > 0,
-    },
-    resolveEffectiveProfile(org)
-  )
+  const [featuredServices, featuredProducts, sellableProducts, activeStaff, activeReviews] =
+    await Promise.all([
+      prisma.service.count({
+        where: { organizationId, isActive: true, isFeatured: true },
+      }),
+      prisma.product.count({
+        where: { organizationId, isActive: true, isFeatured: true },
+      }),
+      // #78: javna trgovina = aktivni izdelki ZA PRODAJO (back-bar / notranji
+      // materiali se ne štejejo). Ikona košarice se ravna po tem.
+      prisma.product.count({
+        where: { organizationId, isActive: true, forSale: true },
+      }),
+      prisma.staff.count({ where: { organizationId, isActive: true } }),
+      prisma.review.count({ where: { organizationId, isActive: true } }),
+    ])
+  const effective = resolveEffectiveProfile(org)
+  return {
+    ...sectionsForProfile(
+      {
+        services: featuredServices > 0,
+        shop: featuredProducts > 0,
+        team: activeStaff > 0,
+        reviews: activeReviews > 0,
+      },
+      effective
+    ),
+    shopAvailable:
+      sellableProducts > 0 && isCapabilityEnabled(effective, "shop"),
+  }
 }

@@ -27,6 +27,13 @@ export interface HomeSectionFlags {
   team: boolean
   /** P2 #75: „Izjave strank" je lastna sekcija — ne več pasavica ekipe. */
   reviews: boolean
+  /**
+   * Ali stran sploh ima trgovino (vsaj en AKTIVEN in PRODAJEN izdelek).
+   * `shop` zgoraj pomeni »sekcija izpostavljenih izdelkov na domači strani«
+   * — trgovina pa lahko obstaja tudi brez izpostavljenih izdelkov. Ikona
+   * košarice se ravna po TEM, ne po `shop`.
+   */
+  shopAvailable?: boolean
 }
 
 /** Pure: drop sections the profile's capability matrix disables. */

@@ -32,7 +32,7 @@ export default async function CustomerLayout({
   // trgovino »optional«, a brez izdelkov — ikona je vodila v prazno
   // trgovino, kar je nasprotovalo obljubi strani (povpraševanje).
   const sections = org ? await resolveAvailableSections(org.id, org) : undefined
-  const shopEnabled = sections?.shop ?? false
+  const shopEnabled = sections?.shopAvailable ?? sections?.shop ?? false
 
   // Publication gate (EPIC #3 E3-1): same rule as the (public) layout —
   // drafts/unpublished tenants are private; owner sees a preview, everyone

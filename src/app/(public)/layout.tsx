@@ -138,7 +138,7 @@ export default async function PublicLayout({
           availableSections={previewSections}
           nav={await navFor()}
           capabilitiesEnabled={capabilitiesFor()}
-          shopEnabled={previewSections.shop}
+          shopEnabled={previewSections.shopAvailable ?? previewSections.shop}
         />
         <CartOrgScope slug={org.slug} />
         <div className="bg-amber-100 text-amber-950 border-b border-amber-200 px-4 py-2 text-center text-sm font-medium dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
@@ -270,7 +270,7 @@ gtag('config', '${analyticsId}');`}
           walkInEnabled={walkInEnabled}
           nav={await navFor()}
           capabilitiesEnabled={capabilitiesFor()}
-          shopEnabled={publishedSections?.shop ?? false}
+          shopEnabled={publishedSections?.shopAvailable ?? publishedSections?.shop ?? false}
         />
         <CartOrgScope slug={org?.slug ?? null} />
         <main id="main" tabIndex={-1}>{children}</main>
