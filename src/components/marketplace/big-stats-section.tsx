@@ -11,7 +11,7 @@ import {
   CalendarIcon,
   UsersIcon,
   StarIcon,
-  TrendingUpIcon,
+  CheckCircleIcon,
 } from "@/components/icons"
 import {
   Buildings,
@@ -182,8 +182,11 @@ export function BigStatsSection({
         {/* Bottom Trust Badges */}
         <div className="mt-16 flex flex-wrap items-center justify-center gap-8">
           {[
-            { icon: <StarIcon size={20} />, text: "5/5 na Capterra" },
-            { icon: <TrendingUpIcon size={20} />, text: "99.9% uptime" },
+            // Audit 2026-11-17: "5/5 na Capterra" in "99.9% uptime" sta bili
+            // neverificirani trditvi (platforma ni na Capterru). Zamenjano z
+            // dejstvi, ki jih uporabnik lahko preveri sam.
+            { icon: <CheckCircleIcon size={20} />, text: "Brez pogodbe in vezave" },
+            { icon: <CheckCircleIcon size={20} />, text: "Podatki v EU (Neon)" },
             { icon: <UsersIcon size={20} />, text: "24/7 podpora" },
           ].map((badge) => (
             <div

@@ -7,7 +7,7 @@
 // Surpasses Fresha with better card design and interactions.
 // ============================================================
 
-import { useState, useRef } from "react"
+import { useRef } from "react"
 import { verticalCardImage } from "@/lib/marketplace/card-image"
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
@@ -58,8 +58,6 @@ interface CarouselSectionProps {
 
 
 function BusinessCard({ business }: { business: Business }) {
-  const [isFavorite, setIsFavorite] = useState(false)
-
   return (
     <Link href={`/s/${business.slug}`}>
       <Card className="group overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
@@ -83,22 +81,10 @@ function BusinessCard({ business }: { business: Business }) {
             </div>
           )}
 
-          {/* Favorite Button */}
-          <button
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              setIsFavorite(!isFavorite)
-            }}
-            className="absolute right-3 top-3 rounded-full bg-background/90 p-2 backdrop-blur-sm transition-all hover:bg-background hover:scale-110"
-          >
-            <Heart
-              size={20}
-              className={isFavorite ? "text-red-500" : "text-foreground"}
-              weight={isFavorite ? "fill" : "regular"}
-            />
-          </button>
-
+          {/* Audit 2026-11-17: srček je bil okras — stanje je živelo samo v
+              komponenti, se ni nikamor shranilo in je ob navigaciji izginilo
+              (6 gumbov brez dostopnega imena). Priljubljene bomo dodali z
+              resnično shrambo; do takrat gumba ni. */}
           {/* Cenovni razred — samo ko je znan (prej vedno "€€") */}
           {business.priceRange && (
             <div className="absolute bottom-3 right-3">

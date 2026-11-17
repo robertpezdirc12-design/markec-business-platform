@@ -28,74 +28,11 @@ interface Testimonial {
   date: string
 }
 
-const testimonials: Testimonial[] = [
-  {
-    id: "1",
-    name: "Lucy",
-    location: "London, VB",
-    avatar: "/avatars/lucy.jpg",
-    rating: 5,
-    quote:
-      "Odlična izkušnja, enostavna rezervacija. Plačilo zdravljenja je tako priročno — ne potrebujete gotovine ali kartice!",
-    service: "Kozmetična nega",
-    date: "pred 2 dnevoma",
-  },
-  {
-    id: "2",
-    name: "Dan",
-    location: "New York, ZDA",
-    avatar: "/avatars/dan.jpg",
-    rating: 5,
-    quote:
-      "Naši opomniki olajšajo življenje. Našel sem tudi nekaj dobrih brivcev, do katerih nisem vedel, da obstajajo.",
-    service: "Striženje",
-    date: "pred 1 tednom",
-  },
-  {
-    id: "3",
-    name: "Dale",
-    location: "Sydney, Avstralija",
-    avatar: "/avatars/dale.jpg",
-    rating: 5,
-    quote:
-      "MARKEC uporabljam že dve leti in je daleč najboljša rezervacijska platforma, ki sem jo uporabil. Toplo priporočam!",
-    service: "Masaža",
-    date: "pred 3 dnevi",
-  },
-  {
-    id: "4",
-    name: "Cameron",
-    location: "Edinburgh, Združeno kraljestvo",
-    avatar: "/avatars/cameron.jpg",
-    rating: 5,
-    quote:
-      "Moj nasvet za samozdravljenje: MARKEC je moja priljubljena aplikacija za masaže in obrazne tretmaje. Z lahkoto najdem rezervacijo — to mi je všeč!",
-    service: "Obrazna nega",
-    date: "pred 5 dnevi",
-  },
-  {
-    id: "5",
-    name: "Ana",
-    location: "Ljubljana, Slovenija",
-    avatar: "/avatars/ana.jpg",
-    rating: 5,
-    quote:
-      "Končno imam vse na enem mestu. Rezervacije, opomniki, plačila — vse deluje brezhibno. Priporočam vsakemu salonu!",
-    service: "Wellness",
-    date: "pred 1 dnevom",
-  },
-  {
-    id: "6",
-    name: "Marko",
-    location: "Maribor, Slovenija",
-    avatar: "/avatars/marko.jpg",
-    rating: 5,
-    quote:
-      "Kot lastnik salona sem navdušen. MARKEC mi je prihranil ure dela tedensko. Stranke so zadovoljne, jaz pa tudi.",
-    service: "Poslovna stran",
-    date: "pred 1 tednom",
-  },
-]
+// Audit 2026-11-17: prej je bil tu VGRAJEN seznam izmišljenih izjav
+// ("Lucy, London", "Dan, New York", "Edinburgh, Združeno kraljestvo") z
+// neobstoječimi avatarji. Na platformi ni bilo nobene resnične ocene, zato
+// je šlo za lažne podatke. Zdaj izjave pridejo izključno od klicatelja
+// (resnične ocene iz baze); brez njih se sekcija ne izpiše.
 
 function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
   return (
@@ -145,7 +82,11 @@ function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
   )
 }
 
-export function TestimonialsSection() {
+export function TestimonialsSection({
+  testimonials = [],
+}: {
+  testimonials?: Testimonial[]
+} = {}) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const scroll = (direction: "left" | "right") => {
@@ -157,6 +98,10 @@ export function TestimonialsSection() {
       })
     }
   }
+
+  // Brez resničnih ocen sekcije NI — raje nič kot izmišljene stranke.
+  // (Guard je za hooki, ker morajo hooki teči v istem vrstnem redu.)
+  if (testimonials.length === 0) return null
 
   return (
     <section className="bg-gradient-to-b from-background via-muted/20 to-background py-16">
