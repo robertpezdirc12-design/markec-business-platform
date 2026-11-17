@@ -176,6 +176,10 @@ jobs:
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
           NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          # NEXT_PUBLIC_* je vgrajen v client bundle ob BUILDU, zato mora biti
+          # prisoten tukaj in ne le kot runtime secret (sicer slike padejo na
+          # lokalni placeholder).
+          NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ${{ secrets.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME }}
           CI: "true"
 
       # Deploy the Worker.
@@ -184,13 +188,15 @@ jobs:
       # ("Unable to extract npm package name from …/.pnpm/…").
       # wranglerVersion is pinned to the version in package.json so CI and local
       # deploys use the same bundler.
+      # No entry-point argument: `main` in wrangler.jsonc points at worker.js
+      # (OpenNext handler + scheduled cron handler).
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4.163.0"
-          command: deploy .open-next/worker.js --config wrangler.jsonc
+          command: deploy --config wrangler.jsonc
 
       # Push runtime secrets to the Worker. Idempotent — run every deploy.
       # Empty GitHub secrets are skipped, see the guard in the script below.

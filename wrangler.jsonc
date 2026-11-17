@@ -1,12 +1,18 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "markec-business-platform",
-  "main": ".open-next/worker.js",
+  "main": "worker.js",
   "compatibility_date": "2025-11-01",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "observability": {
     "enabled": true
+  },
+  // The app's only system timer (/api/cron/tick). `worker.js` implements
+  // the `scheduled` handler that calls the route through the self binding.
+  // 03:00 UTC daily — same cadence the product documented for Vercel cron.
+  "triggers": {
+    "crons": ["0 3 * * *"]
   },
   "assets": {
     "directory": ".open-next/assets",

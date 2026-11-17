@@ -137,4 +137,7 @@ jobs:
           AUTH_SECRET: test-secret-not-real
           NEXT_PUBLIC_APP_URL: https://markec-business-platform.robert-pezdirc12.workers.dev
           NEXTAUTH_URL: https://markec-business-platform.robert-pezdirc12.workers.dev
+          # Public build-time value (cloud name, not a secret) — inlined into the
+          # client bundle; keep the build-check representative of the real build.
+          NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ${{ secrets.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME }}
           CI: "true"
