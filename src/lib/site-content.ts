@@ -42,6 +42,50 @@ export interface StatContent {
   label: string
 }
 
+/**
+ * Stare PRIVZETE vrednosti statistik (predloge dejavnosti).
+ *
+ * Podjetja, ustvarjena pred spremembo, jih imajo shranjene v
+ * SalonConfig.siteContent — zato so se na objavljenih straneh še naprej
+ * kazale kot lastne številke. Ob branju jih izločimo (ne brišemo baze),
+ * ker niso bile nikoli vpisane s strani lastnika.
+ */
+const LEGACY_DEFAULT_STATS: { value: string; label: string }[] = [
+  { value: "10+", label: "Let izkušenj" },
+  { value: "8+", label: "Let izkušenj" },
+  { value: "6+", label: "Let izkušenj" },
+  { value: "5+", label: "Let izkušenj" },
+  { value: "12+", label: "Let izkušenj" },
+  { value: "9+", label: "Let izkušenj" },
+  { value: "7+", label: "Let izkušenj" },
+  { value: "15+", label: "Let izkušenj" },
+  { value: "20+", label: "Let izkušenj" },
+  { value: "5K+", label: "Zadovoljnih strank" },
+  { value: "3K+", label: "Srečnih strank" },
+  { value: "2K+", label: "Zvestih strank" },
+  { value: "2K+", label: "Zadovoljnih strank" },
+  { value: "2K+", label: "Narejenih nohtov" },
+  { value: "4K+", label: "Tretmajev letno" },
+  { value: "6K+", label: "Izvedenih masaž" },
+  { value: "3K+", label: "Zadovoljnih strank" },
+  { value: "1500+", label: "Servisov letno" },
+  { value: "12 mes.", label: "Garancija na delo" },
+  { value: "8K+", label: "Servisiranih vozil" },
+  { value: "1.5t", label: "Letne žetve" },
+  { value: "120+", label: "Čebeljih družin" },
+]
+
+const LEGACY_DEFAULT_STAT_KEYS = new Set(
+  LEGACY_DEFAULT_STATS.map((s) => `${s.value}\u0000${s.label}`)
+)
+
+/** Ali je vrstica statistike ena od starih izmišljenih privzetih vrednosti? */
+function isLegacyDefaultStat(stat: StatContent): boolean {
+  return LEGACY_DEFAULT_STAT_KEYS.has(
+    `${stat.value?.trim() ?? ""}\u0000${stat.label?.trim() ?? ""}`
+  )
+}
+
 export interface AboutContent {
   title: string
   paragraphs: string[]
@@ -854,7 +898,9 @@ export function mergeSiteContent(stored: unknown, vertical: string): SiteContent
       ...defaults.about,
       ...a,
       paragraphs: Array.isArray(a.paragraphs) ? a.paragraphs : defaults.about.paragraphs,
-      stats: Array.isArray(a.stats) ? (a.stats as StatContent[]) : defaults.about.stats,
+      stats: Array.isArray(a.stats)
+        ? (a.stats as StatContent[]).filter((stat) => !isLegacyDefaultStat(stat))
+        : defaults.about.stats,
     }
   }
   if (isObj(s.team)) merged.team = { ...defaults.team, ...(s.team as Partial<SiteContent["team"]>) }
