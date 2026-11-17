@@ -40,7 +40,7 @@ export default function PricingPage() {
   const hasFree = plans.some((p) => p.priceMonthly === 0)
 
   return (
-    <main className="bg-background min-h-screen">
+    <div className="bg-background">
       <div className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
         {/* Header */}
         <div className="mb-12 text-center">
@@ -131,6 +131,6 @@ export default function PricingPage() {
           vaši podatki ostanejo vedno ohranjeni.
         </p>
       </div>
-    </main>
+    </div>
   )
 }

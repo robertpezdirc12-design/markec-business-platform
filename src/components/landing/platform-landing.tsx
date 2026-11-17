@@ -17,7 +17,11 @@ import { Logo } from "@/components/ui/logo"
 import { Button } from "@/components/ui/button"
 import { DemoTourButton } from "@/components/landing/demo-tour"
 import { PLANS } from "@/lib/plans/registry"
-import { landingSl, landingEn, type LandingDictionary } from "@/lib/i18n/dict/landing"
+import {
+  landingSl,
+  landingEn,
+  type LandingDictionary,
+} from "@/lib/i18n/dict/landing"
 import { cn } from "@/lib/utils"
 import type { Locale } from "@/lib/i18n/config"
 
@@ -90,19 +94,34 @@ export function PlatformLanding({
             aria-label={t.aria.nav}
             className="text-muted-foreground ml-4 hidden items-center gap-5 text-sm lg:flex"
           >
-            <Link href="#moduli" className="hover:text-foreground">
+            <Link
+              href="#moduli"
+              className="hover:text-foreground flex min-h-9 items-center"
+            >
               {t.nav.modules}
             </Link>
-            <Link href="#primeri" className="hover:text-foreground">
+            <Link
+              href="#primeri"
+              className="hover:text-foreground flex min-h-9 items-center"
+            >
               {t.nav.examples}
             </Link>
-            <Link href="#koraki" className="hover:text-foreground">
+            <Link
+              href="#koraki"
+              className="hover:text-foreground flex min-h-9 items-center"
+            >
               {t.nav.steps}
             </Link>
-            <Link href="#paketi" className="hover:text-foreground">
+            <Link
+              href="#paketi"
+              className="hover:text-foreground flex min-h-9 items-center"
+            >
               {t.nav.plans}
             </Link>
-            <Link href="/pricing" className="hover:text-foreground">
+            <Link
+              href="/pricing"
+              className="hover:text-foreground flex min-h-9 items-center"
+            >
               Cene
             </Link>
           </nav>
@@ -115,20 +134,35 @@ export function PlatformLanding({
             >
               <Menu className="size-5" aria-hidden="true" />
             </summary>
-            <div className="border-border bg-background absolute right-0 top-[calc(100%+8px)] z-50 w-56 rounded-xl border p-2 shadow-xl">
-              <Link href="#moduli" className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm">
+            <div className="border-border bg-background absolute top-[calc(100%+8px)] right-0 z-50 w-56 rounded-xl border p-2 shadow-xl">
+              <Link
+                href="#moduli"
+                className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm"
+              >
                 {t.nav.modules}
               </Link>
-              <Link href="#primeri" className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm">
+              <Link
+                href="#primeri"
+                className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm"
+              >
                 {t.nav.examples}
               </Link>
-              <Link href="#koraki" className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm">
+              <Link
+                href="#koraki"
+                className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm"
+              >
                 {t.nav.steps}
               </Link>
-              <Link href="#paketi" className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm">
+              <Link
+                href="#paketi"
+                className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm"
+              >
                 {t.nav.plans}
               </Link>
-              <Link href="/pricing" className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm">
+              <Link
+                href="/pricing"
+                className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm"
+              >
                 {isEn ? "Pricing" : "Cene"}
               </Link>
               <Link
@@ -137,6 +171,16 @@ export function PlatformLanding({
               >
                 {dashboardHref ? t.nav.dashboard : t.nav.login}
               </Link>
+              {/* Jezik — na telefonu v meniju, ker v vrstici glave ne
+                  zmanjka prostora (prej 10px horizontalnega presega). */}
+              <div
+                role="group"
+                aria-label={t.aria.lang}
+                className="border-border mt-1 flex items-center justify-between gap-2 border-t px-1 pt-2"
+              >
+                {langLink("/", t.languages.sl, !isEn)}
+                {langLink("/en", t.languages.en, isEn)}
+              </div>
               <Link
                 href="/start"
                 className="bg-primary text-primary-foreground mt-1 block rounded-lg px-3 py-2.5 text-center text-sm font-semibold"
@@ -148,7 +192,7 @@ export function PlatformLanding({
           <div
             role="group"
             aria-label={t.aria.lang}
-            className="bg-muted/60 flex shrink-0 items-center gap-0.5 rounded-lg p-1"
+            className="bg-muted/60 flex shrink-0 items-center gap-0.5 rounded-lg p-1 max-sm:hidden"
           >
             {langLink("/", t.languages.sl, !isEn)}
             {langLink("/en", t.languages.en, isEn)}
@@ -173,21 +217,21 @@ export function PlatformLanding({
         {/* Hero — premium gradient + animated social proof + dual CTAs */}
         <section className="relative overflow-hidden">
           {/* Gradient Background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-accent/5" />
-          
+          <div className="from-primary/5 via-background to-accent/5 absolute inset-0 bg-gradient-to-br" />
+          <div className="from-primary/5 to-accent/5 absolute inset-0 bg-gradient-to-r via-transparent" />
+
           {/* Decorative Elements */}
-          <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
-          <div className="absolute -right-32 top-1/4 h-96 w-96 rounded-full bg-accent/10 blur-3xl" />
-          
-          <div className="container relative mx-auto px-4 py-16 md:py-24">
+          <div className="bg-primary/10 absolute -top-32 -left-32 h-96 w-96 rounded-full blur-3xl" />
+          <div className="bg-accent/10 absolute top-1/4 -right-32 h-96 w-96 rounded-full blur-3xl" />
+
+          <div className="relative container mx-auto px-4 py-16 md:py-24">
             <div className="lg:max-w-3xl">
               {/* Badge */}
               <p className="text-primary-text border-border bg-background/80 mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium backdrop-blur-sm">
                 <Sparkles className="size-4" aria-hidden="true" />
                 {t.hero.eyebrow}
               </p>
-              
+
               {/* Headline */}
               <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
                 {t.hero.h1Lead}{" "}
@@ -195,17 +239,17 @@ export function PlatformLanding({
                   {t.hero.h1Accent}
                 </span>
               </h1>
-              
+
               {/* Tagline */}
               <p className="text-muted-foreground mt-3 text-xs font-medium tracking-[0.2em] uppercase">
                 {t.hero.tagline}
               </p>
-              
+
               {/* Lead */}
               <p className="text-muted-foreground mt-5 max-w-xl text-lg md:text-xl">
                 {t.hero.lead}
               </p>
-              
+
               {/* CTAs */}
               <div className="mt-8 flex flex-wrap items-center gap-4">
                 <Button asChild size="lg" className="min-h-12 shadow-lg">
@@ -225,10 +269,12 @@ export function PlatformLanding({
                   />
                 ) : null}
               </div>
-              
+
               {/* Micro copy */}
-              <p className="text-muted-foreground mt-5 text-sm">{t.hero.micro}</p>
-              
+              <p className="text-muted-foreground mt-5 text-sm">
+                {t.hero.micro}
+              </p>
+
               {/* No invented ratings or customer counts. Verified proof is
                   shown only when it comes from the database. */}
             </div>
@@ -253,7 +299,7 @@ export function PlatformLanding({
         </div>
 
         {/* Marketplace Search — Fresha-inspired discovery entry */}
-        <section className="border-border/40 bg-gradient-to-b from-muted/20 to-background py-12">
+        <section className="border-border/40 from-muted/20 to-background bg-gradient-to-b py-12">
           <div className="container mx-auto px-4">
             <div className="mx-auto max-w-3xl text-center">
               <p className="text-primary-text text-xs font-semibold tracking-wider uppercase">
@@ -263,7 +309,8 @@ export function PlatformLanding({
                 Rezervirajte lokalne storitve samoskrbe
               </h2>
               <p className="text-muted-foreground mt-2">
-                Odkrijte najbolje ocenjene salone, brivce in lepotne strokovnjake.
+                Odkrijte najbolje ocenjene salone, brivce in lepotne
+                strokovnjake.
               </p>
             </div>
 
@@ -271,29 +318,39 @@ export function PlatformLanding({
             <form
               action="/podjetja"
               method="get"
-              className="mx-auto mt-6 flex max-w-2xl flex-col gap-3 rounded-2xl border bg-background p-3 shadow-lg sm:flex-row sm:items-center"
+              className="bg-background mx-auto mt-6 flex max-w-2xl flex-col gap-3 rounded-2xl border p-3 shadow-lg sm:flex-row sm:items-center"
             >
               <label className="flex flex-1 items-center gap-2 rounded-xl border px-4 py-3">
-                <Search className="size-5 shrink-0 text-muted-foreground" />
+                <Search className="text-muted-foreground size-5 shrink-0" />
                 <input
                   type="text"
                   name="q"
-                  aria-label={isEn ? "Service or business" : "Storitev ali podjetje"}
-                  placeholder={isEn ? "What are you looking for?" : "Kaj iščete? (striženje, masaža...)"}
+                  aria-label={
+                    isEn ? "Service or business" : "Storitev ali podjetje"
+                  }
+                  placeholder={
+                    isEn
+                      ? "What are you looking for?"
+                      : "Kaj iščete? (striženje, masaža...)"
+                  }
                   className="min-w-0 flex-1 bg-transparent text-base outline-none"
                 />
               </label>
               <label className="flex items-center gap-2 rounded-xl border px-4 py-3 sm:w-40">
-                <MapPin className="size-5 shrink-0 text-muted-foreground" />
+                <MapPin className="text-muted-foreground size-5 shrink-0" />
                 <input
                   type="text"
                   name="location"
                   aria-label={isEn ? "Location" : "Kraj"}
                   placeholder={isEn ? "Location" : "Kraj"}
-                  className="min-w-0 w-full bg-transparent text-base outline-none"
+                  className="w-full min-w-0 bg-transparent text-base outline-none"
                 />
               </label>
-              <Button type="submit" size="lg" className="w-full rounded-xl px-8 sm:w-auto">
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full rounded-xl px-8 sm:w-auto"
+              >
                 {isEn ? "Search" : "Išči"}
               </Button>
             </form>
@@ -311,7 +368,7 @@ export function PlatformLanding({
                 <Link
                   key={category}
                   href={`/podjetja?kategorija=${encodeURIComponent(category)}`}
-                  className="rounded-full border px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+                  className="text-muted-foreground hover:border-primary hover:text-foreground rounded-full border px-4 py-2 text-sm transition-colors"
                 >
                   {category}
                 </Link>
@@ -339,13 +396,13 @@ export function PlatformLanding({
             <h2 className="mt-3 text-3xl font-bold">{t.problem.title}</h2>
             <p className="text-muted-foreground mt-4">{t.problem.lead}</p>
           </div>
-          
+
           {/* Problem cards */}
           <ul className="mx-auto mt-10 grid max-w-5xl gap-5 md:grid-cols-3">
             {t.problem.cards.map((card, i) => (
               <li
                 key={card.title}
-                className="border-border/60 bg-card group rounded-xl border p-6 shadow-sm transition-all hover:shadow-md hover:-translate-y-1"
+                className="border-border/60 bg-card group rounded-xl border p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
               >
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-red-50">
                   <span className="text-2xl">{["⚠️", "⏳", "📭"][i]}</span>
@@ -357,7 +414,7 @@ export function PlatformLanding({
               </li>
             ))}
           </ul>
-          
+
           {/* Module cards */}
           <ul className="mx-auto mt-8 grid max-w-6xl gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {t.modules.map((mod, i) => {
@@ -365,7 +422,7 @@ export function PlatformLanding({
               return (
                 <li
                   key={mod.title}
-                  className="border-border/60 bg-card group rounded-xl border p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-1"
+                  className="border-border/60 bg-card group rounded-xl border p-5 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
                 >
                   <span className="bg-primary/10 text-primary-text mb-4 flex size-10 items-center justify-center rounded-xl transition-transform group-hover:scale-110">
                     <Icon className="size-5" aria-hidden="true" />
@@ -407,7 +464,7 @@ export function PlatformLanding({
                 >
                   <Link
                     href={`/start?vertical=${item.vertical}`}
-                    className="border-border/60 bg-card group flex h-full flex-col overflow-hidden rounded-xl border shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 hover:border-primary/40"
+                    className="border-border/60 bg-card group hover:border-primary/40 flex h-full flex-col overflow-hidden rounded-xl border shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl"
                   >
                     <div className="relative aspect-video overflow-hidden">
                       <Image
@@ -419,14 +476,14 @@ export function PlatformLanding({
                       />
                       {/* Overlay on hover */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                      <div className="absolute bottom-3 left-3 right-3 translate-y-2 opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-foreground">
+                      <div className="absolute right-3 bottom-3 left-3 translate-y-2 opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100">
+                        <span className="text-foreground inline-flex items-center gap-1 rounded-full bg-white/90 px-3 py-1 text-xs font-medium">
                           Začni zdaj →
                         </span>
                       </div>
                     </div>
                     <div className="flex flex-1 flex-col p-5">
-                      <h3 className="mt-2 text-lg font-semibold transition-colors group-hover:text-primary">
+                      <h3 className="group-hover:text-primary mt-2 text-lg font-semibold transition-colors">
                         {item.title}
                       </h3>
                       <p className="text-muted-foreground mt-2 flex-1 text-sm">
@@ -456,14 +513,14 @@ export function PlatformLanding({
               <li key={step.title} className="relative text-center">
                 {/* Connecting line */}
                 {i < 3 && (
-                  <div className="absolute left-1/2 top-8 hidden h-px w-full bg-gradient-to-r from-primary/30 to-transparent md:block" />
+                  <div className="from-primary/30 absolute top-8 left-1/2 hidden h-px w-full bg-gradient-to-r to-transparent md:block" />
                 )}
-                
+
                 {/* Step number */}
                 <div className="bg-primary/10 text-primary-text relative z-10 mx-auto mb-5 flex size-14 items-center justify-center rounded-full text-2xl font-bold">
                   {i + 1}
                 </div>
-                
+
                 {/* Step content */}
                 <h3 className="text-lg font-semibold">{step.title}</h3>
                 <p className="text-muted-foreground mt-2 text-sm">
@@ -515,7 +572,9 @@ export function PlatformLanding({
                           ? "0 €"
                           : `${(plan.priceMonthly / 100).toFixed(0)} €`}
                       </span>
-                      <span className="text-muted-foreground text-sm">/ mesec</span>
+                      <span className="text-muted-foreground text-sm">
+                        / mesec
+                      </span>
                     </p>
                   )}
                   <ul className="text-muted-foreground mt-6 mb-8 flex-1 space-y-3 text-sm">
@@ -532,7 +591,7 @@ export function PlatformLanding({
                   <Button
                     asChild
                     variant={plan.id === "pro" ? "default" : "outline"}
-                    className="w-full min-h-11"
+                    className="min-h-11 w-full"
                   >
                     <Link href="/start">{t.plans.cta}</Link>
                   </Button>
@@ -570,7 +629,7 @@ export function PlatformLanding({
                 <summary className="hover:text-primary-text flex cursor-pointer list-none items-center justify-between gap-4 font-semibold transition-colors">
                   <span className="text-lg">{item.q}</span>
                   <span
-                    className="text-primary-text flex size-8 shrink-0 items-center justify-center rounded-full bg-muted transition-transform group-open:rotate-45"
+                    className="text-primary-text bg-muted flex size-8 shrink-0 items-center justify-center rounded-full transition-transform group-open:rotate-45"
                     aria-hidden="true"
                   >
                     <span className="text-xl leading-none">+</span>
@@ -585,11 +644,13 @@ export function PlatformLanding({
         </section>
 
         {/* Final CTA — gradient + urgency + trust badges */}
-        <section className="from-primary to-accent bg-linear-to-r py-20 text-primary-foreground">
+        <section className="from-primary to-accent text-primary-foreground bg-linear-to-r py-20">
           <div className="container mx-auto px-4 text-center">
             <h2 className="text-4xl font-bold">{t.final.title}</h2>
-            <p className="mx-auto mt-4 max-w-2xl text-xl opacity-90">{t.final.lead}</p>
-            
+            <p className="mx-auto mt-4 max-w-2xl text-xl opacity-90">
+              {t.final.lead}
+            </p>
+
             {/* CTA Button */}
             <Button
               asChild
@@ -602,11 +663,17 @@ export function PlatformLanding({
                 <ArrowRight className="ml-2 size-6" aria-hidden="true" />
               </Link>
             </Button>
-            
+
             {/* Trust badges */}
             <div className="mt-8 flex flex-wrap items-center justify-center gap-6 opacity-80">
-              {["✓ Brez kreditne kartice", "✓ 14 dni brezplačno", "✓ Prekličite kadarkoli"].map((badge) => (
-                <span key={badge} className="text-sm">{badge}</span>
+              {[
+                "✓ Brez kreditne kartice",
+                "✓ 14 dni brezplačno",
+                "✓ Prekličite kadarkoli",
+              ].map((badge) => (
+                <span key={badge} className="text-sm">
+                  {badge}
+                </span>
               ))}
             </div>
           </div>
@@ -623,26 +690,41 @@ export function PlatformLanding({
                 © {new Date().getFullYear()} · {t.foot.tag}
               </p>
             </div>
-            
+
             {/* Legal links */}
             <nav aria-label={t.aria.legal} className="flex flex-wrap gap-5">
-              <Link href="/privacy" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+              <Link
+                href="/privacy"
+                className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+              >
                 {t.foot.privacy}
               </Link>
-              <Link href="/terms" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+              <Link
+                href="/terms"
+                className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+              >
                 {t.foot.terms}
               </Link>
-              <Link href="/cookies" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+              <Link
+                href="/cookies"
+                className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+              >
                 {t.foot.cookies}
               </Link>
             </nav>
-            
+
             {/* Platform links */}
             <nav aria-label={t.aria.footer} className="flex flex-wrap gap-5">
-              <Link href="/login" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+              <Link
+                href="/login"
+                className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+              >
                 {dashboardHref ? t.foot.dashboard : t.foot.login}
               </Link>
-              <Link href="/start" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+              <Link
+                href="/start"
+                className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+              >
                 {t.foot.start}
               </Link>
               <Link
