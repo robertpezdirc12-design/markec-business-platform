@@ -87,12 +87,10 @@ export async function scheduled(event, env, ctx) {
   return new Response("OK", { status: 200 })
 }
 
-/** Expose BucketCachePurge for cron / external purge. */
-export function BucketCachePurge() {
-  return await import("./.open-next/worker.js").then(
-    (m) => m.BucketCachePurge,
-  )
-}
+// BucketCachePurge se NE ovija lokalno: že uvožen na vrhu datoteke je
+// OpenNextova prava funkcija. Prejšnja lokalna ovojnica je vsebovala
+// `await` v ne-async funkciji in je podrla `wrangler deploy`
+// ("await can only be used inside an async function").
 
 export default {
   fetch: openNextWorker.fetch,
