@@ -124,7 +124,7 @@ describe("#98 struktura: javna stran, akcije, proxy, navigacija", () => {
   })
 
   it("proxy: gola /vrsta je javna pot (z glavo najemnika; brez = 404 kot doslej)", () => {
-    const proxy = read("src/middleware.ts")
+    const proxy = read("src/proxy.ts")
     expect(proxy).toContain("inquiry|vrsta")
   })
 
@@ -137,7 +137,7 @@ describe("#98 struktura: javna stran, akcije, proxy, navigacija", () => {
   })
 
   it("proxy: HIDDEN/izklopljen walk-in → /vrsta PRAVI 404 (F5, vzorec P2 #46)", () => {
-    const proxy = read("src/middleware.ts")
+    const proxy = read("src/proxy.ts")
     expect(proxy).toContain("walkInEnabled?: boolean")
     expect(proxy).toContain('if (sub === "/vrsta" && tenant.walkInEnabled === false)')
     const resolve = read("src/app/api/public/resolve-tenant/route.ts")

@@ -68,7 +68,7 @@ describe("F2.1 — enoten fail-closed razreševalnik", () => {
 // ------------------------------------------------------------
 
 describe("F2.1 — prava prijava pride na vstopno tablo", () => {
-  const proxy = read("src/middleware.ts")
+  const proxy = read("src/proxy.ts")
   const login = read("src/components/auth/login-form.tsx")
 
   it("prijavni obrazec še vedno preverja število aktivnih članstev", () => {

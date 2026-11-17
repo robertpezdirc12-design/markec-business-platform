@@ -84,7 +84,7 @@ describe("#69 — provenance + re-materialization on activity switch", () => {
 
 describe("#66 — platform landing + wizard deep-link", () => {
   it("proxy: bare '/' no longer 308-redirects to a tenant", () => {
-    const proxy = read("src/middleware.ts")
+    const proxy = read("src/proxy.ts")
     const line = proxy
       .split("\n")
       .find((l) => l.startsWith("const BARE_PUBLIC_PATH"))

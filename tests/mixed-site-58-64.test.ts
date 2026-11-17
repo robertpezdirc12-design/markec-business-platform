@@ -422,7 +422,7 @@ describe("#64 — resolution cache honesty", () => {
   })
 
   it("source guard: proxy caches negatives for ~1 s only (publish visible immediately)", () => {
-    const proxy = srcOf("src/middleware.ts")
+    const proxy = srcOf("src/proxy.ts")
     expect(proxy).toContain("info.exists ? 15_000 : 1_000")
   })
 })
