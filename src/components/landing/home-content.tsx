@@ -370,17 +370,22 @@ export function HomeContent({
                     {paragraph}
                   </p>
                 ))}
-                <div className="mb-8 grid grid-cols-2 gap-6">
-                  {content.about.stats.map((stat, index) => (
-                    <div
-                      key={`${stat.label}-${index}`}
-                      className="bg-primary/5 border-primary/20 rounded-lg border p-4 text-center"
-                    >
-                      <div className="text-primary-text mb-1 text-3xl font-bold">{stat.value}</div>
-                      <div className="text-muted-foreground text-sm">{stat.label}</div>
-                    </div>
-                  ))}
-                </div>
+                {/* Statistika se izriše SAMO, ko jo lastnik res vpiše —
+                    prazna mreža bi pustila luknjo, izmišljene številke pa
+                    so bile lažni podatek na strani novega podjetja. */}
+                {content.about.stats.length > 0 && (
+                  <div className="mb-8 grid grid-cols-2 gap-6">
+                    {content.about.stats.map((stat, index) => (
+                      <div
+                        key={`${stat.label}-${index}`}
+                        className="bg-primary/5 border-primary/20 rounded-lg border p-4 text-center"
+                      >
+                        <div className="text-primary-text mb-1 text-3xl font-bold">{stat.value}</div>
+                        <div className="text-muted-foreground text-sm">{stat.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <CTAButton
                   href={toHref(primaryCta.href)}
                   className="from-primary to-primary/90 group bg-linear-to-r text-white shadow-lg hover:opacity-90"

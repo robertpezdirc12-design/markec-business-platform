@@ -29,6 +29,14 @@ export interface FeatureContent {
   description: string
 }
 
+/**
+ * Statistika v razdelku »O nas« (npr. »10+ let izkušenj«).
+ *
+ * Privzeto je seznam PRAZEN. Prej so predloge prinašale izmišljene
+ * številke (»15+ let izkušenj«, »2K+ zadovoljnih strank«), ki so jih
+ * nova podjetja objavila kot svoje — kupec pa je bral lažne podatke.
+ * Zdaj jih vpiše lastnik sam v urejevalniku blagovne znamke (0–4).
+ */
 export interface StatContent {
   value: string
   label: string
@@ -378,10 +386,7 @@ export function defaultSiteContent(vertical: string): SiteContent {
           "Stopite v svet, kjer se srečujeta luksuz in strokovnost. Naša ekipa strokovnjakov je posvečena vsaki podrobnosti — od trenutka, ko vstopite, do žarečega rezultata.",
           "Uporabljamo izključno preverjene, visokokakovostne izdelke in tehnike, prilagojene vašim željam.",
         ],
-        stats: [
-          { value: "10+", label: "Let izkušenj" },
-          { value: "5K+", label: "Zadovoljnih strank" },
-        ],
+        stats: [],
       },
       features: {
         title: "Zakaj izbrati nas",
@@ -414,10 +419,7 @@ export function defaultSiteContent(vertical: string): SiteContent {
           "Verjamemo, da dobra frizura spremeni dan — in pogosto tudi teden. Vsak obisk začnemo s posvetom, da razumemo vaše želje in življenjski slog.",
           "Naša ekipa se redno izobražuje na svetovnih trendih, uporabljamo pa profesionalne izdelke, ki negujejo lase.",
         ],
-        stats: [
-          { value: "8+", label: "Let izkušenj" },
-          { value: "3K+", label: "Srečnih strank" },
-        ],
+        stats: [],
       },
       features: {
         title: "Zakaj k nam",
@@ -450,10 +452,7 @@ export function defaultSiteContent(vertical: string): SiteContent {
           "Pri nas se srečata tradicionalna obrt in sodoben slog. Vsak haircut je projekt — od posveta do zadnjega detajla.",
           "Kava, dobra glasba in precizno ročno delo. To je kraj, kjer se sprostiš in prideš ven kot nov človek.",
         ],
-        stats: [
-          { value: "6+", label: "Let izkušenj" },
-          { value: "2K+", label: "Zvestih strank" },
-        ],
+        stats: [],
       },
       features: {
         title: "Zakaj pri nas",
@@ -486,10 +485,7 @@ export function defaultSiteContent(vertical: string): SiteContent {
           "Verjamemo, da so nohti malenkost z velikim učinkom. Vsaka manikira je mini umetnina — od oblike in barve do končnega sijaja.",
           "Uporabljamo sertificirane materiale in vzdržujemo najvišje higienske standarde.",
         ],
-        stats: [
-          { value: "5+", label: "Let izkušenj" },
-          { value: "2K+", label: "Narejenih nohtov" },
-        ],
+        stats: [],
       },
       features: {
         title: "Zakaj k nam",
@@ -522,10 +518,7 @@ export function defaultSiteContent(vertical: string): SiteContent {
           "Vsaka koža je drugačna — zato se vsak tretma začne z analizo kože in posvetom. Rezultate gradimo postopoma in trajnostno.",
           "Sodelujemo s preverjenimi blagovnimi znamkami in se nenehno izobražujemo o novostih v kozmetiki.",
         ],
-        stats: [
-          { value: "12+", label: "Let izkušenj" },
-          { value: "4K+", label: "Tretmajev letno" },
-        ],
+        stats: [],
       },
       features: {
         title: "Zakaj k nam",
@@ -558,10 +551,7 @@ export function defaultSiteContent(vertical: string): SiteContent {
           "Naša vizija je preprosta: da odideš lažji, kot si prišel. Vsako masažo prilagodimo tvojim potrebam — od sprostitve do regeneracije.",
           "Delamo s certificiranimi terapevti in naravnimi olji.",
         ],
-        stats: [
-          { value: "9+", label: "Let izkušenj" },
-          { value: "6K+", label: "Izvedenih masaž" },
-        ],
+        stats: [],
       },
       features: {
         title: "Zakaj k nam",
@@ -594,10 +584,7 @@ export function defaultSiteContent(vertical: string): SiteContent {
           "Z najnovejšo laser tehnologijo zagotavljamo varne in učinkovite tretmaje za vse tipe kože. Rezultati vidni že po prvih tretmajih.",
           "Vsak tretmaj začnemo s posvetom in testom kože.",
         ],
-        stats: [
-          { value: "7+", label: "Let izkušenj" },
-          { value: "3K+", label: "Zadovoljnih strank" },
-        ],
+        stats: [],
       },
       features: {
         title: "Zakaj k nam",
@@ -632,10 +619,7 @@ export function defaultSiteContent(vertical: string): SiteContent {
           "Vsako naročilo začnemo s posvetom in meritvami — vaše želje, material in pričakovanja so zapisana v merilnem listu, ki ga upoštevamo od prvega do zadnjega šiva.",
           "Delamo s preciznostjo: od krajšanja hlač do šivanja oblek po meri. Vsak kos pregledamo še pred predajo.",
         ],
-        stats: [
-          { value: "15+", label: "Let izkušenj" },
-          { value: "2K+", label: "Zadovoljnih strank" },
-        ],
+        stats: [],
       },
       features: {
         title: "Zakaj k nam",
@@ -669,11 +653,7 @@ export function defaultSiteContent(vertical: string): SiteContent {
           "Vsako vozilo sprejmemo z zapisom stanja in kilometrov. Diagnostika pokaže napako, mi pa vam ponudimo obseg dela in ceno še preden se lotimo popravila.",
           "Delamo s preverjenimi rezervnimi deli in za vsak poseg izdamo delovni nalog — veste, česa plačujete in kaj je bilo narejeno.",
         ],
-        stats: [
-          { label: "Let izkušenj", value: "20+" },
-          { label: "Servisov letno", value: "1500+" },
-          { label: "Garancija na delo", value: "12 mes." },
-        ],
+        stats: [],
       },
       // #105-sled: mehanik preset je bil brez »features« — BrandingEditor
       // je na Nastavitvah trdil nad undefined.title (Runtime TypeError).
@@ -709,10 +689,7 @@ export function defaultSiteContent(vertical: string): SiteContent {
           "Vsak obisk se začne s sprejemom vozila in zapisom stanja. Naš delovni nalog sledi vsemu: od diagnostike, preko rezervnih delov, do prevzema in plačila.",
           "Delamo z kakovostnimi materiali in za vsako delo vnaprej dogovorimo obseg ter ceno.",
         ],
-        stats: [
-          { value: "12+", label: "Let izkušenj" },
-          { value: "8K+", label: "Servisiranih vozil" },
-        ],
+        stats: [],
       },
       features: {
         title: "Zakaj k nam",
@@ -749,10 +726,7 @@ export function defaultSiteContent(vertical: string): SiteContent {
           "Vsaka serija medu je sledljiva — zapisan je datum žetve, panjska postaja in količina. Zato veste, točno kaj pojete.",
           "Med črpamo ob načrtovanih terminih žetve in ga pakiramo v kakovostno embalažo. Količine so odvisne od sezone.",
         ],
-        stats: [
-          { value: "120+", label: "Čebeljih družin" },
-          { value: "1.5t", label: "Letne žetve" },
-        ],
+        stats: [],
       },
       features: {
         title: "Zakaj naš med",
