@@ -1,0 +1,98 @@
+name: Diagnose Worker errors
+
+# ============================================================
+# Ročno zagnana diagnostika (workflow_dispatch) — NE deploya.
+# Občasni HTTP 500 na Cloudflareju (strani z bazo) je treba
+# pripisati pravemu vzroku: CPU limit (error 1101/1102),
+# prekoračitev pod-requestov, Prisma/Neon napaka ali izjema v
+# kodi. Edini način, da to vidimo, je `wrangler tail` — ta pa
+# potrebuje CF žeton, ki ga ima samo CI.
+# Zagon: Actions → Diagnose Worker errors → Run workflow
+# Rezultat: surovi JSON logi v izpisu koraka "Tail + load".
+# ============================================================
+
+on:
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: "Koliko sekund naj tail lovi (privzeto 45)"
+        required: false
+        default: "45"
+      label:
+        description: "Oznaka zagona (za lažje iskanje v zgodovini)"
+        required: false
+        default: "manual"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    name: Tail Worker errors
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Tail + load
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SECONDS_TO_TAIL: ${{ github.event.inputs.seconds }}
+        run: |
+          set -uo pipefail
+          BASE="https://markec-business-platform.robert-pezdirc12.workers.dev"
+          OUT="$RUNNER_TEMP/tail.log"
+
+          # Tail v ozadju — surov JSON, ena vrstica na dogodek.
+          npx --yes wrangler@4.163.0 tail markec-business-platform --format json > "$OUT" 2>&1 &
+          TAIL_PID=$!
+          sleep 8
+
+          # Obremenitev: 6 ponovitev vsake poti, ki v produkciji pada.
+          for i in $(seq 1 6); do
+            for path in "/s/test-sivilja-studio" "/s/qa-meh-mehanik" "/podjetja" "/" ; do
+              code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$BASE$path")
+              echo "req $i $path -> $code"
+            done
+          done
+
+          sleep "${SECONDS_TO_TAIL:-45}"
+          kill "$TAIL_PID" 2>/dev/null || true
+          wait "$TAIL_PID" 2>/dev/null || true
+
+          echo "----- captured lines: $(wc -l < "$OUT") -----"
+          # Izlušči bistvo: sporočila izjem, CPU/prekoračitve, stack.
+          node -e '
+            const fs = require("fs");
+            const path = process.env.OUT || process.argv[1];
+            const lines = fs.readFileSync(path, "utf8").split("\n").filter(Boolean);
+            const hits = [];
+            for (const line of lines) {
+              let j;
+              try { j = JSON.parse(line); } catch { if (/error|exceed|1101|1102|subrequest/i.test(line)) hits.push(line); continue; }
+              const ex = j.exceptions || [];
+              for (const e of ex) hits.push(`EXCEPTION ${e.name}: ${e.message}`);
+              if (j.outcome && j.outcome !== "ok") hits.push(`OUTCOME ${j.outcome} ${j.event?.request?.url || ""}`);
+              const logs = j.logs || [];
+              for (const l of logs) {
+                if (/error|exceed|1101|1102|subrequest|prisma|neon|websocket/i.test(l.message)) hits.push(`LOG ${l.level}: ${l.message}`);
+              }
+            }
+            const uniq = [...new Set(hits)];
+            console.log(uniq.slice(0, 60).join("\n") || "(ni ujetih napak — poglej surovi log v artefaktu)");
+          ' "$OUT"
+
+      - name: Upload raw tail log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: worker-tail-${{ github.event.inputs.label || 'manual' }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/tail.log
+          if-no-files-found: warn
+          retention-days: 5
