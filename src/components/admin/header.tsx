@@ -25,6 +25,7 @@ import {
   StorefrontIcon,
 } from "@/components/icons"
 import { MobileSidebar } from "./sidebar"
+import { CommandPalette } from "./command-palette"
 import { LanguageSwitcher } from "./language-switcher"
 import { useI18n } from "@/lib/i18n/provider"
 
@@ -118,6 +119,9 @@ export function AdminHeader({
 
           {/* Right side - Actions */}
           <div className="flex items-center gap-2 sm:gap-4">
+            {/* ⌘K — globalno iskanje (audit 2026-11-18) */}
+            <CommandPalette />
+
             {/* Language switcher */}
             <LanguageSwitcher />
 
