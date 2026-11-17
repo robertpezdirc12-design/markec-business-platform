@@ -42,6 +42,30 @@ type WithALS = typeof globalThis & {
 
 let requestStorage: ScopedStorage<PrismaClient> | undefined
 let nodeFallbackClient: PrismaClient | undefined
+let serverSingletonClient: PrismaClient | undefined
+
+/**
+ * Ali tečemo na Cloudflare Workers?
+ *
+ * Workers prepovedujejo I/O med zahtevami, zato tam VEDNO rabimo
+ * client na zahtevo. Vercel/Node pa je nasproten primer: modulski
+ * obseg živi med zahtevami in en sam client je priporočeni vzorec
+ * (ponovna uporaba povezav namesto novega pool-a na vsako zahtevo).
+ *
+ * Zaznava: `RUNTIME=workers` (wrangler.jsonc vars) ali UA, ki ga
+ * postavi Workers runtime. Funkcija je čista, da jo je mogoče testirati.
+ */
+export function isWorkersRuntime(
+  runtimeFlag: string | undefined = process.env.RUNTIME,
+  userAgent: string | undefined = typeof navigator !== "undefined"
+    ? navigator.userAgent
+    : undefined
+): boolean {
+  if (runtimeFlag === "workers") return true
+  return userAgent === "Cloudflare-Workers"
+}
+
+const onWorkers = isWorkersRuntime()
 
 function getStorage(): ScopedStorage<PrismaClient> | undefined {
   if (requestStorage) return requestStorage
@@ -51,8 +75,11 @@ function getStorage(): ScopedStorage<PrismaClient> | undefined {
   return requestStorage
 }
 
-// Prepreči globalno predpomnjenje fetch povezav med zahtevami.
-neonConfig.fetchConnectionCache = false
+// Workers: onemogoči predpomnjenje fetch povezav med zahtevami.
+// Vercel/Node: predpomnjenje je zaželeno (manj handshake-ov).
+if (onWorkers) {
+  neonConfig.fetchConnectionCache = false
+}
 
 function createPrismaClient(): PrismaClient {
   const databaseUrl = process.env.DATABASE_URL
@@ -68,6 +95,14 @@ function createPrismaClient(): PrismaClient {
 }
 
 function getClient(): PrismaClient {
+  // Vercel/Node: EN client za življenje procesa. Ustvarjanje clienta (in
+  // WebSocket pool-a) na vsako zahtevo je bilo potrebno samo zaradi
+  // Workers pravil — tu bi pomenilo nov pool na vsak obisk.
+  if (!onWorkers) {
+    if (!serverSingletonClient) serverSingletonClient = createPrismaClient()
+    return serverSingletonClient
+  }
+
   const storage = getStorage()
   if (storage) {
     const existing = storage.getStore()
@@ -78,20 +113,19 @@ function getClient(): PrismaClient {
     return created
   }
 
-  // Node/test brez globalnega AsyncLocalStorage: en client, saj tu ne velja
-  // Workers pravilo o I/O med različnimi zahtevami.
+  // Workers brez globalnega AsyncLocalStorage: en client (robni primer).
   if (!nodeFallbackClient) nodeFallbackClient = createPrismaClient()
   return nodeFallbackClient
 }
 
 /**
- * Prisma client, varen za Cloudflare Workers.
+ * Prisma client.
  *
- * Proxy leno ustvari client ob prvem dostopu znotraj zahteve in ga
- * zadrži v AsyncLocalStorage za celotno življenje te zahteve.
- * Vsaka nova zahteva dobi svež client → ni več cross-request I/O.
+ * Workers: proxy leno ustvari client ob prvem dostopu znotraj zahteve in
+ * ga zadrži v AsyncLocalStorage — vsaka zahteva dobi svež client, zato ni
+ * cross-request I/O napak. Vse metode so vezane na client (`this`).
  *
- * Vse metode so vezane na client, da `this` ostane pravilen.
+ * Vercel/Node: en sam modulski client, ki živi med zahtevami.
  */
 export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
   get(_target, prop) {
@@ -109,6 +143,10 @@ export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
  * GC poskrbi za preostanek ob koncu izolata.
  */
 export async function releasePrisma(): Promise<void> {
+  // Vercel/Node: singletona NE prekinemo — prav zato, da naslednja zahteva
+  // podeduje obstoječi pool. Prekinitev bi pomenila nov pool na vsak obisk.
+  if (!onWorkers) return
+
   const storage = getStorage()
   const client = storage?.getStore() ?? nodeFallbackClient
   if (client) {

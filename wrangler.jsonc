@@ -20,7 +20,12 @@
   },
   "vars": {
     "NODE_ENV": "production",
-    "AUTH_TRUST_HOST": "true"
+    "AUTH_TRUST_HOST": "true",
+    // src/lib/prisma.ts: na Workers rabi client NA ZAHTEVO (I/O pravilo),
+    // na Vercelu en sam modulski client. Ta oznaka pove, kje smo — brez
+    // nje bi Workers dobil singleton in bi spet javljal
+    // "Cannot perform I/O on behalf of a different request".
+    "RUNTIME": "workers"
   },
   "services": [
     {
