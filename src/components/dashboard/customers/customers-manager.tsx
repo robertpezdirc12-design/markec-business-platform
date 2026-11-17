@@ -66,7 +66,11 @@ const EMPTY: FormState = { name: "", email: "", phone: "", notes: "", tags: "", 
 
 export function CustomersManager({ initial, tags, archived, search, title, titleAccent, subtitle }: Props) {
   const router = useRouter()
-  const [rows] = useState<CustomerListItem[]>(initial)
+  // Seznam bere NEPOSREDNO iz props. Prej je bil kopiran v useState(initial),
+  // zato router.refresh() po dodajanju stranke ni osvežil seznama — nova
+  // stranka se je pokazala šele po ročnem osvežitvi strani (v produkciji
+  // je seznam še naprej kazal »Ni strank«).
+  const rows: CustomerListItem[] = initial
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<CustomerListItem | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY)
