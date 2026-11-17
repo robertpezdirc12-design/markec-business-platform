@@ -24,6 +24,17 @@ export interface SnapshotBusiness {
   category: string
   city: string
   services?: string[]
+  /**
+   * Prve tri storitve z trajanjem in ceno — kartica na tržnici jih izpiše
+   * (audit 2026-11-18: prej je kartica kazala le ime in naslov).
+   */
+  serviceItems?: { name: string; minutes: number | null; price: number | null }[]
+  /**
+   * Tedenski delovni čas za značko »Odprto do 19:00«. Snapshot je statičen,
+   * zato hranimo VZOREC tedna (ne trenutnega stanja) in stanje izračunamo
+   * na odjemalcu — tako podatek nikoli ne zastara.
+   */
+  hours?: { day: number; open: string; close: string }[]
   phone?: string
   email?: string
 }

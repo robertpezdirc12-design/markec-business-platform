@@ -57,6 +57,24 @@ function createClient(databaseUrl) {
   return new PrismaClient()
 }
 
+/** Tedenski delovni čas iz objavljene vsebine (fallback: osnutek). */
+function readOpeningHours(salonConfig) {
+  if (!salonConfig) return []
+  const source = salonConfig.publishedSiteContent ?? salonConfig.siteContent
+  if (!source || typeof source !== "object") return []
+  const hours = source.openingHours
+  if (!Array.isArray(hours)) return []
+  return hours
+    .filter(
+      (h) =>
+        h &&
+        typeof h.day === "number" &&
+        typeof h.open === "string" &&
+        typeof h.close === "string"
+    )
+    .map((h) => ({ day: h.day, open: h.open, close: h.close }))
+}
+
 async function main() {
   const databaseUrl = process.env.DATABASE_URL
 
@@ -86,8 +104,21 @@ async function main() {
       orderBy: { createdAt: "desc" },
       take: 500,
       include: {
-        salonConfig: { select: { city: true, email: true, phone: true } },
-        services: { take: 3, select: { name: true } },
+        salonConfig: {
+          select: {
+            city: true,
+            email: true,
+            phone: true,
+            siteContent: true,
+            publishedSiteContent: true,
+          },
+        },
+        services: {
+          where: { isActive: true },
+          take: 3,
+          orderBy: [{ isFeatured: "desc" }, { name: "asc" }],
+          select: { name: true, duration: true, price: true },
+        },
         reviews: { where: { isActive: true }, select: { rating: true } },
         _count: { select: { reviews: { where: { isActive: true } } } },
       },
@@ -116,6 +147,17 @@ async function main() {
         category: org.vertical || "splošno",
         city: org.salonConfig?.city || "Slovenija",
         services: org.services.map((s) => s.name),
+        // Audit 2026-11-18: kartica na tržnici mora pokazati KAJ podjetje
+        // dela (ime + trajanje + cena), ne le imena podjetja — tako kot
+        // Fresha prikazuje tri storitve z "View N matching services".
+        serviceItems: org.services.map((s) => ({
+          name: s.name,
+          minutes: s.duration ?? null,
+          price: s.price != null ? Number(s.price) : null,
+        })).filter((s) => s.name),
+        // Delovni čas za značko "Odprto do 19:00" (izračun na odjemalcu,
+        // ker je snapshot statičen; ure so tedenski vzorec, ki ne zastara).
+        hours: readOpeningHours(org.salonConfig),
         phone: org.salonConfig?.phone || undefined,
         email: org.salonConfig?.email || undefined,
       }

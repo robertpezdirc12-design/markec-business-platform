@@ -9,6 +9,7 @@ import { orgPath } from "@/lib/org-path"
 import type { CtaLink, CustomSectionContent, SectionEntry, SectionKey, SiteContent } from "@/lib/site-content"
 import { renderableSections } from "@/lib/site-content"
 import { HeroVideo } from "@/components/landing/hero-video"
+import { OpenStatusPill } from "@/components/public/open-status-pill"
 import { HeroActions } from "@/components/landing/hero-actions"
 import { resolveLayout } from "@/lib/site-layout"
 import { SplitHero, MinimalHero } from "@/components/landing/hero-variants"
@@ -211,6 +212,14 @@ export function HomeContent({
                   {content.hero.eyebrow}
                 </p>
               )}
+              {/* Audit 2026-11-18: stranka naj takoj ve, ali je odprto
+                  (Fresha: "Closed - opens on Wednesday at 7:00 AM"). */}
+              <div className="mb-4 flex justify-center">
+                <OpenStatusPill
+                  hours={content.openingHours}
+                  className="bg-white/15 text-white backdrop-blur-sm"
+                />
+              </div>
               <h1 className="font-heading mb-6 text-5xl tracking-tight text-white drop-shadow-lg sm:text-7xl md:text-8xl lg:text-9xl">
                 {heroTitle.lead}
                 {heroTitle.accent && (

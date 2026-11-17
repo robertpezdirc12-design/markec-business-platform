@@ -20,6 +20,7 @@ import {
   ClockIcon,
 } from "@/components/icons"
 import { Heart } from "@phosphor-icons/react/dist/ssr"
+import { openStateFor } from "@/lib/hours/open-state"
 
 interface Business {
   id: string
@@ -39,6 +40,10 @@ interface Business {
   city?: string
   description?: string
   services?: string[]
+  /** Prve tri storitve z trajanjem/ceno (snapshot, audit 2026-11-18). */
+  serviceItems?: { name: string; minutes: number | null; price: number | null }[]
+  /** Tedenski delovni čas za značko »Odprto do …«. */
+  hours?: { day: number; open: string; close: string }[]
 }
 
 interface BusinessShowcaseProps {
@@ -57,7 +62,16 @@ interface CarouselSectionProps {
 }
 
 
+function formatPrice(price: number): string {
+  return `${price.toFixed(2).replace(".", ",")} €`
+}
+
 function BusinessCard({ business }: { business: Business }) {
+  // Stanje odprtja se izračuna ob izrisu — snapshot nosi tedenski vzorec,
+  // zato značka nikoli ne zastara (prej je bila polje `isOpen`, ki ga nihče
+  // ni napolnil).
+  const openState = openStateFor(business.hours)
+  const services = business.serviceItems ?? []
   return (
     <Link href={`/s/${business.slug}`}>
       <Card className="group overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
@@ -94,12 +108,21 @@ function BusinessCard({ business }: { business: Business }) {
             </div>
           )}
 
-          {/* Open Status */}
-          {business.isOpen && (
+          {/* Open Status — resnično stanje iz delovnega časa */}
+          {(openState.state === "open" || openState.state === "closed") && (
             <div className="absolute bottom-3 left-3">
-              <Badge className="bg-green-500 text-white">
+              <Badge
+                className={
+                  openState.state === "open"
+                    ? "bg-green-600 text-white"
+                    : "bg-background/90 text-foreground backdrop-blur-sm"
+                }
+                title={openState.label}
+              >
                 <ClockIcon size={12} className="mr-1" />
-                Odprto do {business.openUntil}
+                {openState.state === "open"
+                  ? `Odprto do ${openState.until}`
+                  : "Zaprto"}
               </Badge>
             </div>
           )}
@@ -132,6 +155,26 @@ function BusinessCard({ business }: { business: Business }) {
             <span className="truncate">{business.address}</span>
           </div>
 
+          {/* Storitve z trajanjem in ceno — stranka vidi, KAJ se prodaja
+              (audit 2026-11-18; prej samo ime podjetja in naslov). */}
+          {services.length > 0 && (
+            <ul className="mt-3 space-y-1 border-t pt-2">
+              {services.slice(0, 3).map((service) => (
+                <li
+                  key={service.name}
+                  className="flex items-baseline justify-between gap-2 text-xs"
+                >
+                  <span className="truncate">{service.name}</span>
+                  <span className="text-muted-foreground shrink-0">
+                    {service.minutes ? `${service.minutes} min` : ""}
+                    {service.minutes && service.price != null ? " · " : ""}
+                    {service.price != null ? formatPrice(service.price) : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+
           <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               {/* Prej so bili tu trije izmišljeni avatarji "A/B/C" — enaki na
@@ -146,6 +189,11 @@ function BusinessCard({ business }: { business: Business }) {
                       : `${business.reviews} mnenj`}
               </span>
             </div>
+            {services.length > 0 && (
+              <span className="text-primary group-hover:underline text-xs font-medium">
+                Poglej vse storitve →
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>
