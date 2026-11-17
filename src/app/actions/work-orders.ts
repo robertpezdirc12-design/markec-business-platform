@@ -88,6 +88,12 @@ export interface WorkOrdersOverview {
   definitions: WorkflowDefinitionInfo[]
   orders: WorkOrderListItem[]
   stats: WorkOrderStats
+  /**
+   * Nova povpraševanja iz javnih obrazcev, ki še niso pretvorjena v naročilo.
+   * Prej jih je bilo videti samo v /dashboard/forms — lastnik ni vedel, da
+   * stranka čaka na odgovor.
+   */
+  newSubmissions: number
 }
 
 function toNumber(value: unknown): number | null {
@@ -140,7 +146,7 @@ function computeStats(
 export async function getWorkOrdersOverview(): Promise<WorkOrdersOverview> {
   const { org } = await requirePermissionOrg("workorders.manage")
 
-  const [definitions, orders] = await Promise.all([
+  const [definitions, orders, newSubmissions] = await Promise.all([
     prisma.workflowDefinition.findMany({
       where: { organizationId: org.id, isActive: true, entity: "order" },
       include: { stages: { orderBy: { order: "asc" } } },
@@ -154,6 +160,9 @@ export async function getWorkOrdersOverview(): Promise<WorkOrdersOverview> {
         events: { orderBy: { createdAt: "desc" }, take: 1 },
       },
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+    }),
+    prisma.formSubmission.count({
+      where: { organizationId: org.id, status: "NEW" },
     }),
   ])
 
@@ -220,6 +229,7 @@ export async function getWorkOrdersOverview(): Promise<WorkOrdersOverview> {
     })),
     orders: ordersSerialized,
     stats,
+    newSubmissions,
   }
 }
 
@@ -488,6 +498,84 @@ export async function advanceWorkOrder(
   revalidatePath("/dashboard/work-orders")
   revalidatePath(`/dashboard/work-orders/${id}`)
   revalidatePath("/dashboard")
+  return { ok: true, id: order.id }
+}
+
+/**
+ * Predračun: znesek in rok izdelave na obstoječem naročilu.
+ *
+ * Zakaj: model WorkOrder ima `total` in `dueDate`, vendar ju UI ni ponujal —
+ * šivilja je stopnjo »Predračun« lahko le potrdila, ne da bi zabeležila ceno
+ * ali rok, ki ju je obljubila stranki. Zapis gre v zgodovino naročila.
+ */
+export async function updateWorkOrderTerms(
+  id: string,
+  input: { total: number | null; dueDate: string | null }
+): Promise<WorkOrderActionResult> {
+  const { org, session } = await requirePermissionOrg("workorders.manage")
+
+  const order = await prisma.workOrder.findFirst({
+    where: { id, organizationId: org.id },
+    select: { id: true, status: true, total: true, dueDate: true },
+  })
+  if (!order) return { ok: false, error: "NOT_FOUND" }
+  if (order.status !== "OPEN") return { ok: false, error: "NOT_OPEN" }
+
+  if (
+    input.total !== null &&
+    (!Number.isFinite(input.total) || input.total < 0 || input.total > 1_000_000)
+  ) {
+    return { ok: false, error: "INVALID_TOTAL" }
+  }
+
+  let dueDate: Date | null = null
+  if (input.dueDate) {
+    const parsed = new Date(input.dueDate)
+    if (Number.isNaN(parsed.getTime())) return { ok: false, error: "INVALID_DATE" }
+    dueDate = parsed
+  }
+
+  const amount = input.total === null ? null : Math.round(input.total * 100) / 100
+  const previousTotal = order.total === null ? null : Number(order.total)
+  const previousDue = order.dueDate ? order.dueDate.toISOString().slice(0, 10) : null
+  const nextDue = dueDate ? dueDate.toISOString().slice(0, 10) : null
+
+  // Zgodovina samo ob dejanski spremembi — brez šuma ob ponovnem shranjevanju.
+  const changed =
+    previousTotal !== amount ||
+    previousDue !== nextDue
+
+  await prisma.$transaction(async (tx) => {
+    await tx.workOrder.update({
+      where: { id: order.id },
+      data: { total: amount, dueDate },
+    })
+    if (changed) {
+      const parts: string[] = []
+      if (previousTotal !== amount) {
+        parts.push(
+          `znesek ${previousTotal === null ? "—" : previousTotal.toFixed(2)} € → ${
+            amount === null ? "—" : amount.toFixed(2) + " €"
+          }`
+        )
+      }
+      if (previousDue !== nextDue) {
+        parts.push(`rok ${previousDue ?? "—"} → ${nextDue ?? "—"}`)
+      }
+      await tx.workOrderEvent.create({
+        data: {
+          organizationId: org.id,
+          workOrderId: order.id,
+          type: "NOTE",
+          message: `Predračun: ${parts.join(", ")}`,
+          actorEmail: session.user?.email ?? null,
+        },
+      })
+    }
+  })
+
+  revalidatePath("/dashboard/work-orders")
+  revalidatePath(`/dashboard/work-orders/${id}`)
   return { ok: true, id: order.id }
 }
 

@@ -25,7 +25,11 @@
     // na Vercelu en sam modulski client. Ta oznaka pove, kje smo — brez
     // nje bi Workers dobil singleton in bi spet javljal
     // "Cannot perform I/O on behalf of a different request".
-    "RUNTIME": "workers"
+    "RUNTIME": "workers",
+    // Dokler Resend ni nastavljen, je potrditvena povezava edini način, da
+    // nov uporabnik aktivira račun (src/lib/email/config.ts). Ko dodate
+    // RESEND_API_KEY, to zastavico odstranite — sicer ostane javno vidna.
+    "EMAIL_VERIFICATION_FALLBACK": "1"
   },
   "services": [
     {

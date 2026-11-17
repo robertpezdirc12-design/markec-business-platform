@@ -1,5 +1,9 @@
 "use server"
 
+import {
+  buildWorkOrderTitle,
+  parseFormDueDate,
+} from "@/lib/work-orders/form-mapping"
 import { prisma } from "@/lib/prisma"
 import { requirePermissionOrg } from "@/lib/auth/guards"
 import { revalidatePath } from "next/cache"
@@ -462,13 +466,15 @@ export async function createWorkOrderFromSubmission(
   const { _contact, ...values } = data
   const contact = (_contact ?? {}) as PublicSubmissionContact
 
-  // Title: first meaningful select/text value, else the form name.
-  const titleField = Object.entries(values).find(
-    ([, v]) => typeof v === "string" && v.trim().length > 0 && v.length < 120
-  )
-  const title = titleField
-    ? `${sub.formDefinition.name}: ${String(titleField[1]).slice(0, 80)}`
-    : sub.formDefinition.name
+  // Naslov naročila: prej je vzel PRVO neprazno besedilno polje — pri
+  // šiviljskem obrazcu je bil to datum (»Podrobnosti naročila: 2026-12-05«),
+  // kar v seznamu naročil ne pove ničesar. Zdaj imajo prednost polja, ki
+  // opisujejo PREDMET naročila; datumi in številke so izključeni.
+  const title = buildWorkOrderTitle(values, sub.formDefinition.name)
+
+  // Rok iz obrazca (deadline/dueDate/rok) → dueDate naročila. Prej je ostal
+  // le kot tekst v opombah, naročilo pa je kazalo »Rok: —«.
+  const dueDate = parseFormDueDate(values)
 
   const firstStage = definition.stages[0]
   const summary = Object.entries(values)
@@ -492,6 +498,7 @@ export async function createWorkOrderFromSubmission(
           ? `Kontakt: ${contact.name ?? ""} ${contact.email ?? ""} ${contact.phone ?? ""}\n\n${summary}`
           : summary,
         customerId: sub.customerId,
+        dueDate,
         workflowDefinitionId: definition.id,
         currentStageKey: firstStage.key,
         sourceSubmissionId: sub.id,

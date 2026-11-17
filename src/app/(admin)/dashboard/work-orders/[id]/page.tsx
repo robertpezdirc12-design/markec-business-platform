@@ -71,6 +71,11 @@ export default async function WorkOrderDetailPage({
           noHistory: w.detail.noHistory,
           stageOfTemplate: w.detail.stageOfTemplate,
           finalStage: w.detail.finalStage,
+          quoteTitle: w.detail.quoteTitle,
+          quoteHint: w.detail.quoteHint,
+          quote: w.detail.quote,
+          quoteSave: w.detail.quoteSave,
+          quoteSaved: w.detail.quoteSaved,
         }}
         errorLabels={w.errors}
         locale={locale}

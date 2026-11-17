@@ -57,6 +57,12 @@ export const workFormsSl = {
       finalStage: "Zadnja stopnja — naročilo se zaključi",
       invalidTransition:
         "Neveljaven prehod: dovoljene so samo sosednje stopnje (brez preskokov).",
+      quoteTitle: "Predračun",
+      quoteHint:
+        "Znesek in rok, ki ju obljubite stranki — shrani se v naročilo in v zgodovino.",
+      quote: "Znesek (€)",
+      quoteSave: "Shrani predračun",
+      quoteSaved: "Predračun shranjen.",
     },
     create: {
       title: "Novo delovno naročilo",
@@ -81,6 +87,13 @@ export const workFormsSl = {
       EMPTY_NOTE: "Opomba je prazna.",
       INVALID_CURRENT: "Trenutna stopnja ni veljavna.",
       GENERIC: "Dejanje ni uspelo. Poskusite znova.",
+      INVALID_TOTAL: "Znesek mora biti število med 0 in 1.000.000.",
+      INVALID_DATE: "Neveljaven datum roka.",
+    },
+    inbox: {
+      one: "1 novo povpraševanje čaka na pretvorbo v naročilo.",
+      many: "{count} novih povpraševanj čaka na pretvorbo v naročilo.",
+      cta: "Odpri obrazce",
     },
     process: {
       edit: "Uredi proces",
@@ -215,6 +228,12 @@ export const workFormsEn: WorkFormsDict = {
       prevStage: "Previous stage",
       finalStage: "Final stage — completing the order",
       invalidTransition: "Invalid transition: only adjacent stages are allowed (no skipping).",
+      quoteTitle: "Quote",
+      quoteHint:
+        "The amount and deadline you promise the customer — saved on the order and in its history.",
+      quote: "Amount (€)",
+      quoteSave: "Save quote",
+      quoteSaved: "Quote saved.",
     },
     create: {
       title: "New work order",
@@ -239,6 +258,13 @@ export const workFormsEn: WorkFormsDict = {
       EMPTY_NOTE: "The note is empty.",
       INVALID_CURRENT: "Current stage is invalid.",
       GENERIC: "The action failed. Please try again.",
+      INVALID_TOTAL: "The amount must be a number between 0 and 1,000,000.",
+      INVALID_DATE: "Invalid deadline date.",
+    },
+    inbox: {
+      one: "1 new enquiry is waiting to be turned into an order.",
+      many: "{count} new enquiries are waiting to be turned into orders.",
+      cta: "Open forms",
     },
     process: {
       edit: "Edit workflow",

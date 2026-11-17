@@ -16,7 +16,7 @@ import crypto from "crypto"
 import { sendPasswordResetEmail } from "@/lib/email/password-reset"
 import { sendVerificationEmail } from "@/lib/email/email-verification"
 import { sendAccountActivatedEmail } from "@/lib/email/account-activated"
-import { isEmailServiceConfigured } from "@/lib/email/config"
+import { allowVerificationFallback, isEmailServiceConfigured } from "@/lib/email/config"
 import {
   rateLimit,
   getClientIp,
@@ -135,7 +135,7 @@ export async function registerUser(data: RegisterInput) {
 
     // Brez konfiguriranega e-poštnega servisa sporočilo nikoli ne prispe —
     // vrni povezavo, da UI lahko uporabniku pokaze dostopen način potrditve.
-    if (!isEmailServiceConfigured()) {
+    if (!isEmailServiceConfigured() && allowVerificationFallback()) {
       return {
         success: true,
         user: { id: newUser.id, name: newUser.name, email: newUser.email },
@@ -213,7 +213,7 @@ export async function resendVerification(data: { email?: string }) {
       await sendVerificationEmail(email, token)
     })
 
-    if (!isEmailServiceConfigured()) {
+    if (!isEmailServiceConfigured() && allowVerificationFallback()) {
       return { success: true, verificationUrl: `/verify-email?token=${token}`, emailSent: false }
     }
     return { success: true, emailSent: true }
@@ -273,7 +273,7 @@ export async function forgotPassword(data: ForgotPasswordInput) {
     })
 
     // Brez e-poštnega servisa povezava prikaži v UI (glej registerUser).
-    if (!isEmailServiceConfigured()) {
+    if (!isEmailServiceConfigured() && allowVerificationFallback()) {
       return { success: true, resetUrl: `/reset-password?token=${token}`, emailSent: false }
     }
 

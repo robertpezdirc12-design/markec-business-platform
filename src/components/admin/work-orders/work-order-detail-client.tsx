@@ -14,10 +14,12 @@ import {
 } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
+import { Input } from "@/components/ui/input"
 import {
   advanceWorkOrder,
   cancelWorkOrder,
   addWorkOrderNote,
+  updateWorkOrderTerms,
   type WorkOrderDetail,
 } from "@/app/actions/work-orders"
 
@@ -49,6 +51,12 @@ interface Labels {
   noHistory: string
   stageOfTemplate: string
   finalStage: string
+  /** Predračun: naslov kartice, namig, polji in potrditev. */
+  quoteTitle: string
+  quoteHint: string
+  quote: string
+  quoteSave: string
+  quoteSaved: string
 }
 
 interface WorkOrderDetailClientProps {
@@ -67,6 +75,13 @@ export function WorkOrderDetailClient({
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [note, setNote] = useState("")
+  // Predračun: znesek + rok (model ju je imel, UI ju ni ponujal).
+  const [quoteAmount, setQuoteAmount] = useState(
+    order.total === null ? "" : String(order.total)
+  )
+  const [quoteDue, setQuoteDue] = useState(
+    order.dueDate ? order.dueDate.slice(0, 10) : ""
+  )
   const recordsLinkLabel = locale === "sl" ? "Odpri evidence" : "Open records"
 
   const stages = order.workflow?.stages ?? []
@@ -117,6 +132,28 @@ export function WorkOrderDetailClient({
     })
   }
 
+  const saveQuote = (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmed = quoteAmount.trim().replace(",", ".")
+    const total = trimmed === "" ? null : Number(trimmed)
+    if (total !== null && (!Number.isFinite(total) || total < 0)) {
+      toast.error(errorText("INVALID_TOTAL"))
+      return
+    }
+    startTransition(async () => {
+      const result = await updateWorkOrderTerms(order.id, {
+        total,
+        dueDate: quoteDue === "" ? null : quoteDue,
+      })
+      if (result.ok) {
+        toast.success(labels.quoteSaved)
+        router.refresh()
+      } else {
+        toast.error(errorText(result.error))
+      }
+    })
+  }
+
   const fmtDate = (iso: string | null) => {
     if (!iso) return "—"
     return new Date(iso).toLocaleDateString(locale === "en" ? "en-GB" : "sl-SI", {
@@ -156,6 +193,17 @@ export function WorkOrderDetailClient({
                     {labels.dueDate}:{" "}
                     <span className="text-foreground font-medium">{fmtDate(order.dueDate)}</span>
                   </span>
+                  <span>
+                    {labels.quote}:{" "}
+                    <span className="text-foreground font-medium">
+                      {order.total === null
+                        ? "—"
+                        : `${order.total.toLocaleString(locale === "en" ? "en-GB" : "sl-SI", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })} €`}
+                    </span>
+                  </span>
                   {order.sourceSubmissionId && (
                     <span className="text-primary-text">⎘ {labels.created} (obrazec)</span>
                   )}
@@ -169,6 +217,52 @@ export function WorkOrderDetailClient({
             </div>
           </CardContent>
         </Card>
+
+        {/* Predračun — znesek in rok izdelave (stopnja 3 je prej le "naprej") */}
+        {isOpen && (
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">{labels.quoteTitle}</CardTitle>
+              <p className="text-muted-foreground text-sm">{labels.quoteHint}</p>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={saveQuote} className="flex flex-wrap items-end gap-3">
+                <div className="min-w-32 flex-1">
+                  <label
+                    htmlFor="quote-amount"
+                    className="text-muted-foreground mb-1 block text-xs font-medium"
+                  >
+                    {labels.quote}
+                  </label>
+                  <Input
+                    id="quote-amount"
+                    inputMode="decimal"
+                    placeholder="npr. 45,00"
+                    value={quoteAmount}
+                    onChange={(e) => setQuoteAmount(e.target.value)}
+                  />
+                </div>
+                <div className="min-w-40 flex-1">
+                  <label
+                    htmlFor="quote-due"
+                    className="text-muted-foreground mb-1 block text-xs font-medium"
+                  >
+                    {labels.dueDate}
+                  </label>
+                  <Input
+                    id="quote-due"
+                    type="date"
+                    value={quoteDue}
+                    onChange={(e) => setQuoteDue(e.target.value)}
+                  />
+                </div>
+                <Button type="submit" size="sm" disabled={pending}>
+                  {labels.quoteSave}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stage stepper */}
         {stages.length > 0 && (

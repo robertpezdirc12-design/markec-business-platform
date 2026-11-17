@@ -17,7 +17,10 @@ import { PALETTE_OPTIONS } from "@/lib/palettes-client"
 // registerUser) — a fresh business account is NOT verified in advance. The
 // org is created and the owner verifies before first login.
 import { sendVerificationEmail } from "@/lib/email/email-verification"
-import { isEmailServiceConfigured } from "@/lib/email/config"
+import {
+  allowVerificationFallback,
+  isEmailServiceConfigured,
+} from "@/lib/email/config"
 
 export interface CreateSalonInput {
   name: string
@@ -387,7 +390,7 @@ export async function createSalonOrganization(input: CreateSalonInput): Promise<
         after(async () => {
           await sendVerificationEmail(email, verificationToken)
         })
-        if (!isEmailServiceConfigured()) {
+        if (!isEmailServiceConfigured() && allowVerificationFallback()) {
           verificationUrl = `/verify-email?token=${verificationToken}`
         }
       }

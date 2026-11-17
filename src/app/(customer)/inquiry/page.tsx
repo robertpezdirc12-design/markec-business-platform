@@ -71,8 +71,12 @@ export default async function InquiryPage() {
           </div>
         ) : (
           <div className="space-y-8">
-            {forms.map((form) => (
-              <PublicInquiryForm key={form.id} form={form} />
+            {forms.map((form, index) => (
+              <PublicInquiryForm
+                key={form.id}
+                form={form}
+                collapsedByDefault={index > 0}
+              />
             ))}
           </div>
         )}

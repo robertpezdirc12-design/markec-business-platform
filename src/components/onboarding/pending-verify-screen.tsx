@@ -91,12 +91,13 @@ export function PendingVerifyScreen({
             {verificationUrl ? (
               <div className="space-y-3">
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Za dokončanje aktivacije sledite tej povezavi in potrdite svoj e-poštni
-                  naslov. Po potrditvi se prijavite s svojo e-pošto in geslom.
+                  E-poštno sporočilo še ni nastavljeno, zato potrditveno povezavo
+                  prikažemo tukaj. Odprite jo v tem brskalniku in potrdite svoj e-poštni
+                  naslov — po potrditvi se prijavite s svojo e-pošto in geslom.
                 </p>
                 <div className="rounded-lg border border-dashed p-3">
                   <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Povezava za potrditev (testno okolje)
+                    Povezava za potrditev
                   </p>
                   <div className="flex items-center gap-2">
                     <code className="min-w-0 flex-1 truncate rounded bg-muted px-2 py-1 text-xs">

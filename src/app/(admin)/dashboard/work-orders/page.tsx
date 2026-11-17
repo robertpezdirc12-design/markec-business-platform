@@ -54,6 +54,28 @@ export default async function WorkOrdersPage() {
         )}
       </div>
 
+      {/* Nova povpraševanja iz javnih obrazcev — doslej vidna le v /dashboard/forms */}
+      {overview.newSubmissions > 0 && (
+        <Card className="border-amber-500/40 bg-amber-500/5">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="flex items-start gap-3">
+              <WarningCircleIcon size={20} className="mt-0.5 shrink-0 text-amber-500" />
+              <p className="text-sm">
+                {overview.newSubmissions === 1
+                  ? w.inbox.one
+                  : w.inbox.many.replace("{count}", String(overview.newSubmissions))}
+              </p>
+            </div>
+            <Link
+              href="/dashboard/forms"
+              className="text-primary-text text-sm font-medium underline-offset-4 hover:underline"
+            >
+              {w.inbox.cta} →
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stats row */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         {stats.map((s) => (

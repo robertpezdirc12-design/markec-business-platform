@@ -18,11 +18,23 @@ import { submitPublicForm, type PublicFormDefinition } from "@/app/actions/forms
 
 interface PublicInquiryFormProps {
   form: PublicFormDefinition
+  /**
+   * Najemniki imajo pogosto DVA obrazca (npr. »Podrobnosti naročila« in
+   * »Merilni list«). Oba sta prej stala razgrnjena drug pod drugim z enakimi
+   * kontaktnimi polji in dvema enakima gumboma — obiskovalec ni vedel, ali
+   * mora izpolniti oba. Zdaj je prvi obrazec glavni, nadaljnji pa se odprejo
+   * šele na klik.
+   */
+  collapsedByDefault?: boolean
 }
 
 type Values = Record<string, string | boolean>
 
-export function PublicInquiryForm({ form }: PublicInquiryFormProps) {
+export function PublicInquiryForm({
+  form,
+  collapsedByDefault = false,
+}: PublicInquiryFormProps) {
+  const [expanded, setExpanded] = useState(!collapsedByDefault)
   const [values, setValues] = useState<Values>({})
   const [contact, setContact] = useState({ name: "", email: "", phone: "" })
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
@@ -104,6 +116,26 @@ export function PublicInquiryForm({ form }: PublicInquiryFormProps) {
       option: "Izberite eno od ponujenih možnosti.",
     }
     return map[err] ?? "Neveljavna vrednost."
+  }
+
+  if (!expanded) {
+    return (
+      <div className="bg-card rounded-2xl border p-6 shadow-sm sm:p-8">
+        <h2 className="text-lg font-semibold">{form.name}</h2>
+        {form.description && (
+          <p className="text-muted-foreground mt-1 text-sm">{form.description}</p>
+        )}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-4"
+          onClick={() => setExpanded(true)}
+        >
+          Izpolni obrazec
+        </Button>
+      </div>
+    )
   }
 
   return (
