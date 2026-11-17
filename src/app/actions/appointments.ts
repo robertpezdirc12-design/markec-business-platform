@@ -1572,6 +1572,8 @@ export async function getAdminAppointments(filters?: AdminAppointmentsFilter) {
           service: { select: { id: true, name: true } },
         },
       },
+      // PRIBION: povezano delovno naročilo (za prikaz v vrstici termina).
+      workOrder: { select: { id: true, number: true, title: true } },
     },
     orderBy: { startTime: "desc" },
   })

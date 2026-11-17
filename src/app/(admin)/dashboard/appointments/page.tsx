@@ -247,6 +247,15 @@ export default async function AppointmentsPage() {
                       </td>
                       <td className="py-4 text-sm">
                         {apt.services.map((s) => s.service.name).join(", ")}
+                        {apt.workOrder && (
+                          <Link
+                            href={`/dashboard/work-orders/${apt.workOrder.id}`}
+                            className="text-primary mt-1 block text-xs hover:underline"
+                          >
+                            {t.appointments.list.linkedOrder} #
+                            {String(apt.workOrder.number).padStart(3, "0")}
+                          </Link>
+                        )}
                       </td>
                       <td className="py-4 text-sm">{apt.staff.name}</td>
                       <td className="py-4 text-sm">

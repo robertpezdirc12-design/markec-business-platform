@@ -24,6 +24,8 @@ export const appointmentsSl = {
     },
     emptyTitle: "Še ni terminov",
     emptyDescription: "Ustvarite svoj prvi termin, da začnete",
+    /** Povezava na delovno naročilo (priblon) — prikaz v vrstici termina. */
+    linkedOrder: "Naročilo",
     table: {
       customer: "Stranka",
       service: "Storitev",
@@ -198,6 +200,8 @@ export const appointmentsEn: AppointmentsDict = {
       `${n} total appointment${n !== 1 ? "s" : ""}`,
     emptyTitle: "No appointments yet",
     emptyDescription: "Create your first appointment to get started",
+    /** Link to the work order (fitting) — shown in the appointment row. */
+    linkedOrder: "Order",
     table: {
       customer: "Customer",
       service: "Service",
