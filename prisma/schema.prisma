@@ -119,6 +119,7 @@ model Organization {
   // da cross-tenant preverjanje ne zahteva joina prek seje).
   cashSessions CashSession[]
   workOrderPayments WorkOrderPayment[]
+  workOrderPhotos   WorkOrderPhoto[]
   cashExpenses CashExpense[]
 
   // #100 8.A (M1): članstva — en lastnik lahko vodi VEČ podjetij iz enega
@@ -397,6 +398,7 @@ model User {
   @@index([role])
   @@index([customRoleId])
   recordedWorkOrderPayments WorkOrderPayment[] @relation("recordedWorkOrderPayments")
+  uploadedWorkOrderPhotos   WorkOrderPhoto[]   @relation("UploadedWorkOrderPhotos")
 }
 
 model NotificationPreferences {
@@ -1555,6 +1557,7 @@ model WorkOrder {
   projects           Project[]
   payments           WorkOrderPayment[]
   appointments       Appointment[]
+  photos             WorkOrderPhoto[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2986,4 +2989,34 @@ model CashExpense {
 
   @@index([organizationId, createdAt])
   @@index([sessionId])
+}
+
+// ============================================================
+// FOTOGRAFIJE NAROČILA (2026-11-18)
+//
+// Šivilja potrebuje dokaz o stanju oblačila v vsaki stopnji: prevzem,
+// merjenje, priblon, predaja. Vsaka fotografija se zapiše s stopnjo, v
+// kateri je nastala — kasneje je ni mogoče pripisati napačnemu trenutku.
+// Slike so v Cloudinaryju (ali v DB media storage), tu je samo zapis.
+// ============================================================
+model WorkOrderPhoto {
+  id             String @id @default(cuid())
+  organizationId String
+  workOrderId    String
+
+  // Stopnja ob nastanku fotografije (null = narejeno izven stopnje).
+  stageKey String?
+  url      String
+  publicId String?
+  caption  String?
+
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workOrder    WorkOrder    @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  uploadedBy   User?        @relation("UploadedWorkOrderPhotos", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, workOrderId])
+  @@index([workOrderId, createdAt])
 }

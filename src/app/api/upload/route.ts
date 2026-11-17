@@ -31,6 +31,8 @@ type UploadType =
   | "cta"
   // #101 no-code: slike lastnih sekcij (isti varnostni pogoji kot branding)
   | "content"
+  // Fotografije delovnih naročil (stopnje izdelave) — /dashboard/work-orders
+  | "workorder"
 
 const uploadConfigs: Record<UploadType, { folder: string }> = {
   avatar: { folder: "avatars" },
@@ -42,6 +44,7 @@ const uploadConfigs: Record<UploadType, { folder: string }> = {
   about: { folder: "branding" },
   cta: { folder: "branding" },
   content: { folder: "branding" },
+  workorder: { folder: "work-orders" },
 }
 
 export async function POST(request: NextRequest) {

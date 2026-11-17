@@ -26,6 +26,11 @@ import {
   type LinkableAppointment,
 } from "@/app/actions/work-order-fittings"
 import {
+  addWorkOrderPhoto,
+  deleteWorkOrderPhoto,
+  type WorkOrderPhotoView,
+} from "@/app/actions/work-order-photos"
+import {
   advanceWorkOrder,
   cancelWorkOrder,
   addWorkOrderNote,
@@ -91,6 +96,20 @@ interface Labels {
     methodStripe: string
     methodOther: string
   }
+  photos: {
+    title: string
+    hint: string
+    none: string
+    uploading: string
+    uploaded: string
+    upload: string
+    captionPlaceholder: string
+    delete: string
+    limit: string
+    notImage: string
+    tooBig: string
+    failed: string
+  }
   fittings: {
     title: string
     hint: string
@@ -126,6 +145,8 @@ interface WorkOrderDetailClientProps {
   locale: string
   /** Prihodnji termini, ki jih je mogoče povezati kot priblon. */
   linkableAppointments: LinkableAppointment[]
+  /** Fotografije naročila po stopnjah. */
+  photos: WorkOrderPhotoView[]
 }
 
 export function WorkOrderDetailClient({
@@ -134,6 +155,7 @@ export function WorkOrderDetailClient({
   errorLabels,
   locale,
   linkableAppointments,
+  photos,
 }: WorkOrderDetailClientProps) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -273,6 +295,53 @@ export function WorkOrderDetailClient({
     const url = `${window.location.origin}${sharePath}`
     navigator.clipboard?.writeText(url)
     toast.success(labels.share.copied)
+  }
+
+  const [uploading, setUploading] = useState(false)
+  const [photoCaption, setPhotoCaption] = useState("")
+
+  const uploadPhoto = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error(labels.photos.notImage)
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(labels.photos.tooBig)
+      return
+    }
+    setUploading(true)
+    try {
+      const body = new FormData()
+      body.append("file", file)
+      body.append("type", "workorder")
+      const res = await fetch("/api/upload", { method: "POST", body })
+      const json = (await res.json()) as { success?: boolean; url?: string; publicId?: string }
+      if (!res.ok || !json.url) {
+        toast.error(labels.photos.failed)
+        return
+      }
+      const saved = await addWorkOrderPhoto({
+        orderId: order.id,
+        url: json.url,
+        publicId: json.publicId ?? null,
+        caption: photoCaption || null,
+      })
+      if (saved.ok) {
+        toast.success(labels.photos.uploaded)
+        setPhotoCaption("")
+        router.refresh()
+      } else toast.error(errorText(saved.error))
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const removePhoto = (photoId: string) => {
+    startTransition(async () => {
+      const res = await deleteWorkOrderPhoto(photoId)
+      if (res.ok) router.refresh()
+      else toast.error(errorText(res.error))
+    })
   }
 
   const linkFitting = () => {
@@ -415,6 +484,78 @@ export function WorkOrderDetailClient({
             </CardContent>
           </Card>
         )}
+
+        {/* Fotografije po stopnjah — dokaz o stanju oblačila */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">
+              {labels.photos.title} ({photos.length})
+            </CardTitle>
+            <p className="text-muted-foreground text-sm">{labels.photos.hint}</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {photos.length === 0 ? (
+              <p className="text-muted-foreground text-sm">{labels.photos.none}</p>
+            ) : (
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {photos.map((p) => (
+                  <li key={p.id} className="overflow-hidden rounded-md border">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.url} alt={p.caption ?? ""} className="h-32 w-full object-cover" />
+                    <div className="space-y-1 p-2 text-xs">
+                      {p.stageName && <p className="font-medium">{p.stageName}</p>}
+                      {p.caption && <p className="text-muted-foreground">{p.caption}</p>}
+                      {isOpen && (
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(p.id)}
+                          className="text-destructive hover:underline"
+                        >
+                          {labels.photos.delete}
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {isOpen && (
+              <div className="flex flex-wrap items-end gap-2 border-t pt-3">
+                <div className="min-w-48 flex-1">
+                  <label htmlFor="photo-caption" className="text-muted-foreground mb-1 block text-xs">
+                    {labels.photos.captionPlaceholder}
+                  </label>
+                  <Input
+                    id="photo-caption"
+                    value={photoCaption}
+                    onChange={(e) => setPhotoCaption(e.target.value)}
+                    maxLength={120}
+                  />
+                </div>
+                <label className="inline-flex">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploading || photos.length >= 40}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      e.target.value = ""
+                      if (file) void uploadPhoto(file)
+                    }}
+                  />
+                  <Button type="button" size="sm" variant="outline" asChild disabled={uploading || photos.length >= 40}>
+                    <span>{uploading ? labels.photos.uploading : labels.photos.upload}</span>
+                  </Button>
+                </label>
+              </div>
+            )}
+            {photos.length >= 40 && (
+              <p className="text-muted-foreground text-xs">{labels.photos.limit}</p>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Pribloni — termini, povezani s tem naročilom */}
         <Card>
