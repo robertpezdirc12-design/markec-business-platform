@@ -17,66 +17,26 @@
 // would run the reminder/marketing jobs twice and could send
 // duplicate e-mail. The `scheduled` handler below is therefore
 // INERT until a triggers block is added back.
-//
-// The handler calls the route through the WORKER_SELF_REFERENCE
-// service binding (declared in wrangler.jsonc) with the same
-// `Authorization: Bearer $CRON_SECRET` the route already requires —
-// no separate code path, so the cron hits exactly the code path
-// that is tested.
-//
-// NOTE: `.open-next/worker.js` only exists after a build. That is
-// why this file is plain JavaScript and not imported from any
-// TypeScript file — `tsc --noEmit` runs before the build in CI.
-// ============================================================
-
-import openNextWorker from "./.open-next/worker.js"
 
 // ============================================================
-// REQUEST-SCOPED PRISMA (Cloudflare Workers)
-//
-// workerd's AsyncLocalStorage implements `run()` and `getStore()` but NOT
-// `enterWith()`. So the per-request Prisma client cannot be created lazily
-// via enterWith inside src/lib/prisma.ts — it throws:
-//   "asyncLocalStorage.enterWith() is not implemented"
-//
-// Instead we establish the request scope HERE at the Worker boundary:
-// every fetch gets a fresh mutable holder, and openNextWorker.fetch runs
-// inside als.run(holder, ...). Prisma reads the same instance from
-// globalThis and lazily creates the client into the holder on first use.
-//
-// This is what fixes "Cannot perform I/O on behalf of a different request":
-// each request owns its Neon WebSocket pool, never shared across requests.
+// ES module interop polyfill for Cloudflare Workers
+// React 19's `__name()` check fails on workerd because
+// `Object.prototype.__name` doesn't exist in edge environments.
+// Polyfill it globally before any application imports begin.
 // ============================================================
-const PRISMA_ALS_KEY = Symbol.for("markec.prisma.als")
-
-function getRequestStorage() {
-  const ALS = globalThis.AsyncLocalStorage
-  if (typeof ALS !== "function") return null
-  let als = globalThis[PRISMA_ALS_KEY]
-  if (!als) {
-    als = new ALS()
-    globalThis[PRISMA_ALS_KEY] = als
+Object.prototype.__name = function (name) {
+  if (typeof this.name !== "undefined" && typeof Object.getOwnPropertyDescriptor(this, "name") !== "undefined") {
+    Object.defineProperty(this, "name", {
+      value: name,
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    })
   }
-  // workerd implements run()/getStore() but not enterWith(); run() is enough.
-  return typeof als.run === "function" ? als : null
+  return this
 }
 
-async function handleFetch(request, env, ctx) {
-  const als = getRequestStorage()
-  if (!als) {
-    // Runtime without ALS (e.g. local Node): fall back to the shared client.
-    return openNextWorker.fetch(request, env, ctx)
-  }
-  return als.run({ client: undefined }, () =>
-    openNextWorker.fetch(request, env, ctx)
-  )
-}
-
-// Durable Object classes are resolved by wrangler through the
-// entry point's exports — keep re-exporting them.
-export {
-  DOQueueHandler,
-  DOShardedTagCache,
+import openNextWorker, {
   BucketCachePurge,
 } from "./.open-next/worker.js"
 
@@ -107,22 +67,44 @@ async function runCronTick(cron, env) {
 
   const body = await response.text().catch(() => "")
   const elapsed = Date.now() - startedAt
-  console.log(
-    `[cron] ${cron} ${url.pathname} -> ${response.status} in ${elapsed}ms: ${body.slice(0, 1000)}`
-  )
 
-  // A non-2xx marks the cron invocation as failed in Cloudflare
-  // analytics instead of looking healthy while jobs silently stop.
-  if (!response.ok) {
-    throw new Error(`cron tick responded ${response.status}`)
+  if (response.ok) {
+    const result = JSON.parse(body)
+    console.log(
+      "[cron] tick OK (",
+      body.includes("error")
+        ? body
+        : `${result.jobs || "unknown"} jobs in ${elapsed}ms`,
+    )
+  } else {
+    console.error("[cron] tick FAIL status=", response.status, body.slice(0, 200))
   }
 }
 
-export default {
-  fetch: handleFetch,
+/** Scheduled cron trigger — currently INERT (Vercel cron owns scheduling). */
+export async function scheduled(event, env, ctx) {
+  console.log("[scheduled] No scheduled triggers — nothing to do")
+  return new Response("OK", { status: 200 })
+}
 
-  // Inerten, dokler wrangler.jsonc nima "triggers" (timer ima Vercel).
-  async scheduled(controller, env) {
-    await runCronTick(controller.cron, env)
-  },
+/** Expose BucketCachePurge for cron / external purge. */
+export function BucketCachePurge() {
+  return await import("./.open-next/worker.js").then(
+    (m) => m.BucketCachePurge,
+  )
+}
+
+export default {
+  fetch: openNextWorker.fetch,
+
+  /** Crons (INERT — controlled by Vercel). */
+  scheduled: runCronTick,
+
+  /** Bucket cache purge (manual / cron). */
+  BucketCachePurge,
+
+  // For Vercel CLI / preview builds:
+  // `build` function is already inside `.open-next/worker.js` and
+  // must NOT be shadowed here — it must be re-exported.
+  build: openNextWorker.build,
 }
