@@ -531,9 +531,16 @@ export async function getSeamstressOverview(): Promise<SeamstressOverview | null
   const { org } = await requirePermissionOrg("workorders.manage")
   const orgId = org.id
 
-  const [custCount, measTotal, orders, materialOrders, products] = await Promise.all([
+  const [custCount, measTotal, pendingInquiries, orders, materialOrders, products] = await Promise.all([
     prisma.customer.count({ where: { organizationId: orgId } }),
     prisma.extensionRecord.count({ where: { organizationId: orgId, entityKey: MEASURE_KEY } }),
+    // Povpraševanja = oddaje obrazcev, ki še niso obdelane. Javno
+    // povpraševanje najprej pade v FormSubmission (Obrazci) — prej je KPI
+    // štel SAMO delovna naročila v stopnji »Povpraševanje«, zato je ob
+    // prispeli oddaji kazal 0 in lastnica je mislila, da nič ni prišlo.
+    prisma.formSubmission.count({
+      where: { organizationId: orgId, status: { in: ["NEW", "IN_REVIEW"] } },
+    }),
     prisma.workOrder.findMany({
       where: { organizationId: orgId },
       include: { customer: { select: { name: true } } },
@@ -567,7 +574,7 @@ export async function getSeamstressOverview(): Promise<SeamstressOverview | null
 
   return {
     counts: {
-      inquiries: orders.filter((o) => o.currentStageKey === "inquiry").length,
+      inquiries: pendingInquiries,
       customOrders: orders.length,
       activeOrders: orders.filter((o) => o.status === "OPEN").length,
       measurements: measTotal,

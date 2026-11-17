@@ -84,20 +84,26 @@ export default async function SeamstressDashboard() {
           {/* Koristni kazalniki */}
           <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
             {[
-              { label: "Povpraševanja", value: overview.counts.inquiries, href: "/dashboard/work-orders" },
+              // Povpraševanja so oddaje obrazcev (Obrazci), zato kazalnik
+              // vodi tja — tam jih lastnica pregleda in spremeni v naročilo.
+              { label: "Povpraševanja", value: overview.counts.inquiries, href: "/dashboard/forms" },
               { label: "Naročila po meri", value: overview.counts.customOrders, href: "/dashboard/work-orders" },
               { label: "Meritve strank", value: overview.counts.measurements, href: "/dashboard/seamstress#measurements" },
               { label: "Roki izdelave", value: overview.recentOrders.filter((o) => o.dueDate).length, href: "/dashboard/work-orders" },
               { label: "Za predajo", value: overview.counts.readyForDelivery, href: "/dashboard/work-orders" },
             ].map((c) => (
-              <Card key={c.label}>
-                <CardHeader className="pb-2 space-y-0">
-                  <CardTitle className="text-sm font-medium">{c.label}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">{c.value}</div>
-                </CardContent>
-              </Card>
+              // Kazalnik je povezava: številka brez poti je uporabnico
+              // pustila na isti strani (href je bil prej mrtev).
+              <Link key={c.label} href={c.href} className="block transition-opacity hover:opacity-80">
+                <Card>
+                  <CardHeader className="pb-2 space-y-0">
+                    <CardTitle className="text-sm font-medium">{c.label}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold">{c.value}</div>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
 
