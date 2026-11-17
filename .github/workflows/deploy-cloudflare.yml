@@ -256,6 +256,24 @@ jobs:
 
           echo "Worker secrets configured (empty ones skipped)."
 
+      # Ops visibility: which secrets the Worker ACTUALLY has. Names only —
+      # Cloudflare never returns values, so this is the only way to answer
+      # "is X configured in production?" without guessing.
+      - name: Report Worker secret names
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx wrangler secret list --name markec-business-platform --format json > /tmp/worker-secrets.json || echo '[]' > /tmp/worker-secrets.json
+          node -e '
+            const fs = require("fs");
+            const names = JSON.parse(fs.readFileSync("/tmp/worker-secrets.json", "utf8")).map(s => s.name).sort();
+            console.log("Worker secrets (" + names.length + "): " + names.join(", "));
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, "\n### Worker secrets (" + names.length + ")\n\n" + names.map(n => "- `" + n + "`").join("\n") + "\n");
+          '
+
       # Health check — verify the Worker responds after deploy
       - name: Health check
         run: |
