@@ -232,7 +232,7 @@ export function WorkOrderDetailClient({
                     htmlFor="quote-amount"
                     className="text-muted-foreground mb-1 block text-xs font-medium"
                   >
-                    {labels.quote}
+                    {labels.quote} (€)
                   </label>
                   <Input
                     id="quote-amount"

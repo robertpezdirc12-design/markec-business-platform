@@ -551,16 +551,28 @@ export async function updateWorkOrderTerms(
       data: { total: amount, dueDate },
     })
     if (changed) {
+      const eur = (v: number | null) =>
+        v === null
+          ? "—"
+          : `${v.toLocaleString("sl-SI", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })} €`
       const parts: string[] = []
       if (previousTotal !== amount) {
+        // Prvi vnos beri kot »znesek 45,50 €«, spremembo kot »a → b«.
         parts.push(
-          `znesek ${previousTotal === null ? "—" : previousTotal.toFixed(2)} € → ${
-            amount === null ? "—" : amount.toFixed(2) + " €"
-          }`
+          previousTotal === null
+            ? `znesek ${eur(amount)}`
+            : `znesek ${eur(previousTotal)} → ${eur(amount)}`
         )
       }
       if (previousDue !== nextDue) {
-        parts.push(`rok ${previousDue ?? "—"} → ${nextDue ?? "—"}`)
+        parts.push(
+          previousDue === null
+            ? `rok ${nextDue ?? "odstranjen"}`
+            : `rok ${previousDue} → ${nextDue ?? "odstranjen"}`
+        )
       }
       await tx.workOrderEvent.create({
         data: {

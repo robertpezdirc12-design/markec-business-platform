@@ -60,7 +60,7 @@ export const workFormsSl = {
       quoteTitle: "Predračun",
       quoteHint:
         "Znesek in rok, ki ju obljubite stranki — shrani se v naročilo in v zgodovino.",
-      quote: "Znesek (€)",
+      quote: "Znesek",
       quoteSave: "Shrani predračun",
       quoteSaved: "Predračun shranjen.",
     },
@@ -231,7 +231,7 @@ export const workFormsEn: WorkFormsDict = {
       quoteTitle: "Quote",
       quoteHint:
         "The amount and deadline you promise the customer — saved on the order and in its history.",
-      quote: "Amount (€)",
+      quote: "Amount",
       quoteSave: "Save quote",
       quoteSaved: "Quote saved.",
     },
