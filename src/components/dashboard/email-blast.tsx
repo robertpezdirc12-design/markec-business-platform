@@ -48,7 +48,6 @@ interface EmailBlastProps {
 export function EmailBlast({
   availableTags,
   customerCounts,
-  totalCustomers,
   marketingConsentCount,
 }: EmailBlastProps) {
   const [open, setOpen] = useState(false)

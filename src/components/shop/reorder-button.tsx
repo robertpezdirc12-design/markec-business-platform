@@ -16,7 +16,7 @@ interface ReorderButtonProps {
   orgSlug?: string | null
 }
 
-export function ReorderButton({ orderId, orgSlug }: ReorderButtonProps) {
+export function ReorderButton({ orderId, orgSlug: _orgSlug }: ReorderButtonProps) {
   const [pending, startTransition] = useTransition()
   const [done, setDone] = useState(false)
 

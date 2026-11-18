@@ -170,7 +170,7 @@ export function PayRuns({
   initialPayrolls = samplePayrolls,
   initialPayRuns = samplePayRuns,
 }: PayRunsProps) {
-  const [payrolls, setPayrolls] = useState<StaffPayroll[]>(initialPayrolls)
+  const [payrolls] = useState<StaffPayroll[]>(initialPayrolls)
   const [payRuns, setPayRuns] = useState<PayRun[]>(initialPayRuns)
   const [selectedRun, setSelectedRun] = useState<PayRun | null>(null)
   const [showDetails, setShowDetails] = useState(false)

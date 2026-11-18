@@ -198,7 +198,6 @@ export async function generateEinvoice(
 
 /** Pošten fallback, ko uradnega validatorja ni mogoče izvesti. */
 async function setNotVerified(): Promise<Awaited<ReturnType<typeof validateOfficial>>> {
-  const m = await import("@/lib/einvoice/official")
   return {
     available: false,
     ok: false,

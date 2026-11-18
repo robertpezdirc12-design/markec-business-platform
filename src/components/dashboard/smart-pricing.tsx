@@ -117,7 +117,7 @@ const typeLabels = {
 export function SmartPricing({ initialRules = defaultRules }: SmartPricingProps) {
   const [rules, setRules] = useState<PricingRule[]>(initialRules)
   const [showAddDialog, setShowAddDialog] = useState(false)
-  const [editingRule, setEditingRule] = useState<PricingRule | null>(null)
+  const [, setEditingRule] = useState<PricingRule | null>(null)
 
   // New rule form
   const [newRuleName, setNewRuleName] = useState("")

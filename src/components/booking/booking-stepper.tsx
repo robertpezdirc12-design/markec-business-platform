@@ -3,87 +3,122 @@
 import { cn } from "@/lib/utils"
 
 export interface BookingStepperLabels {
-  service: string
-  staff: string
+  selection: string
   dateTime: string
   details: string
 }
 
 interface BookingStepperProps {
-  /** Step 1 is satisfied (service chosen / preselected). */
-  serviceDone: boolean
-  /** Step 2 is satisfied (specialist chosen / preselected). */
-  staffDone: boolean
-  /** Step 3 is satisfied (date AND time chosen). */
-  slotDone: boolean
-  /** Step 4 is satisfied (contact details filled). */
+  /** Step 1 is satisfied (service and staff chosen / resolved) */
+  selectionDone: boolean
+  /** Step 2 is satisfied (date and time chosen) */
+  dateTimeDone: boolean
+  /** Step 3 is satisfied (contact info filled and valid) */
   detailsDone: boolean
+  /** Step labels from i18n — keep the same order as the steps above. */
   labels: BookingStepperLabels
-  /** Accessible name of the progress list. */
-  label: string
+  /** Accessible label for the stepper nav */
+  label?: string
 }
 
-/**
- * Wizard progress for the public booking flow — the pattern every modern
- * booking reference uses: numbered steps, completed steps become a check,
- * the current step is highlighted. Purely presentational: all steps live on
- * the same page, so this is a position indicator, never navigation.
- */
+interface Step {
+  id: number
+  label: string
+  icon: string
+  completed: boolean
+  current: boolean
+}
+
 export function BookingStepper({
-  serviceDone,
-  staffDone,
-  slotDone,
+  selectionDone,
+  dateTimeDone,
   detailsDone,
   labels,
-  label,
+  label = "Booking progress",
 }: BookingStepperProps) {
-  const steps = [
-    { id: 1, label: labels.service, done: serviceDone },
-    { id: 2, label: labels.staff, done: staffDone },
-    { id: 3, label: labels.dateTime, done: slotDone },
-    { id: 4, label: labels.details, done: detailsDone },
+  const steps: Step[] = [
+    {
+      id: 1,
+      label: labels.selection,
+      icon: "scissors",
+      completed: selectionDone,
+      current: !selectionDone,
+    },
+    {
+      id: 2,
+      label: labels.dateTime,
+      icon: "calendar",
+      completed: dateTimeDone,
+      current: selectionDone && !dateTimeDone,
+    },
+    {
+      id: 3,
+      label: labels.details,
+      icon: "user-circle",
+      completed: detailsDone,
+      current: selectionDone && dateTimeDone && !detailsDone,
+    },
   ]
-  const current = steps.find((step) => !step.done)?.id ?? steps.length
 
   return (
-    <ol
-      aria-label={label}
-      className="border-border/60 bg-card shadow-xs flex items-center gap-1 rounded-2xl border p-2 sm:gap-2 sm:p-3"
-    >
-      {steps.map((step, index) => {
-        const isCurrent = step.id === current
-        return (
-          <li key={step.id} className="flex min-w-0 flex-1 items-center gap-2">
-            <span
-              aria-current={isCurrent ? "step" : undefined}
+    <nav aria-label={label}>
+      <ol className="flex items-center gap-1 overflow-x-auto sm:gap-2">
+        {steps.map((step, index) => (
+          <li key={step.id} className="flex min-w-0 items-center gap-1 sm:gap-2">
+            {/* Step circle */}
+            <div
+              aria-current={step.current ? "step" : undefined}
               className={cn(
-                "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors",
-                step.done
-                  ? "bg-primary text-primary-foreground"
-                  : isCurrent
-                    ? "bg-primary/10 text-primary-text ring-primary/40 ring-2"
-                    : "bg-muted text-muted-foreground"
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-semibold transition-colors",
+                step.completed
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : step.current
+                    ? "border-primary text-primary"
+                    : "border-border text-muted-foreground"
               )}
             >
-              <span aria-hidden="true">{step.done ? "✓" : step.id}</span>
-              {/* Labels are hidden on narrow screens; the accessible name
-                  travels with the node so the step is never a bare number. */}
-              <span className="sr-only sm:hidden">{step.label}</span>
-            </span>
+              {step.completed ? (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              ) : (
+                step.id
+              )}
+            </div>
+            {/* Step label */}
             <span
               className={cn(
-                "hidden truncate text-sm sm:block",
-                isCurrent ? "text-foreground font-semibold" : "text-muted-foreground"
+                "truncate text-xs font-medium sm:text-sm",
+                step.completed || step.current
+                  ? "text-foreground"
+                  : "text-muted-foreground"
               )}
             >
               {step.label}
             </span>
+            {/* Connector line */}
             {index < steps.length - 1 && (
-              <span aria-hidden="true" className="bg-border hidden h-px flex-1 sm:block" />
+              <div
+                aria-hidden="true"
+                className={cn(
+                  "mx-1 hidden h-px flex-1 sm:block sm:min-w-4",
+                  step.completed ? "bg-primary" : "bg-border"
+                )}
+              />
             )}
           </li>
-        )
-      })}
-    </ol>
+        ))}
+      </ol>
+    </nav>
   )
 }

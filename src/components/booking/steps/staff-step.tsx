@@ -26,7 +26,7 @@ export function StaffStep({
       <CardHeader>
         <div className="flex items-center gap-2">
           <div className="bg-muted flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold">
-            2
+            1
           </div>
           <CardTitle>{t.booking.chooseSpecialist}</CardTitle>
         </div>

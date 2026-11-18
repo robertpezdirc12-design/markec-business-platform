@@ -373,7 +373,7 @@ const materialLineSchema = z.object({
   quantity: z.number().int().positive(),
 })
 
-const consumeMaterialSchema = z.object({
+const _consumeMaterialSchema = z.object({
   workOrderId: z.string().min(1),
   lines: z.array(materialLineSchema).min(1),
   notes: z.string().optional(),
@@ -393,7 +393,7 @@ export interface ConsumeMaterialResult {
  * ločitev med porabo in dejanskim računom.
  */
 export async function consumeMaterialOnWorkOrder(
-  input: z.input<typeof consumeMaterialSchema>
+  input: z.input<typeof _consumeMaterialSchema>
 ): Promise<ConsumeMaterialResult> {
   const result: ConsumptionResult = await consumeOnWorkOrder(input, SEAMSTRESS_CONSUMPTION_OPTS)
   return result as ConsumeMaterialResult
@@ -531,7 +531,7 @@ export async function getSeamstressOverview(): Promise<SeamstressOverview | null
   const { org } = await requirePermissionOrg("workorders.manage")
   const orgId = org.id
 
-  const [custCount, measTotal, pendingInquiries, orders, materialOrders, products] = await Promise.all([
+  const [_customerCount, measTotal, pendingInquiries, orders, materialOrders, products] = await Promise.all([
     prisma.customer.count({ where: { organizationId: orgId } }),
     prisma.extensionRecord.count({ where: { organizationId: orgId, entityKey: MEASURE_KEY } }),
     // Povpraševanja = oddaje obrazcev, ki še niso obdelane. Javno

@@ -130,8 +130,8 @@ export default async function PackagesPage() {
               {p.purchasesEmpty}
             </p>
           ) : (
-            <div className="max-h-96 overflow-y-auto">
-              <table className="w-full">
+            <div className="max-h-96 overflow-y-auto overflow-x-auto">
+              <table className="w-full min-w-[500px]">
                 <thead>
                   <tr className="text-muted-foreground border-b text-left text-sm">
                     <th className="pb-2 font-medium">{p.name}</th>

@@ -285,7 +285,6 @@ describe("F5.5.1.1 — atomska konkurenčnost (zadnji kos)", () => {
   it("izdelek brez različic — stock 1, dve seji → točno 1 uspe, 0 zaloge, 1 StockMovement", async () => {
     // Nov izdelek brez različic, zaloga 1.
     const pid = "f551-race-plain"
-    const smId = "f551-race-plain-sm"
     await prisma.product.create({
       data: { id: pid, name: "RacePlain", price: 5, organizationId: ID.orgA, forSale: true, trackInventory: true, stockQuantity: 1 },
     })
@@ -421,12 +420,12 @@ describe("F5.5.1.2 — online inventory reservation", () => {
     })
     const r1 = await prisma.$transaction((tx) => reserveStock(tx, line(P, 1, null), ID.orgA))
     expect(r1).toBe(true)
-    const released = await prisma.$transaction((tx) => releaseStockReservation(tx, line(P, 1, null)))
+    const released = await prisma.$transaction((tx) => releaseStockReservation(tx, line(P, 1, null), ID.orgA))
     expect(released).toBe(true)
     // Nova seja ga lahko rezervira.
     const r2 = await prisma.$transaction((tx) => reserveStock(tx, line(P, 1, null), ID.orgA))
     expect(r2).toBe(true)
-    await prisma.$transaction((tx) => releaseStockReservation(tx, line(P, 1, null)))
+    await prisma.$transaction((tx) => releaseStockReservation(tx, line(P, 1, null), ID.orgA))
     await prisma.product.delete({ where: { id: P } }).catch(() => undefined)
   })
 
@@ -436,7 +435,7 @@ describe("F5.5.1.2 — online inventory reservation", () => {
       data: { id: P, name: "ResProd", price: 5, organizationId: ID.orgA, forSale: true, trackInventory: true, stockQuantity: 3, reservedQuantity: 0 },
     })
     await prisma.$transaction((tx) => reserveStock(tx, line(P, 1, null), ID.orgA))
-    let ordId = "f5512-ord"
+    const ordId = "f5512-ord"
     await prisma.order.create({
       data: { id: ordId, subtotal: 5, tax: 0, total: 5, status: "PENDING", organizationId: ID.orgA, paymentMethod: "online" },
     })
@@ -483,7 +482,7 @@ describe("F5.5.1.2 — online inventory reservation", () => {
     })
     await prisma.$transaction((tx) => convertReservationToSale(tx, line(P, 1, null), ID.orgA, ordId))
     // Zamujen expired-webhook poskuša sprostiti — reserved je 0 → ne sprosti (vre false).
-    const released = await prisma.$transaction((tx) => releaseStockReservation(tx, line(P, 1, null)))
+    const released = await prisma.$transaction((tx) => releaseStockReservation(tx, line(P, 1, null), ID.orgA))
     expect(released).toBe(false)
     const row = await prisma.product.findUniqueOrThrow({ where: { id: P } })
     expect(row.reservedQuantity).toBe(0)

@@ -134,11 +134,6 @@ export function DealsManager({ initialDeals = [] }: DealsManagerProps) {
     )
   }
 
-  const handleDelete = (id: string) => {
-    setDeals((prev) => prev.filter((d) => d.id !== id))
-    toast.success("Ugodnost izbrisana")
-  }
-
   return (
     <Card>
       <CardHeader>

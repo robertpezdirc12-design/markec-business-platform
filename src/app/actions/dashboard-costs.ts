@@ -134,7 +134,7 @@ export interface StaffCostRow {
 export type CostsStaffResult = { ok: true; rows: StaffCostRow[] } | { ok: false; error: string }
 
 export async function getCostsByStaff(): Promise<CostsStaffResult> {
-  const { org } = await requirePermissionOrg("finances.view")
+  await requirePermissionOrg("finances.view")
   // V tej fazi brez dedikacije delovnih nalogov na zaposlene v seštevku —
   // pripravljeno na F1, ki bo vodilo urnik/labor. Vrnemo prazen seznam.
   const rows: StaffCostRow[] = []

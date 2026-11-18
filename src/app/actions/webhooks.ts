@@ -12,7 +12,6 @@ import {
   EVENT_LABELS,
   generateWebhookSecret,
   signPayload,
-  type OutgoingWebhookEvent,
 } from "@/lib/webhooks/outgoing"
 
 // ── Auth ─────────────────────────────────────────────────────
@@ -55,7 +54,7 @@ export async function listWebhooks(): Promise<
   { error: string } | { webhooks: WebhookSummary[]; availableEvents: { id: string; label: string }[] }
 > {
   const authResult = await requireOwner()
-  if ("error" in authResult) return authResult
+  if ("error" in authResult) return { error: authResult.error ?? "unauthorized" }
 
   const rows = await prisma.outgoingWebhook.findMany({
     where: { organizationId: authResult.org.id },
@@ -93,7 +92,7 @@ export async function createWebhook(input: {
   events: string[]
 }): Promise<{ error: string } | { ok: true; id: string; secret: string }> {
   const authResult = await requireOwner()
-  if ("error" in authResult) return authResult
+  if ("error" in authResult) return { error: authResult.error ?? "unauthorized" }
 
   const url = input.url?.trim()
   if (!url) return { error: "URL je obvezen." }
@@ -139,7 +138,7 @@ export async function updateWebhook(input: {
   isActive?: boolean
 }): Promise<{ error?: string; ok?: boolean }> {
   const authResult = await requireOwner()
-  if ("error" in authResult) return authResult
+  if ("error" in authResult) return { error: authResult.error ?? "unauthorized" }
 
   const existing = await prisma.outgoingWebhook.findFirst({
     where: { id: input.id, organizationId: authResult.org.id },
@@ -181,7 +180,7 @@ export async function deleteWebhook(
   id: string
 ): Promise<{ error?: string; ok?: boolean }> {
   const authResult = await requireOwner()
-  if ("error" in authResult) return authResult
+  if ("error" in authResult) return { error: authResult.error ?? "unauthorized" }
 
   const existing = await prisma.outgoingWebhook.findFirst({
     where: { id, organizationId: authResult.org.id },
@@ -199,7 +198,7 @@ export async function rotateWebhookSecret(
   id: string
 ): Promise<{ error: string } | { ok: true; secret: string }> {
   const authResult = await requireOwner()
-  if ("error" in authResult) return authResult
+  if ("error" in authResult) return { error: authResult.error ?? "unauthorized" }
 
   const existing = await prisma.outgoingWebhook.findFirst({
     where: { id, organizationId: authResult.org.id },
@@ -221,7 +220,7 @@ export async function sendTestWebhook(
   id: string
 ): Promise<{ error: string } | { ok: true; status: number; message: string }> {
   const authResult = await requireOwner()
-  if ("error" in authResult) return authResult
+  if ("error" in authResult) return { error: authResult.error ?? "unauthorized" }
 
   const wh = await prisma.outgoingWebhook.findFirst({
     where: { id, organizationId: authResult.org.id },

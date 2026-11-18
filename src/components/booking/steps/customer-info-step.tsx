@@ -70,7 +70,7 @@ export function CustomerInfoStep({
       <CardHeader>
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-sm font-bold">
-            4
+            3
           </div>
           <CardTitle>{t.booking.yourDetails}</CardTitle>
         </div>

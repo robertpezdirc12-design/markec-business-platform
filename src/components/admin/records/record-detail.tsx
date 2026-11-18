@@ -114,7 +114,6 @@ function ColonyDetailSection({ colonyId }: { colonyId: string; onRefreshRequeste
   const [data, setData] = useState<Awaited<ReturnType<typeof listColonyMoveDetail>> | null>(null)
   const [loadErr, setLoadErr] = useState<string | null>(null)
   const [hiveOptions, setHiveOptions] = useState<{ id: string; title: string }[]>([])
-  const [, startTransition] = useTransition()
 
   // reload counter za osvežitev po akciji
   const [tick, setTick] = useState(0)

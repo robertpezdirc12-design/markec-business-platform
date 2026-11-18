@@ -13,6 +13,8 @@ import {
   UsersIcon,
   TrendingUpIcon,
   ClockIcon,
+  PlusIcon,
+  PackageIcon,
 } from "@/components/icons"
 import Link from "next/link"
 import {
@@ -40,7 +42,6 @@ import { ShareLinkCard } from "@/components/dashboard/share-link-card"
 import { GuidedEntryGate } from "@/components/dashboard/guided-entry"
 import { SetupChecklistCard } from "@/components/dashboard/setup-checklist"
 import { PlanCompactCard } from "@/components/dashboard/plan-compact-card"
-import { QuickActions } from "@/components/dashboard/quick-actions"
 import { ReportsDashboard } from "@/components/dashboard/reports-dashboard"
 import {
   buildSetupChecklist,
@@ -274,15 +275,92 @@ export default async function AdminDashboard() {
         />
       )}
 
-      {/* Quick Actions */}
-      <QuickActions />
+      {/* Quick actions */}
+      <Card className="shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="text-base">{t.dashboard.quickActions}</CardTitle>
+              <CardDescription>{t.dashboard.commonTasks}</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {showAppointments && (
+              <Button asChild variant="outline" className="h-auto justify-start gap-3 py-3">
+                <Link href="/dashboard/appointments/new">
+                  <CalendarIcon size={18} className="text-primary" />
+                  <span className="text-left">
+                    <span className="block text-sm font-medium">{t.dashboard.newAppointment}</span>
+                    <span className="block text-xs text-muted-foreground">{t.dashboard.todaysAppointments}</span>
+                  </span>
+                </Link>
+              </Button>
+            )}
+            {profile.capabilities.customers !== "disabled" && (
+              <Button asChild variant="outline" className="h-auto justify-start gap-3 py-3">
+                <Link href="/dashboard/customers">
+                  <UsersIcon size={18} className="text-primary" />
+                  <span className="text-left">
+                    <span className="block text-sm font-medium">{t.dashboard.manageCustomers}</span>
+                    <span className="block text-xs text-muted-foreground">{t.dashboard.totalCustomers}</span>
+                  </span>
+                </Link>
+              </Button>
+            )}
+            {profile.capabilities.shop !== "disabled" && (
+              <Button asChild variant="outline" className="h-auto justify-start gap-3 py-3">
+                <Link href="/dashboard/products/new">
+                  <PackageIcon size={18} className="text-primary" />
+                  <span className="text-left">
+                    <span className="block text-sm font-medium">{t.dashboard.addProduct}</span>
+                    <span className="block text-xs text-muted-foreground">Nov izdelek</span>
+                  </span>
+                </Link>
+              </Button>
+            )}
+            {workOrders !== null ? (
+              <Button asChild variant="outline" className="h-auto justify-start gap-3 py-3">
+                <Link href="/dashboard/work-orders/new">
+                  <PlusIcon size={18} className="text-primary" />
+                  <span className="text-left">
+                    <span className="block text-sm font-medium">Novo naročilo</span>
+                    <span className="block text-xs text-muted-foreground">{ordersLabel}</span>
+                  </span>
+                </Link>
+              </Button>
+            ) : profile.capabilities.shop !== "disabled" ? (
+              <Button asChild variant="outline" className="h-auto justify-start gap-3 py-3">
+                <Link href="/dashboard/orders">
+                  <ShoppingBagIcon size={18} className="text-primary" />
+                  <span className="text-left">
+                    <span className="block text-sm font-medium">Pregled naročil</span>
+                    <span className="block text-xs text-muted-foreground">{ordersLabel}</span>
+                  </span>
+                </Link>
+              </Button>
+            ) : (
+              <Button asChild variant="outline" className="h-auto justify-start gap-3 py-3">
+                <Link href="/dashboard/services/new">
+                  <PlusIcon size={18} className="text-primary" />
+                  <span className="text-left">
+                    <span className="block text-sm font-medium">Nova storitev</span>
+                    <span className="block text-xs text-muted-foreground">Dodaj storitev</span>
+                  </span>
+                </Link>
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats Cards — widget-configurable (Phase 5) */}
       <div
-        className={`grid gap-4 md:grid-cols-2 ${statCardsVisible >= 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}
+        className={`grid gap-5 md:grid-cols-2 ${statCardsVisible >= 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}
       >
         {hasWidget("revenue") && revenueStats && (
-          <Card>
+          <Card className="shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 {t.dashboard.revenueThisMonth}
@@ -319,7 +397,7 @@ export default async function AdminDashboard() {
         )}
 
         {showAppointments && hasWidget("todayAppointments") && stats && (
-          <Card>
+          <Card className="shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 {t.dashboard.appointments}
@@ -338,7 +416,7 @@ export default async function AdminDashboard() {
         )}
 
         {hasWidget("customers") && stats && (
-          <Card>
+          <Card className="shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 {t.dashboard.totalCustomers}
@@ -357,7 +435,7 @@ export default async function AdminDashboard() {
         )}
 
         {hasWidget("recentOrders") && stats && (
-          <Card>
+          <Card className="shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 {ordersLabel}
@@ -369,15 +447,25 @@ export default async function AdminDashboard() {
                 {stats.orders.total.toLocaleString("sl-SI")}
               </div>
               <p className="text-muted-foreground text-xs">
-                {/* P1 #5 + P2 #13 (walkthrough) — pošteno sporočanje spremembe.
-                    P1 #107: pri 0 naročilih sporočila ne izpisujemo. */}
-                {stats.orders.change === null &&
-                  stats.orders.total > 0 &&
-                  t.dashboard.noPreviousData}
-                {stats.orders.change !== null && stats.orders.total > 0 && (
+                {stats.orders.total === 0 ? (
                   <>
-                    {formatChange(stats.orders.change)}{" "}
-                    {t.dashboard.fromLastMonth}
+                    Nimate še nobenih naročil.{" "}
+                    <Link
+                      href={workOrdersEnabled ? "/dashboard/work-orders/new" : "/dashboard/orders"}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      Ustvari prvo
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    {stats.orders.change === null && t.dashboard.noPreviousData}
+                    {stats.orders.change !== null && (
+                      <>
+                        {formatChange(stats.orders.change)}{" "}
+                        {t.dashboard.fromLastMonth}
+                      </>
+                    )}
                   </>
                 )}
               </p>
@@ -388,7 +476,7 @@ export default async function AdminDashboard() {
 
       {/* Work-order widgets — data-driven by profile.dashboardWidgets (§10 + Phase 5 configurator) */}
       {ww && (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-5 lg:grid-cols-4">
           {[
             {
               key: "activeOrders",
@@ -420,7 +508,7 @@ export default async function AdminDashboard() {
             )
             .map((w) => (
               <Link key={w.label} href={w.href}>
-                <Card className="hover:border-primary/40 transition-colors">
+                <Card className="shadow-sm hover:border-primary/40 transition-colors">
                   <CardContent className="p-4">
                     <div className="text-2xl font-bold">{w.value}</div>
                     <p className="text-muted-foreground mt-1 text-xs">
@@ -436,7 +524,7 @@ export default async function AdminDashboard() {
       {/* Projects widget (E2-3) — module-gated + widget-gated; overdue is
           red when non-zero, mirroring the work-order deadline card. */}
       {projectsOverview && !("error" in projectsOverview) && (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-5 lg:grid-cols-4">
           {[
             {
               key: "active",
@@ -468,7 +556,7 @@ export default async function AdminDashboard() {
             },
           ].map((w) => (
             <Link key={w.key} href={w.href}>
-              <Card className="hover:border-primary/40 transition-colors">
+              <Card className="shadow-sm hover:border-primary/40 transition-colors">
                 <CardContent className="p-4">
                   <div
                     className={`text-2xl font-bold ${w.danger ? "text-red-600 dark:text-red-400" : ""}`}
@@ -526,6 +614,13 @@ export default async function AdminDashboard() {
                                 .map((s) => s.service.name)
                                 .join(", ")}{" "}
                               • {t.dashboard.staffLabel} {apt.staff.name}
+                            </p>
+                            <p className="text-xs text-primary/80 mt-0.5">
+                              {apt.status === "CANCELLED" || apt.status === "NO_SHOW"
+                                ? "Naslednji korak: ponovno kontaktiraj stranko"
+                                : apt.status === "COMPLETED"
+                                  ? "Naslednji korak: po potrebi dodaj opombo"
+                                  : "Naslednji korak: pripravi se na termin"}
                             </p>
                           </div>
                         </div>
@@ -713,30 +808,56 @@ export default async function AdminDashboard() {
           }
         >
           <CardHeader>
-            <CardTitle>{t.dashboard.quickActions}</CardTitle>
-            <CardDescription>{t.dashboard.commonTasks}</CardDescription>
+            <CardTitle>Naslednji koraki</CardTitle>
+            <CardDescription>Predlagana dejanja na podlagi trenutnega stanja</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {showAppointments && (
-              <Link href="/dashboard/appointments/new">
-                <Button className="w-full justify-start" variant="outline">
-                  <CalendarIcon size={16} className="mr-2" />
-                  {t.dashboard.newAppointment}
-                </Button>
-              </Link>
-            )}
-            <Link href="/dashboard/products/new">
-              <Button className="w-full justify-start" variant="outline">
-                <ShoppingBagIcon size={16} className="mr-2" />
-                {t.dashboard.addProduct}
-              </Button>
-            </Link>
-            <Link href="/dashboard/users">
-              <Button className="w-full justify-start" variant="outline">
-                <UsersIcon size={16} className="mr-2" />
-                {t.dashboard.manageCustomers}
-              </Button>
-            </Link>
+          <CardContent className="space-y-3">
+            {(() => {
+              const steps: { key: string; label: string; hint: string; href: string }[] = []
+
+              ;((todaysAppointments ?? [])).slice(0, 3).forEach((apt) => {
+                const name = apt.customer?.name || apt.guestName || t.dashboard.guest
+                steps.push({
+                  key: `apt-${apt.id}`,
+                  label: name,
+                  hint:
+                    apt.status === "CANCELLED" || apt.status === "NO_SHOW"
+                      ? "Ponovno vzpostavi stik in ponudi nov termin."
+                      : apt.status === "COMPLETED"
+                        ? "Preveri, ali je potrebno nadaljnje follow-up dejanje."
+                        : "Pripravi storitev in potrdi podrobnosti termina.",
+                  href: `/dashboard/appointments/${apt.id}`,
+                })
+              })
+
+              ;((workOrders?.orders ?? [])).filter((o) => o.overdue).slice(0, 2).forEach((item) => {
+                steps.push({
+                  key: `wo-${item.id}`,
+                  label: item.customerName ? `#${String(item.number).padStart(3, "0")} — ${item.customerName}` : `#${String(item.number).padStart(3, "0")} ${item.title}`,
+                  hint: "Rok je potekel — preveri status in obvesti stranko.",
+                  href: "/dashboard/work-orders",
+                })
+              })
+
+              if (steps.length === 0) {
+                return (
+                  <p className="text-sm text-muted-foreground">
+                    Trenutno ni predlaganih korakov. Ko bodo na voljo novi termini ali naloge, se bodo prikazali tukaj.
+                  </p>
+                )
+              }
+
+              return steps.map((step) => (
+                <Link
+                  key={step.key}
+                  href={step.href}
+                  className="block rounded-lg border p-3 transition-colors hover:bg-muted/50"
+                >
+                  <p className="text-sm font-medium">{step.label}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{step.hint}</p>
+                </Link>
+              ))
+            })()}
           </CardContent>
 
           <CardHeader>
@@ -748,7 +869,7 @@ export default async function AdminDashboard() {
             <div className="space-y-3 text-sm">
               {!recentActivities || recentActivities.length === 0 ? (
                 <p className="text-muted-foreground py-4 text-center">
-                  {t.dashboard.noRecentActivity}
+                  Ko se bodo pojavili novi termini, stranke ali naročila, se bodo prikazali tukaj.
                 </p>
               ) : (
                 recentActivities.slice(0, 5).map((activity) => (

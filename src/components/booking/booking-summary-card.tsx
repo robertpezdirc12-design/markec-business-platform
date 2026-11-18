@@ -285,7 +285,7 @@ export function BookingSummaryCard({
             </div>
           )}
         </CardContent>
-        <CardFooter className="flex-col gap-3 pt-6">
+        <CardFooter className="sticky bottom-0 z-30 -mx-6 -mb-6 mt-2 flex-col gap-3 rounded-b-lg border-t bg-background/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:static lg:mx-0 lg:mb-0 lg:mt-0 lg:border-0 lg:bg-transparent lg:p-0 lg:pt-6 lg:shadow-none lg:backdrop-blur-none">
           {error && (
             <div className="border-destructive/30 bg-destructive/10 text-destructive w-full rounded-lg border-2 p-3 text-sm">
               <WarningCircleIcon

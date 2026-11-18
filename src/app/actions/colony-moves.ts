@@ -30,13 +30,6 @@ const COLONY_KEY = "colony"
 const HIVE_KEY = "hive"
 const MOVE_KEY = "colony_move"
 
-/** Najdi append-only entiteto v deklaraciji (univerzalno). */
-async function moveEntityFields() {
-  const { getExtension } = await import("@/lib/profiles/extensions")
-  const ext = getExtension(COLONY_EXT)
-  return ext?.entities.find((e) => e.key === MOVE_KEY) ?? null
-}
-
 // TSUMD helper — zgodovinski dogodki so ExtensionRecord z entityKey=colony_move.
 type MoveEvent = {
   id: string

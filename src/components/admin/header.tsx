@@ -24,6 +24,7 @@ import {
   HouseIcon,
   StorefrontIcon,
 } from "@/components/icons"
+import { Question as QuestionIcon } from "@phosphor-icons/react"
 import { MobileSidebar } from "./sidebar"
 import { CommandPalette } from "./command-palette"
 import { LanguageSwitcher } from "./language-switcher"
@@ -222,6 +223,12 @@ export function AdminHeader({
                   <Link href="/dashboard/settings">
                     <SettingsIcon size={16} className="mr-2" />
                     {t.common.header.settings}
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/help">
+                    <QuestionIcon size={16} className="mr-2" />
+                    Pomoč in podpora
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

@@ -339,7 +339,46 @@ export function WorkOrdersClient({
             <p className="text-muted-foreground mt-1 text-sm">{labels.emptyHint}</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            <div className="space-y-3 md:hidden">
+              {orders.map((o) => (
+                <div key={o.id} className="rounded-lg border p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-mono text-xs text-muted-foreground">#{String(o.number).padStart(3, "0")}</p>
+                      <Link href={`/dashboard/work-orders/${o.id}`} className="hover:text-primary-text mt-1 block font-medium hover:underline">
+                        {o.title}
+                      </Link>
+                      {o.contactId ? (
+                        <Link href={`/dashboard/customers/${o.contactId}`} className="text-sm text-muted-foreground hover:underline">
+                          {o.contactName ?? "—"}
+                        </Link>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">—</p>
+                      )}
+                    </div>
+                    <span className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${STAGE_COLORS[o.stage] ?? ""}`}>
+                      {stageLabel(o.stage, labels)}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    {o.dueAt ? <span>Rok: {new Date(o.dueAt).toLocaleDateString("sl-SI")}</span> : null}
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${PRIORITY_COLORS[o.priority] ?? ""}`}>
+                      {PRIORITY_LABELS[o.priority] ?? o.priority}
+                    </span>
+                    {o.paymentLabel ? <span>{o.paymentLabel}</span> : null}
+                  </div>
+                  <div className="mt-3">
+                    <Link href={`/dashboard/work-orders/${o.id}`} className="block">
+                      <Button variant="outline" className="w-full">
+                        {labels.viewDetails}
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-muted-foreground border-b text-left text-xs uppercase">
@@ -424,7 +463,8 @@ export function WorkOrdersClient({
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </CardContent>
     </Card>

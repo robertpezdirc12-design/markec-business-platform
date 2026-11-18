@@ -12,7 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import { useState, useTransition, useEffect, useMemo } from "react"
+import { useState, useTransition, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { ChevronDown } from "lucide-react"
@@ -25,6 +25,7 @@ import {
   ClockIcon,
   UsersIcon,
   EnvelopeIcon,
+  ChatsCircleIcon,
   ScissorsIcon,
   PackageIcon,
   ToteIcon,
@@ -37,6 +38,7 @@ import {
   UserCogIcon,
   SettingsIcon,
   CloseIcon,
+  CurrencyDollarIcon,
   FolderIcon,
   LockIcon,
   HouseIcon,
@@ -44,6 +46,7 @@ import {
   WalletIcon,
   StarIcon,
 } from "@/components/icons"
+import { Question as QuestionIcon, ShieldCheck as ShieldCheckIcon } from "@phosphor-icons/react"
 import { usePermissions } from "@/components/admin/permissions-provider"
 import {
   DASHBOARD_NAV,
@@ -60,8 +63,10 @@ const NAV_ICONS: Record<string, React.ComponentType<{ size?: number; className?:
   "/dashboard/analytics": ChartBarIcon,
   "/dashboard/appointments": CalendarIcon,
   "/dashboard/waitlist": ClockIcon,
+  "/dashboard/chats": ChatsCircleIcon,
   "/dashboard/walk-in": UsersIcon,
   "/dashboard/customers": UsersIcon,
+  "/dashboard/users": UsersIcon,
   "/dashboard/reviews": StarIcon,
   "/dashboard/marketing": EnvelopeIcon,
   "/dashboard/services": ScissorsIcon,
@@ -72,6 +77,9 @@ const NAV_ICONS: Record<string, React.ComponentType<{ size?: number; className?:
   "/dashboard/orders": ShoppingBagIcon,
   "/dashboard/work-orders": ReceiptIcon,
   "/dashboard/documents": FileTextIcon,
+  "/dashboard/quotes": FileTextIcon,
+  "/dashboard/warranties": ShieldCheckIcon,
+  "/dashboard/costs": CurrencyDollarIcon,
   "/dashboard/einvoices": ReceiptIcon,
   "/dashboard/cash-register": WalletIcon,
   "/dashboard/payments": ReceiptIcon,
@@ -115,18 +123,19 @@ function SidebarNav({ onNavigate }: SidebarNavProps) {
 
   // Zložene skupine (2026-11-18): 23 postavk v enem stolpcu je bilo
   // neobvladljivih — zdaj 6 skupin, stanje se ohrani med obiski.
-  const [collapsed, setCollapsed] = useState<NavSectionKey[]>([])
-  useEffect(() => {
+  const [collapsed, setCollapsed] = useState<NavSectionKey[]>(() => {
+    if (typeof window === "undefined") return []
     try {
       const raw = window.localStorage.getItem(COLLAPSED_KEY)
       if (raw) {
         const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed)) setCollapsed(parsed.filter(Boolean))
+        if (Array.isArray(parsed)) return parsed.filter(Boolean) as NavSectionKey[]
       }
     } catch {
       /* localStorage ni na voljo — ostane privzeto (vse odprto) */
     }
-  }, [])
+    return []
+  })
 
   const toggleSection = (key: NavSectionKey) => {
     setCollapsed((prev) => {
@@ -351,8 +360,15 @@ export function AdminSidebar({
         </ScrollArea>
 
         {/* Footer */}
-        <div className="space-y-2 p-4">
-          <p className="text-center text-xs text-muted-foreground">
+        <div className="space-y-2 border-t px-4 py-3">
+          <Link
+            href="/dashboard/help"
+            className="flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <QuestionIcon size={14} weight="bold" />
+            Pomoč in podpora
+          </Link>
+          <p className="text-center text-xs text-muted-foreground/70">
             {t.common.platformTagline}
           </p>
         </div>
@@ -428,6 +444,17 @@ export function MobileSidebar({
         <ScrollArea className="min-h-0 flex-1 py-4">
           <SidebarNav onNavigate={() => onOpenChange(false)} />
         </ScrollArea>
+
+        <div className="shrink-0 border-t px-4 py-3">
+          <Link
+            href="/dashboard/help"
+            onClick={() => onOpenChange(false)}
+            className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <QuestionIcon size={16} weight="bold" />
+            Pomoč in podpora
+          </Link>
+        </div>
       </SheetContent>
     </Sheet>
   )

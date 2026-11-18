@@ -1239,7 +1239,8 @@ export function DocumentsClient({
                     </div>
                   )}
 
-                  <table className="w-full text-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
                     <thead>
                       <tr className="text-muted-foreground border-b text-left text-xs uppercase">
                         <th className="py-2">{labels.create.lineDescription}</th>
@@ -1293,6 +1294,7 @@ export function DocumentsClient({
                       </tr>
                     </tfoot>
                   </table>
+                  </div>
 
                   {detail.notes && (
                     <div className="text-sm">

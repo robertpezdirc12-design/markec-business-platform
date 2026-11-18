@@ -8,15 +8,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SelectGroup, SelectItem, SelectLabel } from "@/components/ui/select"
 import { Logo } from "@/components/ui/logo"
 import {
   ArrowLeftIcon,
@@ -30,9 +22,6 @@ import {
 import { PALETTE_OPTIONS } from "@/lib/palettes-client"
 import { listProfileOptions } from "@/lib/profiles/registry"
 import {
-  
-  
-  
   suggestModulesForSkd,
 } from "@/lib/skd/catalog"
 import { ActivityDirectoryPicker } from "@/components/onboarding/activity-directory-picker"
@@ -63,7 +52,7 @@ const ACTIVITY_OPTIONS = listProfileOptions()
 // korak z iskanjem + ploščicami (hibridni vzorec najboljših tokov:
 // Shopify/Wix/Fresha — iskanje filtrira, ploščice ponudijo vse na pogled).
 // Diakritike neutežene, da "frizer" zadane tudi brez šumnikov.
-function normalizeHr(value: string): string {
+function _normalizeHr(value: string): string {
   return value
     .toLowerCase()
     .replace(/[čć]/g, "c")
@@ -74,7 +63,7 @@ function normalizeHr(value: string): string {
 }
 
 /** Grupirani SelectItem-i — za DODATNO dejavnost (sekundarni meni). */
-const GROUPED_ACTIVITIES = [
+const _GROUPED_ACTIVITIES = [
   {
     label: "Lepota in osebna nega",
     ids: ["beauty", "frizer", "barber", "nails", "cosmetica", "massage", "epilation"],
@@ -93,10 +82,10 @@ const GROUPED_ACTIVITIES = [
   .filter((g) => g.options.length > 0)
 
 /** Grupirani SelectItem-i — skupna uporaba za glavno in dodatno dejavnost. */
-function GroupedActivityItems({ excludeId }: { excludeId?: string | null }) {
+function _GroupedActivityItems({ excludeId }: { excludeId?: string | null }) {
   return (
     <>
-      {GROUPED_ACTIVITIES.map((group) => (
+      {_GROUPED_ACTIVITIES.map((group) => (
         <SelectGroup key={group.label}>
           <SelectLabel>{group.label}</SelectLabel>
           {group.options
@@ -263,13 +252,13 @@ export function StartWizard({
     }
   }, [vertical])
 
-  const contactQuestion =
+  const _contactQuestion =
     contactMode === "inquiry"
       ? "Želite, da stranke povpraševanje oddajo prek spleta (24/7)?"
       : contactMode === "order"
         ? "Želite, da stranke naročilo oddajo prek spleta (24/7)?"
         : "Želite, da stranke termine rezervirajo prek spleta (24/7)?"
-  const contactYesLabel =
+  const _contactYesLabel =
     contactMode === "inquiry"
       ? "Da — spletno povpraševanje"
       : contactMode === "order"
@@ -453,6 +442,8 @@ export function StartWizard({
     setSecondary((prev) => (prev === id ? null : prev))
     const preset = ACTIVITY_OPTIONS.find((v) => v.id === id)
     if (preset) setPalette(preset.palette)
+    // Auto-advance to step 2 to shorten onboarding flow
+    setStep(2)
   }
 
   function validateStep(current: number): boolean {
@@ -728,7 +719,7 @@ export function StartWizard({
               Kaj je vaša dejavnost?
             </h1>
             <p className="mt-2 text-muted-foreground">
-              Izberite dejavnost — pripravili vam bomo module, katalog, obrazce, procese in vsebino strani.
+              Izberite dejavnost za hiter začetek. Kasneje lahko vse prilagodite.
             </p>
             {/* lastnik (7. 11. 2026): VSE v EN padajoči meni — imenik
                 (predloge po področjih + SKD področja + sekcije A–V + lastna
@@ -897,98 +888,6 @@ export function StartWizard({
                 )}
               </div>
 
-              {/* P2 #88 — drugonivojski odgovori (neobvezna, nikoli ne
-                  blokirata): prilagodita kontrolni seznam namestitve.
-                  Isti dve vprašanji kot vodeni vstop na dashboardu. */}
-              <div className="rounded-xl border bg-muted/30 p-4 sm:p-5">
-                <h2 className="text-sm font-semibold">Nekaj o vašem podjetju (neobvezno)</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Odgovora prilagodita kontrolni seznam namestitve. Preskok je v redu.
-                </p>
-
-                {/* Q1 — velikost tima */}
-                <p className="mt-4 text-sm font-medium">Koliko ljudi dela pri vas?</p>
-                <div
-                  role="radiogroup"
-                  aria-label="Koliko ljudi dela pri vas?"
-                  className="mt-2 flex flex-wrap gap-2"
-                >
-                  {(
-                    [
-                      ["solo", "Samo jaz"],
-                      ["small", "2–5"],
-                      ["team", "6 ali več"],
-                    ] as const
-                  ).map(([value, label]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      role="radio"
-                      aria-checked={teamSize === value}
-                      onClick={() => setTeamSize(value)}
-                      disabled={creating}
-                      className={cn(
-                        "rounded-full border px-4 py-1.5 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        teamSize === value
-                          ? "border-primary bg-primary/5 ring-2 ring-primary/30"
-                          : "hover:border-primary/40"
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                {teamSize === "solo" && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Razumevano — kontrolni seznam ne bo zahteval dodajanja osebja.
-                  </p>
-                )}
-
-                {/* Q2 — spletna rezervacija */}
-                <p className="mt-5 text-sm font-medium">{contactQuestion}</p>
-                <div
-                  role="radiogroup"
-                  aria-label={contactQuestion}
-                  className="mt-2 flex flex-wrap gap-2"
-                >
-                  {(
-                    [
-                      ["yes", contactYesLabel],
-                      ["no", "Ne — po dogovoru"],
-                    ] as const
-                  ).map(([value, label]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      role="radio"
-                      aria-checked={onlineBooking === value}
-                      onClick={() => setOnlineBooking(value)}
-                      disabled={creating}
-                      className={cn(
-                        "rounded-full border px-4 py-1.5 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        onlineBooking === value
-                          ? "border-primary bg-primary/5 ring-2 ring-primary/30"
-                          : "hover:border-primary/40"
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                {onlineBooking === "yes" && contactMode !== "booking" && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Stranka odda obrazec na vaši strani, vi pa jo potrdite in
-                    prevzamete v delovno naročilo.
-                  </p>
-                )}
-                {onlineBooking === "no" && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {contactMode === "booking"
-                      ? "Objava strani bo še vedno priporočena — brez obljub o spletnih rezervacijah."
-                      : "Stranke vas bodo kontaktirale po telefonu ali e-pošti — stran lahko vseeno objavite."}
-                  </p>
-                )}
-              </div>
             </div>
           </section>
         )}

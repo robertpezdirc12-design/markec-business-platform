@@ -75,7 +75,6 @@ export function CampaignAnalytics({
 
   const openRate = totalSent > 0 ? Math.round((totalOpens / totalSent) * 100) : 0
   const clickRate = totalOpens > 0 ? Math.round((totalClicks / totalOpens) * 100) : 0
-  const conversionRate = totalClicks > 0 ? Math.round((totalConversions / totalClicks) * 100) : 0
 
   return (
     <div className="space-y-6">

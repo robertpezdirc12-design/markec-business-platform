@@ -36,7 +36,7 @@ export default async function SettingsPage({
 }) {
   // Custom roles (G8): server-side page guard
   await requirePagePermission("settings.manage")
-  const [{ t }, params, settings, publication, org, planContext, domains] = await Promise.all([
+  const [{ t }, params, settings, publication, org, _planContext, domains] = await Promise.all([
     getServerI18n(),
     searchParams,
     getSalonSettings(),
@@ -48,7 +48,7 @@ export default async function SettingsPage({
 
   // Billing read model depends on the resolved tenant — one extra
   // sequential read after the parallel block above.
-  const billing = org ? await loadBillingOverview(org.id) : null
+  const _billing = org ? await loadBillingOverview(org.id) : null
 
   // #54: booking rules are dead UI for profiles without appointments —
   // the same capability gate the public site applies to /booking.

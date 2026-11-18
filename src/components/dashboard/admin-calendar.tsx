@@ -82,7 +82,7 @@ const WORK_START_HOUR = 8
 const WORK_END_HOUR = 20
 const SLOT_HEIGHT = 60 // pixels per hour
 
-export function AdminCalendar({ appointments, salonTz }: AdminCalendarProps) {
+export function AdminCalendar({ appointments }: AdminCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [view, setView] = useState<CalendarView>("week")
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)

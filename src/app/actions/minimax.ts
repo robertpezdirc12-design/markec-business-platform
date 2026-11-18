@@ -82,7 +82,7 @@ export async function getMinimaxStatus(): Promise<
   { error: string } | MinimaxStatus
 > {
   const authResult = await requireOwner()
-  if ("error" in authResult) return authResult
+  if ("error" in authResult) return { error: authResult.error ?? "unauthorized" }
 
   const org = await prisma.organization.findUnique({
     where: { id: authResult.org.id },
@@ -111,7 +111,7 @@ export async function saveMinimaxConfig(input: {
   organisationId: number
 }): Promise<{ error?: string; ok?: boolean }> {
   const authResult = await requireOwner()
-  if ("error" in authResult) return authResult
+  if ("error" in authResult) return { error: authResult.error ?? "unauthorized" }
 
   // Validacija
   if (
@@ -142,7 +142,7 @@ export async function saveMinimaxConfig(input: {
 /** Prekini povezavo z Minimax (izbriši konfiguracijo). */
 export async function disconnectMinimax(): Promise<{ error?: string; ok?: boolean }> {
   const authResult = await requireOwner()
-  if ("error" in authResult) return authResult
+  if ("error" in authResult) return { error: authResult.error ?? "unauthorized" }
 
   await prisma.organization.update({
     where: { id: authResult.org.id },
@@ -164,7 +164,7 @@ export async function testMinimax(): Promise<
   { error: string } | { ok: true; message: string }
 > {
   const authResult = await requireOwner()
-  if ("error" in authResult) return authResult
+  if ("error" in authResult) return { error: authResult.error ?? "unauthorized" }
 
   const cfg = await loadMinimaxConfig(authResult.org.id)
   if (!cfg) {
@@ -202,7 +202,7 @@ export async function exportDocumentToMinimax(
   | { ok: true; minimaxInvoiceId: number; message: string }
 > {
   const authResult = await requireOwner()
-  if ("error" in authResult) return authResult
+  if ("error" in authResult) return { error: authResult.error ?? "unauthorized" }
 
   const cfg = await loadMinimaxConfig(authResult.org.id)
   if (!cfg) {
@@ -213,7 +213,7 @@ export async function exportDocumentToMinimax(
   const doc = await prisma.document.findFirst({
     where: { id: documentId, organizationId: authResult.org.id },
     include: {
-      items: { orderBy: { sortOrder: "asc" } },
+      items: { orderBy: { position: "asc" } },
       customer: true,
     },
   })
@@ -227,7 +227,7 @@ export async function exportDocumentToMinimax(
   if (doc.customer?.name) {
     const existing = await findMinimaxCustomer(cfg, {
       name: doc.customer.name,
-      vatNumber: doc.customer.companyVatId ?? undefined,
+      vatNumber: doc.customer.vatId ?? undefined,
     })
     if (existing.ok && existing.data.length > 0 && existing.data[0].ID) {
       minimaxCustomerId = existing.data[0].ID
@@ -236,7 +236,7 @@ export async function exportDocumentToMinimax(
         Name: doc.customer.name,
         Email: doc.customer.email ?? undefined,
         Phone: doc.customer.phone ?? undefined,
-        VatNumber: doc.customer.companyVatId ?? undefined,
+        VatNumber: doc.customer.vatId ?? undefined,
       }
       const created = await addMinimaxCustomer(cfg, newCustomer)
       if (!created.ok) {
@@ -269,7 +269,7 @@ export async function exportDocumentToMinimax(
       Quantity: Number(item.quantity),
       UnitOfMeasurement: "kom",
       Price: Number(item.unitPrice),
-      VATPercent: Number(item.vatPercent ?? 0),
+      VATPercent: Number(item.vatRate ?? 0),
     })),
   }
 

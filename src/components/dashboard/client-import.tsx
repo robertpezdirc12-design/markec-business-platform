@@ -66,7 +66,7 @@ export function ClientImport() {
   const [file, setFile] = useState<File | null>(null)
   const [columns, setColumns] = useState<ImportColumn[]>([])
   const [preview, setPreview] = useState<ImportPreview | null>(null)
-  const [importing, setImporting] = useState(false)
+  const [, setImporting] = useState(false)
   const [importedCount, setImportedCount] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
 

@@ -91,55 +91,35 @@ function MetricCard({
   )
 }
 
-// Simple bar chart
-function MiniBarChart({ data, label }: { data: number[]; label: string }) {
-  const max = Math.max(...data)
-  return (
-    <div>
-      <p className="mb-2 text-sm text-muted-foreground">{label}</p>
-      <div className="flex h-20 items-end gap-1">
-        {data.map((value, i) => (
-          <div
-            key={i}
-            className="flex-1 rounded-t bg-primary"
-            style={{ height: `${(value / max) * 100}%` }}
-            title={`${value}`}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
 export function ReportsDashboard({ metrics }: ReportsDashboardProps) {
   return (
     <div className="space-y-6">
       {/* Revenue Overview */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           icon={<CurrencyDollarIcon size={24} />}
           label="Danes"
           value={`${metrics.revenue.today} €`}
-          color="bg-green-500"
+          color="bg-[#2563EB]"
         />
         <MetricCard
           icon={<CurrencyDollarIcon size={24} />}
           label="Ta teden"
           value={`${metrics.revenue.thisWeek} €`}
-          color="bg-blue-500"
+          color="bg-[#2563EB]"
         />
         <MetricCard
           icon={<CurrencyDollarIcon size={24} />}
           label="Ta mesec"
           value={`${metrics.revenue.thisMonth} €`}
           change={metrics.revenue.change}
-          color="bg-purple-500"
+          color="bg-[#10B981]"
         />
         <MetricCard
           icon={<CalendarIcon size={24} />}
           label="Termini danes"
           value={metrics.appointments.today}
-          color="bg-amber-500"
+          color="bg-[#10B981]"
         />
       </div>
 

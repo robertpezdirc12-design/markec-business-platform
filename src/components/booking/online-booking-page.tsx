@@ -76,7 +76,6 @@ export function OnlineBookingPage({
   services,
   staff,
   businessName,
-  businessImage,
 }: OnlineBookingPageProps) {
   const [step, setStep] = useState<BookingStep>("service")
   const [selectedService, setSelectedService] = useState<Service | null>(null)

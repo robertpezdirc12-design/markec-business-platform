@@ -33,7 +33,7 @@ interface Props {
 
 export function PartsDialogClient({ options }: Props) {
   const router = useRouter()
-  const [open, setOpen] = useState(false)
+  const [, setOpen] = useState(false)
   // Poraba delov
   const [workOrderId, setWorkOrderId] = useState("")
   const [productIdx, setProductIdx] = useState(0)

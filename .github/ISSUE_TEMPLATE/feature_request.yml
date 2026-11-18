@@ -1,0 +1,32 @@
+name: Predlog izboljšave / Feature request
+description: Predlagaj novo funkcionalnost ali izboljšavo
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem ali potreba
+      description: Kakšno težavo ali potrebo bi to rešilo?
+      placeholder: Trenutno je težko...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Predlagana rešitev
+      description: Kaj bi rad(a), da se spremeni/doda?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative / obstoječi workaround
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Dodatni kontekst
+      description: Povezani EPIC/faze, mockupi, primeri, vpliv na najemnike ali dokumentacijo.
+    validations:
+      required: false

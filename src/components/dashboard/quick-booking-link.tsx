@@ -39,7 +39,7 @@ export function QuickBookingLink({
   serviceSlug,
   orgSlug,
 }: QuickBookingLinkProps) {
-  const [copied, setCopied] = useState(false)
+  const [, setCopied] = useState(false)
 
   // Generate booking URL: /s/{orgSlug}/booking?service={serviceSlug}
   const bookingUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/s/${orgSlug}/booking?service=${serviceSlug}`

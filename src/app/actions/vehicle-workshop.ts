@@ -27,7 +27,6 @@ import { orgToday } from "@/lib/org-date"
 import { consumeOnWorkOrder, type ConsumptionResult } from "./work-order-consumption"
 import { VEHICLE_WORKSHOP_CONSUMPTION_OPTS } from "@/lib/consumption-options"
 
-const VEHICLE_EXT = "vehicle-workshop"
 const VEHICLE_KEY = "vehicle"
 const TIRE_SET_KEY = "tire_set"
 
@@ -136,7 +135,7 @@ const partLineSchema = z.object({
   productVariantId: z.string().min(1).max(64).nullable().optional(),
   quantity: z.number().int().positive().max(1_000_000),
 })
-const workOrderPartsSchema = z.object({
+const _workOrderPartsSchema = z.object({
   workOrderId: z.string().min(1).max(64),
   lines: z.array(partLineSchema).min(1).max(50),
   notes: z.string().max(500).nullable().optional(),
@@ -156,7 +155,7 @@ export interface WorkOrderPartsResult {
  * ločitev med porabo in dejanskim računom.
  */
 export async function sellPartsOnWorkOrder(
-  input: z.input<typeof workOrderPartsSchema>
+  input: z.input<typeof _workOrderPartsSchema>
 ): Promise<WorkOrderPartsResult> {
   const result: ConsumptionResult = await consumeOnWorkOrder(input, VEHICLE_WORKSHOP_CONSUMPTION_OPTS)
   return result as WorkOrderPartsResult

@@ -8,11 +8,6 @@ import { useState } from "react"
 import type { PublicGalleryDTO } from "@/app/actions/galleries"
 import type { PublicFaqDTO } from "@/app/actions/faq"
 
-interface Props {
-  galleries: PublicGalleryDTO[]
-  faq: PublicFaqDTO[]
-}
-
 export function GalleriesSection({ galleries }: { galleries: PublicGalleryDTO[] }) {
   if (galleries.length === 0) return null
   return (

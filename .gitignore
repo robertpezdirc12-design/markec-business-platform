@@ -87,3 +87,6 @@ qa-shots/
 scripts/qa-*
 scripts/tmp**
 .wrangler/state/
+
+# local lint/diagnostic artifacts
+_remain.json

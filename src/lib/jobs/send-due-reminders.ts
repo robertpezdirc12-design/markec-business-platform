@@ -139,6 +139,7 @@ export async function sendDueReminders(now: Date = new Date()): Promise<{
           date: appt.startTime,
           customerPhone,
           businessName: orgName,
+          timeZone: tz,
         }).catch(() => ({ ok: false }))
       }
 

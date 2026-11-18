@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Varnostna ranljivost / Security vulnerability
+    url: https://github.com/robertpezdirc12-design/markec-business-platform/security/policy
+    about: Ne odpiraj javnega issue-ja za ranljivosti. Glej SECURITY.md za zasebno prijavo.

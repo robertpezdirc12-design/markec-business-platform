@@ -67,7 +67,7 @@ export async function getSmsStatus(): Promise<
   { error: string } | SmsStatus
 > {
   const authResult = await requireOwner()
-  if ("error" in authResult) return authResult
+  if ("error" in authResult) return { error: authResult.error ?? "unauthorized" }
 
   const org = await prisma.organization.findUnique({
     where: { id: authResult.org.id },
@@ -92,7 +92,7 @@ export async function saveSmsConfig(input: {
   senderName: string
 }): Promise<{ error?: string; ok?: boolean }> {
   const authResult = await requireOwner()
-  if ("error" in authResult) return authResult
+  if ("error" in authResult) return { error: authResult.error ?? "unauthorized" }
 
   if (!input.apiKey?.trim() || !input.apiPassword?.trim()) {
     return { error: "API ključ in geslo sta obvezna." }
@@ -114,7 +114,7 @@ export async function saveSmsConfig(input: {
 /** Prekini SMS povezavo. */
 export async function disconnectSms(): Promise<{ error?: string; ok?: boolean }> {
   const authResult = await requireOwner()
-  if ("error" in authResult) return authResult
+  if ("error" in authResult) return { error: authResult.error ?? "unauthorized" }
 
   await prisma.organization.update({
     where: { id: authResult.org.id },
@@ -134,7 +134,7 @@ export async function testSms(
   phoneNumber: string
 ): Promise<{ error: string } | { ok: true; message: string }> {
   const authResult = await requireOwner()
-  if ("error" in authResult) return authResult
+  if ("error" in authResult) return { error: authResult.error ?? "unauthorized" }
 
   const cfg = await loadSmsConfig(authResult.org.id)
   if (!cfg) {
@@ -197,22 +197,26 @@ export async function sendAppointmentReminderSms(
     date: Date
     customerPhone: string | null
     businessName: string
+    timeZone?: string
   }
 ): Promise<{ ok: boolean; messageId?: string; error?: string }> {
   if (!appointment.customerPhone) {
     return { ok: false, error: "Stranka nima telefonske številke" }
   }
 
+  const tz = appointment.timeZone || "Europe/Ljubljana"
   const message = SMS_TEMPLATES.appointmentReminder({
     serviceName: appointment.serviceName,
     date: appointment.date.toLocaleDateString("sl-SI", {
       weekday: "long",
       day: "numeric",
       month: "long",
+      timeZone: tz,
     }),
     time: appointment.date.toLocaleTimeString("sl-SI", {
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: tz,
     }),
     businessName: appointment.businessName,
   })
