@@ -155,7 +155,12 @@ describe("#80 redemption — the code reduces a later order", () => {
 
   it("balance reaching zero flips the purchase to EXHAUSTED", () => {
     const helper = prepaid.slice(prepaid.indexOf("export async function redeemGiftCardForOrder"))
-    expect(helper).toMatch(/nextBalance <= 0 \? \{ status: "EXHAUSTED" \}/)
+    // Atomic conditional decrement (no lost update / double-spend), then
+    // EXHAUSTED when the fresh balance hits zero.
+    expect(helper).toMatch(/balance: \{ gte: use\.toFixed\(2\) \}/)
+    expect(helper).toMatch(/balance: \{ decrement: use\.toFixed\(2\) \}/)
+    expect(helper).toMatch(/remaining <= 0/)
+    expect(helper).toMatch(/status: "EXHAUSTED"/)
   })
 })
 

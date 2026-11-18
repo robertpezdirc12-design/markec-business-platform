@@ -7,6 +7,7 @@
 
 import { requirePermissionOrg } from "@/lib/auth/guards"
 import { prisma } from "@/lib/prisma"
+import { toCsv } from "@/lib/utils/csv"
 
 export type ExportDataType =
   | "appointments"
@@ -19,24 +20,6 @@ export type ExportDataType =
 export type ExportFormat = "csv" | "json"
 
 const MAX_ROWS = 5000
-
-function csvCell(value: unknown): string {
-  if (value === null || value === undefined) return ""
-  const text =
-    value instanceof Date
-      ? value.toISOString()
-      : typeof value === "object"
-        ? JSON.stringify(value)
-        : String(value)
-  return `"${text.replace(/"/g, '""')}"`
-}
-
-function toCsv(headers: string[], rows: unknown[][]): string {
-  return [
-    headers.map(csvCell).join(","),
-    ...rows.map((row) => row.map(csvCell).join(",")),
-  ].join("\r\n")
-}
 
 export async function exportBusinessData(
   dataType: ExportDataType,

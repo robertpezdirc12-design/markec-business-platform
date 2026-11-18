@@ -57,11 +57,15 @@ export async function registerUser(data: RegisterInput) {
   if (blocked) return blocked
 
   try {
-    const { name, email, password } = validatedData.data
+    const { name, password } = validatedData.data
+    // E-pošta je po dogovoru NEOBJUTLJIVA na velikost črk. Brez
+    // normalizacije bi se "Foo@Example.com" shranil drugače kot prijava
+    // (ki lowercasa) in uporabnik se ne bi mogel prijaviti.
+    const email = validatedData.data.email.trim().toLowerCase()
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
+    const existingUser = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
     })
 
     if (existingUser) {
@@ -74,7 +78,7 @@ export async function registerUser(data: RegisterInput) {
     // Check if there's an existing Customer with this email (from a deleted account)
     const existingCustomer = await prisma.customer.findFirst({
       where: {
-        email,
+        email: { equals: email, mode: "insensitive" },
         userId: null, // Customer exists but has no linked User
       },
     })
@@ -247,10 +251,10 @@ export async function forgotPassword(data: ForgotPasswordInput) {
   if (blockedEmail) return blockedEmail
 
   try {
-    const { email } = validatedData.data
+    const email = validatedData.data.email.trim().toLowerCase()
 
-    const user = await prisma.user.findUnique({
-      where: { email },
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
     })
 
     // Security: Always return success to not reveal if email exists
@@ -262,7 +266,7 @@ export async function forgotPassword(data: ForgotPasswordInput) {
 
     // P0: v bazo gre SAMO hash — surovi žeton odide izključno po e-pošti.
     await prisma.user.update({
-      where: { email },
+      where: { id: user.id },
       data: {
         resetToken: hashResetToken(token),
         resetTokenExpiry: new Date(Date.now() + 3600000), // 1 hour

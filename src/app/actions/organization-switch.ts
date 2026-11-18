@@ -39,12 +39,20 @@ export async function switchActiveOrganization(
   }
 
   // Legacy kazalec + seja usklajena (drugi naprave / svež JWT).
+  // POMEMBNO: preklop mora osvežiti tudi VLOGO v seji. Brez tega bi
+  // uporabnik, ki je v ciljni org ADMIN, ostal s staro vlogo STAFF in bi
+  // `requireRole(["ADMIN"])` zavrnil dostop do plošče (org-scoped pravice
+  // so sicer pravilne, a vstopna vrata bi bila zaprta).
+  const targetRole = target.role as "ADMIN" | "STAFF" | "CLIENTE"
   await prisma.user.update({
     where: { id: session.user.id },
-    data: { organizationId: organizationId },
+    data: { organizationId: organizationId, role: targetRole },
   })
   await unstable_update({
-    user: { organizationId: organizationId } as { organizationId: string },
+    user: {
+      organizationId: organizationId,
+      role: targetRole,
+    } as { organizationId: string; role: "ADMIN" | "STAFF" | "CLIENTE" },
   })
 
   // Celotna plošča se preračuna (sidebar, terminologija, podatki).

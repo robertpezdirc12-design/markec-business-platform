@@ -135,8 +135,8 @@ interface CustomProfileBuilderProps {
   orgId: string
 }
 
-export function CustomProfileBuilder({ orgId }: CustomProfileBuilderProps) {
-  const { t, locale } = useI18n()
+export function CustomProfileBuilder({ orgId: _orgId }: CustomProfileBuilderProps) {
+  const { t: _t, locale: _locale } = useI18n()
   const [pending, startTransition] = useTransition()
   const [profile, setProfile] = useState<CustomProfileData | null>(null)
   const [editing, setEditing] = useState(false)
@@ -552,13 +552,13 @@ export function CustomProfileBuilder({ orgId }: CustomProfileBuilderProps) {
 function BasicSection({
   draft,
   setField,
-  markDirty,
+  markDirty: _markDirty,
 }: {
   draft: CustomProfileData
   setField: (key: string, value: unknown) => void
   markDirty: () => void
 }) {
-  const { locale } = useI18n()
+  const { locale: _locale } = useI18n()
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -631,15 +631,15 @@ function BasicSection({
 function CapabilitiesSection({
   draft,
   toggleCapability,
-  markDirty,
+  markDirty: _markDirty,
 }: {
   draft: CustomProfileData
   toggleCapability: (key: string, state: CapabilityState) => void
   markDirty: () => void
 }) {
-  const { locale } = useI18n()
+  const { locale: _locale } = useI18n()
 
-  const stateLabels: Record<CapabilityState, string> = {
+  const _stateLabels: Record<CapabilityState, string> = {
     required: "Obvezno",
     optional: "Izbirno",
     disabled: "Onemogočeno",
@@ -700,7 +700,7 @@ function FormsSection({
   addField,
   removeField,
   updateField,
-  markDirty,
+  markDirty: _markDirty,
 }: {
   draft: CustomProfileData
   addForm: () => void
@@ -711,7 +711,7 @@ function FormsSection({
   updateField: (formIndex: number, fieldIndex: number, updates: Partial<CustomFieldDraft>) => void
   markDirty: () => void
 }) {
-  const { locale } = useI18n()
+  const { locale: _locale } = useI18n()
 
   const fieldTypeLabels: Record<string, string> = {
     text: "Krato besedilo",
@@ -825,7 +825,7 @@ function WorkflowsSection({
   updateWorkflow,
   addStage,
   removeStage,
-  markDirty,
+  markDirty: _markDirty,
 }: {
   draft: CustomProfileData
   addWorkflow: () => void
@@ -950,13 +950,13 @@ function WorkflowsSection({
 function WidgetsSection({
   draft,
   toggleWidget,
-  markDirty,
+  markDirty: _markDirty,
 }: {
   draft: CustomProfileData
   toggleWidget: (key: string) => void
   markDirty: () => void
 }) {
-  const { locale } = useI18n()
+  const { locale: _locale } = useI18n()
 
   return (
     <div className="space-y-3">
@@ -993,13 +993,13 @@ function WidgetsSection({
 function CtaSection({
   draft,
   setField,
-  markDirty,
+  markDirty: _markDirty,
 }: {
   draft: CustomProfileData
   setField: (key: string, value: unknown) => void
   markDirty: () => void
 }) {
-  const { locale } = useI18n()
+  const { locale: _locale } = useI18n()
 
   return (
     <div className="space-y-4">

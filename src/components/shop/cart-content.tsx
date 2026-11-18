@@ -207,7 +207,7 @@ export function CartContent() {
     setShowClearDialog(false)
   }
 
-  const handleCheckout = async () => {
+  async function handleCheckout() {
     // The button is disabled while the session is loading (see JSX below);
     // this guard remains as a belt-and-braces fallback for programmatic calls.
     if (status === "loading") return

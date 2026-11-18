@@ -586,16 +586,35 @@ export async function redeemGiftCardForOrder(
   const use = Math.min(balance, amount)
   if (use <= 0) return { ok: false }
   const nextBalance = Math.round((balance - use) * 100) / 100
+  let remaining = nextBalance
 
   try {
     await prisma.$transaction(async (tx) => {
-      await tx.prepaidPurchase.update({
-        where: { id: purchase.id },
-        data: {
-          balance: nextBalance.toFixed(2),
-          ...(nextBalance <= 0 ? { status: "EXHAUSTED" } : {}),
+      // ATOMSKO zmanjšanje: pogoj `balance >= use` prepreči dvojno
+      // unovčenje istega bona v dveh sočasnih naročilih (prej se je
+      // stanje prepisalo iz zastarelega branja → izgubljena posodobitev).
+      const updated = await tx.prepaidPurchase.updateMany({
+        where: {
+          id: purchase.id,
+          status: "ACTIVE",
+          balance: { gte: use.toFixed(2) },
         },
+        data: { balance: { decrement: use.toFixed(2) } },
       })
+      if (updated.count !== 1) {
+        throw new Error("GIFT_CARD_INSUFFICIENT")
+      }
+      const fresh = await tx.prepaidPurchase.findUnique({
+        where: { id: purchase.id },
+        select: { balance: true },
+      })
+      remaining = fresh ? fresh.balance.toNumber() : Math.max(0, balance - use)
+      if (remaining <= 0) {
+        await tx.prepaidPurchase.update({
+          where: { id: purchase.id },
+          data: { status: "EXHAUSTED" },
+        })
+      }
       await tx.prepaidRedemption.create({
         data: {
           prepaidPurchaseId: purchase.id,
@@ -618,7 +637,7 @@ export async function redeemGiftCardForOrder(
     throw error
   }
 
-  return { ok: true, redeemed: use, exhausted: nextBalance <= 0 }
+  return { ok: true, redeemed: use, exhausted: remaining <= 0 }
 }
 
 /**

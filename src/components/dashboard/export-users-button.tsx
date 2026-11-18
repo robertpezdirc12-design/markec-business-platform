@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { UsersIcon } from "@/components/icons"
 import { useI18n } from "@/lib/i18n/provider"
+import { toCsv } from "@/lib/utils/csv"
 
 interface User {
   id: string
@@ -44,10 +45,7 @@ export function ExportUsersButton({ users }: ExportUsersButtonProps) {
       new Date(user.createdAt).toLocaleDateString(locale === "sl" ? "sl-SI" : "en-US"),
     ])
 
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
-    ].join("\n")
+    const csvContent = toCsv(headers, rows)
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
     const link = document.createElement("a")

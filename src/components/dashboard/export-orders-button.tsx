@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { ShoppingBagIcon } from "@/components/icons"
 import { useI18n } from "@/lib/i18n/provider"
 import { formatCurrency, formatDateStandard } from "@/lib/utils/format"
+import { toCsv } from "@/lib/utils/csv"
 
 interface Order {
   id: string
@@ -54,10 +55,7 @@ export function ExportOrdersButton({ orders }: ExportOrdersButtonProps) {
       formatDateStandard(new Date(order.createdAt)),
     ])
 
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
-    ].join("\n")
+    const csvContent = toCsv(headers, rows)
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
     const link = document.createElement("a")

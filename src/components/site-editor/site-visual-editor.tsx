@@ -200,7 +200,7 @@ export function SiteVisualEditor() {
     setContent(next)
   }
 
-  const handleSave = async (showToast = true) => {
+  async function handleSave(showToast = true) {
     if (!content) return
     if (savingRef.current) return
     savingRef.current = true

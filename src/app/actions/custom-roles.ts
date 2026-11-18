@@ -164,9 +164,9 @@ export async function assignCustomRole(
   // restricted admin must never grant what they do not hold.
   const { session, org } = await requireUnrestrictedAdmin()
 
-  const member = await prisma.user.findFirst({
-    where: { id: userId, organizationId: org.id },
-    select: { id: true, role: true },
+  const member = await prisma.organizationMember.findUnique({
+    where: { organizationId_userId: { organizationId: org.id, userId } },
+    select: { id: true, userId: true, role: true },
   })
   if (!member || member.role === "CLIENTE") {
     return { success: false as const, error: "Član ne obstaja." }
@@ -176,7 +176,7 @@ export async function assignCustomRole(
   // no longer reach this editor (requireUnrestrictedAdmin) and, in a
   // single-owner salon, nobody could undo it. Use another unrestricted
   // admin or the platform console for such changes.
-  if (member.id === session.user.id) {
+  if (member.userId === session.user.id) {
     return {
       success: false as const,
       error: "Svoje vloge po meri ne morete spremeniti.",
@@ -198,8 +198,8 @@ export async function assignCustomRole(
   // OrganizationMember.customRoleId; User.customRoleId is only kept in sync
   // for legacy call sites that do not pass an organizationId.
   await prisma.$transaction([
-    prisma.organizationMember.updateMany({
-      where: { organizationId: org.id, userId },
+    prisma.organizationMember.update({
+      where: { id: member.id },
       data: { customRoleId },
     }),
     prisma.user.update({

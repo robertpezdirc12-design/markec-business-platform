@@ -140,9 +140,10 @@ export async function reserveStock(
   if (!policy.tracked) return true
   const r = await tx.$executeRawUnsafe(
     `UPDATE "${table}" SET "reservedQuantity" = "reservedQuantity" + $2::int
-     WHERE "id" = $1::text AND ${AVAIL}`,
+     WHERE "id" = $1::text AND "organizationId" = $3::text AND ${AVAIL}`,
     id,
-    item.quantity
+    item.quantity,
+    orgId
   )
   return r === 1
 }
@@ -193,9 +194,10 @@ export async function convertReservationToSale(
     `UPDATE "${table}"
      SET "stockQuantity" = "stockQuantity" - $2::int,
          "reservedQuantity" = "reservedQuantity" - $2::int
-     WHERE "id" = $1::text AND "reservedQuantity" >= $2::int`,
+     WHERE "id" = $1::text AND "organizationId" = $3::text AND "reservedQuantity" >= $2::int`,
     id,
-    item.quantity
+    item.quantity,
+    orgId
   )
   if (r !== 1) return false
   // Ledger: prodaja z source ORDER (kot prej), variant-aware.

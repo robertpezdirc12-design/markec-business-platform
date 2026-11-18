@@ -77,11 +77,23 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           throw new Error("Invalid credentials")
         }
 
-        const user = await prisma.user.findUnique({
+        let user = await prisma.user.findUnique({
           where: {
             email,
           },
         })
+        // Legacy zapisi z mešano velikostjo črk: prijava lowercasa, zato
+        // exact-match zgreši. Poišči neobčutljivo in zapis normaliziraj.
+        if (!user) {
+          user = await prisma.user.findFirst({
+            where: { email: { equals: email, mode: "insensitive" } },
+          })
+          if (user && user.email !== email) {
+            await prisma.user
+              .update({ where: { id: user.id }, data: { email } })
+              .catch(() => undefined)
+          }
+        }
 
         if (!user || !user.password) {
           throw new Error("Invalid credentials")
