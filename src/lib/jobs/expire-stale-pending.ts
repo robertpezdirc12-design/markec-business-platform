@@ -14,7 +14,7 @@
 import { prisma } from "@/lib/prisma"
 import { isEmailServiceConfigured } from "@/lib/email/config"
 import { sendAppointmentExpiredEmail } from "@/lib/email/appointment-expired"
-import { formatSalonTime } from "@/lib/booking-time"
+import { formatSalonTime, safeTimezone } from "@/lib/booking-time"
 import { chargeNoShowFee } from "@/lib/booking/no-show-charge"
 
 const BATCH_SIZE = 100
@@ -59,6 +59,7 @@ async function cancelStale(
       customer: { select: { name: true, email: true } },
       staff: { select: { name: true } },
       services: { include: { service: { select: { name: true } } } },
+      organization: { select: { salonConfig: { select: { timezone: true } } } },
     },
   })
 
@@ -79,7 +80,10 @@ async function cancelStale(
             serviceName: appt.services.map((s) => s.service.name).join(", "),
             staffName: appt.staff?.name || "Our Staff",
             appointmentDate: appt.startTime,
-            appointmentTime: formatSalonTime(appt.startTime, "Europe/Ljubljana"),
+            appointmentTime: formatSalonTime(
+              appt.startTime,
+              safeTimezone(appt.organization?.salonConfig?.timezone)
+            ),
             depositAmount: appt.depositAmount.toNumber(),
           })
           if (result?.success === false) notifyFailed += 1

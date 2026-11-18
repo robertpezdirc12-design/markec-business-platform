@@ -20,7 +20,7 @@
 import { prisma } from "@/lib/prisma"
 import { isEmailServiceConfigured } from "@/lib/email/config"
 import { sendAppointmentReminderEmail } from "@/lib/email/appointment-reminder"
-import { formatSalonTime } from "@/lib/booking-time"
+import { formatSalonTime, safeTimezone } from "@/lib/booking-time"
 import { buildPushPayload } from "@/lib/push/core"
 import { notifyUser } from "@/lib/push/send"
 import type { Prisma } from "@prisma/client"
@@ -63,7 +63,13 @@ export async function sendDueReminders(now: Date = new Date()): Promise<{
       customer: { select: { name: true, email: true, userId: true } },
       staff: { select: { name: true } },
       services: { include: { service: { select: { name: true, duration: true } } } },
-      organization: { select: { id: true, name: true } },
+      organization: {
+        select: {
+          id: true,
+          name: true,
+          salonConfig: { select: { timezone: true } },
+        },
+      },
     },
   })
 
@@ -89,6 +95,8 @@ export async function sendDueReminders(now: Date = new Date()): Promise<{
       const customerName = appt.customer?.name || appt.guestName || ""
       // Pošiljatelj/identiteta vedno iz ORGANIZACIJE termina — najemniško varno.
       const orgName = appt.organization?.name || "Salon"
+      // Čas v LOKALNEM pasu najemnika (ni vsak salon v Ljubljani).
+      const tz = safeTimezone(appt.organization?.salonConfig?.timezone)
 
       const result = await sendAppointmentReminderEmail({
         email,
@@ -96,7 +104,7 @@ export async function sendDueReminders(now: Date = new Date()): Promise<{
         serviceName,
         staffName: appt.staff?.name || orgName,
         appointmentDate: appt.startTime,
-        appointmentTime: formatSalonTime(appt.startTime, "Europe/Ljubljana"),
+        appointmentTime: formatSalonTime(appt.startTime, tz),
         duration:
           appt.services.reduce((sum, s) => sum + (s.service.duration ?? 0), 0) ||
           60,
@@ -115,7 +123,7 @@ export async function sendDueReminders(now: Date = new Date()): Promise<{
         await notifyUser(
           appt.customer.userId,
           buildPushPayload("appointment_reminder", {
-            date: formatSalonTime(appt.startTime, "Europe/Ljubljana"),
+            date: formatSalonTime(appt.startTime, tz),
           })
         ).catch(() => ({ sent: 0, skipped: true }))
       }
