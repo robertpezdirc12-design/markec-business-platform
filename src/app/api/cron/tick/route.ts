@@ -6,6 +6,7 @@ import { sendDailyDigest } from "@/lib/jobs/send-daily-digest"
 import { withJobRun } from "@/lib/jobs/job-run"
 import { purgeExpiredRateLimits } from "@/lib/rate-limit"
 import { enforceBillingGrace } from "@/lib/jobs/enforce-billing-grace"
+import { retryPendingDeliveries } from "@/lib/webhooks/outgoing"
 
 export const dynamic = "force-dynamic"
 
@@ -35,7 +36,7 @@ export async function GET(req: Request) {
   }
 
   // Vsak job je neodvisen: neuspeh opomnikov ne sme ustaviti čiščenja.
-  const [reminders, expiry, marketing, digest, rateLimitPurge, billingGrace] = await Promise.all([
+  const [reminders, expiry, marketing, digest, rateLimitPurge, billingGrace, webhookRetries] = await Promise.all([
     withJobRun("send-due-reminders", sendDueReminders),
     withJobRun("expire-stale-pending", expireStalePending),
     withJobRun("send-marketing-emails", sendMarketingEmails),
@@ -48,10 +49,19 @@ export async function GET(req: Request) {
     }),
     // Točka 7b: grace tok neplačila (opomnik → grace → suspenz).
     withJobRun("enforce-billing-grace", () => enforceBillingGrace()),
+    // #110: retry čakajočih outgoing webhook dostav.
+    withJobRun("retry-webhook-deliveries", async () => {
+      const result = await retryPendingDeliveries()
+      return {
+        sent: result.delivered,
+        failed: result.dead,
+        detail: result,
+      }
+    }),
   ])
 
   return NextResponse.json({
     ok: true,
-    results: { reminders, expiry, marketing, digest, rateLimitPurge, billingGrace },
+    results: { reminders, expiry, marketing, digest, rateLimitPurge, billingGrace, webhookRetries },
   })
 }

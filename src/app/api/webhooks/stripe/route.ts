@@ -10,6 +10,7 @@ import { constructWebhookEvent } from "@/lib/stripe"
 import { prisma } from "@/lib/prisma"
 import { addMinutes } from "date-fns"
 import { after } from "next/server"
+import { dispatchOutgoingEvent } from "@/lib/webhooks/outgoing"
 import { sendAppointmentConfirmationEmail } from "@/lib/email/appointment-confirmation"
 import { getOrgById } from "@/lib/tenant"
 import { checkTenantBinding, extractClaimedOrgId } from "@/lib/stripe/webhook-tenant"
@@ -941,6 +942,25 @@ export async function POST(req: Request) {
       }
 
       console.log(`Webhook: appointment created ${appointment.id}`)
+
+      // #110: outgoing webhook — obvestilo tretjim sistemom (best-effort).
+      after(async () => {
+        try {
+          await dispatchOutgoingEvent(org.id, "appointment.created", {
+            appointmentId: appointment.id,
+            organizationId: org.id,
+            status: appointment.status,
+            startTime: appointment.startTime.toISOString(),
+            endTime: appointment.endTime.toISOString(),
+            customerEmail: customerEmail ?? null,
+            customerName,
+            serviceNames: services.map((s) => s.name),
+            totalPrice,
+          })
+        } catch (err) {
+          console.error("Webhook: outgoing appointment.created dispatch failed:", err)
+        }
+      })
     } catch (error) {
       console.error("Webhook: error processing checkout session:", error)
       // Dostava ni uspela → dogodek označimo kot spodletelo, da bo ponovni

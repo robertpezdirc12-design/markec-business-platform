@@ -169,6 +169,9 @@ model Organization {
   smsSenderName    String?   @default("MARKEC")
   smsConfiguredAt  DateTime?
 
+  // #110 — Outgoing webhooks za tretje osebe.
+  outgoingWebhooks OutgoingWebhook[]
+
   users                User[]
   salonConfig          SalonConfig?
   categories           Category[]
@@ -344,6 +347,65 @@ model PlatformWebhookFailure {
 
   @@index([createdAt])
   @@index([reason, createdAt])
+}
+
+// #110 — Outgoing webhooks: obvestila tretjim osebam ob dogodkih.
+// Lastnik registrira URL in izbere dogodke; ob vsakem dogodku pošljemo
+// HTTP POST s HMAC podpisom. Retry + dead-letter za zanesljivost.
+model OutgoingWebhook {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // URL, kamor pošiljamo dogodke (HTTPS priporočeno).
+  url            String   @db.Text
+  // Skrivnost za HMAC-SHA256 podpis (X-Markec-Signature glava).
+  secret         String   @db.Text
+  // Kateri dogodki: ["appointment.created", "order.paid", ...] ali ["*"]
+  events         Json
+
+  // Stanje
+  isActive       Boolean  @default(true)
+  // Statistika dostav
+  successCount   Int      @default(0)
+  failureCount   Int      @default(0)
+  lastDeliveredAt DateTime?
+  lastFailureAt  DateTime?
+  lastFailureReason String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  deliveries     OutgoingWebhookDelivery[]
+
+  @@index([organizationId])
+}
+
+// Posamezna dostava dogodka (za retry in dead-letter).
+model OutgoingWebhookDelivery {
+  id             String   @id @default(cuid())
+  webhookId      String
+  webhook        OutgoingWebhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  // Dogodek in payload
+  event          String
+  payload        Json
+  // HTTP status odgovora (null = ni bilo odgovora)
+  responseStatus Int?
+  responseBody   String?  @db.Text
+  // Poskus dostave
+  attempt        Int      @default(1)
+  maxAttempts    Int      @default(3)
+  // Stanje: pending | delivered | failed | dead
+  status         String   @default("pending")
+  // Čas naslednjega poskusa (za retry)
+  nextRetryAt    DateTime?
+
+  createdAt      DateTime @default(now())
+  deliveredAt    DateTime?
+
+  @@index([webhookId, status])
+  @@index([status, nextRetryAt])
 }
 
 // Binary media storage (DB fallback when Cloudinary is not configured)
