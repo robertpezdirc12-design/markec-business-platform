@@ -18,6 +18,7 @@ import {
 import { auth } from "@/lib/auth/auth"
 import { redirect } from "next/navigation"
 import { getOrderByIdForCustomer } from "@/app/actions/orders"
+import { ReorderButton } from "@/components/shop/reorder-button"
 import { formatCurrency } from "@/lib/utils/format"
 import { getPublicOrg } from "@/lib/tenant"
 import { orgPath } from "@/lib/org-path"
@@ -256,6 +257,18 @@ export default async function OrderDetailPage({
                 )}
               </CardContent>
             </Card>
+
+            {/* #108 — 1-klik ponovni nakup (samo za zaključena/plačana naročila). */}
+            {(order.status === "PAID" || order.status === "COMPLETED") && (
+              <Card>
+                <CardContent className="p-4">
+                  <ReorderButton orderId={order.id} orgSlug={org?.slug ?? null} />
+                  <p className="text-muted-foreground mt-2 text-center text-xs">
+                    Ponovno naročilo odpre varno plačilo z istimi izdelki.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Need Help */}
             <Card className="border-dashed">

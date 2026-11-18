@@ -11,7 +11,6 @@ import { getPlan } from "@/lib/plans/registry"
 import { checkPlanLimit, monthStartUtc } from "@/lib/plans/types"
 import { SI_VAT_RATE, vatFromGross } from "@/lib/vat"
 import { guestIdentityMatches } from "@/lib/checkout/guest-identity"
-import type { CartItem } from "@/store/cart-store"
 // #80: unovčitev darilnega bona (deljena z webhookom — idempotentna).
 import { redeemGiftCardForOrder } from "./prepaid"
 // F5.1: promo engine (avtoritativni izračun popusta) + atomsko unovčenje.
@@ -150,8 +149,21 @@ async function resolveGuestCustomerId(
   return null
 }
 
+/**
+ * Minimal checkout input. Prices/names/images are ALWAYS re-read from the
+ * database inside the action — the client only chooses WHAT and HOW MANY.
+ * Keeping this narrower than the UI `CartItem` prevents accidental trust in
+ * client-supplied price/name and lets server-side flows (e.g. reorder) reuse
+ * the same checkout without fabricating display fields.
+ */
+export interface CheckoutLine {
+  productId: string
+  variantId?: string | null
+  quantity: number
+}
+
 export async function createProductCheckoutSession(
-  items: CartItem[],
+  items: CheckoutLine[],
   contact?: CheckoutContact,
   giftCardCode?: string,
   promotionCode?: string

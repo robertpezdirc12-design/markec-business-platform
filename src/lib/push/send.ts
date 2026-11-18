@@ -13,6 +13,48 @@ function vapidSubject(): string {
   return process.env.VAPID_SUBJECT || "mailto:info@markec.si"
 }
 
+/**
+ * Pošlje push obvestilo ENEMU uporabniku (po userId).
+ * Uporablja se za opomnike terminov (stranka) in druge osebne dogodke.
+ * Vrne { sent, skipped } — enako pogodbo kot notifyOrgOwners.
+ */
+export async function notifyUser(
+  userId: string,
+  payload: PushPayload
+): Promise<{ sent: number; skipped: boolean }> {
+  const pub = process.env.VAPID_PUBLIC_KEY
+  const priv = process.env.VAPID_PRIVATE_KEY
+  if (!isPushConfigured(pub, priv)) {
+    return { sent: 0, skipped: true }
+  }
+  webpush.setVapidDetails(vapidSubject(), pub!, priv!)
+
+  const subs = await prisma.pushSubscription.findMany({
+    where: { userId },
+  })
+  if (subs.length === 0) return { sent: 0, skipped: true }
+
+  let sent = 0
+  for (const sub of subs) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        JSON.stringify(payload)
+      )
+      sent += 1
+    } catch (error) {
+      const status =
+        typeof error === "object" && error !== null && "statusCode" in error
+          ? (error as { statusCode?: number }).statusCode
+          : undefined
+      if (status === 404 || status === 410) {
+        await prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(() => undefined)
+      }
+    }
+  }
+  return { sent, skipped: false }
+}
+
 export async function notifyOrgOwners(
   organizationId: string,
   payload: PushPayload

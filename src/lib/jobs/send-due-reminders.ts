@@ -21,6 +21,8 @@ import { prisma } from "@/lib/prisma"
 import { isEmailServiceConfigured } from "@/lib/email/config"
 import { sendAppointmentReminderEmail } from "@/lib/email/appointment-reminder"
 import { formatSalonTime } from "@/lib/booking-time"
+import { buildPushPayload } from "@/lib/push/core"
+import { notifyUser } from "@/lib/push/send"
 import type { Prisma } from "@prisma/client"
 
 const BATCH_SIZE = 100
@@ -58,7 +60,7 @@ export async function sendDueReminders(now: Date = new Date()): Promise<{
     take: BATCH_SIZE, // omejena serija na tek
     orderBy: { startTime: "asc" },
     include: {
-      customer: { select: { name: true, email: true } },
+      customer: { select: { name: true, email: true, userId: true } },
       staff: { select: { name: true } },
       services: { include: { service: { select: { name: true, duration: true } } } },
       organization: { select: { id: true, name: true } },
@@ -104,6 +106,18 @@ export async function sendDueReminders(now: Date = new Date()): Promise<{
       if (result?.success === false) {
         failed += 1
         return
+      }
+
+      // #108 — push obvestilo stranki (poleg e-pošte). Best-effort:
+      // če stranka nima naročnine ali push ni nastavljen, se tiho preskoči.
+      // E-pošta je še vedno primarni kanal — push je dodatna plast.
+      if (appt.customer?.userId) {
+        await notifyUser(
+          appt.customer.userId,
+          buildPushPayload("appointment_reminder", {
+            date: formatSalonTime(appt.startTime, "Europe/Ljubljana"),
+          })
+        ).catch(() => ({ sent: 0, skipped: true }))
       }
 
       // Zapis šele PO uspešnem pošiljanju (at-least-once, glej zgoraj).

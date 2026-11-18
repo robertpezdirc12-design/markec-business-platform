@@ -3,9 +3,20 @@
 import { prisma } from "@/lib/prisma"
 import { getPublicOrg } from "@/lib/tenant"
 import { computeAvailableStock } from "@/lib/inventory/stock"
-import { CartItem } from "@/store/cart-store";
 
-export async function validateCartStock(items: CartItem[]) {
+/**
+ * Minimum needed to validate stock. The UI `CartItem` carries display-only
+ * fields (name/image/price) that the server must NOT trust anyway; checkout
+ * and reorder can therefore call this without fabricating them.
+ */
+export interface StockCheckLine {
+  productId: string
+  variantId?: string | null
+  quantity: number
+  name?: string
+}
+
+export async function validateCartStock(items: StockCheckLine[]) {
   const errors: {
     productId: string
     name: string
@@ -24,7 +35,7 @@ export async function validateCartStock(items: CartItem[]) {
       valid: false,
       errors: items.map((item) => ({
         productId: item.productId,
-        name: item.name,
+        name: item.name ?? item.productId,
         available: 0,
         requested: item.quantity,
       })),
@@ -74,7 +85,7 @@ export async function validateCartStock(items: CartItem[]) {
     if (!validItem || !stock || available < item.quantity) {
       errors.push({
         productId: item.productId,
-        name: item.name,
+        name: item.name ?? item.productId,
         available,
         requested: item.quantity,
       })

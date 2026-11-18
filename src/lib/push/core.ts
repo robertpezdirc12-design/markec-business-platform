@@ -5,7 +5,14 @@
 // izklopljen (nikoli lažni gumb — UI pokaže "ni nastavljeno").
 // ============================================================
 
-export type PushKind = "new_appointment" | "cancellation"
+export type PushKind =
+  | "new_appointment"
+  | "cancellation"
+  // #108 — walk-in: stranka dobi obvestilo, ko je na vrsti / ko se približuje.
+  | "walkin_your_turn"
+  | "walkin_up_next"
+  // #108 — opomnik termina (push poleg e-pošte).
+  | "appointment_reminder"
 
 export interface PushPayload {
   kind: PushKind
@@ -20,25 +27,53 @@ export interface PushPayload {
 /** Sestavi payload iz vrste + podatkov — testabilno, enoten oblikovni jezik. */
 export function buildPushPayload(
   kind: PushKind,
-  data: { customerName?: string; date?: string }
+  data: { customerName?: string; date?: string; position?: number }
 ): PushPayload {
-  if (kind === "new_appointment") {
-    return {
-      kind,
-      title: "Nov termin",
-      body: data.customerName
-        ? `${data.customerName} je rezerviral nov termin${data.date ? ` za ${data.date}` : ""}.`
-        : "Nov termin je bil rezerviran.",
-      url: "/dashboard/appointments",
-    }
-  }
-  return {
-    kind: "cancellation",
-    title: "Termin odpovedan",
-    body: data.customerName
-      ? `${data.customerName} je odpovedal termin${data.date ? ` za ${data.date}` : ""}.`
-      : "Termin je bil odpovedan.",
-    url: "/dashboard/appointments",
+  switch (kind) {
+    case "new_appointment":
+      return {
+        kind,
+        title: "Nov termin",
+        body: data.customerName
+          ? `${data.customerName} je rezerviral nov termin${data.date ? ` za ${data.date}` : ""}.`
+          : "Nov termin je bil rezerviran.",
+        url: "/dashboard/appointments",
+      }
+    case "cancellation":
+      return {
+        kind,
+        title: "Termin odpovedan",
+        body: data.customerName
+          ? `${data.customerName} je odpovedal termin${data.date ? ` za ${data.date}` : ""}.`
+          : "Termin je bil odpovedan.",
+        url: "/dashboard/appointments",
+      }
+    case "walkin_your_turn":
+      return {
+        kind,
+        title: "Vi ste na vrsti! 🎉",
+        body: "Pristopite k pultu — vaša vrsta je.",
+        url: "/vrsta",
+      }
+    case "walkin_up_next":
+      return {
+        kind,
+        title: "Na vrsti ste naslednji",
+        body:
+          data.position && data.position > 1
+            ? `Pred vami je še ${data.position - 1} oseb. Pripravite se.`
+            : "Pripravite se — na vrsti ste naslednji.",
+        url: "/vrsta",
+      }
+    case "appointment_reminder":
+      return {
+        kind,
+        title: "Opomnik za termin",
+        body: data.date
+          ? `Jutri ob ${data.date} imate termin. Se vidimo!`
+          : "Jutri imate termin. Se vidimo!",
+        url: "/my-appointments",
+      }
   }
 }
 

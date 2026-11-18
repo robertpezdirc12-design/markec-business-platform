@@ -386,3 +386,106 @@ export async function refundOrder(orderId: string): Promise<{
     return { success: false, error: "Vračilo naročila ni uspelo." }
   }
 }
+
+// ============================================================
+// #108 — 1-KLIK PONOVI NAROČILO
+// Stranka iz "Moja naročila" ponovi prejšnje naročilo z enim klikom.
+// Server preračuna cene iz baze (nikoli ne zaupa arhivskim cenam),
+// preveri zalogo in aktivnost izdelkov, nato ustvari Stripe Checkout
+// sejo z ISTIMI izdelki. Manjkajoči izdelki se preskočijo z opozorilom.
+// ============================================================
+
+export interface ReorderResult {
+  success: boolean
+  checkoutUrl?: string
+  /** Izdelki, ki niso več na voljo (preskočeni). */
+  skipped?: string[]
+  error?: string
+}
+
+export async function reorderFromOrder(orderId: string): Promise<ReorderResult> {
+  const session = await auth()
+  if (!session?.user) {
+    return { success: false, error: "Za ponovni nakup se prijavite." }
+  }
+
+  // Lastno naročilo — ali obstaja in pripada tej stranki.
+  const order = await prisma.order.findFirst({
+    where: {
+      id: orderId,
+      customer: { userId: session.user.id },
+      // Ponovni nakup je smiseln samo iz zaključenih/plačanih naročil.
+      status: { in: ["PAID", "COMPLETED"] },
+    },
+    include: {
+      items: {
+        select: {
+          productId: true,
+          variantId: true,
+          quantity: true,
+          product: {
+            select: {
+              id: true,
+              name: true,
+              isActive: true,
+              forSale: true,
+              stockQuantity: true,
+              trackInventory: true,
+            },
+          },
+        },
+      },
+    },
+  })
+  if (!order) {
+    return { success: false, error: "Naročila ni bilo mogoče najti ali ni ponovljivo." }
+  }
+
+  // Zgradimo CartItem[] iz arhiva — a CENE in ZALOGA pridejo iz baze
+  // (createProductCheckoutSession jih tako ali tako preracuna).
+  const skipped: string[] = []
+  const items = order.items
+    .filter((item) => {
+      if (!item.product.isActive || !item.product.forSale) {
+        skipped.push(item.product.name)
+        return false
+      }
+      if (item.product.trackInventory && item.product.stockQuantity < item.quantity) {
+        skipped.push(`${item.product.name} (ni zadostne zaloge)`)
+        return false
+      }
+      return true
+    })
+    .map((item) => ({
+      productId: item.productId,
+      variantId: item.variantId ?? undefined,
+      quantity: item.quantity,
+      // CartItem zahteva te polje — checkout jih preracuna iz baze,
+      // tu so le za tipovo skladnost (UI jih ne prikazuje).
+      name: item.product.name,
+      image: null,
+      price: 0,
+    }))
+
+  if (items.length === 0) {
+    return {
+      success: false,
+      error: "Noben izdelek iz tega naročila ni več na voljo.",
+      skipped,
+    }
+  }
+
+  // Prevzamemo obstoječo checkout pot (isti org, isti Stripe ključ).
+  const { createProductCheckoutSession } = await import("./product-checkout")
+  const result = await createProductCheckoutSession(items)
+
+  if (!result.success) {
+    return { success: false, error: result.error, skipped }
+  }
+
+  return {
+    success: true,
+    checkoutUrl: result.checkoutUrl,
+    skipped: skipped.length > 0 ? skipped : undefined,
+  }
+}

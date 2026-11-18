@@ -976,6 +976,14 @@ model WalkInEntry {
   customerId String?
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
+  // #108 — anonimna push naročnina gosta na javni strani /vrsta.
+  // Gost ni prijavljen (ni User), zato so ključi shranjeni neposredno
+  // na vstopnici. En vstop = ena naprava; zamenjava naprave prepiše.
+  // Nullable — push je opt-in, brez njega vrsta deluje enako.
+  pushEndpoint String? @unique
+  pushP256dh   String?
+  pushAuth     String?
+
   @@index([organizationId, status, createdAt])
   @@index([customerId])
 }

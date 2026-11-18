@@ -15,6 +15,8 @@ import {
   waitingQueue,
   type WalkInStatus,
 } from "@/lib/walkin/queue"
+import { buildPushPayload } from "@/lib/push/core"
+import { notifyWalkInEntry, notifyUpNext } from "@/lib/push/walk-in-push"
 
 // ============================================================
 // #98 (AD-02) — WALK-IN VRSTA (akcije)
@@ -154,7 +156,7 @@ export async function getWalkInQueue(): Promise<{
   }
 }
 
-/** Zaposleni: pokliči NASLEDNJEGA (najstarejši WAITING → SERVING). */
+/** Zaposleni: pokliči NASLEDNJEGA (najstarejši WAITING → SERVING) + push. */
 export async function callNextWalkIn(): Promise<{ success: boolean; name?: string; error?: string }> {
   const { org } = await requirePermissionOrg("appointments.manage")
   const profile = resolveEffectiveProfile(org)
@@ -173,6 +175,14 @@ export async function callNextWalkIn(): Promise<{ success: boolean; name?: strin
   if (!next) return { success: false, error: "Vrsta je prazna." }
 
   await prisma.walkInEntry.update({ where: { id: next.id }, data: { status: "SERVING" } })
+
+  // #108 — push obvestila: poklicani dobi "vi ste na vrsti",
+  // naslednji v vrsti dobi "pripravite se". Best-effort, ne blokira vrste.
+  await notifyWalkInEntry(next.id, buildPushPayload("walkin_your_turn", {})).catch(
+    () => ({ sent: 0, skipped: true })
+  )
+  await notifyUpNext(org.id).catch(() => ({ sent: 0, skipped: true }))
+
   revalidatePath("/dashboard/walk-in")
   return { success: true, name: rows.find((r) => r.id === next.id)?.name }
 }
@@ -198,6 +208,73 @@ export async function transitionWalkIn(
     where: { id: entry.id },
     data: { status: to, ...(to === "SERVED" ? { servedAt: new Date() } : {}) },
   })
+
+  // #108 — ko je stranka postrežena, obvesti naslednjega v vrsti.
+  if (to === "SERVED" || to === "LEFT") {
+    await notifyUpNext(org.id).catch(() => ({ sent: 0, skipped: true }))
+  }
+
   revalidatePath("/dashboard/walk-in")
+  return { success: true }
+}
+
+// ============================================================
+// #108 — ANONIMNA PUSH NAROČNINA (gost na javni strani /vrsta)
+// Gost NI prijavljen — naročnina se veže na kodo vstopnice.
+// En vstop = ena naprava (endpoint unique, upsert ob ponovni namestitvi).
+// ============================================================
+
+/** Javno: gost se naroči na push obvestila za svojo vstopnico. */
+export async function subscribeWalkInPush(input: {
+  ticketCode: unknown
+  endpoint: unknown
+  keys: unknown
+}): Promise<{ success: boolean; error?: string }> {
+  const org = await resolveWalkInOrg()
+  if (!org) return { success: false, error: "Vrsta ni na voljo." }
+
+  const ticketCode =
+    typeof input.ticketCode === "string" ? input.ticketCode.trim().toUpperCase() : ""
+  const endpoint = typeof input.endpoint === "string" ? input.endpoint : ""
+  const keys = (input.keys ?? {}) as { p256dh?: unknown; auth?: unknown }
+  const p256dh = typeof keys.p256dh === "string" ? keys.p256dh : ""
+  const keyAuth = typeof keys.auth === "string" ? keys.auth : ""
+
+  if (!ticketCode || !endpoint.startsWith("https://") || !p256dh || !keyAuth) {
+    return { success: false, error: "Neveljavna naročnina." }
+  }
+
+  const entry = await prisma.walkInEntry.findUnique({
+    where: { ticketCode },
+    select: { id: true, organizationId: true },
+  })
+  if (!entry || entry.organizationId !== org.id) {
+    return { success: false, error: "Vstopnice ni bilo mogoče najti." }
+  }
+
+  await prisma.walkInEntry.update({
+    where: { id: entry.id },
+    data: { pushEndpoint: endpoint, pushP256dh: p256dh, pushAuth: keyAuth },
+  })
+  return { success: true }
+}
+
+/** Javno: gost odjavi push za svojo vstopnico. */
+export async function unsubscribeWalkInPush(input: {
+  ticketCode: unknown
+  endpoint: unknown
+}): Promise<{ success: boolean }> {
+  const org = await resolveWalkInOrg()
+  if (!org) return { success: false }
+
+  const ticketCode =
+    typeof input.ticketCode === "string" ? input.ticketCode.trim().toUpperCase() : ""
+  const endpoint = typeof input.endpoint === "string" ? input.endpoint : ""
+  if (!ticketCode || !endpoint) return { success: false }
+
+  await prisma.walkInEntry.updateMany({
+    where: { ticketCode, organizationId: org.id, pushEndpoint: endpoint },
+    data: { pushEndpoint: null, pushP256dh: null, pushAuth: null },
+  })
   return { success: true }
 }

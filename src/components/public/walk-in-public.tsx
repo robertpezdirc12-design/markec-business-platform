@@ -10,7 +10,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { getWalkInStatus, joinWalkInQueue } from "@/app/actions/walk-in"
+import {
+  getWalkInStatus,
+  joinWalkInQueue,
+  subscribeWalkInPush,
+} from "@/app/actions/walk-in"
+import { urlBase64ToUint8Array } from "@/lib/push/vapid-key"
 
 export function WalkInPublicClient() {
   const [name, setName] = useState("")
@@ -24,6 +29,8 @@ export function WalkInPublicClient() {
   // vpisnim gumbom in je delovala kot nepotrebna).
   const [showCheck, setShowCheck] = useState(false)
   const [pending, startTransition] = useTransition()
+  // #108 — push obvestila (opt-in): "na vrsti ste" brez osveževanja strani.
+  const [pushState, setPushState] = useState<"idle" | "asking" | "enabled" | "unsupported">("idle")
 
   function checkStatus(code: string, fromInput: boolean) {
     if (fromInput) setError(null)
@@ -57,10 +64,59 @@ export function WalkInPublicClient() {
         setName("")
         setPhone("")
         await checkStatus(res.ticketCode, false)
+        // #108 — preveri, ali naprava podpira push.
+        if ("serviceWorker" in navigator && "PushManager" in window) {
+          setPushState("asking")
+        } else {
+          setPushState("unsupported")
+        }
       } else {
         setError(res.error ?? "Vpis v vrsto ni uspel. Poskusite znova.")
       }
     })
+  }
+
+  // #108 — naročnina na push obvestila za vstopnico (anonimno, prek koda).
+  async function enablePush() {
+    if (!ticket) return
+    try {
+      const reg = await navigator.serviceWorker.ready
+      // VAPID javni ključ pridobimo iz obstoječega push vira — če push
+      // ni nastavljen na strežniku, gumb ne ponudi lažnega obljube.
+      const existing = await reg.pushManager.getSubscription()
+      if (existing) {
+        await subscribeWalkInPush({
+          ticketCode: ticket,
+          endpoint: existing.endpoint,
+          keys: {
+            p256dh: existing.toJSON().keys?.p256dh,
+            auth: existing.toJSON().keys?.auth,
+          },
+        })
+        setPushState("enabled")
+        return
+      }
+      // Brez VAPID ključa ne moremo ustvariti naročnine — pošteno povemo.
+      const config = await fetch("/api/push/config").then((r) => r.json()).catch(() => null)
+      const vapidKey = config?.vapidPublicKey
+      if (!vapidKey) {
+        setPushState("unsupported")
+        return
+      }
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      })
+      const json = sub.toJSON()
+      await subscribeWalkInPush({
+        ticketCode: ticket,
+        endpoint: sub.endpoint,
+        keys: { p256dh: json.keys?.p256dh, auth: json.keys?.auth },
+      })
+      setPushState("enabled")
+    } catch {
+      setPushState("unsupported")
+    }
   }
 
   if (ticket) {
@@ -87,6 +143,17 @@ export function WalkInPublicClient() {
           <p className="text-muted-foreground text-xs">
             Pozicija se samodejno osvežuje. Zapišite si kodo vstopnice.
           </p>
+          {/* #108 — push obvestilo "na vrsti ste" (opt-in, nevsiljivo). */}
+          {pushState === "asking" && (
+            <Button variant="outline" size="sm" onClick={enablePush} disabled={pending}>
+              🔔 Obvesti me, ko sem na vrsti
+            </Button>
+          )}
+          {pushState === "enabled" && (
+            <p className="text-xs text-green-600 dark:text-green-400" role="status">
+              ✓ Obveščali vas bomo, ko boste na vrsti.
+            </p>
+          )}
         </CardContent>
       </Card>
     )
