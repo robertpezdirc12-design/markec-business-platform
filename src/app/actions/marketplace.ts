@@ -56,9 +56,12 @@ export const getMarketplaceBusinesses = cache(
         variant,
       } = options || {}
 
-      // Build where clause - only active organizations
+      // Build where clause - only active, PUBLISHED organizations. An org
+      // that never published (or was unpublished) must not leak its contact
+      // details into the public marketplace.
       const where: Record<string, unknown> = {
         status: "ACTIVE",
+        publishState: "PUBLISHED",
       }
 
       if (category) {
@@ -113,29 +116,34 @@ export const getMarketplaceBusinesses = cache(
               name: true,
             },
           },
-          reviews: {
-            where: { isActive: true },
-            select: {
-              rating: true,
-            },
-          },
-          _count: {
-            select: {
-              reviews: {
-                where: { isActive: true },
-              },
-            },
-          },
         },
       })
 
+      // Ratings: one GROUP BY instead of loading every active review row
+      // for every listed org (previously O(reviews) transferred per page).
+      const ratingRows =
+        organizations.length > 0
+          ? await prisma.review.groupBy({
+              by: ["organizationId"],
+              where: {
+                organizationId: { in: organizations.map((o) => o.id) },
+                isActive: true,
+              },
+              _avg: { rating: true },
+              _count: { _all: true },
+            })
+          : []
+      const ratings = new Map(
+        ratingRows.map((r) => [
+          r.organizationId,
+          { avg: r._avg.rating ?? 0, count: r._count._all },
+        ])
+      )
+
       // Transform to MarketplaceBusiness
       return organizations.map((org) => {
-        const avgRating =
-          org.reviews.length > 0
-            ? org.reviews.reduce((sum, r) => sum + r.rating, 0) /
-              org.reviews.length
-            : 0
+        const rating = ratings.get(org.id)
+        const avgRating = rating?.avg ?? 0
 
         return {
           id: org.id,
@@ -143,7 +151,7 @@ export const getMarketplaceBusinesses = cache(
           type: org.vertical || "Storitev",
           address: org.salonConfig?.city || "Slovenija",
           rating: Math.round(avgRating * 10) / 10,
-          reviews: org._count.reviews,
+          reviews: rating?.count ?? 0,
           image: org.logo || DEFAULT_BUSINESS_IMAGE,
           badge: variant === "new" ? ("Novo" as const) : undefined,
           isOpen: true,
@@ -170,19 +178,25 @@ export const getMarketplaceBusinesses = cache(
 export const getMarketplaceStats = cache(
   async (): Promise<MarketplaceStats> => {
     try {
+      const publishedOrg = { status: "ACTIVE", publishState: "PUBLISHED" } as const
       const [totalBusinesses, totalAppointments, totalCustomers] =
         await Promise.all([
           prisma.organization.count({
-            where: { status: "ACTIVE" },
+            where: publishedOrg,
           }),
-          prisma.appointment.count(),
-          prisma.customer.count(),
+          prisma.appointment.count({
+            where: { organization: publishedOrg },
+          }),
+          prisma.customer.count({
+            where: { organization: publishedOrg },
+          }),
         ])
 
       // Get unique cities
       const cities = await prisma.salonConfig.findMany({
         where: {
           city: { not: null },
+          organization: publishedOrg,
         },
         select: {
           city: true,
@@ -192,7 +206,7 @@ export const getMarketplaceStats = cache(
 
       // Calculate average rating
       const reviews = await prisma.review.aggregate({
-        where: { isActive: true },
+        where: { isActive: true, organization: publishedOrg },
         _avg: {
           rating: true,
         },

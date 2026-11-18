@@ -142,11 +142,16 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
               customer: { create: { name: name ?? googleEmail, email: googleEmail } },
             },
           })
-        } else if (user?.image) {
-          // Obstoječemu dopolni/sinhroniziraj Google avatar (če ga še nima).
+        } else {
+          // Google je potrdil lastništvo e-pošte → obstoječemu (še
+          // nepotrjenemu) računu dopiši potrditev, sicer bi bila poznejša
+          // prijava z geslom še vedno zavrnjena ("email ni potrjen").
           await prisma.user.update({
             where: { id: dbUser.id },
-            data: { image: dbUser.image ?? user.image },
+            data: {
+              ...(dbUser.emailVerified ? {} : { emailVerified: new Date() }),
+              ...(user?.image && !dbUser.image ? { image: user.image } : {}),
+            },
           })
         }
 

@@ -45,7 +45,8 @@ export async function sendMarketingEmails(now: Date = new Date()): Promise<JobRu
       select: { timezone: true },
     })
     const tz = safeTimezone(tzRow?.timezone)
-    const bookingLink = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/s/${org.slug}/booking`
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "")
+    const bookingLink = `${appUrl}/s/${org.slug}/booking`
     const business = org.name
     let targets: CampaignTarget[] = []
 
@@ -245,6 +246,9 @@ export async function sendMarketingEmails(now: Date = new Date()): Promise<JobRu
     for (const target of pending) {
       const subject = interpolate(campaign.subject, target.vars)
       const body = interpolate(campaign.body, target.vars)
+      // E-poštne povezave MORAJO biti absolutne — relativen `/unsubscribe/...`
+      // je v poštnem odjemalcu neuporaben (in List-Unsubscribe header ravno tako).
+      const unsubPath = unsubscribePath(org.id, target.email)
       const result = await sendMarketingCampaignEmail({
         email: target.email,
         subject,
@@ -252,7 +256,7 @@ export async function sendMarketingEmails(now: Date = new Date()): Promise<JobRu
         businessName: business,
         // AD-03: vsaka e-pošta nosi DEJANSKO odjavno povezavo (žeton per
         // prejemnik); brez tajne je null in noga ne obljublja ničesar.
-        unsubscribeUrl: unsubscribePath(org.id, target.email),
+        unsubscribeUrl: unsubPath ? `${appUrl}${unsubPath}` : null,
       })
       if (result.success) {
         // CampaignSend ŠELE ob uspehu — neuspešno pošiljanje se poskusi

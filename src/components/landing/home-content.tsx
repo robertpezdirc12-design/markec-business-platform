@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { cloudinaryPresets } from "@/lib/utils/cloudinary"
 import { orgPath } from "@/lib/org-path"
 import type { CtaLink, CustomSectionContent, SectionEntry, SectionKey, SiteContent } from "@/lib/site-content"
-import { renderableSections } from "@/lib/site-content"
+import { isSafeNavHref, renderableSections } from "@/lib/site-content"
 import { HeroVideo } from "@/components/landing/hero-video"
 import { OpenStatusPill } from "@/components/public/open-status-pill"
 import { HeroActions } from "@/components/landing/hero-actions"
@@ -153,8 +153,12 @@ export function HomeContent({
   }, [])
 
   const prefix = org.slug ? `/s/${org.slug}` : ""
-  const toHref = (href: string) =>
-    href.startsWith("http") || !href.startsWith("/") ? href : orgPath(org.slug, href)
+  const toHref = (href: string) => {
+    // Defense-in-depth (XSS): tudi če bi v osnutek prišla nevarna shema
+    // (starejši zapis, ročni DB vnos), je nikoli ne upodobimo kot povezavo.
+    if (!isSafeNavHref(href)) return orgPath(org.slug, "/")
+    return href.startsWith("http") || !href.startsWith("/") ? href : orgPath(org.slug, href)
+  }
 
   const sectionVisible = (key: SectionKey) =>
     content.sections.find((s) => s.key === key)?.visible ?? true

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache"
 
 import { UnauthorizedError, requirePermissionOrg } from "@/lib/auth/guards"
 import { recordConfigChange } from "@/lib/config-history/record"
-import { mergeSiteContent, normalizeSections, sanitizeCustomSections, type SiteContent } from "@/lib/site-content"
+import { mergeSiteContent, normalizeSections, sanitizeCustomSections, isSafeNavHref, type SiteContent } from "@/lib/site-content"
 import { computeRevert, hasUnpublishedChanges, parsePublishState } from "@/lib/publication"
 import { validateTheme, getTemplate, normalizeNav } from "@/lib/site-design"
 import { resolveEffectiveProfile } from "@/lib/profiles/resolve"
@@ -153,6 +153,14 @@ export async function updateSiteContent(
     const clean = JSON.parse(JSON.stringify(content)) as SiteContent
     if (!clean.hero?.title || typeof clean.hero.title !== "string") {
       return { success: false, error: "Hero naslov je obvezen." }
+    }
+
+    // XSS: CTA gumb je uporabnikovo polje in se upodobi kot <a href>. Zavrni
+    // nevarne sheme (javascript:, data:, vbscript:) že pred zapisom v osnutek;
+    // neveljaven naslov pade na privzeto rezervacijsko pot.
+    if (clean.cta && typeof clean.cta === "object") {
+      const href = typeof clean.cta.buttonHref === "string" ? clean.cta.buttonHref.trim() : ""
+      clean.cta.buttonHref = href && isSafeNavHref(href) ? href.slice(0, 400) : "/booking"
     }
 
     // #101: lastne sekcije — klient ni zaupanja vreden: samo nizi, omejene

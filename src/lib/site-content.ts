@@ -355,7 +355,10 @@ export function sanitizeCustomSections(
       : []
     const imageUrl = cleanString(r.imageUrl, CUSTOM_LIMITS.image)
     const buttonLabel = cleanString(r.buttonLabel, CUSTOM_LIMITS.buttonLabel)
-    const buttonHref = cleanString(r.buttonHref, CUSTOM_LIMITS.buttonHref)
+    // XSS: tudi custom gumb gre skozi isto shemo-varnost kot navigacija —
+    // javascript:/data:/vbscript: se zavržejo že na izvoru (nikoli v DB).
+    const buttonHrefRaw = cleanString(r.buttonHref, CUSTOM_LIMITS.buttonHref)
+    const buttonHref = buttonHrefRaw && isSafeNavHref(buttonHrefRaw) ? buttonHrefRaw : undefined
     out[id] = {
       title,
       paragraphs,

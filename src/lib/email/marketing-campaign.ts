@@ -46,6 +46,12 @@ export async function sendMarketingCampaignEmail({
       to: email,
       subject,
       html,
+      // RFC 2369: naročniki (Gmail/Yahoo) zahtevajo strojno berljivo
+      // odjavno glavo za marketing — izboljša dostavljivost in prepreči
+      // ročno prijavo spama. Povezava je podpisan žeton (glej unsubscribe.ts).
+      ...(unsubscribeUrl
+        ? { headers: { "List-Unsubscribe": `<${unsubscribeUrl}>` } }
+        : {}),
     })
 
     if (error) {

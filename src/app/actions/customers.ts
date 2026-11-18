@@ -104,45 +104,61 @@ export async function listCustomers(opts: CustomerListOptions = {}): Promise<Cus
     orderBy: { name: "asc" },
   })
 
-  // Skupna poraba (samo COMPLETED termini + PAID/COMPLETED naročila) —
-  // hi-ti, a org-scoped; nabor najemnika je majhen (plan omeji katalog).
-  const results: CustomerListItem[] = []
-  for (const c of customers) {
-    const [appt, ord] = await Promise.all([
-      prisma.appointment.aggregate({
-        where: { customerId: c.id, organizationId: org.id, status: "COMPLETED" },
+  // Skupna poraba (samo COMPLETED termini + PAID/COMPLETED naročila).
+  // PERFORMANCE: ena agregacija na vir za VSE stranke; prejšnja koda je
+  // izvajala 2 poizvedbi NA STRANKO (N+1) — pri več tisoč strankah je
+  // seznam postal neuporabno počasen.
+  const customerIds = customers.map((c) => c.id)
+  const apptSums = customerIds.length
+    ? await prisma.appointment.groupBy({
+        by: ["customerId"],
+        where: {
+          customerId: { in: customerIds },
+          organizationId: org.id,
+          status: "COMPLETED",
+        },
         _sum: { totalPrice: true },
-      }),
-      prisma.order.aggregate({
-        where: { customerId: c.id, organizationId: org.id, status: { in: ["PAID", "COMPLETED"] } },
+      })
+    : []
+  const orderSums = customerIds.length
+    ? await prisma.order.groupBy({
+        by: ["customerId"],
+        where: {
+          customerId: { in: customerIds },
+          organizationId: org.id,
+          status: { in: ["PAID", "COMPLETED"] },
+        },
         _sum: { total: true },
-      }),
-    ])
-    const totalSpent =
-      (appt._sum.totalPrice?.toNumber() ?? 0) + (ord._sum.total?.toNumber() ?? 0)
-    results.push({
-      id: c.id,
-      name: c.name,
-      email: c.email,
-      phone: c.phone,
-      notes: c.notes,
-      tags: c.tags,
-      dateOfBirth: c.dateOfBirth,
-      marketingConsent: c.marketingConsent,
-      isArchived: c.isArchived,
-      archivedAt: c.archivedAt,
-      userId: c.userId,
-      createdAt: c.createdAt,
-      totalSpent,
-      _count: {
-        appointments: c._count.appointments,
-        orders: c._count.orders,
-        workOrders: c._count.workOrders,
-        formSubmissions: c._count.formSubmissions,
-      },
-    })
-  }
-  return results
+      })
+    : []
+  const apptSumByCustomer = new Map(
+    apptSums.map((r) => [r.customerId, r._sum.totalPrice?.toNumber() ?? 0])
+  )
+  const orderSumByCustomer = new Map(
+    orderSums.map((r) => [r.customerId, r._sum.total?.toNumber() ?? 0])
+  )
+
+  return customers.map((c) => ({
+    id: c.id,
+    name: c.name,
+    email: c.email,
+    phone: c.phone,
+    notes: c.notes,
+    tags: c.tags,
+    dateOfBirth: c.dateOfBirth,
+    marketingConsent: c.marketingConsent,
+    isArchived: c.isArchived,
+    archivedAt: c.archivedAt,
+    userId: c.userId,
+    createdAt: c.createdAt,
+    totalSpent: (apptSumByCustomer.get(c.id) ?? 0) + (orderSumByCustomer.get(c.id) ?? 0),
+    _count: {
+      appointments: c._count.appointments,
+      orders: c._count.orders,
+      workOrders: c._count.workOrders,
+      formSubmissions: c._count.formSubmissions,
+    },
+  }))
 }
 
 // ---- Ročno dodajanje ----
