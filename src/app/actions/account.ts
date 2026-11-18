@@ -56,7 +56,8 @@ export async function getUserProfile() {
         select: {
           id: true,
           phone: true,
-          notes: true,
+          // customer.notes so INTERNE opombe salona — stranka jih ne sme
+          // videti (prej so bile v RSC payloadu Mojega računa).
         },
       },
     },
