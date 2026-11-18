@@ -91,17 +91,19 @@ export function CommandPalette() {
     setActiveIndex(0)
   }, [open])
 
-  const navItems = useMemo(
-    () =>
-      DASHBOARD_NAV.filter((item) =>
-        isNavItemVisible(item, {
-          capabilities: profile.capabilities as unknown as Record<string, string>,
-          extensions: profile.extensions,
-          permissions,
-          isAdmin,
-        })
-      ),
+  const navCtx = useMemo(
+    () => ({
+      capabilities: profile.capabilities as unknown as Record<string, string>,
+      extensions: profile.extensions,
+      permissions,
+      isAdmin,
+    }),
     [profile.capabilities, profile.extensions, permissions, isAdmin]
+  )
+
+  const navItems = useMemo(
+    () => DASHBOARD_NAV.filter((item) => isNavItemVisible(item, navCtx)),
+    [navCtx]
   )
 
   const label = useCallback(
@@ -114,17 +116,19 @@ export function CommandPalette() {
     const q = query.trim().toLocaleLowerCase("sl")
     const match = (text: string) => !q || text.toLocaleLowerCase("sl").includes(q)
 
-    const actions: PaletteEntry[] = (
-      [
-        { id: "act-appointment", label: t.common.navGroups.actionAppointment, href: "/dashboard/appointments/new" },
-        { id: "act-customer", label: t.common.navGroups.actionCustomer, href: "/dashboard/customers" },
-        { id: "act-service", label: t.common.navGroups.actionService, href: "/dashboard/services" },
-        { id: "act-product", label: t.common.navGroups.actionProduct, href: "/dashboard/products" },
-        { id: "act-site", label: t.common.navGroups.actionSite, href: "/dashboard/settings" },
-      ] satisfies { id: string; label: string; href: string }[]
-    )
-      .filter((a) => match(a.label))
-      .map((a) => ({ ...a, kind: "action" as const }))
+    const canAction = (capability: string | undefined, permission: string) =>
+      (!capability || navCtx.capabilities[capability] !== "disabled") &&
+      (navCtx.permissions as readonly string[]).includes(permission)
+
+    const actions: PaletteEntry[] = [
+      { id: "act-appointment", label: t.common.navGroups.actionAppointment, href: "/dashboard/appointments/new", capability: "appointments", permission: "appointments.manage" },
+      { id: "act-customer", label: t.common.navGroups.actionCustomer, href: "/dashboard/customers", capability: "customers", permission: "customers.manage" },
+      { id: "act-service", label: t.common.navGroups.actionService, href: "/dashboard/services", capability: "services", permission: "services.manage" },
+      { id: "act-product", label: t.common.navGroups.actionProduct, href: "/dashboard/products", capability: "shop", permission: "products.manage" },
+      { id: "act-site", label: t.common.navGroups.actionSite, href: "/dashboard/settings", capability: undefined, permission: "settings.manage" },
+    ]
+      .filter((a) => canAction(a.capability, a.permission) && match(a.label))
+      .map((a) => ({ id: a.id, label: a.label, href: a.href, kind: "action" as const }))
 
     const destinations: PaletteEntry[] = navItems
       .filter((item) => match(label(item)))
@@ -150,7 +154,7 @@ export function CommandPalette() {
     return q
       ? [...dbEntries, ...destinations, ...actions]
       : [...actions, ...destinations]
-  }, [query, navItems, results, label, t])
+  }, [query, navItems, results, label, t, navCtx])
 
   // Iskanje po bazi z zakasnitvijo — brez poizvedbe na vsak pritisk.
   useEffect(() => {

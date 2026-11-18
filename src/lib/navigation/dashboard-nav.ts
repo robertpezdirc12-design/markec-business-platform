@@ -9,7 +9,7 @@
 // ============================================================
 
 import type { CapabilityKey } from "@/lib/profiles/types"
-import type { PermissionKey } from "@/lib/permissions/roles"
+import { hasAllPermissions, type PermissionKey } from "@/lib/permissions/roles"
 
 export type NavSectionKey =
   | "overview"
@@ -26,6 +26,7 @@ export type NavNameKey =
   | "waitlist"
   | "walkIn"
   | "customers"
+  | "users"
   | "reviews"
   | "marketing"
   | "services"
@@ -36,6 +37,9 @@ export type NavNameKey =
   | "shopOrders"
   | "workOrders"
   | "documents"
+  | "quotes"
+  | "warranties"
+  | "costs"
   | "einvoices"
   | "cashRegister"
   | "payments"
@@ -152,6 +156,13 @@ export const DASHBOARD_NAV: DashboardNavItem[] = [
     capability: "customers",
     permission: "customers.manage",
   },
+  {
+    nameKey: "users",
+    href: "/dashboard/users",
+    section: "clients",
+    capability: "customers",
+    permission: "customers.manage",
+  },
   // Mnenja so bila dosegljiva samo z ročnim vpisom naslova —
   // stran je obstajala, povezave pa ni bilo nikjer (audit 2026-11-18).
   {
@@ -220,6 +231,24 @@ export const DASHBOARD_NAV: DashboardNavItem[] = [
     section: "catalog",
     capability: "documents",
     permission: "finances.view",
+  },
+  {
+    nameKey: "quotes",
+    href: "/dashboard/quotes",
+    permission: "finances.view",
+    section: "manage",
+  },
+  {
+    nameKey: "warranties",
+    href: "/dashboard/warranties",
+    permission: "finances.view",
+    section: "manage",
+  },
+  {
+    nameKey: "costs",
+    href: "/dashboard/costs",
+    permission: "finances.view",
+    section: "manage",
   },
 
   // ── Dejavnost (vertikalno specifično) ──────────────────────
@@ -307,7 +336,10 @@ export function isNavItemVisible(
   item: DashboardNavItem,
   ctx: NavVisibilityContext
 ): boolean {
-  if (item.nameKey === "roles" && !ctx.isAdmin) return false
+  if (item.nameKey === "roles") {
+    if (!ctx.isAdmin) return false
+    if (!hasAllPermissions(ctx.permissions as PermissionKey[])) return false
+  }
   if (item.permission && !ctx.permissions.includes(item.permission)) return false
   if (
     item.anyPermission?.length &&

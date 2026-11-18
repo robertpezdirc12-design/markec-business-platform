@@ -1,30 +1,31 @@
 diff --git a/v4/classic/external.js b/v4/classic/external.js
-index a873251d96875162869b9192dc77a9098362b06a..4574515b2f841562551ad1a8829186bf357f4ced 100644
+index 435be16..634c0f2 100644
 --- a/v4/classic/external.js
 +++ b/v4/classic/external.js
-@@ -9,7 +9,8 @@ import { config } from "../core/index.js";
- import en from "../locales/en.js";
- config(en());
- export { globalRegistry, registry, config, $output, $input, $brand, clone, regexes, treeifyError, prettifyError, formatError, flattenError, toJSONSchema, TimePrecision, util, NEVER, } from "../core/index.js";
+@@ -10,7 +10,10 @@ export { fromJSONSchema } from "./from-json-schema.js";
+ export { deepPartial } from "./deep-partial.js";
+ // Types and values both, from one module — re-exporting the types from core would collide.
+ export { input, output } from "./in-out.js";
 -export * as locales from "../locales/index.js";
-+// PATCH (markec): glej v4/core/index.js — locales barrel odstranjen.
++// PATCH (markec): locales barrel odstranjen — `export * as locales` izvaža
++// vseh 47 jezikovnih slovarjev v namespace objekt, česar tree-shaking ne more
++// odstraniti. Privzeti `en` ostaja spodaj.
 +// export * as locales from "../locales/index.js";
- // iso
- // must be exported from top-level
- // https://github.com/colinhacks/zod/issues/4491
+ // iso must be exported from top-level https://github.com/colinhacks/zod/issues/4491
+ export { ZodISODateTime, ZodISODate, ZodISOTime, ZodISODuration } from "./iso.js";
+ export * as iso from "./iso.js";
 diff --git a/v4/core/index.js b/v4/core/index.js
-index b2975151c26fe75ca19b5622ce531971eca61b93..d4e554ce70e17fa7b6751f73e0ac70bb50c0e9e0 100644
+index f5bc49e..be3cb63 100644
 --- a/v4/core/index.js
 +++ b/v4/core/index.js
-@@ -6,7 +6,10 @@ export * from "./checks.js";
- export * from "./versions.js";
+@@ -8,7 +8,9 @@ export * from "./versions.js";
  export * as util from "./util.js";
+ export { toZod } from "./util.js";
  export * as regexes from "./regexes.js";
 -export * as locales from "../locales/index.js";
 +// PATCH (markec): locales barrel odstranjen — izvažal je vseh 47 jezikovnih
-+// slovarjev v vsak client bundle (zod v4 tree-shaking ne more odstraniti
-+// `export * as locales` namespace objekta). Privzeti `en` ostaja v classic/external.js.
++// slovarjev v vsak client bundle. Privzeti `en` ostaja v classic/external.js.
 +// export * as locales from "../locales/index.js";
  export * from "./registries.js";
  export * from "./doc.js";
- export * from "./api.js";
+ export * from "./compile.js";

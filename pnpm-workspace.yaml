@@ -9,4 +9,4 @@ onlyBuiltDependencies:
   - sharp
   - unrs-resolver
 patchedDependencies:
-  zod@4.1.12: patches/zod@4.1.12.patch
+  zod@4.6.7: patches/zod@4.6.7.patch
