@@ -32,7 +32,16 @@ export const getOrgStripeKey = (
 /** True when payments can run for this organization (org key present). */
 export const isOrgStripeConfigured = (
   org: Pick<OrganizationLike, "stripeSecretKey"> | null | undefined
-): boolean => Boolean(getOrgStripeKey(org))
+): boolean => {
+  try {
+    return Boolean(getOrgStripeKey(org))
+  } catch {
+    // Šifriran ključ brez SECRETS_ENCRYPTION_KEY → ključa ni mogoče
+    // prebrati. Za ta boolean to pomeni "plačila niso na voljo";
+    // nikoli ne sme podreti seznama terminov/naročil.
+    return false
+  }
+}
 
 /**
  * Stripe client scoped to an organization. Returns null when the organization
@@ -41,7 +50,14 @@ export const isOrgStripeConfigured = (
 export const getStripeForOrg = (
   org: Pick<OrganizationLike, "stripeSecretKey"> | null | undefined
 ): Stripe | null => {
-  const key = getOrgStripeKey(org)
+  let key: string | null
+  try {
+    key = getOrgStripeKey(org)
+  } catch {
+    // Nečitljiv šifriran ključ (manjka SECRETS_ENCRYPTION_KEY) → enako kot
+    // "ni ključa": pokliči degrade gracefully, ne crashaj strani.
+    return null
+  }
   if (!key) return null
   return new Stripe(key, {
     apiVersion: STRIPE_API_VERSION,
