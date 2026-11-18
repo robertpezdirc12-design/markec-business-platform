@@ -240,7 +240,7 @@ export async function POST(req: Request) {
               name: "",
               image: null,
             }
-            await releaseStockReservation(tx, line)
+            await releaseStockReservation(tx, line, orgId)
           }
           await tx.order.updateMany({
             where: { id: orderId, organizationId: signedOrg.id },

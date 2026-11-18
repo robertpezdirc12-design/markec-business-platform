@@ -154,7 +154,8 @@ export async function reserveStock(
  */
 export async function releaseStockReservation(
   tx: Prisma.TransactionClient,
-  item: PricedLine
+  item: PricedLine,
+  orgId: string
 ): Promise<boolean> {
   const table = item.variantId ? "ProductVariant" : "Product"
   const id = item.variantId ?? item.productId
@@ -164,9 +165,10 @@ export async function releaseStockReservation(
   if (!policy.tracked) return true
   const r = await tx.$executeRawUnsafe(
     `UPDATE "${table}" SET "reservedQuantity" = "reservedQuantity" - $2::int
-     WHERE "id" = $1::text AND "reservedQuantity" >= $2::int`,
+     WHERE "id" = $1::text AND "organizationId" = $3::text AND "reservedQuantity" >= $2::int`,
     id,
-    item.quantity
+    item.quantity,
+    orgId
   )
   return r === 1
 }

@@ -183,7 +183,7 @@ describe("2D-1N — B. Rezervacije", () => {
   it("B3. releaseStockReservation zniža reserved", async () => {
     const before = await stock(P_plain)
     await prisma.$transaction(async (tx) => {
-      const ok = await releaseStockReservation(tx, { productId: P_plain, quantity: 5 } as never)
+      const ok = await releaseStockReservation(tx, { productId: P_plain, quantity: 5 } as never, orgId)
       expect(ok).toBe(true)
     })
     const after = await stock(P_plain)
@@ -358,7 +358,7 @@ describe("2D-1N — P1-D-1C sočasni testi", () => {
     await prisma.$transaction((tx) => reserveStock(tx, { productId: p.id, quantity: 2 } as never, orgId))
     // sprosti 2 v eni trans., in prodaj rezervirano 3 v drugi (sočasno, isti lock)
     const [rel, conv] = await Promise.all([
-      prisma.$transaction((tx) => releaseStockReservation(tx, { productId: p.id, quantity: 2 } as never)),
+      prisma.$transaction((tx) => releaseStockReservation(tx, { productId: p.id, quantity: 2 } as never, orgId)),
       prisma.$transaction((tx) => convertReservationToSale(tx, { productId: p.id, quantity: 3 } as never, orgId, order.id)),
     ])
     const after = (await prisma.product.findUnique({ where: { id: p.id }, select: { stockQuantity: true, reservedQuantity: true } }))!

@@ -346,16 +346,18 @@ export async function refundOrder(orderId: string): Promise<{
       for (const item of order.items) {
         if (item.productId && !item.variantId) {
           const res = await tx.$executeRawUnsafe(
-            `UPDATE "Product" SET "stockQuantity" = "stockQuantity" + $2::int WHERE "id" = $1::text`,
+            `UPDATE "Product" SET "stockQuantity" = "stockQuantity" + $2::int WHERE "id" = $1::text AND "organizationId" = $3::text`,
             item.productId,
-            item.quantity
+            item.quantity,
+            org.id
           )
           if (res !== 1) throw new Error("STOCK_PRODUCT_MISSING")
         } else if (item.productId && item.variantId) {
           const res = await tx.$executeRawUnsafe(
-            `UPDATE "ProductVariant" SET "stockQuantity" = "stockQuantity" + $2::int WHERE "id" = $1::text`,
+            `UPDATE "ProductVariant" SET "stockQuantity" = "stockQuantity" + $2::int WHERE "id" = $1::text AND "organizationId" = $3::text`,
             item.variantId,
-            item.quantity
+            item.quantity,
+            org.id
           )
           if (res !== 1) throw new Error("STOCK_VARIANT_MISSING")
         } else {
