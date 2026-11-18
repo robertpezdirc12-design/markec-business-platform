@@ -1,5 +1,8 @@
 import { defineConfig } from "vitest/config"
-import path from "path"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // Ločena konfiguracija za integracijske (E2E-DB) varnostne teste — pogosto se
 // poganja ROČNO z izrecno DATABASE_URL na izolirani bazi (npr.
