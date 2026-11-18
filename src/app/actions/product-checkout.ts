@@ -86,7 +86,7 @@ function validateContact(
   if (name.length < 2) {
     return { ok: false, error: "Vnesite ime in priimek." }
   }
-  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2 }$/.test(email)
   if (!email && !phone) {
     return { ok: false, error: "Vnesite e-pošto ali telefonsko številko." }
   }
