@@ -84,12 +84,30 @@ export async function GET(
       decision === "public"
         ? "public, max-age=31536000, immutable"
         : "private, no-store"
+
+    // P1 SECURITY (audit 2026-11): obramba v globino pred starejšimi
+    // zapisi. Nalaganje zdaj zavrača SVG (whitelist rastrskih formatov +
+    // magic bytes), a v bazi so lahko še vedno datoteke iz prejšnje kode.
+    // Zato:
+    //  - `nosniff` (brskalnik ne sme uganiti drugega tipa),
+    //  - `Content-Security-Policy: default-src 'none'; sandbox` (tudi če bi
+    //    se kdaj serviral izvršljiv tip, se skript ne izvede),
+    //  - `Content-Disposition: inline` z eksplicitnim imenom datoteke —
+    //    brskalnik jo obravnava kot datoteko, ne kot dokument izvora.
+    const isExecutableType =
+      media.mimeType === "image/svg+xml" || media.mimeType === "text/html"
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": media.mimeType,
         "Content-Length": String(buffer.length),
         "Cache-Control": cacheControl,
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+        "Content-Disposition": `inline; filename="${encodeURIComponent(
+          media.filename || "media"
+        )}"`,
+        ...(isExecutableType ? { "Cross-Origin-Resource-Policy": "same-site" } : {}),
       },
     })
   } catch (error) {

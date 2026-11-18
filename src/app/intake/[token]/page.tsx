@@ -6,7 +6,7 @@
 import { format } from "date-fns"
 import { sl } from "date-fns/locale"
 
-import { getIntakeFormByToken } from "@/app/actions/appointments"
+import { getIntakeFormByToken } from "@/app/actions/intake"
 import { Card, CardContent } from "@/components/ui/card"
 
 import { IntakeLinkForm } from "./intake-link-form"

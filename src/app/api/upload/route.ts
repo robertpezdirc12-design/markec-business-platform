@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { validateImageUpload, ALLOWED_IMAGE_MIME_TYPES } from "@/lib/uploads/image-type"
 import { auth } from "@/lib/auth/auth"
 import { prisma } from "@/lib/prisma"
 import { v2 as cloudinary } from "cloudinary"
@@ -77,14 +78,35 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      return NextResponse.json({ error: "File must be an image" }, { status: 400 })
-    }
-
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       return NextResponse.json({ error: "File size must be less than 5MB" }, { status: 400 })
+    }
+
+    // P1 SECURITY (audit 2026-11): prej je bilo dovolj `image/*`, torej tudi
+    // `image/svg+xml` — shranjeni XSS (SVG s <script>, serviran z izvora
+    // aplikacije; avatar lahko naloži vsak prijavljen uporabnik). Zdaj velja
+    // whitelist rastrskih formatov + preverjanje MAGIC BYTES: deklarirani
+    // Content-Type je samo trditev odjemalca.
+    if (!(ALLOWED_IMAGE_MIME_TYPES as readonly string[]).includes(file.type)) {
+      return NextResponse.json(
+        { error: "Dovoljene so slike JPEG, PNG, WebP, GIF ali AVIF." },
+        { status: 415 }
+      )
+    }
+
+    const fileBytes = new Uint8Array(await file.arrayBuffer())
+    const imageCheck = validateImageUpload(file.type, fileBytes)
+    if (!imageCheck.ok) {
+      return NextResponse.json(
+        {
+          error:
+            imageCheck.error === "unsupported_type"
+              ? "Dovoljene so slike JPEG, PNG, WebP, GIF ali AVIF."
+              : "Vsebina datoteke se ne ujema z njenim tipom.",
+        },
+        { status: 415 }
+      )
     }
 
     const config = uploadConfigs[type]
@@ -97,8 +119,7 @@ export async function POST(request: NextRequest) {
 
     // --- Path A: Cloudinary (if the salon configured it) ---
     if (cloudinaryConfigured) {
-      const bytes = await file.arrayBuffer()
-      const buffer = Buffer.from(bytes)
+      const buffer = Buffer.from(fileBytes)
       const base64 = `data:${file.type};base64,${buffer.toString("base64")}`
 
       // SECURITY: public_id is always server-generated. Client-supplied ids
@@ -129,8 +150,7 @@ export async function POST(request: NextRequest) {
     }
 
     // --- Path B: DB-backed media storage (zero third-party keys needed) ---
-    const bytes = await file.arrayBuffer()
-    const base64 = Buffer.from(bytes).toString("base64")
+    const base64 = Buffer.from(fileBytes).toString("base64")
 
     // STORAGE QUOTA (E3-7): the plan's storageMb limit is enforced
     // server-side on this DB-backed path before the row is written.

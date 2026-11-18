@@ -316,30 +316,50 @@ export async function sendPasswordResetFromAccount() {
 
 // Get notification preferences for the current user
 export async function getNotificationPreferences() {
+  const defaults = {
+    emailReminders: true,
+    reminderTime: "24h" as "24h" | "48h" | "1week",
+    promotionalEmails: false,
+    appointmentUpdates: true,
+  }
+
   const session = await auth()
 
   if (!session?.user?.id) {
-    return {
-      emailReminders: true,
-      reminderTime: "24h",
-      promotionalEmails: false,
-      appointmentUpdates: true,
-    }
+    return defaults
   }
 
-  // TODO: Implementar la lógica
-  // 1. Buscar las preferencias del usuario en la tabla NotificationPreferences
-  // 2. Si no existen, retornar los valores por defecto
-  // 3. Si existen, retornar los valores guardados
-  //
-  // Hint: usa prisma.notificationPreferences.findUnique({ where: { userId: session.user.id } })
+  try {
+    const prefs = await prisma.notificationPreferences.findUnique({
+      where: { userId: session.user.id },
+      select: {
+        emailReminders: true,
+        reminderTime: true,
+        promotionalEmails: true,
+        appointmentUpdates: true,
+      },
+    })
 
-  // Por ahora retorna valores por defecto
-  return {
-    emailReminders: true,
-    reminderTime: "24h",
-    promotionalEmails: false,
-    appointmentUpdates: true,
+    if (!prefs) {
+      return defaults
+    }
+
+    const reminderTime =
+      prefs.reminderTime === "24h" ||
+      prefs.reminderTime === "48h" ||
+      prefs.reminderTime === "1week"
+        ? prefs.reminderTime
+        : defaults.reminderTime
+
+    return {
+      emailReminders: prefs.emailReminders,
+      reminderTime,
+      promotionalEmails: prefs.promotionalEmails,
+      appointmentUpdates: prefs.appointmentUpdates,
+    }
+  } catch (error) {
+    console.error("Error getting notification preferences:", error)
+    return defaults
   }
 }
 

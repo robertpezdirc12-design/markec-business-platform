@@ -32,6 +32,26 @@ export interface UploadResult {
 }
 
 /**
+ * P1 (audit 2026-11) — varna končnica iz imena datoteke.
+ *
+ * Prej: `file.name.split(".").pop()` — kar koli je bilo za zadnjo piko, je
+ * šlo v R2 ključ (npr. `hero.png/../../x` ali `hero.svg`). Končnica mora
+ * izhajati iz PREVERJENEGA MIME tipa, nikoli iz imena, ki ga nadzoruje
+ * odjemalec.
+ */
+const MIME_TO_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/avif": "avif",
+  "image/gif": "gif",
+}
+
+export function safeImageExtension(contentType: string): string {
+  return MIME_TO_EXT[contentType] ?? "bin"
+}
+
+/**
  * Upload image to R2
  */
 export async function uploadImage(
@@ -70,7 +90,7 @@ export async function uploadBusinessImage(
   file: File,
   type: "logo" | "hero" | "gallery" = "hero"
 ): Promise<UploadResult> {
-  const ext = file.name.split(".").pop() || "jpg"
+  const ext = safeImageExtension(file.type)
   const key = `businesses/${businessId}/${type}-${Date.now()}.${ext}`
   return uploadImage(file, key, file.type)
 }
@@ -82,7 +102,7 @@ export async function uploadProductImage(
   productId: string,
   file: File
 ): Promise<UploadResult> {
-  const ext = file.name.split(".").pop() || "jpg"
+  const ext = safeImageExtension(file.type)
   const key = `products/${productId}/${Date.now()}.${ext}`
   return uploadImage(file, key, file.type)
 }
@@ -94,7 +114,7 @@ export async function uploadAvatar(
   userId: string,
   file: File
 ): Promise<UploadResult> {
-  const ext = file.name.split(".").pop() || "jpg"
+  const ext = safeImageExtension(file.type)
   const key = `avatars/${userId}/${Date.now()}.${ext}`
   return uploadImage(file, key, file.type)
 }

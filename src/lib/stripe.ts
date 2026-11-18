@@ -1,4 +1,7 @@
 import Stripe from "stripe"
+// P2 (audit 2026-11): skrivnosti so v bazi šifrirane (AES-256-GCM);
+// odklepamo jih ŠELE tu, na enem samem mestu.
+import { decryptSecret } from "@/lib/crypto/secrets"
 
 /**
  * Stripe is an optional, SALON-OWNED integration (product decision, EPIC #4
@@ -24,7 +27,7 @@ interface OrganizationLike {
  */
 export const getOrgStripeKey = (
   org: Pick<OrganizationLike, "stripeSecretKey"> | null | undefined
-): string | null => org?.stripeSecretKey || null
+): string | null => decryptSecret(org?.stripeSecretKey)
 
 /** True when payments can run for this organization (org key present). */
 export const isOrgStripeConfigured = (

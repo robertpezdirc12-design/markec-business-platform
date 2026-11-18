@@ -7,6 +7,7 @@
 // ============================================================
 
 import { prisma } from "@/lib/prisma"
+import { getStripeForOrg, isOrgStripeConfigured } from "@/lib/stripe"
 import { shouldChargeOnNoShow } from "./no-show-policy"
 
 export async function chargeNoShowFee(appointmentId: string): Promise<{
@@ -39,7 +40,7 @@ export async function chargeNoShowFee(appointmentId: string): Promise<{
     where: { id: appointment.organizationId },
     select: { stripeSecretKey: true },
   })
-  if (!org?.stripeSecretKey) {
+  if (!isOrgStripeConfigured(org)) {
     await prisma.appointment.update({
       where: { id: appointment.id },
       data: { noShowChargeStatus: "SKIPPED" },
@@ -47,8 +48,9 @@ export async function chargeNoShowFee(appointmentId: string): Promise<{
     return { charged: false, skipped: "no-stripe-key" }
   }
 
-  const { Stripe } = await import("stripe")
-  const client = new Stripe(org.stripeSecretKey)
+  // P2 (audit 2026-11): ključ odklepamo v getStripeForOrg (v bazi šifriran).
+  const client = getStripeForOrg(org)
+  if (!client) return { charged: false, skipped: "no-stripe-key" }
 
   try {
     // Plačilna metoda živi na SetupIntentu (kartica je vezana nanj).

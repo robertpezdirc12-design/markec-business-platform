@@ -17,6 +17,7 @@ import { sendPasswordResetEmail } from "@/lib/email/password-reset"
 import { sendVerificationEmail } from "@/lib/email/email-verification"
 import { sendAccountActivatedEmail } from "@/lib/email/account-activated"
 import { allowVerificationFallback, isEmailServiceConfigured } from "@/lib/email/config"
+import { hashResetToken, resetTokenLookupValues } from "@/lib/auth/reset-token"
 import {
   rateLimit,
   getClientIp,
@@ -259,10 +260,11 @@ export async function forgotPassword(data: ForgotPasswordInput) {
 
     const token = crypto.randomBytes(32).toString("hex")
 
+    // P0: v bazo gre SAMO hash — surovi žeton odide izključno po e-pošti.
     await prisma.user.update({
       where: { email },
       data: {
-        resetToken: token,
+        resetToken: hashResetToken(token),
         resetTokenExpiry: new Date(Date.now() + 3600000), // 1 hour
       },
     })
@@ -272,9 +274,19 @@ export async function forgotPassword(data: ForgotPasswordInput) {
       await sendPasswordResetEmail(email, token)
     })
 
-    // Brez e-poštnega servisa povezava prikaži v UI (glej registerUser).
-    if (!isEmailServiceConfigured() && allowVerificationFallback()) {
-      return { success: true, resetUrl: `/reset-password?token=${token}`, emailSent: false }
+    // P0 SECURITY (audit 2026-11): žeton za PONASTAVITEV GESLA se NIKOLI ne
+    // vrne v HTTP odgovoru — tudi v razvoju ne. Kdor koli bi lahko brez
+    // prijave poklical to akcijo za tuj e-naslov in dobil veljaven žeton
+    // (zastavica EMAIL_VERIFICATION_FALLBACK je bila v produkcijski
+    // konfiguraciji = prevzem računa). Razvijalcu, ki Resenda nima, se
+    // povezava izpiše SAMO v strežniški dnevnik.
+    if (!isEmailServiceConfigured()) {
+      if (allowVerificationFallback()) {
+        console.info(
+          `[dev] Ponastavitev gesla za ${email}: /reset-password?token=${token}`
+        )
+      }
+      return { success: true, emailSent: false }
     }
 
     return { success: true, emailSent: true }
@@ -304,9 +316,11 @@ export async function resetPassword(data: ResetPasswordInput) {
   try {
     const { token, password } = validatedData.data
 
+    // P0: iskanje po HASHU žetona (s prehodnim fallbackom na surovo vrednost
+    // za vrstice, zapisane pred uvedbo hasha).
     const user = await prisma.user.findFirst({
       where: {
-        resetToken: token,
+        resetToken: { in: resetTokenLookupValues(token) },
         resetTokenExpiry: {
           gt: new Date(),
         },
