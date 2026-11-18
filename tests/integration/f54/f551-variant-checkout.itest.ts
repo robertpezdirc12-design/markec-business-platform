@@ -58,13 +58,13 @@ vi.mock("@/lib/tenant-proof", () => ({
 }))
 
 import { prisma } from "@/lib/prisma"
+import { createProductCheckoutSession } from "@/app/actions/product-checkout"
 import {
-  createProductCheckoutSession,
   applyOrderStockDecrement,
   convertReservationToSale,
   reserveStock,
   releaseStockReservation,
-} from "@/app/actions/product-checkout"
+} from "@/lib/orders/stock"
 import { validateCartStock } from "@/app/actions/cart"
 
 const ID = {

@@ -7,7 +7,6 @@ import {
   listWarranties,
   getWarrantyStatusOverview,
   createWarrantyClaim,
-  type WarrantyListResult,
   type WarrantyListItem,
 } from "@/app/actions/warranties"
 
@@ -38,7 +37,6 @@ export function WarrantiesDashboard() {
 
   useEffect(() => {
     reload()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const openClaim = async (warrantyId: string, customerName: string) => {

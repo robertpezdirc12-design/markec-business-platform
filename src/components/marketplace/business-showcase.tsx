@@ -8,6 +8,7 @@
 // ============================================================
 
 import { useRef } from "react"
+import Image from "next/image"
 import { verticalCardImage } from "@/lib/marketplace/card-image"
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
@@ -19,7 +20,6 @@ import {
   ArrowRightIcon,
   ClockIcon,
 } from "@/components/icons"
-import { Heart } from "@phosphor-icons/react/dist/ssr"
 import { openStateFor } from "@/lib/hours/open-state"
 
 interface Business {
@@ -77,10 +77,12 @@ function BusinessCard({ business }: { business: Business }) {
       <Card className="group overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
         {/* Image */}
         <div className="relative aspect-[4/3] overflow-hidden">
-          <img
+          <Image
             src={business.image || verticalCardImage(business.category)}
             alt={business.name}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            fill
+            sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
 
           {/* Badge */}

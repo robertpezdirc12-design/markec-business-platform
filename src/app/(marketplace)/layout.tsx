@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input"
 import {
   SearchIcon,
   MapPinIcon,
-  CalendarIcon,
-  UserIcon,
-  MenuIcon,
+  
+  
+  
 } from "@/components/icons"
 
 export const metadata: Metadata = {

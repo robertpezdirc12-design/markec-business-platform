@@ -1,6 +1,6 @@
 import { getManagedCategories } from "@/app/actions/categories"
 import { getServerI18n } from "@/lib/i18n/server"
-import { requireAnyPermissionOrg } from "@/lib/auth/guards"
+import { requirePageAnyPermission } from "@/lib/auth/guards"
 import { CategoryManager } from "@/components/dashboard/category-manager"
 
 export const metadata = { title: "Kategorije" }
@@ -8,7 +8,7 @@ export const metadata = { title: "Kategorije" }
 export default async function CategoriesPage() {
   // Kategorije so skupne izdelkom in storitvam — zadostuje en ključ.
   // (Page guard: redirect na dashboard pri pomanjkanju pravice.)
-  await requireAnyPermissionOrg(["products.manage", "services.manage"])
+  await requirePageAnyPermission(["products.manage", "services.manage"])
 
   const res = await getManagedCategories()
   const list = res.success && res.data ? res.data.categories : []

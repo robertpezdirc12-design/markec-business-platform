@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import {
   UsersIcon,
   StarIcon,
-  CalendarIcon,
+  
   CurrencyDollarIcon,
   TrendingUpIcon,
 } from "@/components/icons"

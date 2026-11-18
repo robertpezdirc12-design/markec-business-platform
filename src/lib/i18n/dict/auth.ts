@@ -68,11 +68,11 @@ export const authSl = {
       checkEmailDescription:
         "Če račun obstaja, boste prejeli povezavo za ponastavitev gesla.",
     },
-    fallbackTitle: "Povezava za ponastavitev",
-    fallbackDescription:
-      "E-poštni servis še ni nastavljen, zato povezavo za ponastavitev gesla prikažemo tukaj.",
-    fallbackCta: "Nadaljujte s ponastavitvijo:",
-    fallbackLink: "Ponastavi geslo zdaj",
+    // P0 (audit 2026-11): žeton za ponastavitev se NIKOLI ne prikaže v
+    // odgovoru — povezavo prejme samo uporabnik po e-pošti. Brez
+    // nastavljenega e-poštnega servisa uporabniku to odkrito povemo.
+    notConfigured:
+      "Pošiljanje e-pošte še ni nastavljeno, zato povezave za ponastavitev ni mogoče poslati. Obrnite se na skrbnika salona.",
   },
   reset: {
     title: "Ponastavite geslo",
@@ -173,11 +173,8 @@ export const authEn: AuthDict = {
       checkEmailDescription:
         "If an account exists, you'll receive a reset link.",
     },
-    fallbackTitle: "Reset link",
-    fallbackDescription:
-      "The email service is not yet configured, so we're showing your password reset link here.",
-    fallbackCta: "Continue with the reset:",
-    fallbackLink: "Reset password now",
+    notConfigured:
+      "Email sending is not configured yet, so the reset link cannot be sent. Please contact the salon administrator.",
   },
   reset: {
     title: "Reset your password",

@@ -22,7 +22,7 @@ import {
   PencilIcon,
   EyeIcon,
   ArrowLeftIcon,
-  DotsHorizontalIcon,
+  
 } from "@/components/icons"
 import { QuickBookingLink } from "@/components/dashboard/quick-booking-link"
 import { EmptyState } from "@/components/ui/empty-state"

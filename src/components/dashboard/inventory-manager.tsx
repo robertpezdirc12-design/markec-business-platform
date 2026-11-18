@@ -28,12 +28,12 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import {
-  ShoppingBagIcon,
+  
   WarningCircleIcon,
   PackageIcon,
   PlusIcon,
   MinusIcon,
-  CheckCircleIcon,
+  
 } from "@/components/icons"
 import { TrendDown as TrendingDownIcon } from "@phosphor-icons/react/dist/ssr"
 

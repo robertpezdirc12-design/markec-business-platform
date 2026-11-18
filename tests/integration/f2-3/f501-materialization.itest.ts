@@ -30,7 +30,7 @@ vi.mock("@/lib/tenant-proof", () => ({ ORG_PROOF_HEADER: "x", verifyOrgSlug: asy
 import { prisma } from "@/lib/prisma"
 import { resolveSkdProfile, SKD_PROFILE_EXCEPTIONS } from "@/lib/skd/profiles"
 import { SKD_BY_LEVEL } from "@/lib/skd/data/skd2025"
-import { seedOrganizationCatalog } from "@/lib/verticals"
+import { seedOrganizationCatalog } from "@/lib/verticals-seed"
 import { materializeProfileAssets } from "@/lib/profiles/materialize"
 
 const PREFIX = "f501-"

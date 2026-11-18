@@ -18,7 +18,7 @@ vi.mock("next/headers", () => ({ headers: async () => new Headers({}) }))
 vi.mock("@/lib/tenant-proof", () => ({ ORG_PROOF_HEADER: "x-org-slug-proof", verifyOrgSlug: async () => true }))
 
 import { prisma } from "@/lib/prisma"
-import { reserveStock, convertReservationToSale, type PricedLine } from "@/app/actions/product-checkout"
+import { reserveStock, convertReservationToSale, type PricedLine } from "@/lib/orders/stock"
 
 const ORG = "f61-avail-org"
 const ADMIN = "f61-avail-admin"

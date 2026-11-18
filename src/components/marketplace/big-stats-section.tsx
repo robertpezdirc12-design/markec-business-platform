@@ -10,7 +10,7 @@ import { useState, useEffect, useRef } from "react"
 import {
   CalendarIcon,
   UsersIcon,
-  StarIcon,
+  
   CheckCircleIcon,
 } from "@/components/icons"
 import {

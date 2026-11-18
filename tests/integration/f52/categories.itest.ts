@@ -61,7 +61,7 @@ import {
   getManagedCategories,
   getCategoryDeletePreview,
 } from "@/app/actions/categories"
-import { seedOrganizationCatalog, seedProfileCategories } from "@/lib/verticals"
+import { seedOrganizationCatalog, seedProfileCategories } from "@/lib/verticals-seed"
 import {
   getPublicCategories,
   getPublicServicesGrouped,
