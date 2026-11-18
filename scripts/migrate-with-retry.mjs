@@ -41,7 +41,7 @@ function tail(text, max = 1_200) {
 
 /**
  * Fail-fast, če ni baze — ponovitve ne rešijo manjkajoče konfiguracije.
- * @param {{ DATABASE_URL?: string }} [env]
+ * @param {{ DATABASE_URL?: string, VERCEL_ENV?: string }} [env]
  * @param {{ log: (...a: unknown[]) => void, error: (...a: unknown[]) => void }} [log]
  */
 export function ensureDatabaseUrl(env = process.env, log = console) {
