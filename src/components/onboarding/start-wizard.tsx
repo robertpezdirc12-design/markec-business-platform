@@ -127,7 +127,7 @@ function slugifyLocal(input: string): string {
     .slice(0, 40)
 }
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2 }$/
 
 type SlugStatus = "idle" | "checking" | "available" | "taken"
 
