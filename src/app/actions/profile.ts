@@ -21,7 +21,7 @@ import {
 } from "@/lib/config-history/logic"
 import { recordConfigChange } from "@/lib/config-history/record"
 import { getOrgCustomProfile, type CustomProfileData } from "@/app/actions/custom-profile"
-import { seedProfileCategories } from "@/lib/verticals"
+import { seedProfileCategories } from "@/lib/verticals-seed"
 import {
   ALL_DASHBOARD_WIDGETS,
   applyOverrides,

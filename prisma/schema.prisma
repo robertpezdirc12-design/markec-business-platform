@@ -3020,3 +3020,28 @@ model WorkOrderPhoto {
   @@index([organizationId, workOrderId])
   @@index([workOrderId, createdAt])
 }
+
+// P1 (audit 2026-11) — IDEMPOTENCA NAJEMNIŠKEGA STRIPE WEBHOOKA.
+//
+// Platformni webhook je imel `stripeEventId @unique`, najemniški pa nobenega
+// ključa: ponovljena dostava (Stripe retry po timeoutu, hkratna dostava dveh
+// instanc) je lahko drugič obdelala isto checkout sejo. Ta tabela je
+// (a) idempotentna ključavnica po `event.id` in (b) kratek revizijski dnevnik
+// dostav z izidom. `organizationId` je VEDNO organizacija, katere skrivnost
+// je podpisala dostavo — nikoli vrednost iz metadata.
+//
+// `outcome`: received (prevzeto, še v obdelavi / ignorirano) | processed |
+// failed (ponovni poskus je dovoljen).
+model TenantStripeEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  stripeEventId  String   @unique
+  type           String
+  outcome        String   @default("received")
+  detail         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, createdAt])
+  @@index([outcome, createdAt])
+}

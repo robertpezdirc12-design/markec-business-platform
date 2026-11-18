@@ -22,7 +22,7 @@ if (!/markec_f631_test/.test(DB_URL)) {
 }
 
 import { prisma } from "../src/lib/prisma"
-import { seedOrganizationCatalog } from "../src/lib/verticals"
+import { seedOrganizationCatalog } from "../src/lib/verticals-seed"
 import { defaultSiteContent } from "../src/lib/site-content"
 import { materializeProfileAssets } from "../src/lib/profiles/materialize"
 import { getProfile } from "../src/lib/profiles/registry"
