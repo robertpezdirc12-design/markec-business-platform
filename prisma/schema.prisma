@@ -162,6 +162,13 @@ model Organization {
   minimaxOrganisationId Int?
   minimaxConfiguredAt   DateTime?
 
+  // #110 — 46elks SMS integracija. Nastavi jo lastnik v
+  // Nastavitve → Obvestila. Brez nastavitve se SMS NE pošilja.
+  smsApiKey        String?   @db.Text
+  smsApiPassword   String?   @db.Text
+  smsSenderName    String?   @default("MARKEC")
+  smsConfiguredAt  DateTime?
+
   users                User[]
   salonConfig          SalonConfig?
   categories           Category[]

@@ -6,6 +6,7 @@ import { PushCard } from "@/components/dashboard/push-card"
 import { BrandingTabs } from "@/components/dashboard/branding-tabs"
 import { PaymentsSettings } from "@/components/dashboard/payments-settings"
 import { MinimaxCard } from "@/components/dashboard/minimax-card"
+import { SmsCard } from "@/components/dashboard/sms-card"
 import { ProfileOverview } from "@/components/dashboard/profile-overview"
 import { ModulesOverview } from "@/components/dashboard/modules-overview"
 import { ModulesConfigurator } from "@/components/dashboard/modules-configurator"
@@ -102,6 +103,7 @@ export default async function SettingsPage({
           <ActivitiesCard />
           <PaymentsSettings />
           <MinimaxCard />
+          <SmsCard />
           <ConfigHistoryCard />
         </div>
       }
