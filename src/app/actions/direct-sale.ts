@@ -88,13 +88,16 @@ async function decrementStock(
   tx: Prisma.TransactionClient,
   table: "Product" | "ProductVariant",
   id: string,
-  qty: number
+  qty: number,
+  organizationId: string
 ): Promise<boolean> {
   const r = await tx.$executeRawUnsafe(
     `UPDATE "${table}" SET "stockQuantity" = "stockQuantity" - $2::int
-     WHERE "id" = $1::text AND "stockQuantity" - "reservedQuantity" >= $2::int`,
+     WHERE "id" = $1::text AND "organizationId" = $3::text
+       AND "stockQuantity" - "reservedQuantity" >= $2::int`,
     id,
-    qty
+    qty,
+    organizationId
   )
   return r === 1
 }
@@ -255,13 +258,13 @@ export async function createDirectOrder(input: z.input<typeof directSaleSchema>)
         if (line.productVariantId) {
           const v = variantById.get(line.productVariantId)!
           // variant: product je "container" brez lastnega stocka? Še ni — znižujemo VARIANTO.
-          const ok = await decrementStock(tx, "ProductVariant", v.id, line.quantity)
+          const ok = await decrementStock(tx, "ProductVariant", v.id, line.quantity, org.id)
           if (!ok) throw new Error("INSUFFICIENT_STOCK")
           decrements.push({ productId: line.productId, variantId: v.id, lineIdx: li })
         } else {
           const p = productById.get(line.productId)!
           if (!p.trackInventory) throw new Error("NOT_TRACKED")
-          const ok = await decrementStock(tx, "Product", p.id, line.quantity)
+          const ok = await decrementStock(tx, "Product", p.id, line.quantity, org.id)
           if (!ok) throw new Error("INSUFFICIENT_STOCK")
           decrements.push({ productId: line.productId, lineIdx: li })
         }
