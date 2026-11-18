@@ -171,11 +171,13 @@ export async function getOrderByIdForCustomer(id: string) {
       customer: { userId: session.user.id },
     },
     include: {
-      customer: true,
+      // Le kontaktna polja, ki jih stran prikaže — nikoli interne opombe
+      // salona (customer.notes/tags) v RSC payloadu stranke.
+      customer: { select: { name: true, email: true, phone: true } },
       organization: { select: { name: true, slug: true } },
       items: {
         include: {
-          product: true,
+          product: { select: { name: true, images: true } },
         },
       },
     },
