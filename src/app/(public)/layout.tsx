@@ -23,6 +23,7 @@ import { upgradeLegacyDefaultCopy } from "@/lib/verticals"
 import { OwnerBar } from "@/components/public/owner-bar"
 import { PromoBanner } from "@/components/public/promo-banner"
 import { getPublicActivePromotions } from "@/lib/promotions/public"
+import { ChatWidget } from "@/components/reception/chat-widget"
 
 /**
  * P2 #46/#46: section flags so the navbar never links an anchor that
@@ -177,6 +178,14 @@ export default async function PublicLayout({
     ? isCapabilityEnabled(resolvePublicEffectiveProfile(org), "walkIn")
     : false
 
+  // EPIC 5: skriptni recepcionist (javni chat 24/7) — samo ko je objavljena
+  // stran + aktivna capability "appointments" (bot obetava rezervacijo).
+  // Widget je "use client" (sam code-split iz prvega JS); najemnik reši
+  // SERVER ACTION prek podpisane glave (E5-D9) — ne prek /api/*.
+  const chatEnabled = org
+    ? isCapabilityEnabled(resolvePublicEffectiveProfile(org), "appointments")
+    : false
+
   // Košarica se ravna po resnični sekciji trgovine (objavljeni izdelki +
   // capability), ne po sami capability — šiviljstvo ima trgovino
   // »optional«, a brez izdelkov, zato košarica nima smisla.
@@ -275,6 +284,7 @@ gtag('config', '${analyticsId}');`}
         <CartOrgScope slug={org?.slug ?? null} />
         <main id="main" tabIndex={-1}>{children}</main>
         <Footer />
+        {chatEnabled && <ChatWidget />}
       </PublicI18nProvider>
     </>
   )

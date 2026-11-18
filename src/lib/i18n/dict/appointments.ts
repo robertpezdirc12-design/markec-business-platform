@@ -178,6 +178,26 @@ export const appointmentsSl = {
     empty: "Čakalna lista je prazna — prijave gostov bodo prikazane tukaj.",
     preferredDateAny: "karkoli prosto",
   },
+
+  // EPIC 5: inbox — pogovori skriptnega recepcionista /dashboard/chats
+  inbox: {
+    title: "Sprejem",    titleAccent: "pogovori",
+    subtitle: "Pogovori obiskovalcev z avtomatskim sprejemom na vaši strani — odgovorite, ko želite",
+    filterAll: "Vsi",
+    statusActive: "Odprti",
+    statusReplied: "Odgovorjeni",
+    previewNone: "—",
+    visitor: "Obiskovalec",
+    auto: "Sprejem",
+    owner: "Vi",
+    replyPlaceholder: "Vpišite odgovor …",
+    send: "Pošlji odgovor",
+    replySuccess: "Odgovor poslan.",
+    replyFailed: "Odgovor ni uspelo poslati",
+    empty: "Še ni pogovorov — ko obiskovalci pišejo sprejemu, so pogovori prikazani tukaj.",
+    backToAll: "Vsi pogovori",
+    lastMessage: "Zadnje sporočilo",
+  },
 }
 
 export type AppointmentsDict = typeof appointmentsSl
@@ -345,5 +365,26 @@ export const appointmentsEn: AppointmentsDict = {
     deleteConfirm: "Delete this guest's entry?",
     empty: "The waitlist is empty — guest signups will appear here.",
     preferredDateAny: "anything free",
+  },
+
+  // EPIC 5: inbox — scripted receptionist conversations /dashboard/chats
+  inbox: {
+    title: "Reception",
+    titleAccent: "conversations",
+    subtitle: "Visitors chatting with your automated reception — reply whenever you like",
+    filterAll: "All",
+    statusActive: "Open",
+    statusReplied: "Replied",
+    previewNone: "—",
+    visitor: "Visitor",
+    auto: "Reception",
+    owner: "You",
+    replyPlaceholder: "Write a reply…",
+    send: "Send reply",
+    replySuccess: "Reply sent.",
+    replyFailed: "Could not send the reply",
+    empty: "No conversations yet — when visitors message the reception, they will appear here.",
+    backToAll: "All conversations",
+    lastMessage: "Last message",
   },
 }

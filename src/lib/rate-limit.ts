@@ -24,7 +24,7 @@
 import { prisma } from "@/lib/prisma"
 import { headers } from "next/headers"
 
-export type RateLimitScope = "login:ip" | "login:email" | "register:ip" | "forgot:ip" | "forgot:email" | "reset:ip" | "resend:ip" | "inquiry:ip" | "promo:ip" | "booking:ip" | "checkout:ip"
+export type RateLimitScope = "login:ip" | "login:email" | "register:ip" | "forgot:ip" | "forgot:email" | "reset:ip" | "resend:ip" | "inquiry:ip" | "promo:ip" | "booking:ip" | "checkout:ip" | "chat:ip"
 
 /**
  * Pridobi naslov odjemalca iz request konteksta (server action / route).
@@ -155,6 +155,9 @@ export const AUTH_RATE_LIMITS = {
   // Javni obrazci (povpraševanja) per IP — omeji spam/botnete, ne da bi
   // legitimnega obiskovalca blokiral (4 / 10 min ≈ redke oddaje).
   INQUIRY_IP: { limit: 4, windowMs: 10 * 60_000 },
+  // EPIC 5: javni chat recepcionista — 30 sporočil / 10 min je poln
+  // pogovor s prvim predlogom; legitimni obiskovalec se nikoli ne omeji.
+  CHAT_IP: { limit: 30, windowMs: 10 * 60_000 },
 } as const
 
 function envInt(name: string, fallback: number): number {
@@ -189,5 +192,12 @@ export function inquiryLimits() {
   return {
     limit: envInt("RATE_LIMIT_INQUIRY", AUTH_RATE_LIMITS.INQUIRY_IP.limit),
     windowMs: envInt("RATE_LIMIT_INQUIRY_WINDOW_MS", AUTH_RATE_LIMITS.INQUIRY_IP.windowMs),
+  }
+}
+
+export function chatLimits() {
+  return {
+    limit: envInt("RATE_LIMIT_CHAT", AUTH_RATE_LIMITS.CHAT_IP.limit),
+    windowMs: envInt("RATE_LIMIT_CHAT_WINDOW_MS", AUTH_RATE_LIMITS.CHAT_IP.windowMs),
   }
 }

@@ -183,6 +183,8 @@ model Organization {
   waitlistEntries      WaitlistEntry[]
   // #95: avtomatske e-poštne kampanje (reaktivacija, no-show follow-up)
   marketingCampaigns   MarketingCampaign[]
+  // EPIC 5: pogovori skriptnega recepcionista (javni chat, 24/7)
+  conversations        Conversation[]
   appointments         Appointment[]
   orders               Order[]
   media                Media[]
@@ -3130,4 +3132,42 @@ model TenantStripeEvent {
 
   @@index([organizationId, createdAt])
   @@index([outcome, createdAt])
+}
+
+// ============================================================
+// EPIC 5 — SKRIPTNI RECEPCIONIST (javni chat, 24/7, brez AI modela)
+// Pogovor obiskovalca z avtomatskim sprejemom na javni strani.
+// `visitorRef` je ANONIMNI piškotek obiskovalca (brez e-pošte/
+// telefona — GDPR minimizacija, E5-D4); avtorjeve besede so
+// besedilo, nikoli HTML. Status: ACTIVE (pričakuje lastnika) →
+// REPLIED (lastnik je odgovoril) → CLOSED.
+// ============================================================
+model Conversation {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  status       String   @default("ACTIVE")
+  visitorRef   String
+  lastMessageAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  messages Message[]
+
+  @@unique([organizationId, visitorRef])
+  @@index([organizationId, status, lastMessageAt])
+}
+
+model Message {
+  id             String  @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // VISITOR (obiskovalec) | OWNER (zadnji lastnik) | AUTO (skriptni sprejem)
+  sender  String
+  body    String  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([conversationId, createdAt])
 }

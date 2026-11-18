@@ -24,6 +24,7 @@ export type NavNameKey =
   | "analytics"
   | "appointments"
   | "waitlist"
+  | "chats"
   | "walkIn"
   | "customers"
   | "users"
@@ -116,6 +117,13 @@ export const DASHBOARD_NAV: DashboardNavItem[] = [
     href: "/dashboard/walk-in",
     section: "sales",
     capability: "walkIn",
+    permission: "appointments.view",
+  },
+  {
+    nameKey: "chats",
+    href: "/dashboard/chats",
+    section: "sales",
+    capability: "appointments",
     permission: "appointments.view",
   },
   {
