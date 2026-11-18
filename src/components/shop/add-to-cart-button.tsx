@@ -1,5 +1,6 @@
 "use client"
 
+import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useCartStore } from "@/store/cart-store"
 import { ShoppingCartIcon } from "@/components/icons"
@@ -33,6 +34,8 @@ export function AddToCartButton({
 }: AddToCartButtonProps) {
   const { addItem } = useCartStore()
   const locale = useLocale()
+  const [pulsing, setPulsing] = useState(false)
+  const pulseTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const label = variantName ? `${product.name} — ${variantName}` : product.name
 
@@ -47,9 +50,18 @@ export function AddToCartButton({
       variantName,
       variantSku,
     })
+
+    if (pulseTimeout.current) clearTimeout(pulseTimeout.current)
+    setPulsing(true)
+    pulseTimeout.current = setTimeout(() => setPulsing(false), 150)
   }
   return (
-    <Button onClick={handleAddToCart} variant={inStock ? "default" : "secondary"}  disabled={!inStock} className="w-full">
+    <Button
+      onClick={handleAddToCart}
+      variant={inStock ? "default" : "secondary"}
+      disabled={!inStock}
+      className={`w-full transition-transform duration-150 ${pulsing ? "scale-[1.05]" : "scale-100"}`}
+    >
       <ShoppingCartIcon className="mr-2 h-4 w-4" />
       {inStock ? pick(locale, "Dodaj v košarico", "Add to cart") : pick(locale, "Ni na zalogi", "Out of stock")}
     </Button>

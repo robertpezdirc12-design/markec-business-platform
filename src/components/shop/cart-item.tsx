@@ -80,9 +80,9 @@ export function CartItem({ item }: CartItemProps) {
   }
 
   return (
-    <div className="group bg-muted/30 hover:bg-muted/50 flex gap-4 rounded-xl p-4 transition-all">
+    <div className="group bg-muted/30 hover:bg-muted/50 flex gap-4 rounded-lg p-4 transition-all">
       {/* Product Image */}
-      <div className="border-border/50 bg-background relative h-28 w-28 shrink-0 overflow-hidden rounded-xl border shadow-sm">
+      <div className="border-border/50 bg-background relative h-28 w-28 shrink-0 overflow-hidden rounded-lg border shadow-sm">
         {item.image ? (
           <Image
             src={item.image}

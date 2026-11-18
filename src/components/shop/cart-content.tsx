@@ -27,6 +27,7 @@ import {
   CheckCircle,
   Phone,
   EnvelopeSimple,
+  Lightning,
 } from "@phosphor-icons/react/dist/ssr"
 import { useCartStore } from "@/store/cart-store"
 import { CartItem } from "@/components/shop/cart-item"
@@ -291,6 +292,31 @@ export function CartContent() {
   const loginUrl = `/login?callbackUrl=${encodeURIComponent(`${cartPath}?nadaljuj=1`)}`
   const registerUrl = `/register?callbackUrl=${encodeURIComponent(`${cartPath}?nadaljuj=1`)}`
 
+
+
+  const isAuthenticated = status === "authenticated"
+
+  const handleExpressCheckout = () => {
+    if (!isAuthenticated) {
+      const name = contact.name.trim()
+      const email = contact.email.trim()
+      const phone = contact.phone.trim()
+      if (!name || (!email && !phone)) {
+        toast.error(
+          pick(
+            locale,
+            "Za hiter zaključek najprej izpolnite kontaktne podatke.",
+            "Please fill in your contact details first for express checkout."
+          )
+        )
+        document
+          .getElementById("guest-contact-section")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" })
+        return
+      }
+    }
+    void handleCheckout()
+  }
   // P1 #65: full-page confirmation after an offline order — the customer
   // gets an order number and the tenant's real contact channels.
   if (confirmation) {
@@ -393,6 +419,42 @@ export function CartContent() {
         </p>
       </div>
 
+      {/* Express checkout — hiter dostop na vrh košarice */}
+      <div className="mb-6 rounded-lg border bg-muted/20 p-4">
+        <p className="mb-3 text-sm font-medium">
+          {pick(locale, "Hiter zaključek", "Express checkout")}
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 flex-1 border-foreground/20 bg-black text-white hover:bg-black/90 hover:text-white"
+            onClick={handleExpressCheckout}
+            disabled={isCheckingOut}
+          >
+            <Lightning size={18} weight="fill" className="mr-2" />
+            Apple Pay
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 flex-1 border-border bg-white text-foreground hover:bg-muted"
+            onClick={handleExpressCheckout}
+            disabled={isCheckingOut}
+          >
+            <Lightning size={18} weight="fill" className="mr-2" />
+            Google Pay
+          </Button>
+        </div>
+        <p className="text-muted-foreground mt-2 text-xs">
+          {pick(
+            locale,
+            "Hiter prehod na varno plačilo (Apple Pay / Google Pay sta na voljo v Stripe Checkout, če sta podprta).",
+            "Fast path to secure payment (Apple Pay / Google Pay available in Stripe Checkout when supported)."
+          )}
+        </p>
+      </div>
+
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Cart Items + guest contact */}
         <div className="space-y-6 lg:col-span-2">
@@ -436,7 +498,7 @@ export function CartContent() {
                   </p>
                   {/* P1 #45: najemniški prefiks — goli "/shop" bi preusmeril
                       kupca v trgovino PRIVZETEGA najemnika. */}
-                  <Button asChild size="lg" className="shadow-md">
+                  <Button asChild size="lg" className="shadow-none">
                     <Link href={`${orgPrefix}/shop`}>
                       <ShoppingBag className="mr-2 h-5 w-5" />
                       {pick(locale, "Raziščite izdelke", "Browse products")}
@@ -469,7 +531,8 @@ export function CartContent() {
                 </p>
               </CardHeader>
               <CardContent className="grid gap-4 p-6 sm:grid-cols-2">
-                <div className="space-y-2">
+                <div id="guest-contact-section" className="space-y-2">
+                  <p className="text-sm font-medium">{pick(locale, "Nakup brez registracije", "Guest checkout")}</p>
                   <Label htmlFor="guest-name">
                   {pick(locale, "Ime in priimek *", "Full name *")}
                 </Label>
@@ -560,6 +623,25 @@ export function CartContent() {
               aria-live="polite"
               aria-atomic="false"
             >
+                {/* Povzetek izdelkov */}
+                <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
+                  {items.map((item) => (
+                    <div
+                      key={`${item.productId}-${item.variantId ?? "base"}`}
+                      className="flex items-start justify-between gap-3 text-sm"
+                    >
+                      <span className="text-muted-foreground min-w-0 flex-1 truncate">
+                        {item.name}{" "}
+                        <span className="text-foreground/70">× {item.quantity}</span>
+                      </span>
+                      <span className="shrink-0 font-medium">
+                        {fmt(item.price * item.quantity)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <Separator />
+
               <div className="flex justify-between">
                 <span className="text-muted-foreground">
                   {pick(locale, "Vmesna vsota", "Subtotal")}
@@ -684,7 +766,7 @@ export function CartContent() {
             </CardContent>
             <CardFooter className="flex flex-col gap-3 p-6 pt-0">
               <Button
-                className="w-full shadow-md"
+                className="w-full"
                 size="lg"
                 disabled={
                   items.length === 0 || isCheckingOut || status === "loading"

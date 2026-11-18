@@ -23,6 +23,7 @@ import { sendAppointmentReminderEmail } from "@/lib/email/appointment-reminder"
 import { formatSalonTime, safeTimezone } from "@/lib/booking-time"
 import { buildPushPayload } from "@/lib/push/core"
 import { notifyUser } from "@/lib/push/send"
+import { sendAppointmentReminderSms } from "@/app/actions/sms"
 import type { Prisma } from "@prisma/client"
 
 const BATCH_SIZE = 100
@@ -60,7 +61,7 @@ export async function sendDueReminders(now: Date = new Date()): Promise<{
     take: BATCH_SIZE, // omejena serija na tek
     orderBy: { startTime: "asc" },
     include: {
-      customer: { select: { name: true, email: true, userId: true } },
+      customer: { select: { name: true, email: true, userId: true, phone: true } },
       staff: { select: { name: true } },
       services: { include: { service: { select: { name: true, duration: true } } } },
       organization: {
@@ -126,6 +127,19 @@ export async function sendDueReminders(now: Date = new Date()): Promise<{
             date: formatSalonTime(appt.startTime, tz),
           })
         ).catch(() => ({ sent: 0, skipped: true }))
+      }
+
+      // #110 — SMS opomnik (poleg e-pošte in push). Best-effort:
+      // če stranka nima telefona ali SMS ni nastavljen, se tiho preskoči.
+      const customerPhone = appt.customer?.phone || appt.guestPhone
+      const orgId = appt.organizationId ?? appt.organization?.id
+      if (customerPhone && orgId) {
+        await sendAppointmentReminderSms(orgId, {
+          serviceName,
+          date: appt.startTime,
+          customerPhone,
+          businessName: orgName,
+        }).catch(() => ({ ok: false }))
       }
 
       // Zapis šele PO uspešnem pošiljanju (at-least-once, glej zgoraj).
