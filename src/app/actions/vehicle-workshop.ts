@@ -23,6 +23,7 @@ import { requirePermissionOrg } from "@/lib/auth/guards"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import type { Prisma } from "@prisma/client"
+import { orgToday } from "@/lib/org-date"
 import { consumeOnWorkOrder, type ConsumptionResult } from "./work-order-consumption"
 import { VEHICLE_WORKSHOP_CONSUMPTION_OPTS } from "@/lib/consumption-options"
 
@@ -375,6 +376,8 @@ export async function recordTireSetEvent(input: z.input<typeof tireEventSchema>)
   const data = parsed.data
   const { org, session } = await requirePermissionOrg("workorders.manage")
   const orgId = org.id
+  // Pred transakcijo (orgToday odpre svojo povezavo — ne znotraj tx).
+  const eventDate = data.eventDate || (await orgToday(orgId))
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -397,7 +400,7 @@ export async function recordTireSetEvent(input: z.input<typeof tireEventSchema>)
         eventType: data.eventType,
         vehicleId,
         workOrderId: data.workOrderId ?? null,
-        eventDate: data.eventDate || new Date().toISOString().slice(0, 10),
+        eventDate,
         treadMm: data.treadMm ?? (typeof prevData.tread_mm === "number" ? prevData.tread_mm : null),
         status: data.status ?? null,
         notes: data.notes ?? null,

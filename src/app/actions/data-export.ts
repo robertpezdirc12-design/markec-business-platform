@@ -8,6 +8,7 @@
 import { requirePermissionOrg } from "@/lib/auth/guards"
 import { prisma } from "@/lib/prisma"
 import { toCsv } from "@/lib/utils/csv"
+import { orgToday } from "@/lib/org-date"
 
 export type ExportDataType =
   | "appointments"
@@ -152,7 +153,7 @@ export async function exportBusinessData(
     ? JSON.stringify(rows.map((row) => Object.fromEntries(headers.map((h, i) => [h, row[i]]))), null, 2)
     : toCsv(headers, rows)
   const extension = isJson ? "json" : "csv"
-  const date = new Date().toISOString().slice(0, 10)
+  const date = await orgToday(org.id)
 
   return {
     success: true,

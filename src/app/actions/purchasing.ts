@@ -18,6 +18,7 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import type { Prisma } from "@prisma/client"
 import { computeStockDelta } from "@/lib/inventory/stock"
+import { orgToday } from "@/lib/org-date"
 
 const PURCHASING_EXT = "purchasing"
 const PURCHASE_ORDER_KEY = "purchase_order"
@@ -166,6 +167,9 @@ export async function createPurchaseOrder(
 
   const { org } = await requirePermissionOrg("products.manage")
   const orgId = org.id
+  // Izračunaj PRED transakcijo: orgToday uporablja ločen DB klic in bi v
+  // interaktivni transakciji lahko čakal na prosto povezavo (pool).
+  const today = await orgToday(orgId)
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -194,7 +198,6 @@ export async function createPurchaseOrder(
       }
 
       const orderNumber = data.orderNumber || (await nextPurchaseOrderNumber(tx, orgId))
-      const today = new Date().toISOString().slice(0, 10)
 
       // Pripravi linije z imeni izdelkov
       const productById = new Map(products.map((p) => [p.id, p]))

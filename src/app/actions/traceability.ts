@@ -26,6 +26,7 @@ import { requirePermissionOrg } from "@/lib/auth/guards"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import type { Prisma } from "@prisma/client"
+import { orgToday } from "@/lib/org-date"
 
 const BATCH_EXT = "batch-production"
 const BATCH_KEY = "batch"
@@ -162,7 +163,7 @@ export async function createFillBatch(input: CreateFillInput): Promise<CreateFil
 
   const { org } = await requirePermissionOrg("products.manage")
   const orgId = org.id
-  const fillDateISO = data.fillDate || new Date().toISOString().slice(0, 10)
+  const fillDateISO = data.fillDate || (await orgToday(orgId))
 
   try {
     return await prisma.$transaction(async (tx) => {

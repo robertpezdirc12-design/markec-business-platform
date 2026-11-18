@@ -15,6 +15,7 @@ import { requirePermissionOrg } from "@/lib/auth/guards"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import type { Prisma } from "@prisma/client"
+import { orgToday } from "@/lib/org-date"
 
 const LABOR_EXT = "work-order-labor"
 const LABOR_KEY = "work_order_labor"
@@ -121,6 +122,8 @@ export async function addLaborEntry(input: z.input<typeof addLaborSchema>): Prom
 
   const { org, session } = await requirePermissionOrg("workorders.manage")
   const orgId = org.id
+  // Pred transakcijo (orgToday odpre svojo povezavo — ne znotraj tx).
+  const workDate = data.workDate || (await orgToday(orgId))
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -142,7 +145,6 @@ export async function addLaborEntry(input: z.input<typeof addLaborSchema>): Prom
         staffName = staff.name
       }
 
-      const workDate = data.workDate || new Date().toISOString().slice(0, 10)
       const hourlyRate = data.hourlyRate ?? null
       const totalCost = hourlyRate !== null ? data.hours * hourlyRate : null
 

@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState, useTransition } from "react"
+import { format } from "date-fns"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -98,7 +99,7 @@ const emptyForm = {
   workOrderId: "",
   orderId: "",
   appointmentId: "",
-  issueDate: new Date().toISOString().slice(0, 10),
+  issueDate: format(new Date(), "yyyy-MM-dd"),
   dueDate: "",
   // F5.5.4.5 — datum/obdobje opravljene storitve.
   serviceDate: "",
