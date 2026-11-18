@@ -645,6 +645,26 @@ export async function deleteMyAccount(password: string): Promise<DeleteAccountRe
       if (!ok) return { success: false, error: "Geslo ni pravilno." }
     }
 
+    // Varnost podatkov: edini skrbnik aktivnega podjetja ne sme izbrisati
+    // računa — organizacija bi ostala brez upravljavca (nobody could ever
+    // manage it again). Prenos skrbništva ali brisanje/arhiviranje podjetja
+    // je najprej.
+    const adminOrgs = await prisma.organizationMember.findMany({
+      where: { userId: user.id, role: "ADMIN", organization: { status: "ACTIVE" } },
+      select: { organizationId: true, organization: { select: { name: true } } },
+    })
+    for (const m of adminOrgs) {
+      const admins = await prisma.organizationMember.count({
+        where: { organizationId: m.organizationId, role: "ADMIN" },
+      })
+      if (admins <= 1) {
+        return {
+          success: false,
+          error: `Ste edini skrbnik podjetja "${m.organization.name}". Najprej prenesite skrbništvo na drugega člana ali podjetje arhivirajte/izbrišite.`,
+        }
+      }
+    }
+
     // 1) Anonimiziraj osebne podatke stranke (poslovne evidence ostanejo).
     if (user.customer) {
       await prisma.customer.update({
