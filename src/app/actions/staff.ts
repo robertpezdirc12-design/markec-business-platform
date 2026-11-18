@@ -220,7 +220,6 @@ export const getStaffMemberById = async (id: string) => {
         },
       },
       workingHours: true,
-      user: true,
     },
   })
   if (!staffMember) {
@@ -435,7 +434,7 @@ export const deleteStaffMember = async (id: string) => {
     // Get staff with user info (must belong to admin's organization)
     const staff = await prisma.staff.findFirst({
       where: { id, organizationId: org.id },
-      include: { user: true },
+      select: { userId: true },
     })
 
     if (!staff) {

@@ -1437,13 +1437,15 @@ export async function cancelAppointment(appointmentId: string) {
       }
     }
 
-    // Find appointment and verify ownership
+    // Find appointment and verify ownership (samo polja, ki jih potrebujemo —
+    // nikoli poln User z hash-em gesla).
     const appointment = await prisma.appointment.findUnique({
       where: { id: appointmentId },
-      include: {
-        customer: {
-          include: { user: true },
-        },
+      select: {
+        id: true,
+        organizationId: true,
+        startTime: true,
+        customer: { select: { userId: true, name: true } },
       },
     })
 
@@ -1973,9 +1975,7 @@ export async function rescheduleAppointment(
     },
     include: {
       customer: {
-        include: {
-          user: true,
-        },
+        select: { userId: true, name: true, email: true },
       },
       staff: { select: { name: true, id: true } },
       services: {
