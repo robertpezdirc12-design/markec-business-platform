@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth/auth"
 import { prisma } from "@/lib/prisma"
 import { validateCartStock } from "./cart"
 import { getPublicOrg } from "@/lib/tenant"
+import { rateLimit, getClientIp } from "@/lib/rate-limit"
 import { resolveEffectiveProfile } from "@/lib/profiles/resolve"
 import { isCapabilityEnabled } from "@/lib/profiles/registry"
 import { getPlan } from "@/lib/plans/registry"
@@ -196,6 +197,27 @@ export async function createProductCheckoutSession(
       return {
         success: false,
         error: "Trgovina trenutno ni na voljo. Poskusite znova kasneje.",
+      }
+    }
+
+    // Anti-spam (javna akcija): gost brez seje lahko ustvari največ 10
+    // naročil / 10 min z istega IP. Prej je bilo neomejeno — napadalec je
+    // lahko zasedal zalogo, kuril promo kode in pošiljal potrditve.
+    // Prijavljene stranke/osebje niso vezani na to mejo.
+    if (guest) {
+      const ip = await getClientIp()
+      const rl = await rateLimit({
+        scope: "checkout:ip",
+        key: ip,
+        limit: 10,
+        windowMs: 10 * 60_000,
+      })
+      if (!rl.ok) {
+        return {
+          success: false,
+          error:
+            "Preveč poskusov zaključka nakupa. Poskusite znova čez nekaj minut.",
+        }
       }
     }
 

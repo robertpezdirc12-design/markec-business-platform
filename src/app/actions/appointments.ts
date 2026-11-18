@@ -48,6 +48,7 @@ import { sendAppointmentRescheduledEmail } from "@/lib/email/appointment-resched
 import { sendAppointmentExpiredEmail } from "@/lib/email/appointment-expired"
 import { getSessionOrg, getPublicOrg, getResolvedOrg, getTrustedOrgSlug } from "@/lib/tenant"
 import { requirePermissionOrg, UnauthorizedError } from "@/lib/auth/guards"
+import { rateLimit, getClientIp } from "@/lib/rate-limit"
 import { pickIdentityMatch } from "@/lib/customers/identity"
 import { isOrgStripeConfigured } from "@/lib/stripe"
 import { notifyOrgOwners } from "@/lib/push/send"
@@ -614,6 +615,26 @@ export async function createAppointment(
     const org = await resolveRequestOrg()
     if (!org) {
       return { success: false, error: "Rezervacija trenutno ni na voljo" }
+    }
+
+    // Anti-spam (javna akcija): gost brez seje lahko ustvari največ 8
+    // rezervacij / 10 min z istega IP. Prej je bilo neomejeno — napadalec
+    // je lahko zasedal termine in sprožal potrditvena sporočila. Prijavljeni
+    // uporabniki (stranke, osebje, lastnik) niso vezani na to mejo.
+    if (!session?.user) {
+      const ip = await getClientIp()
+      const rl = await rateLimit({
+        scope: "booking:ip",
+        key: ip,
+        limit: 8,
+        windowMs: 10 * 60_000,
+      })
+      if (!rl.ok) {
+        return {
+          success: false,
+          error: "Preveč poskusov rezervacije. Poskusite znova čez nekaj minut.",
+        }
+      }
     }
 
     // Validate required fields (date+time strings or a prebuilt startTime)

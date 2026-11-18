@@ -24,7 +24,7 @@
 import { prisma } from "@/lib/prisma"
 import { headers } from "next/headers"
 
-export type RateLimitScope = "login:ip" | "login:email" | "register:ip" | "forgot:ip" | "forgot:email" | "reset:ip" | "resend:ip" | "inquiry:ip" | "promo:ip"
+export type RateLimitScope = "login:ip" | "login:email" | "register:ip" | "forgot:ip" | "forgot:email" | "reset:ip" | "resend:ip" | "inquiry:ip" | "promo:ip" | "booking:ip" | "checkout:ip"
 
 /**
  * Pridobi naslov odjemalca iz request konteksta (server action / route).
