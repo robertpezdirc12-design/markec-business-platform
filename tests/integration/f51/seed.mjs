@@ -216,8 +216,9 @@ async function seed() {
 try {
   const db = await prisma.$queryRawUnsafe("select current_database() as db")
   console.log("F5.1 seed target:", JSON.stringify(db))
-  if (db[0]?.db !== "markec_f51_test" && db[0]?.db !== "markec_e2e_test") {
-    console.error("REFUSED: not markec_f51_test / markec_e2e_test")
+  const dbName = db[0]?.db ?? ""
+  if (!(dbName.endsWith("_test") || dbName.endsWith("_it"))) {
+    console.error("REFUSED: not an isolated test database (*_test/*_it)")
     process.exit(1)
   }
   await seed()
