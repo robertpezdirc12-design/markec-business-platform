@@ -123,10 +123,29 @@ export async function createGiftCardCheckoutSession(
     ? product.faceValue.toNumber()
     : product.price.toNumber()
 
-  // Brez Stripe ključa = offline prodaja (kot pri offline naročilih):
-  // bon nastane takoj ACTIVE — zabeležen kot prodaja v salonu.
+  // Brez Stripe ključa NI mogoče spletno plačati. Prej je ta veja
+  // ustvarila ACTIVE bon takoj — javna akcija brez plačila, torej je
+  // vsak obiskovalec lahko "kupil" bon v polni vrednosti zastonj.
+  // Offline prodaja je dejanje OSEBJA (gotovina v salonu): dovolimo jo
+  // samo prijavljenemu upravitelju ISTEGA najemnika; vsem drugim
+  // pošteno povemo, da spletni nakup ni na voljo.
   const stripeClient = getStripeForOrg(org)
   if (!stripeClient) {
+    let staffOfThisOrg = false
+    try {
+      const { org: sellingOrg } = await requirePermissionOrg("products.manage")
+      staffOfThisOrg = sellingOrg.id === org.id
+    } catch {
+      staffOfThisOrg = false
+    }
+    if (!staffOfThisOrg) {
+      return {
+        success: false,
+        error:
+          "Spletni nakup darilnega bona trenutno ni na voljo. Bon lahko kupite v salonu.",
+      }
+    }
+
     const purchase = await prisma.prepaidPurchase.create({
       data: {
         organizationId: org.id,
