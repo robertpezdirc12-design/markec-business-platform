@@ -547,7 +547,9 @@ export function StartWizard({
         slug: slug.trim(),
         // F1 #100: ob preskoku je vertical prazen (strežnik vzame generic).
         vertical: vertical ?? "",
-        secondaryVertical: secondary,
+        // E2-4: sekundarna dejavnost je PREMAKNJENA v Nastavitve — onboarding
+        // vedno ustvari organizacijo z eno dejavnostjo (enostavneje za uporabnika).
+        secondaryVertical: null,
         palette: effectivePalette!,
         ownerName: ownerName.trim(),
         // #40: prijavljen uporabnik — e-pošta iz seje, gesla ni (strežnik
@@ -744,34 +746,9 @@ export function StartWizard({
               />
             </div>
 
-            {/* Secondary activity (E2-4): optional capability union — the primary
-                activity keeps terminology, forms, workflows and site content. */}
-            <div className="mt-8 rounded-xl border bg-muted/30 p-4 sm:p-5">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <h2 className="text-sm font-semibold">Dodatna dejavnost (neobvezno)</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Izberite še drugo dejavnost — moduli obeh se združijo (npr. vulkanizer + trgovina).
-                    Jezik, obrazci in vsebina strani ostanejo od prve dejavnosti.
-                  </p>
-                </div>
-                <div className="mt-3 shrink-0 sm:mt-0 sm:w-64">
-                  <Select
-                    value={secondary ?? "none"}
-                    onValueChange={(v) => setSecondary(v === "none" ? null : v)}
-                    disabled={!vertical}
-                  >
-                    <SelectTrigger aria-label="Dodatna dejavnost">
-                      <SelectValue placeholder="Izberite dodatno dejavnost" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-80">
-                      <SelectItem value="none">Brez dodatne dejavnosti</SelectItem>
-                      <GroupedActivityItems excludeId={vertical} />
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
+            {/* Secondary activity (E2-4) je PREMAKNJEN v Nastavitve — glej
+                profile.ts. Onboarding naj bo enostaven: ena dejavnost, ena pot.
+                Napredni uporabniki dodajo sekundarno dejavnost pozneje. */}
 
             {!skippedVertical && (
               <Button
