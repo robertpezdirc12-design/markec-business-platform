@@ -152,6 +152,16 @@ model Organization {
   stripeWebhookSecret String?   @db.Text
   stripeConfiguredAt  DateTime?
 
+  // #110 — Minimax računovodska integracija (Slovenija). Nastavi jo
+  // lastnik v Nastavitve → Računovodstvo. Brez nastavitve se računi
+  // NE izvažajo v Minimax (iskreno: "ni povezano").
+  minimaxClientId       String?   @db.Text
+  minimaxClientSecret   String?   @db.Text
+  minimaxUsername       String?
+  minimaxPassword       String?   @db.Text
+  minimaxOrganisationId Int?
+  minimaxConfiguredAt   DateTime?
+
   users                User[]
   salonConfig          SalonConfig?
   categories           Category[]
