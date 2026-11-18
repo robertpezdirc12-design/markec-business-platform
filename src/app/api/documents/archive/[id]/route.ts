@@ -19,12 +19,16 @@ export async function GET(
     if (!result) {
       return NextResponse.json({ error: "Not found" }, { status: 404, headers: { "Cache-Control": "no-store" } })
     }
+    const encodedName = encodeURIComponent(result.filename)
     return new NextResponse(new Uint8Array(result.pdf), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
         "Content-Length": String(result.pdf.length),
-        "Content-Disposition": `attachment; filename="${result.filename}"`,
+        // encodeURIComponent + filename* (RFC 5987): noben narekovaj,
+        // nova vrstica ali ne-ASCII znak ne more priti v glavo (tudi za
+        // starejše arhive z nekoč nesanitiziranim imenom).
+        "Content-Disposition": `attachment; filename="${encodedName}"; filename*=UTF-8''${encodedName}`,
         "Cache-Control": "private, no-store",
         // X-Content-Type-Options za preprečitev sniffinga (kriptov .pdf).
         "X-Content-Type-Options": "nosniff",

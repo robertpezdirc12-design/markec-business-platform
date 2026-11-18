@@ -199,7 +199,18 @@ export function buildDocumentPdf(payload: PdfDocumentPayload): Buffer {
 
 /** DocCode → ime datoteke za PP (varno). */
 export function safePdfFilename(docCode: string, title: string): string {
-  return `${title.toLowerCase()}-${docCode.replace(/[/\\:]/g, "-")}.pdf`
+  // Ime datoteke gre v glavo Content-Disposition. Nikoli ne sme vsebovati
+  // narekovajev, novih vrstic ali ne-ASCII znakov (header injection /
+  // ERR_INVALID_CHAR v Node). Zato izdelamo varen ASCII basename; šumniki
+  // se prevedejo (č → c), vse ostalo v vmesnikih postane "-".
+  const base = `${title}-${docCode}`
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^[-.]+|[-.]+$/g, "")
+    .slice(0, 120)
+  return `${base || "dokument"}.pdf`
 }
 
 export function sha256Buffer(buf: Buffer): string {
