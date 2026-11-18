@@ -35,7 +35,7 @@ import {
   CalendarIcon,
   StarIcon,
   PlusIcon,
-  CurrencyDollarIcon,
+  
 } from "@/components/icons"
 
 interface PricingRule {

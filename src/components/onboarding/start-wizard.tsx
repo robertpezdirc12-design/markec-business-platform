@@ -30,9 +30,9 @@ import {
 import { PALETTE_OPTIONS } from "@/lib/palettes-client"
 import { listProfileOptions } from "@/lib/profiles/registry"
 import {
-  SKD_AREAS,
-  SKD_MODULE_LABELS,
-  SKD_SECTIONS,
+  
+  
+  
   suggestModulesForSkd,
 } from "@/lib/skd/catalog"
 import { ActivityDirectoryPicker } from "@/components/onboarding/activity-directory-picker"

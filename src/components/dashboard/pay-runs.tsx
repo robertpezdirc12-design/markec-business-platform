@@ -34,10 +34,10 @@ import {
   CurrencyDollarIcon,
   UsersIcon,
   CalendarIcon,
-  CheckCircleIcon,
+  
   DownloadIcon,
   TrendingUpIcon,
-  ClockIcon,
+  
 } from "@/components/icons"
 import { format } from "date-fns"
 import { sl } from "date-fns/locale"

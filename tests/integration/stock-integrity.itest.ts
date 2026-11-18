@@ -37,7 +37,11 @@ import {
   submitStockTake,
   getStockSummary,
 } from "@/app/actions/inventory"
-import { reserveStock, releaseStockReservation, convertReservationToSale } from "@/app/actions/product-checkout"
+import {
+  reserveStock,
+  releaseStockReservation,
+  convertReservationToSale,
+} from "@/lib/orders/stock"
 
 const RUN = "2d1n_" + Date.now().toString(36)
 let orgId: string

@@ -6,7 +6,7 @@
 
 import { useState, useTransition } from "react"
 
-import { submitIntakeByToken } from "@/app/actions/appointments"
+import { submitIntakeByToken } from "@/app/actions/intake"
 import { validateIntakeAnswers } from "@/lib/forms/intake"
 import type { ProfileFieldDef } from "@/lib/profiles/types"
 import { Button } from "@/components/ui/button"

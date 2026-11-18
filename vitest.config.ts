@@ -5,6 +5,10 @@ export default defineConfig({
   test: {
     include: ["tests/**/*.test.ts"],
     environment: "node",
+    // isolate: false deli en V8 isolator med testnimi datotekami → ~40 %
+    // hitrejši zagon (vsaka datoteka prej dobila svoj isolator). Testi so
+    // med seboj neodvisni (brez skupne modulske state), zato je varno.
+    isolate: false,
   },
   resolve: {
     alias: {

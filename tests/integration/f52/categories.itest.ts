@@ -61,7 +61,7 @@ import {
   getManagedCategories,
   getCategoryDeletePreview,
 } from "@/app/actions/categories"
-import { seedOrganizationCatalog, seedProfileCategories } from "@/lib/verticals"
+import { seedOrganizationCatalog, seedProfileCategories } from "@/lib/verticals-seed"
 import {
   getPublicCategories,
   getPublicServicesGrouped,
@@ -92,7 +92,7 @@ beforeAll(async () => {
   const rows = await prisma.$queryRawUnsafe<{ db: string }[]>(
     "select current_database() as db"
   )
-  expect(["markec_f52_test", "markec_e2e_test"]).toContain(rows[0].db)
+  expect(["markec_f52_test", "markec_e2e_test", "markec_it"]).toContain(rows[0].db)
   await seedOrg(ID.orgA, ID.adminA)
   await seedOrg(ID.orgB, ID.adminB)
 })

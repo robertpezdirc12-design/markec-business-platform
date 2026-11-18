@@ -64,3 +64,26 @@ prisma/_PODATKOVNI_MODEL_ANALIZA.md
 # Agentski skills (lokalna konfiguracija, ni del repozitorija)
 .agents/
 .open-next/
+
+# Cloudflare/Miniflare lokalno stanje (sqlite cache) — ne sodi v git
+.wrangler/
+
+# Faza 2 (2026-11-18): diagnostični / QA artefakti (pregledano)
+*diag-*
+tmp-*
+tmp_*
+*tmp*
+unused*
+_unused*
+*lint-out.txt
+*lint.json
+*diff-nav.txt
+*dirty-paths.txt
+*git-status.txt
+*unused-classified.json
+*unused-final.json
+*unused.json
+qa-shots/
+scripts/qa-*
+scripts/tmp**
+.wrangler/state/

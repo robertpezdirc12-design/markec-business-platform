@@ -30,7 +30,6 @@ export function QuotesDashboard() {
 
   useEffect(() => {
     reload()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const act = async (id: string, fn: () => Promise<unknown>) => {

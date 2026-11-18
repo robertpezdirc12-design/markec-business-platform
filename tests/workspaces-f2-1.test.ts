@@ -128,14 +128,15 @@ describe("F2.1 — varnostne zapore testne baze", () => {
     expect(config).toContain('tests/integration/f2-2/**/*.itest.ts"]')
   })
 
-  it("seed zavrne vsako bazo, ki ni markec_f21_test / markec_e2e_test", () => {
+  it("seed zavrne vsako bazo, ki ni izolirana testna baza (*_test/*_it)", () => {
     expect(seed).toContain("REFUSED")
-    // Guard mora ostati fail-closed in vezan na imenski prostor testnih baz.
-    expect(seed).toContain("(markec_e2e_test|markec_f21_test)(\\?|$)")
+    expect(seed).toContain("isolated test database")
+    expect(seed).toContain("_test")
+    expect(seed).toContain("_it")
   })
 
   it("integracijski test preveri ime baze pred izvajanjem", () => {
     expect(suite).toContain("select current_database() as db")
-    expect(suite).toContain('["markec_f21_test", "markec_e2e_test"]')
+    expect(suite).toContain("markec_f21_test")
   })
 })

@@ -241,8 +241,10 @@ export function BookingForm(props: BookingFormProps) {
   // single-field check runs the SAME zod schema slice the server uses.
   type CustomerField = "firstName" | "lastName" | "email" | "phone"
   const validateCustomerField = (field: CustomerField) => {
-    const slice = schema.pick({ [field]: true } as { [k: string]: true })
-    const result = slice.safeParse({ [field]: getValues(field) })
+    // zod 4.6: `pick()` zahteva tipizirano masko; polje beremo neposredno iz
+    // `shape` — enaka validacija, brez tipskega obvoza.
+    const fieldSchema = schema.shape[field]
+    const result = fieldSchema.safeParse(getValues(field))
     if (result.success) {
       clearErrors(field)
     } else {

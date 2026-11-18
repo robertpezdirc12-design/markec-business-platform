@@ -15,7 +15,8 @@
 
 // F5.0: razreševanje profila in hierarhije za konkretne podrazrede.
 import { resolveSkdProfile } from "@/lib/skd/profiles"
-import { skdByCode } from "@/lib/skd/data/skd2025"
+// (skdByCode ni več uvožen — FAZA 2.1: preverjanje po obliki, ne po podatkih;
+// 268 KB SKD_RECORDS ostane zunaj vsakega buntla, ki uvaža catalog.)
 import type { ActivityProfile } from "@/lib/profiles/types"
 
 /** Tipi capability ključev (registry) — samo tolmač za predloge. */
@@ -34,11 +35,18 @@ export type SkdSuggestedModule =
   | "analytics"
   | "reviews"
 
+// FAZA 2.1: oblikovna preverba SKD kode (raven 3–5), NE iskanje v
+// SKD_RECORDS (268 KB). Prejšnji klic skdByCode() je datoteko vtaknil v vsak
+// buntel, ki uvaža catalog (start-wizard → /start). Skupina vedno ima 3
+// znake (A01.1), razred 4 (A01.11), podrazred 5 (A01.110) — preverjeno na
+// vseh 1725 zapisih (script _tmp-skd-shape.mjs). To je trdnejša zgornja meja
+// kot prejšnja (veljavna → oblikovno pravilna), vpravi ne more več
+// razkriti obstoja kode.
+const HIERARCHICAL_SKD = /^[A-V]\d{2}(\.\d{1,3}){1,2}$/
+
 /** Ali je šifra hierarhični SKD zapis (raven 3–5, npr. "A01.11" ali "T96.210"). */
 export function isSkdHierarchical(code: string): boolean {
-  const c = code.trim().toUpperCase()
-  if (!c.includes(".")) return false
-  return Boolean(c[0] >= "A" && c[0] <= "V" && skdByCode(c))
+  return HIERARCHICAL_SKD.test(code.trim().toUpperCase())
 }
 
 /** Moduli, ki jih profil dejansko omogoča (capabilities != disabled). */

@@ -13,18 +13,18 @@ import { resolveDepositForServices } from "@/lib/booking/deposit"
 import { acquireBookingLocks, bookingLockKeys } from "@/lib/booking/locking"
 import {
   validateIntakeAnswers,
-  generateIntakeToken,
   pickIntakeService,
 } from "@/lib/forms/intake"
+import { generateIntakeToken } from "@/lib/forms/intake-token"
 import type { ProfileFieldDef } from "@/lib/profiles/types"
 import { Prisma } from "@prisma/client"
 import { instantFromParts, formatSalonTime } from "@/lib/booking-time"
 import {
-  getCustomDomainOrg,
+  
   getPublicOrg,
   getSessionOrg,
   getOrgById,
-  getTrustedOrgSlug,
+  
 } from "@/lib/tenant"
 import { orgPath } from "@/lib/org-path"
 import { CreateCheckoutSessionData, CreateCheckoutSessionResult } from "@/lib/interfaces"

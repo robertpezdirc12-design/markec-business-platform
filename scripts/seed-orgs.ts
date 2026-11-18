@@ -115,7 +115,8 @@ async function ensureSalon(spec: SalonSpec) {
   const existing = await prisma.organization.findUnique({ where: { slug: spec.slug } })
   if (existing) return
 
-  const { getVertical, seedOrganizationCatalog, verticalSiteContent } = await import("../src/lib/verticals")
+  const { getVertical, verticalSiteContent } = await import("../src/lib/verticals")
+  const { seedOrganizationCatalog } = await import("../src/lib/verticals-seed")
   const preset = getVertical(spec.vertical)
 
   const org = await prisma.organization.create({

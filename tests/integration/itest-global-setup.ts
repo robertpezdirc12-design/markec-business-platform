@@ -63,9 +63,10 @@ function assertTestDb() {
     throw new Error("[itest-fixtures] ZAVRNJENO: DATABASE_URL ni veljaven URL.")
   }
   const db = decodeURIComponent(u.pathname.replace(/^\//, ""))
-  if (u.hostname !== "localhost" || !db.endsWith("_test")) {
+  const allowedDb = db.endsWith("_test") || db.endsWith("_it")
+  if (u.hostname !== "localhost" || !allowedDb) {
     throw new Error(
-      `[itest-fixtures] ZAVRNJENO: dovoljena le izolirana testna baza (localhost, *_test), povezan na ${u.hostname}/${db}.`
+      `[itest-fixtures] ZAVRNJENO: dovoljena le izolirana testna baza (localhost, *_test/*_it), povezan na ${u.hostname}/${db}.`
     )
   }
 }

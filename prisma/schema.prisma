@@ -117,10 +117,10 @@ model Organization {
 
   // WP-1 (Blagajna): denarne seje in drobni stroški (org-scoped direktno,
   // da cross-tenant preverjanje ne zahteva joina prek seje).
-  cashSessions CashSession[]
+  cashSessions      CashSession[]
   workOrderPayments WorkOrderPayment[]
   workOrderPhotos   WorkOrderPhoto[]
-  cashExpenses CashExpense[]
+  cashExpenses      CashExpense[]
 
   // #100 8.A (M1): članstva — en lastnik lahko vodi VEČ podjetij iz enega
   // računa; vloga je PER ORGANIZACIJO. Legacy User.organizationId/role
@@ -390,15 +390,15 @@ model User {
   customRole   CustomRole? @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
 
   // WP-1 (Blagajna): denarne seje (odprte/zaprla) in knjiženi drobni stroški.
-  openedCashSessions     CashSession[]
-  closedCashSessions     CashSession[]  @relation("closedCashSessions")
-  recordedCashExpenses   CashExpense[]  @relation("recordedCashExpenses")
+  openedCashSessions        CashSession[]
+  closedCashSessions        CashSession[]      @relation("closedCashSessions")
+  recordedCashExpenses      CashExpense[]      @relation("recordedCashExpenses")
+  recordedWorkOrderPayments WorkOrderPayment[] @relation("recordedWorkOrderPayments")
+  uploadedWorkOrderPhotos   WorkOrderPhoto[]   @relation("UploadedWorkOrderPhotos")
 
   @@index([email])
   @@index([role])
   @@index([customRoleId])
-  recordedWorkOrderPayments WorkOrderPayment[] @relation("recordedWorkOrderPayments")
-  uploadedWorkOrderPhotos   WorkOrderPhoto[]   @relation("UploadedWorkOrderPhotos")
 }
 
 model NotificationPreferences {
@@ -1174,15 +1174,14 @@ model Appointment {
   // F5.5.4.1 — dokumenti (računi/ponudbe), izpeljani iz tega termina.
   documents          Document[]
 
+  workOrder WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+
   @@index([staffId])
   @@index([customerId])
   @@index([organizationId])
   @@index([startTime])
   @@index([status])
   @@index([depositPaid])
-
-  workOrder WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
-
   @@index([workOrderId])
 }
 
@@ -2879,16 +2878,16 @@ model WarrantyClaim {
 // ============================================================
 
 model CashSession {
-  id             String    @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   // Odprla (obvezno) / zaprla (ob zaprtju) — avtorizacija: vloga + pravica
   // orders.manage (prodaje so naročila, seja je le njihovo dnevno okno).
   openedById String
-  openedBy   User? @relation(fields: [openedById], references: [id], onDelete: SetNull)
+  openedBy   User?   @relation(fields: [openedById], references: [id], onDelete: SetNull)
   closedById String?
-  closedBy   User? @relation("closedCashSessions", fields: [closedById], references: [id], onDelete: SetNull)
+  closedBy   User?   @relation("closedCashSessions", fields: [closedById], references: [id], onDelete: SetNull)
 
   // Opcionalno: kateri zaposleni je vodil blagajno (mehka referenca —
   // izbris zaposlenega ne sme pobrisati denarne zgodovine).
@@ -2897,8 +2896,8 @@ model CashSession {
   // OPEN | CLOSED (polstring, vzorec kot WorkOrder/WalkInEntry status).
   status String @default("OPEN")
 
-  openedAt   DateTime @default(now())
-  closedAt   DateTime?
+  openedAt DateTime  @default(now())
+  closedAt DateTime?
 
   // Ošteviljen ODPRIJNI fond predala (privzeto 0 — šef ne mora imeti fonda).
   openingFloat Decimal @default(0) @db.Decimal(10, 2)
@@ -2908,14 +2907,14 @@ model CashSession {
   // cashSales = prodaje, knjižene v sejo s paymentMethod cash|offline|card
   // (v predal pride le cash|offline — zato cashSalesTotal loči "predal" od
   // „kartica“; transfer prodaja v sejo ne vpliva na gotovinski predal).
-  salesCount     Int      @default(0) // število prodaj v seji (vse metode)
-  cashSalesTotal Decimal  @default(0) @db.Decimal(10, 2) // cash + offline (gotovina v predalu)
-  cardSalesTotal Decimal  @default(0) @db.Decimal(10, 2)
-  transferSalesTotal Decimal @default(0) @db.Decimal(10, 2)
-  expensesTotal  Decimal  @default(0) @db.Decimal(10, 2)
-  expectedAmount Decimal? @db.Decimal(10, 2) // openingFloat + cashSales − stroški (le gotovinski predal)
-  actualAmount   Decimal? @db.Decimal(10, 2) // ošteviljeno stanje predala
-  varianceAmount Decimal? @db.Decimal(10, 2) // actual − expected (negativno = manjka)
+  salesCount         Int      @default(0) // število prodaj v seji (vse metode)
+  cashSalesTotal     Decimal  @default(0) @db.Decimal(10, 2) // cash + offline (gotovina v predalu)
+  cardSalesTotal     Decimal  @default(0) @db.Decimal(10, 2)
+  transferSalesTotal Decimal  @default(0) @db.Decimal(10, 2)
+  expensesTotal      Decimal  @default(0) @db.Decimal(10, 2)
+  expectedAmount     Decimal? @db.Decimal(10, 2) // openingFloat + cashSales − stroški (le gotovinski predal)
+  actualAmount       Decimal? @db.Decimal(10, 2) // ošteviljeno stanje predala
+  varianceAmount     Decimal? @db.Decimal(10, 2) // actual − expected (negativno = manjka)
 
   notes String?
 
@@ -2968,10 +2967,10 @@ model WorkOrderPayment {
 }
 
 model CashExpense {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String // org-scoped direktno (cross-tenant test brez joina)
   sessionId      String
-  session        CashSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session        CashSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   label String // npr. "Drobci za predal", "Nakup embalaže"
@@ -2983,7 +2982,7 @@ model CashExpense {
 
   // Kdo je knjižil (audit; SetNull da izbris uporabnika ne pobriše zgodovine).
   recordedById String
-  recordedBy   User? @relation("recordedCashExpenses", fields: [recordedById], references: [id], onDelete: SetNull)
+  recordedBy   User?  @relation("recordedCashExpenses", fields: [recordedById], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 
@@ -3019,4 +3018,29 @@ model WorkOrderPhoto {
 
   @@index([organizationId, workOrderId])
   @@index([workOrderId, createdAt])
+}
+
+// P1 (audit 2026-11) — IDEMPOTENCA NAJEMNIŠKEGA STRIPE WEBHOOKA.
+//
+// Platformni webhook je imel `stripeEventId @unique`, najemniški pa nobenega
+// ključa: ponovljena dostava (Stripe retry po timeoutu, hkratna dostava dveh
+// instanc) je lahko drugič obdelala isto checkout sejo. Ta tabela je
+// (a) idempotentna ključavnica po `event.id` in (b) kratek revizijski dnevnik
+// dostav z izidom. `organizationId` je VEDNO organizacija, katere skrivnost
+// je podpisala dostavo — nikoli vrednost iz metadata.
+//
+// `outcome`: received (prevzeto, še v obdelavi / ignorirano) | processed |
+// failed (ponovni poskus je dovoljen).
+model TenantStripeEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  stripeEventId  String   @unique
+  type           String
+  outcome        String   @default("received")
+  detail         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, createdAt])
+  @@index([outcome, createdAt])
 }

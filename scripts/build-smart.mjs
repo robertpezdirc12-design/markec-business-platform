@@ -24,10 +24,17 @@ if (isInsideOpenNext) {
     execSync("prisma generate", { stdio: "inherit" })
   }
 
-  // Run migrations (skips if DATABASE_URL not set OR if CI=true)
+  // Run migrations only in environments where deploy-time migrations are intended.
+  // Cloudflare Workers/Pages builds and generic CI do not have DATABASE_URL access
+  // and must not run migrations as part of the asset build.
   const isCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true"
-  if (isCI) {
-    console.log("[build] CI environment detected — skipping migrations (run separately)")
+  const isCloudflareBuild =
+    process.env.CF_PAGES === "1" ||
+    !!process.env.CF_PAGES ||
+    !!process.env.WORKERS_CI ||
+    !!process.env.CLOUDFLARE_ENV
+  if (isCI || isCloudflareBuild) {
+    console.log("[build] CI/Cloudflare build detected — skipping migrations (run separately)")
   } else {
     execSync("node scripts/migrate-with-retry.mjs", { stdio: "inherit" })
   }

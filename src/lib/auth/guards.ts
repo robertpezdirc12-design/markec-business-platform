@@ -98,6 +98,18 @@ export async function requirePagePermission(key: PermissionKey) {
 }
 
 /**
+ * Page-level OR-permission guard. Redirects to /dashboard instead of throwing,
+ * so unauthorized page loads degrade gracefully (no 500/UnauthorizedError).
+ */
+export async function requirePageAnyPermission(keys: PermissionKey[]) {
+  const session = await requireSession()
+  // F0: org-scoped permissions (role + custom role per active org).
+  const org = await resolveSessionOrg(session)
+  const perms = await getEffectivePermissions(session.user.id, org?.id)
+  if (!keys.some((key) => perms.includes(key))) redirect("/dashboard")
+  return { session }
+}
+/**
  * Page guard for privilege-escalating administration (E4-6b): the
  * custom-roles editor. Restricted admins are redirected to the
  * dashboard — they may never administer the permission catalog.

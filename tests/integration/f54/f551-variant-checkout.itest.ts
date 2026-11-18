@@ -58,13 +58,13 @@ vi.mock("@/lib/tenant-proof", () => ({
 }))
 
 import { prisma } from "@/lib/prisma"
+import { createProductCheckoutSession } from "@/app/actions/product-checkout"
 import {
-  createProductCheckoutSession,
   applyOrderStockDecrement,
   convertReservationToSale,
   reserveStock,
   releaseStockReservation,
-} from "@/app/actions/product-checkout"
+} from "@/lib/orders/stock"
 import { validateCartStock } from "@/app/actions/cart"
 
 const ID = {
@@ -116,7 +116,7 @@ function cartItem(productId: string, price: number, qty: number, variant?: { id:
 
 beforeAll(async () => {
   const rows = await prisma.$queryRawUnsafe<{ db: string }[]>("select current_database() as db")
-  expect(["markec_f54_test", "markec_e2e_test"]).toContain(rows[0].db)
+  expect(["markec_f54_test", "markec_e2e_test", "markec_it"]).toContain(rows[0].db)
 
   await clean()
 

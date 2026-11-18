@@ -9,6 +9,8 @@ import {
   stripeKeyMode,
   verifyStripeSecretKey,
 } from "@/lib/stripe"
+// P2 (audit 2026-11): skrivnosti v bazi so šifrirane (AES-256-GCM).
+import { decryptSecret, encryptSecret } from "@/lib/crypto/secrets"
 
 export interface PaymentsSettings {
   /** True when payments are runnable right now (the salon's own key). */
@@ -35,12 +37,13 @@ function buildPaymentsSettings(org: {
   stripeConfiguredAt: Date | null
 }): PaymentsSettings {
   // Org key ONLY — no env fallback: the platform never holds the key (E4-3b).
-  const activeKey = org.stripeSecretKey
+  // Prikaz (maskirano, način test/live) rabi ODPRTO vrednost.
+  const activeKey = decryptSecret(org.stripeSecretKey)
   return {
     active: Boolean(activeKey),
-    source: org.stripeSecretKey ? "settings" : "none",
+    source: activeKey ? "settings" : "none",
     mode: activeKey ? stripeKeyMode(activeKey) : "unknown",
-    maskedKey: org.stripeSecretKey ? maskSecretKey(org.stripeSecretKey) : null,
+    maskedKey: activeKey ? maskSecretKey(activeKey) : null,
     configuredAt: org.stripeConfiguredAt?.toISOString() ?? null,
     webhookConfigured: Boolean(org.stripeWebhookSecret),
     webhookUrl: `${process.env.NEXT_PUBLIC_APP_URL || ""}/api/webhooks/stripe`,
@@ -117,8 +120,10 @@ export async function saveStripeSettings(input: {
     const updated = await prisma.organization.update({
       where: { id: org.id },
       data: {
-        stripeSecretKey: secretKey,
-        stripeWebhookSecret: webhookSecret,
+        // P2 (audit 2026-11): v bazo gre ŠIFRIRANO — kopija baze ne sme
+        // vsebovati uporabnega ključa.
+        stripeSecretKey: secretKey ? encryptSecret(secretKey) : null,
+        stripeWebhookSecret: webhookSecret ? encryptSecret(webhookSecret) : null,
         stripeConfiguredAt: new Date(),
       },
     })

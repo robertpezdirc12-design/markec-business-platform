@@ -349,7 +349,8 @@ export async function updateOrgVertical(
 ) {
   try {
     const { org } = await requirePermissionOrg("settings.manage")
-    const { getVertical, seedOrganizationCatalog } = await import("@/lib/verticals")
+    const { getVertical } = await import("@/lib/verticals")
+    const { seedOrganizationCatalog } = await import("@/lib/verticals-seed")
     const preset = getVertical(vertical)
     if (!preset) return { success: false, error: "Neznana panoga." }
 

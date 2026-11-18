@@ -28,6 +28,23 @@ module.exports = {
         path: "^(scripts|tests|prisma)/",
       },
     },
+
+    /* FAZA 1.1 — getPublicOrg (javni, BREZ seje) ni statično omejen na
+       module. getPublicOrg, getSessionOrg, requireAdminOrg in getResolvedOrg
+       živijo v ISTEM modulu (src/lib/tenant.ts), zato dependency-cruiser ne
+       more ločiti "admin akcija pokliče javni fallback" od "admin akcija
+       uporabi sejni rezolutor" — pravilo na ravni celotnega modula da 39
+       lažnih opozoril (javne akcije cart/checkout/faq/galleries … pravilno
+       rabijo getPublicOrg in so prav tako v app/actions/).
+
+       Cross-tenant fallback (V-1 iz ARCHITECTURE.md) je zato zajet v KODI in
+       TESTU, ne v statični pravili:
+         - requireAdminOrg → requireSessionOrg (star "prva ACTIVE org"
+           fallback je ODSTRANJEN — F2.1)
+         - getResolvedOrg: prijavljen ADMIN/STAFF nikoli ne pade na anonimni
+           privzeti najemnik (F2.0)
+         - tests/integration/f2-1/org-isolation.itest.ts preverja obnašanje
+       Pravila zato tukaj ne dodajamo — bi bilo več hrupa kot koristi. */
   ],
   options: {
     doNotFollow: {

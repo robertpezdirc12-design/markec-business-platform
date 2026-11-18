@@ -108,6 +108,9 @@ describe("#80 sale — the gift card can be bought", () => {
 
 describe("#80 redemption — the code reduces a later order", () => {
   const checkout = read("src/app/actions/product-checkout.ts")
+  // P1 (audit 2026-11): zaloga/ledger sta prestavljena v necitirani modul
+  // src/lib/orders/stock.ts (izvoz iz "use server" modula = javni RPC).
+  const stock = read("src/lib/orders/stock.ts")
   const prepaid = read("src/app/actions/prepaid.ts")
 
   it("checkout validates the code org-scoped; a foreign tenant's code is REJECTED", () => {
@@ -131,7 +134,7 @@ describe("#80 redemption — the code reduces a later order", () => {
     // F5.5.1: zaloga za plačano naročilo se zniža VARIANT-AWARE v isti
     // transakciji prek applyOrderStockDecrement (ledger z source "ORDER").
     expect(body).toMatch(/applyOrderStockDecrement\(tx/)
-    expect(checkout).toMatch(/source: "ORDER"/)
+    expect(stock).toMatch(/source: "ORDER"/)
   })
 
   it("partial coverage charges the REMAINDER via Stripe and redeems on payment", () => {

@@ -1,18 +1,26 @@
 import { headers } from "next/headers"
 import { NextResponse } from "next/server"
 import { redeemGiftCardForOrder, activatePrepaidPurchase } from "@/app/actions/prepaid"
-import { convertReservationToSale, applyOrderStockDecrement, releaseStockReservation } from "@/app/actions/product-checkout"
+import {
+  convertReservationToSale,
+  applyOrderStockDecrement,
+  releaseStockReservation,
+} from "@/lib/orders/stock"
 import { constructWebhookEvent } from "@/lib/stripe"
 import { prisma } from "@/lib/prisma"
 import { addMinutes } from "date-fns"
 import { after } from "next/server"
 import { sendAppointmentConfirmationEmail } from "@/lib/email/appointment-confirmation"
-import { getOrgById, getPublicOrg } from "@/lib/tenant"
+import { getOrgById } from "@/lib/tenant"
+import { checkTenantBinding, extractClaimedOrgId } from "@/lib/stripe/webhook-tenant"
 import { formatSalonTime, safeTimezone } from "@/lib/booking-time"
 import { acquireBookingLocks, bookingLockKeys } from "@/lib/booking/locking"
 import { GUARANTEE_METADATA_TYPE } from "@/lib/booking/no-show-policy"
-import { generateIntakeToken, pickIntakeService } from "@/lib/forms/intake"
+import { pickIntakeService } from "@/lib/forms/intake"
+import { generateIntakeToken } from "@/lib/forms/intake-token"
 import { Prisma } from "@prisma/client"
+// P2 (audit 2026-11): webhook secret je v bazi šifriran.
+import { decryptSecret } from "@/lib/crypto/secrets"
 import Stripe from "stripe"
 // F5.1: promo engine + atomsko unovčenje v webhooku (Stripe-paid path).
 import { loadActivePromotions } from "@/lib/promotions/map"
@@ -26,29 +34,119 @@ import { redeemOrderPromotion } from "@/lib/promotions/redeem-order"
  * its own signing secret. We try every organization's stored webhook secret —
  * there is deliberately NO platform/env secret: the platform cannot hold the
  * key. constructEvent never calls the API, so trying candidates is cheap.
+ *
+ * P0 SECURITY (audit 2026-11): the function returns the ORGANIZATION whose
+ * secret actually verified the signature. Prej je vrnil samo dogodek in je
+ * najemnika nato določil iz `session.metadata.orgId` — torej iz podatka, ki
+ * ga nadzoruje POŠILJATELJ. Najemnik, ki pozna SVOJO whsec_, je lahko tako
+ * podpisal poljuben payload in z metadata.orgId = žrtev posegel v tuje
+ * podatke (preklic tujega naročila, potrditev tujega termina brez plačila).
+ * Zdaj je podpis edini vir resnice o najemniku; metadata.orgId se uporablja
+ * samo še kot TRDITEV, ki mora soglašati s podpisom (sicer 400).
  */
+type VerifiedStripeEvent = {
+  event: Stripe.Event
+  org: { id: string; slug: string }
+}
+
 async function verifyStripeEvent(
   body: string,
   signature: string
-): Promise<Stripe.Event | null> {
-  const candidates: string[] = []
-
+): Promise<VerifiedStripeEvent | null> {
   const orgsWithWebhook = await prisma.organization.findMany({
     where: { stripeWebhookSecret: { not: null } },
-    select: { stripeWebhookSecret: true },
+    select: { id: true, slug: true, stripeWebhookSecret: true },
   })
-  for (const org of orgsWithWebhook) {
-    if (org.stripeWebhookSecret) candidates.push(org.stripeWebhookSecret)
-  }
 
-  for (const secret of candidates) {
+  for (const org of orgsWithWebhook) {
+    // P2 (audit 2026-11): webhook secret je v bazi šifriran.
+    const secret = decryptSecret(org.stripeWebhookSecret)
+    if (!secret) continue
     try {
-      return constructWebhookEvent(body, signature, secret)
+      const event = constructWebhookEvent(body, signature, secret)
+      // The signature belongs to THIS organization — never to metadata.
+      return { event, org: { id: org.id, slug: org.slug } }
     } catch {
       continue
     }
   }
   return null
+}
+
+/**
+ * P1 (audit 2026-11) — IDEMPOTENCA najemniškega webhooka po `event.id`.
+ *
+ * Platformni webhook je imel `stripeEventId @unique`, najemniški ničesar:
+ * ponovljena dostava (Stripe retry, hkratna dostava) je lahko drugič
+ * obdelala isto sejo. Vrstica je tudi kratek revizijski dnevnik dostav.
+ *
+ * @returns `true`, kadar je dogodek ŽE obdelan (ali se trenutno obdeluje)
+ */
+async function claimTenantEvent(
+  event: Stripe.Event,
+  organizationId: string
+): Promise<boolean> {
+  try {
+    const existing = await prisma.tenantStripeEvent.findUnique({
+      where: { stripeEventId: event.id },
+      select: { id: true, outcome: true },
+    })
+    if (existing) {
+      // Prejšnji poskus je spodletel → dovolimo ponovni poskus.
+      if (existing.outcome === "failed") {
+        await prisma.tenantStripeEvent.update({
+          where: { id: existing.id },
+          data: { outcome: "received", detail: null },
+        })
+        return false
+      }
+      return true
+    }
+    await prisma.tenantStripeEvent.create({
+      data: {
+        organizationId,
+        stripeEventId: event.id,
+        type: event.type,
+        outcome: "received",
+      },
+    })
+    return false
+  } catch (error) {
+    // Sledenje ne sme nikoli ustaviti obdelave plačila — če zapis ne uspe
+    // (npr. P2002 iz hkratne dostave), se zanesemo na per-objekt dedupe
+    // (unique stripePaymentId, pogojni status PENDING→PAID).
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return true
+    }
+    console.error("Webhook: idempotency claim failed", error)
+    return false
+  }
+}
+
+/** Označi dostavo kot obdelano (uspešen konec). */
+async function markTenantEventProcessed(stripeEventId: string): Promise<void> {
+  await prisma.tenantStripeEvent
+    .updateMany({
+      where: { stripeEventId, outcome: "received" },
+      data: { outcome: "processed" },
+    })
+    .catch(() => undefined)
+}
+
+/** Označi dostavo kot spodletelo — omogoči ponovni poskus ob retryju. */
+async function markTenantEventFailed(
+  stripeEventId: string,
+  detail: string
+): Promise<void> {
+  await prisma.tenantStripeEvent
+    .updateMany({
+      where: { stripeEventId },
+      data: { outcome: "failed", detail: detail.slice(0, 500) },
+    })
+    .catch(() => undefined)
 }
 
 export async function POST(req: Request) {
@@ -61,6 +159,8 @@ export async function POST(req: Request) {
   }
 
   let event: Stripe.Event
+  // P0 SECURITY: najemnik pride IZ PODPISA, ne iz metadata.
+  let signedOrg: { id: string; slug: string }
 
   try {
     const verified = await verifyStripeEvent(body, signature)
@@ -71,13 +171,40 @@ export async function POST(req: Request) {
         { status: 400 }
       )
     }
-    event = verified
+    event = verified.event
+    signedOrg = verified.org
   } catch (err) {
     console.error("Webhook signature verification failed:", err)
     return NextResponse.json(
       { error: "Webhook signature verification failed" },
       { status: 400 }
     )
+  }
+
+  // Vsak objekt (checkout seja) nosi metadata.orgId, ki ga je vpisala
+  // aplikacija ob ustvarjanju seje. Če se ta TRDITEV ne ujema z
+  // organizacijo, katere skrivnost je podpisala dostavo, je dostava bodisi
+  // napaka bodisi poskus preskoka najemnika → zavrnemo (fail-closed).
+  const binding = checkTenantBinding(
+    extractClaimedOrgId(event.data?.object),
+    signedOrg.id
+  )
+  if (!binding.ok) {
+    console.error(
+      `Webhook: org mismatch — signature=${signedOrg.id} metadata=${binding.claimed} type=${event.type}`
+    )
+    return NextResponse.json(
+      { error: "Webhook organization mismatch" },
+      { status: 400 }
+    )
+  }
+
+  // Idempotenca po event.id (P1 audit 2026-11): platformni webhook jo je
+  // imel, najemniški ne. Brez nje je ponovljena dostava (Stripe retry ali
+  // hkratna dostava) lahko drugič obdelala isto sejo.
+  const alreadyHandled = await claimTenantEvent(event, signedOrg.id)
+  if (alreadyHandled) {
+    return NextResponse.json({ received: true, duplicate: true })
   }
 
   // F5.5.1.2 — checkout.session.expired → sprostitev inventarne rezervacije.
@@ -91,14 +218,16 @@ export async function POST(req: Request) {
     if (orderId && session.metadata?.type === "product_order") {
       try {
         await prisma.$transaction(async (tx) => {
-          const order = await tx.order.findUnique({
-            where: { id: orderId },
+          // P0: iskanje je ORG-SCOPED (prej `findUnique` samo po id-ju —
+          // tuj najemnik je lahko preklical tuje naročilo).
+          const order = await tx.order.findFirst({
+            where: { id: orderId, organizationId: signedOrg.id },
             include: { items: true },
           })
           // Idempotentno + fail-closed: vzemi SAMO PENDING order in še ne
           // plačan; sprosti rezervacijo (če je bila) za vsako postavko.
           if (!order || order.status !== "PENDING" || order.paymentMethod === "offline") return
-          const orgId = order.organizationId ?? session.metadata?.orgId
+          const orgId = order.organizationId
           for (const item of order.items) {
             if (!orgId) continue
             const line = {
@@ -113,8 +242,8 @@ export async function POST(req: Request) {
             }
             await releaseStockReservation(tx, line)
           }
-          await tx.order.update({
-            where: { id: orderId },
+          await tx.order.updateMany({
+            where: { id: orderId, organizationId: signedOrg.id },
             data: { status: "CANCELLED" },
           })
           console.log(`Webhook: order ${orderId} expired — reservation released`)
@@ -139,8 +268,13 @@ export async function POST(req: Request) {
     ) {
       const appointmentId = session.metadata.appointmentId
       if (appointmentId) {
+        // P0: org-scoped — tuj najemnik ne more potrditi tujega termina.
         const updated = await prisma.appointment.updateMany({
-          where: { id: appointmentId, noShowSetupStatus: "PENDING" },
+          where: {
+            id: appointmentId,
+            organizationId: signedOrg.id,
+            noShowSetupStatus: "PENDING",
+          },
           data: {
             stripeSetupIntentId:
               typeof session.setup_intent === "string"
@@ -199,12 +333,12 @@ export async function POST(req: Request) {
     if (metadata.type === "work_order_deposit" && metadata.workOrderId) {
       try {
         const workOrder = await prisma.workOrder.findFirst({
-          where: { id: metadata.workOrderId, organizationId: metadata.orgId },
+          where: { id: metadata.workOrderId, organizationId: signedOrg.id },
           select: { id: true, organizationId: true, depositAmount: true, title: true },
         })
         if (!workOrder) {
           console.error(
-            `Webhook: work order ${metadata.workOrderId} not found for org ${metadata.orgId}`
+            `Webhook: work order ${metadata.workOrderId} not found for org ${signedOrg.id}`
           )
           return NextResponse.json({ received: true })
         }
@@ -267,8 +401,8 @@ export async function POST(req: Request) {
     // Handle product orders (e-commerce checkout)
     if (metadata.type === "product_order" && metadata.orderId) {
       try {
-        const order = await prisma.order.findUnique({
-          where: { id: metadata.orderId },
+        const order = await prisma.order.findFirst({
+          where: { id: metadata.orderId, organizationId: signedOrg.id },
           include: { items: true },
         })
 
@@ -298,9 +432,11 @@ export async function POST(req: Request) {
             data: {
               status: "PAID",
               stripePaymentIntentId: paymentIntentId,
-              ...(metadata.orgId && !order.organizationId
-                ? { organizationId: metadata.orgId }
-                : {}),
+              // P0: legacy naročilo brez organizacije se pripne PODPISANI
+              // organizaciji (nikoli metadata.orgId).
+              ...(order.organizationId
+                ? {}
+                : { organizationId: signedOrg.id }),
             },
           })
 
@@ -321,7 +457,7 @@ export async function POST(req: Request) {
               name: "",
               image: null,
             }
-            const paidOrgIdNow = order.organizationId ?? metadata.orgId
+            const paidOrgIdNow = order.organizationId ?? signedOrg.id
             const converted = await convertReservationToSale(
               tx,
               line,
@@ -335,7 +471,7 @@ export async function POST(req: Request) {
 
           // F5.1: promocija se unovči ob potrjenem plačilu (idempotentno),
           // ne ob kreaciji seje. Idempotence → `@@unique([promotionId, orderId])`.
-          const paidOrgId = order.organizationId ?? metadata.orgId
+          const paidOrgId = order.organizationId ?? signedOrg.id
           if (paidOrgId && order.promotionId) {
             await redeemOrderPromotion(tx, order, paidOrgId)
           }
@@ -344,9 +480,9 @@ export async function POST(req: Request) {
         // #80: darilni bon se unovči ŠELE ob potrjenem plačilu.
         // redeemGiftCardForOrder je idempotentna (unikatni [purchaseId,
         // orderId]) — ponovljen webhook ne odšteje dvakrat.
-        if (metadata.giftCardCode && (order.organizationId ?? metadata.orgId)) {
+        if (metadata.giftCardCode) {
           await redeemGiftCardForOrder(
-            order.organizationId ?? metadata.orgId,
+            order.organizationId ?? signedOrg.id,
             metadata.giftCardCode,
             order.id,
             parseFloat(metadata.giftCardRedemption || "0") ||
@@ -361,57 +497,51 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true })
       } catch (error) {
         console.error("Webhook: error processing product order:", error)
+        await markTenantEventFailed(
+          event.id,
+          error instanceof Error ? error.message : "product order error"
+        )
         // Acknowledge to avoid infinite retries; order can be reconciled manually
         return NextResponse.json({ received: true })
       }
     }
 
     try {
-      // Resolve the tenant organization for this checkout:
-      // from metadata.orgId, falling back to the first ACTIVE organization.
-      const org = metadata.orgId
-        ? await getOrgById(metadata.orgId)
-        : await getPublicOrg()
+      // P0 (audit 2026-11): najemnik je TISTI, katerega skrivnost je
+      // podpisala dostavo — nikoli metadata.orgId (to je vrednost, ki jo
+      // nadzoruje pošiljatelj). Prej je bilo tu `getOrgById(metadata.orgId)`,
+      // kar je najemniku omogočilo, da se predstavi kot drug salon.
+      const org = await getOrgById(signedOrg.id)
 
       if (!org) {
-        console.error("Webhook: no organization available", session.id)
+        console.error("Webhook: signed organization not found", signedOrg.id)
         return NextResponse.json({ received: true })
       }
 
       // Handle existing appointment payment (from "Pay Now" button)
       if (metadata.type === "existing_appointment" && metadata.appointmentId) {
-        const existingAppointment = await prisma.appointment.findUnique({
-          where: { id: metadata.appointmentId },
-          select: { id: true, organizationId: true },
+        // P0: termin iščemo ORG-SCOPED. Prej je bil `findUnique` po id-ju,
+        // "tenant check" pa je primerjal z metadata.orgId — če je napadalec
+        // v metadata zapisal ŽRTEV, je bil check zadovoljen in tuj termin je
+        // postal "plačan" brez plačila.
+        const existingAppointment = await prisma.appointment.findFirst({
+          where: { id: metadata.appointmentId, organizationId: org.id },
+          select: { id: true },
         })
 
         if (!existingAppointment) {
           console.error(
-            `Webhook: appointment ${metadata.appointmentId} not found (session ${session.id})`
+            `Webhook: appointment ${metadata.appointmentId} not found in org ${org.id} (session ${session.id})`
           )
           return NextResponse.json({ received: true })
         }
 
-        // Tenant check: the appointment must belong to the resolved organization
-        if (
-          existingAppointment.organizationId &&
-          existingAppointment.organizationId !== org.id
-        ) {
-          console.error(
-            `Webhook: appointment ${existingAppointment.id} does not belong to org ${org.id}`
-          )
-          return NextResponse.json({ received: true })
-        }
-
-        await prisma.appointment.update({
-          where: { id: metadata.appointmentId },
+        await prisma.appointment.updateMany({
+          where: { id: existingAppointment.id, organizationId: org.id },
           data: {
             depositPaid: true,
             status: "CONFIRMED",
             stripePaymentId: session.payment_intent as string,
-            ...(existingAppointment.organizationId
-              ? {}
-              : { organizationId: org.id }),
           },
         })
         console.log(`Webhook: existing appointment paid ${metadata.appointmentId}`)
@@ -813,10 +943,17 @@ export async function POST(req: Request) {
       console.log(`Webhook: appointment created ${appointment.id}`)
     } catch (error) {
       console.error("Webhook: error processing checkout session:", error)
+      // Dostava ni uspela → dogodek označimo kot spodletelo, da bo ponovni
+      // poskus (Stripe retry) lahko stekel (claim ga sicer šteje za rešenega).
+      await markTenantEventFailed(
+        event.id,
+        error instanceof Error ? error.message : "checkout session error"
+      )
       // Acknowledge — payment intent id dedupe makes a manual replay safe
       return NextResponse.json({ received: true })
     }
   }
 
+  await markTenantEventProcessed(event.id)
   return NextResponse.json({ received: true })
 }

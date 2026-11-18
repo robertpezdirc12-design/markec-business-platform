@@ -13,6 +13,7 @@
 // ============================================================
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import dynamic from "next/dynamic"
 import { Check, ChevronDown, Search, Sparkles } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
@@ -21,7 +22,15 @@ import { cn } from "@/lib/utils"
 import { PALETTE_OPTIONS } from "@/lib/palettes-client"
 import { listProfileOptions } from "@/lib/profiles/registry"
 import { resolveSkdProfile } from "@/lib/skd/profiles"
-import { SkdHierarchyBrowser } from "@/components/onboarding/skd-hierarchy-browser"
+// FAZA 2.1: SKD brskalnik (z 268 KB podatkovno datoteko) se naloži šele ob
+// odprtju dropdowna, ne s prvo stranjo /start — zmanjša kritični buntel.
+const SkdHierarchyBrowser = dynamic(
+  () =>
+    import("@/components/onboarding/skd-hierarchy-browser").then(
+      (m) => m.SkdHierarchyBrowser
+    ),
+  { loading: () => <div className="px-3 py-4 text-muted-foreground text-xs">Nalagam SKD 2025 katalog …</div> }
+)
 import {
   SKD_AREAS,
   SKD_MODULE_LABELS,
@@ -350,7 +359,6 @@ export function ActivityDirectoryPicker({
                   <button
                     key={tag}
                     type="button"
-                    role="option"
                     onClick={() => {
                       setOpen(false)
                       setQuery("")

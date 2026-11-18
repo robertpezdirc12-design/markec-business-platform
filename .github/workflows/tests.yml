@@ -41,6 +41,15 @@ jobs:
       - name: ESLint
         run: pnpm lint
 
+      - name: Dependency audit (poročilo)
+        # FAZA 2.5: samodejno poročilo o ranljivih odvisnostih ob vsaki
+        # spremembi. Trenutno ni blokade (39 high — vse transitivne, npr.
+        # glob/semver/postcss); ko bo audit čisten, spremeni v trdno
+        # `pnpm audit --audit-level=high` (definition of done).
+        run: |
+          pnpm audit --audit-level=high \
+            || echo "::warning::Ranljive odvisnosti so poročene zgoraj — glej Dependabot PR-je."
+
   # Unit + architecture tests with real Postgres
   test:
     name: Unit & Architecture Tests
@@ -152,3 +161,107 @@ jobs:
           # client bundle; keep the build-check representative of the real build.
           NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ${{ secrets.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME }}
           CI: "true"
+
+  # P1 (audit 2026-11) — MIGRACIJE SE MORATAJO PREIZKUSITI, NE LE `db push`.
+  #
+  # Prej je CI postavil shemo z `prisma db push`, zato zlomljena ali manjkajoča
+  # migracija ni nikoli padla: `migrate deploy` (ki ga poganja produkcijski
+  # deploy) na sveži bazi ni bil nikoli preizkušen. Ta job zato:
+  #   1) svež Postgres,
+  #   2) `prisma migrate deploy` (vse migracije po vrsti),
+  #   3) `prisma migrate diff --exit-code` med zmigrirano bazo in
+  #      `schema.prisma` → vsaka razlika (shema brez migracije) pade.
+  migrations:
+    name: Migrations (fresh DB + drift check)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: markec_mig
+          POSTGRES_PASSWORD: markec_mig_pw
+          POSTGRES_DB: markec_mig
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://markec_mig:markec_mig_pw@localhost:5434/markec_mig?schema=public
+      DIRECT_URL: postgresql://markec_mig:markec_mig_pw@localhost:5434/markec_mig?schema=public
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply all migrations to a fresh database
+        run: npx prisma migrate deploy
+
+      - name: Fail on schema/migration drift
+        run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
+
+  # P1 (audit 2026-11) — integracijski (DB) testi so bili ROČNI.
+  # 42 `*.itest.ts` datotek pokriva najbolj varnostno občutljive tokove
+  # (izolacija najemnikov, GDPR, verifikacija e-pošte …), a jih CI ni poganjal.
+  integration-tests:
+    name: Integration tests (DB)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: markec_it
+          POSTGRES_PASSWORD: markec_it_pw
+          POSTGRES_DB: markec_it
+        ports:
+          - 5435:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://markec_it:markec_it_pw@localhost:5435/markec_it?schema=public
+      DIRECT_URL: postgresql://markec_it:markec_it_pw@localhost:5435/markec_it?schema=public
+      NEXTAUTH_SECRET: test-secret-not-real
+      AUTH_SECRET: test-secret-not-real
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXTAUTH_URL: http://localhost:3000
+      CI: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare database (migrations)
+        run: npx prisma migrate deploy
+
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
+
+      - name: Run integration tests
+        run: npx vitest run --config vitest.itest.config.ts

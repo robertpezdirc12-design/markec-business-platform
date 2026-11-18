@@ -60,14 +60,16 @@ function validatorEnabled(): boolean {
 }
 
 // ---- poti do lokalnih artefaktov in Java programov ----
-const ROOT = path.resolve(process.cwd())
-const ART = path.join(ROOT, "docs", "einvoicing", "artifacts")
+// FAZA 3 build (2026-11): statično oblikovan path.join(process.cwd(), ...)
+// namesto path.resolve(process.cwd()) — dinamični dostop bi sicer Turbopacku
+// pomenil "celo drevo sledi v output" (build warning: whole-project tracing).
+const ART = path.join(process.cwd(), "docs", "einvoicing", "artifacts")
 const VAL = path.join(ART, "validator")
 const XSLT_DIR = path.join(ART, "schematron-xslt")
 const UBL_XSD_DIR = path.join(ART, "ubl21", "xsd", "maindoc")
 const SCH_PEPPOL = path.join(ART, "peppol-bis3", "PEPPOL-EN16931-UBL.sch")
 const SCH_CEN = path.join(ART, "peppol-bis3", "CEN-EN16931-UBL.sch")
-const CLASS_DIR = path.join(ROOT, "scripts", "einvoice-validator")
+const CLASS_DIR = path.join(process.cwd(), "scripts", "einvoice-validator")
 
 const SAXON = path.join(VAL, "Saxon-HE-12.5.jar")
 const RESOLVER = path.join(VAL, "xmlresolver.jar")

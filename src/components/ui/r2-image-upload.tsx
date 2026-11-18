@@ -146,6 +146,9 @@ export function R2ImageUpload({
       {/* Preview or Dropzone */}
       {preview ? (
         <div className={cn("relative overflow-hidden rounded-lg border", aspectClass)}>
+          {/* <img> (ne next/image): predogled lahko vsebuje blob:/object URL
+              (URL.createObjectURL), ki ga next/image ne podpira. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={preview}
             alt="Preview"

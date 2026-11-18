@@ -4,10 +4,8 @@
 // SURS update to regenerate.
 //
 // Output: src/lib/skd/data/skd2025.ts  (full 5-level hierarchy, 1725 records)
-import { createRequire } from "node:module"
 import { writeFileSync, mkdirSync } from "node:fs"
-const require = createRequire(import.meta.url)
-const XLSX = require("xlsx")
+import ExcelJS from "exceljs"
 
 const SRC = "src/lib/skd/official/SKD_2025_V1.xlsx"
 const OUT = "src/lib/skd/data/skd2025.ts"
@@ -21,9 +19,19 @@ function levelOf(code) {
   return 2 + groups[1].length
 }
 
-const wb = XLSX.readFile(SRC)
-const ws = wb.Sheets[wb.SheetNames[0]]
-const rows = XLSX.utils.sheet_to_json(ws, { header: 1 })
+// P1 (audit 2026-11): `xlsx` (SheetJS CE) ima dve visoki ranljivosti brez
+// popravka na npm-u (prototype pollution + ReDoS pri branju tujih datotek).
+// Zamenjan z `exceljs`. Tveganje je bilo majhno (bere se datoteka iz repoja,
+// ne od uporabnika), a odvisnost brez popravka ne sme ostati v projektu.
+const wb = new ExcelJS.Workbook()
+await wb.xlsx.readFile(SRC)
+const ws = wb.worksheets[0]
+if (!ws) throw new Error(`Prazna delovna knjiga: ${SRC}`)
+const rows = []
+ws.eachRow({ includeEmpty: false }, (row) => {
+  // Enako kot prej `sheet_to_json({ header: 1 })`: 1-D tabela celic po stolpcih.
+  rows.push(row.values.slice(1).map((v) => (v == null ? null : v)))
+})
 
 const records = []
 const codeSet = new Set()

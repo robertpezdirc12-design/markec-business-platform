@@ -266,14 +266,19 @@ Produkcija vsebuje 10 demo najemnikov — po enega za vsako panogo, s popolnimi 
 | Kozmetika | [`/s/demo-kozmetika`](https://rcbeautysalon-phi.vercel.app/s/demo-kozmetika) | | Vulkanizer | [`/s/demo-vulkanizer`](https://rcbeautysalon-phi.vercel.app/s/demo-vulkanizer) |
 | Masaža | [`/s/demo-masaza`](https://rcbeautysalon-phi.vercel.app/s/demo-masaza) | | Čebelarstvo | [`/s/demo-cebelarstvo`](https://rcbeautysalon-phi.vercel.app/s/demo-cebelarstvo) |
 
-Prijavni računi za testiranje:
-
-| Vloga | E-pošta | Geslo | Opis |
-|---|---|---|---|
-| Platformni admin | `admin@rcbeautysalon.org` | `admin123` | konzola `/platform` + nadzorna plošča glavnega salona |
-| Lastnik salona (frizer) | `nika@demo.si` | `demo1234` | nadzorna plošča za `/s/studio-nika` |
-| Lastnik salona (naili) | `luna@demo.si` | `demo1234` | nadzorna plošča za `/s/nail-studio-luna` |
-| Stranka | `cliente@rcbeautysalon.org` | `cliente123` | rezervacije, naročila, ocene |
+> ⚠️ **Poverilnic ne objavljamo.** Ta README je javen — objavljene
+> prijavne podatke (še posebej platformskega skrbnika) je moral prejšnji
+> seznam umakniti, vsa gesla iz njega pa je treba zamenjati.
+>
+> Za lokalni razvoj ustvari račune sam:
+>
+> ```bash
+> pnpm db:seed          # demo najemniki + testni uporabniki (samo lokalna baza)
+> ```
+>
+> Gesla za lokalni seed so v `prisma/seed.ts`; niso namenjena nobenemu
+> javno dostopnemu okolju. Za produkcijo velja: skrbniški račun ustvari
+> lastnik storitve z geslom iz upravitelja skrivnosti (nikoli iz repozitorija).
 
 > 💡 Plačila v demo najemnikih niso nastavljena (noben Stripe ključ) — rezervacijski polog se zapiše kot „brez pologa“ (plačilo ob obisku), trgovinski checkout pa ustvari **pravo naročilo z oznako „po povzetju“** (#65): pričakovano vedenje brez ključa, brez izgubljenih povpraševanj (E4-3b).
 

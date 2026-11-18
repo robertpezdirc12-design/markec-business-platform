@@ -1,0 +1,18 @@
+# FAZA 2.5 (higiena repozitorija): samodejno opozarjanje na ranljive odvisnosti.
+# pnpm audit trenutno prijavlja 39 "high" (vse transitivne — glob, semver,
+# postcss, esbuild, react-email, next-auth-beta ...). Dependabot odpira PR-je
+# za popravke, ki jih lastnik sprejme; direktnih nadgradenj beta paketov
+# (next-auth) se ne loteva brez pregleda.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Omejimo število PR-jev, da ne zasede review vrste.
+    open-pull-requests-limit: 10
+    groups:
+      # Manjše odvisnosti združimo v en PR, da je nadzor lažji.
+      minor-patches:
+        applies-to: "version-update:all"
+        update-types: ["minor", "patch"]

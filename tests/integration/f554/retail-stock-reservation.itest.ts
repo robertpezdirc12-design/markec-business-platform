@@ -18,7 +18,7 @@ vi.mock("next/headers", () => ({ headers: async () => new Headers({}) }))
 vi.mock("@/lib/tenant-proof", () => ({ ORG_PROOF_HEADER: "x-org-slug-proof", verifyOrgSlug: async () => true }))
 
 import { prisma } from "@/lib/prisma"
-import { reserveStock, convertReservationToSale, type PricedLine } from "@/app/actions/product-checkout"
+import { reserveStock, convertReservationToSale, type PricedLine } from "@/lib/orders/stock"
 
 const ORG = "f61-avail-org"
 const ADMIN = "f61-avail-admin"
@@ -36,7 +36,7 @@ async function wipe() {
 
 beforeAll(async () => {
   const rows = await prisma.$queryRawUnsafe<{ db: string }[]>("select current_database() as db")
-  expect(["markec_f554_test", "markec_e2e_test"]).toContain(rows[0].db)
+  expect(["markec_f554_test", "markec_e2e_test", "markec_it"]).toContain(rows[0].db)
   await wipe()
   await prisma.organization.create({ data: { id: ORG, name: ORG, slug: ORG } })
   await prisma.user.create({ data: { id: ADMIN, email: `${ADMIN}@f.test`, name: ADMIN, role: "ADMIN", organizationId: ORG } })

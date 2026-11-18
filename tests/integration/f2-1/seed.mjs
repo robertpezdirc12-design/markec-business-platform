@@ -3,9 +3,10 @@
 //
 //   node tests/integration/f2-1/seed.mjs
 //
-// Varnostna zapora: skripta zavrne delo, če DATABASE_URL ne kaže
-// natanko na `markec_f21_test`. S tem je onemogočeno, da bi kdorkoli
-// nehote seedal `markec_dev`, `beauty_salon` ali produkcijsko bazo.
+// Varnostna zapora: skripta zavrne delo, če DATABASE_URL ne kaže na
+// izolirano testno bazo (*_test ali *_it, npr. markec_f21_test/markec_it).
+// S tem je onemogočeno, da bi kdorkoli nehote seedal `markec_dev`,
+// `beauty_salon` ali produkcijsko bazo.
 //
 // Idempotentno: vse vrstice imajo fiksne `f21-*` ID-je, zato se
 // ponovni zagon najprej počisti samo lastne podatke (deleteMany z
@@ -16,11 +17,13 @@ import { PrismaClient } from "@prisma/client"
 import { hashSync } from "bcryptjs"
 
 const url = process.env.DATABASE_URL ?? ""
-const safe = /^postgresql:\/\/[^@]*@[^/]+\/(markec_e2e_test|markec_f21_test)(\?|$)/.test(url)
+const dbName = decodeURIComponent((() => {
+  try { return new URL(url).pathname.replace(/^\//, "") } catch { return "" }
+})())
+const safe = /^postgresql:\/\//.test(url) && (dbName.endsWith("_test") || dbName.endsWith("_it"))
 if (!safe) {
   console.error(
-    "REFUSED: DATABASE_URL must point to the dedicated test database " +
-      "markec_f21_test. Got: " +
+    "REFUSED: DATABASE_URL must point to an isolated test database (*_test or *_it). Got: " +
       (url.replace(/\/\/[^@]*@/, "//***@") || "(unset)")
   )
   process.exit(1)

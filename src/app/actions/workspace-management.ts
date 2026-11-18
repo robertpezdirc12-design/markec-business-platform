@@ -6,7 +6,7 @@ import { unstable_update } from "@/lib/auth/auth"
 import { revalidatePath } from "next/cache"
 import { userHasPermission } from "@/lib/permissions/effective"
 import { isReservedSlug, isSlugAvailable, slugify } from "@/lib/tenant"
-import { generateIntakeToken } from "@/lib/forms/intake"
+import { generateIntakeToken } from "@/lib/forms/intake-token"
 import { hashInvitationToken } from "@/lib/invitations/hash"
 import { listProfileOptions, GENERIC_PROFILE_ID } from "@/lib/profiles/registry"
 import { PALETTES } from "@/lib/verticals"
@@ -614,17 +614,42 @@ export async function acceptInvitation(
   return { success: true, organizationId: invitation.organizationId }
 }
 
-/** Prejemnik zavrne povabilo (ali pa lastnik prekliče). */
+/**
+ * Prejemnik zavrne povabilo (ali pa lastnik prekliče).
+ *
+ * P2 (audit 2026-11): prej je zadoščalo POZNAVANJE ŽETONA — brez seje in brez
+ * preverbe, kdo kliče. Zdaj mora biti klicatelj prijavljen IN bodisi
+ * povabljeni (isti e-naslov) bodisi skrbnik organizacije, ki je povabilo
+ * poslala.
+ */
 export async function revokeInvitation(
   token: string
 ): Promise<{ success: boolean; error?: string }> {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return { success: false, error: "Prijavite se za preklic povabila." }
+  }
+
   const tokenHash = hashInvitationToken(token)
   const invitation = await prisma.organizationInvitation.findUnique({
     where: { token: tokenHash },
-    select: { id: true, status: true },
+    select: { id: true, status: true, email: true, organizationId: true },
   })
   if (!invitation || invitation.status !== "PENDING") {
     return { success: false, error: "Povabilo ni več v pripravi." }
+  }
+
+  const isInvitee =
+    !!session.user.email &&
+    session.user.email.toLowerCase() === invitation.email.toLowerCase()
+  if (!isInvitee) {
+    const role = await memberRoleIn(invitation.organizationId)
+    if (role !== "ADMIN") {
+      return {
+        success: false,
+        error: "Povabilo lahko prekliče le prejemnik ali skrbnik prostora.",
+      }
+    }
   }
   await prisma.organizationInvitation.update({
     where: { id: invitation.id },

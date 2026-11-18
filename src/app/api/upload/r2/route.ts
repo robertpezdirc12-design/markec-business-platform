@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth/auth"
 import { uploadBusinessImage, uploadProductImage, uploadAvatar } from "@/lib/r2-storage"
+import { getSessionOrg } from "@/lib/tenant"
+import { getEffectivePermissions } from "@/lib/permissions/effective"
+import { validateImageUpload } from "@/lib/uploads/image-type"
 
 // ============================================================
 // R2 IMAGE UPLOAD API
@@ -39,7 +43,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate file type
+    // Validate file type + magic bytes (P1: isti whitelist kot /api/upload;
+    // Content-Type iz obrazca je samo trditev odjemalca).
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/avif"]
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
@@ -47,18 +52,76 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    const check = validateImageUpload(file.type, bytes)
+    if (!check.ok) {
+      return NextResponse.json(
+        { error: "Vsebina datoteke se ne ujema z njenim tipom." },
+        { status: 415 }
+      )
+    }
+    // Kopija v svež ArrayBuffer (TS tipi za BlobPart zahtevajo ArrayBuffer).
+    const verified = new File([check.bytes.slice().buffer], file.name, {
+      type: check.mime,
+    })
+
+    // P1 SECURITY (audit 2026-11): prej je bilo dovolj, da je bil uporabnik
+    // prijavljen — `entityId` je bil poljuben, torej je vsak (tudi CLIENTE)
+    // lahko pisal v imenski prostor TUJE organizacije
+    // (`businesses/<tujOrgId>/…`), brez preverbe članstva in brez kvote.
+    // Zdaj: organizacija pride IZ SEJE, `entityId` se preveri proti njej,
+    // pisanje v tujo organizacijo pa zahteva pravico `settings.manage`.
+    const sessionOrg = await getSessionOrg()
+    const requestedOrgId = type === "avatar" ? null : (entityId || sessionOrg?.id || null)
+
+    if (type !== "avatar") {
+      if (!sessionOrg) {
+        return NextResponse.json(
+          { error: "Nimate poslovnega prostora za nalaganje." },
+          { status: 403 }
+        )
+      }
+      if (requestedOrgId !== sessionOrg.id) {
+        return NextResponse.json(
+          { error: "Nimate pravic za nalaganje v ta poslovni prostor." },
+          { status: 403 }
+        )
+      }
+      const perms = await getEffectivePermissions(session.user.id, sessionOrg.id)
+      if (!perms.includes("settings.manage")) {
+        return NextResponse.json(
+          { error: "Nimate pravic za nalaganje slik." },
+          { status: 403 }
+        )
+      }
+    }
 
     let result
     switch (type) {
       case "avatar":
-        result = await uploadAvatar(session.user.id, file)
+        result = await uploadAvatar(session.user.id, verified)
         break
-      case "product":
-        result = await uploadProductImage(entityId || session.user.id, file)
+      case "product": {
+        // Nov izdelek še nima ID-ja → imenski prostor lastnika seje (kot
+        // prej). Če je ID podan, mora izdelek pripadati ISTI organizaciji
+        // (prej je bil poljuben → pisanje v tuj imenski prostor).
+        if (!entityId) {
+          result = await uploadProductImage(session.user.id, verified)
+          break
+        }
+        const product = await prisma.product.findFirst({
+          where: { id: entityId, organizationId: sessionOrg!.id },
+          select: { id: true },
+        })
+        if (!product) {
+          return NextResponse.json({ error: "Izdelek ne obstaja." }, { status: 404 })
+        }
+        result = await uploadProductImage(product.id, verified)
         break
+      }
       case "business":
       default:
-        result = await uploadBusinessImage(entityId || session.user.id, file, "hero")
+        result = await uploadBusinessImage(sessionOrg!.id, verified, "hero")
         break
     }
 

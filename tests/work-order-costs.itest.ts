@@ -22,12 +22,14 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 // ---- Guard: ONLY the isolated test DB may be used -------------------------
 const DB_URL = process.env.DATABASE_URL ?? ""
 if (
-  !DB_URL.includes("markec_e2e_test") ||
-  !DB_URL.includes("localhost:5433")
+  !(
+    (DB_URL.includes("markec_e2e_test") && DB_URL.includes("localhost:5433")) ||
+    (DB_URL.includes("markec_it") && DB_URL.includes("localhost:5435"))
+  )
 ) {
   throw new Error(
     "Zavrnjeno: WorkOrderCosts itest sme teči le proti izolirani testni bazi " +
-      "(markec_e2e_test, localhost:5433). DATABASE_URL = " +
+      "(markec_e2e_test, localhost:5433 ali markec_it, localhost:5435). DATABASE_URL = " +
       (DB_URL || "<ni nastavljen>")
   )
 }

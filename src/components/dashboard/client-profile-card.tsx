@@ -90,11 +90,10 @@ export function ClientProfileCard({
   }
 
   // Calculate visit frequency
-  const memberSince = new Date(customer.createdAt)
   const [now] = useState(() => Date.now())
   const daysSinceMember = useMemo(() => Math.floor(
-    (now - memberSince.getTime()) / (1000 * 60 * 60 * 24)
-  ), [memberSince, now])
+    (now - new Date(customer.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+  ), [customer.createdAt, now])
   const visitFrequency =
     customer.totalVisits && daysSinceMember > 0
       ? Math.round(daysSinceMember / customer.totalVisits)

@@ -57,7 +57,7 @@ async function seedOrg(orgId: string, adminId: string) {
 
 beforeAll(async () => {
   const rows = await prisma.$queryRawUnsafe<{ db: string }[]>("select current_database() as db")
-  expect(["markec_f554_test", "markec_e2e_test"]).toContain(rows[0].db)
+  expect(["markec_f554_test", "markec_e2e_test", "markec_it"]).toContain(rows[0].db)
   // Cleanup (FK varnostni red).
   await prisma.documentItem.deleteMany({ where: { organizationId: { in: [ORGA, ORGB] } } })
   await prisma.document.deleteMany({ where: { organizationId: { in: [ORGA, ORGB] } } })

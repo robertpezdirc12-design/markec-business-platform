@@ -3,9 +3,9 @@
 //
 //   node tests/integration/f51/seed.mjs
 //
-// Varnostna zapora: skripta zavrne delo, če DATABASE_URL ne kaže
-// natanko na `markec_f51_test`. Idempotentno: počisti le lastne
-// `f51-*` vrstice pred ponovnim zagonom.
+// Varnostna zapora: skripta zavrne delo, če DATABASE_URL ne kaže na
+// izolirano testno bazo (*_test ali *_it, npr. markec_f51_test/markec_it).
+// Idempotentno: počisti le lastne `f51-*` vrstice pred ponovnim zagonom.
 //
 // Baza se pred tem postavi s:
 //   docker exec beauty-salon-db psql -U postgres -c "CREATE DATABASE markec_f51_test;"
@@ -16,11 +16,13 @@ import { PrismaClient } from "@prisma/client"
 import { hashSync } from "bcryptjs"
 
 const url = process.env.DATABASE_URL ?? ""
-const safe = /^postgresql:\/\/[^@]*@[^/]+\/(markec_e2e_test|markec_f51_test)(\?|$)/.test(url)
+const dbName = decodeURIComponent((() => {
+  try { return new URL(url).pathname.replace(/^\//, "") } catch { return "" }
+})())
+const safe = /^postgresql:\/\//.test(url) && (dbName.endsWith("_test") || dbName.endsWith("_it"))
 if (!safe) {
   console.error(
-    "REFUSED: DATABASE_URL must point to the dedicated test database " +
-      "markec_f51_test. Got: " +
+    "REFUSED: DATABASE_URL must point to an isolated test database (*_test or *_it). Got: " +
       (url.replace(/\/\/[^@]*@/, "//***@") || "(unset)")
   )
   process.exit(1)
@@ -214,8 +216,9 @@ async function seed() {
 try {
   const db = await prisma.$queryRawUnsafe("select current_database() as db")
   console.log("F5.1 seed target:", JSON.stringify(db))
-  if (db[0]?.db !== "markec_f51_test" && db[0]?.db !== "markec_e2e_test") {
-    console.error("REFUSED: not markec_f51_test / markec_e2e_test")
+  const dbName = db[0]?.db ?? ""
+  if (!(dbName.endsWith("_test") || dbName.endsWith("_it"))) {
+    console.error("REFUSED: not an isolated test database (*_test/*_it)")
     process.exit(1)
   }
   await seed()

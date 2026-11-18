@@ -7,8 +7,10 @@
 // in pravilo veljavnosti povezave (isti princip na vseh poteh).
 // ============================================================
 
-import { randomBytes } from "crypto"
-
+// Opomba (FAZA 3 perf): ta datoteka je CLIENT-safe — ne sme uvažati
+// Node built-ins (crypto/puffer …), ker intake-link-form.tsx v
+// brskalniku klice validateIntakeAnswers. generateIntakeToken (randomBytes)
+// živi v forms/intake-token.ts (server le).
 import type { ProfileFieldDef } from "@/lib/profiles/types"
 
 export interface IntakeAnswerInput {
@@ -83,14 +85,8 @@ export function intakeFieldSummary(fields: ProfileFieldDef[]): string {
 // #96 v2 — ŽETON ZA POVEZAVO (izpolnjevanje po rezervaciji)
 // ============================================================
 
-/**
- * Žeton za javno povezavo /intake/[token] — 48 znakov hex (192 bitov).
- * Povezava je pooblastilo sama po sebi (G2), zato je naključna, ne
- * izpeljana iz id ali časa.
- */
-export function generateIntakeToken(): string {
-  return randomBytes(24).toString("hex")
-}
+// generateIntakeToken se je preselil v forms/intake-token.ts (server le,
+// FAZA 3 perf — Node crypto polyfill ne sme v client bundle).
 
 /** Obramba po globini: sprejemljiva oblika žetona (hex, zadostna dolžina). */
 export function isPlausibleIntakeToken(token: unknown): token is string {

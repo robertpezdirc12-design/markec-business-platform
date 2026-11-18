@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
+import { useCallback, useEffect, useState, useTransition } from "react"
 import { toast } from "sonner"
 import {
   Card,
@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  Switch,
+  
 } from "@/components/ui/switch"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -37,7 +37,7 @@ import {
   Calendar,
   FileText,
   Settings,
-  ShieldAlert,
+  
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useI18n } from "@/lib/i18n/provider"
@@ -599,7 +599,6 @@ function BasicSection({
             <button
               key={p.key}
               type="button"
-              role="radio"
               aria-pressed={draft.palette === p.key}
               onClick={() => setField("palette", p.key)}
               className={cn(
@@ -1017,7 +1016,6 @@ function CtaSection({
             <button
               key={mode.key}
               type="button"
-              role="radio"
               aria-pressed={active}
               onClick={() => setField("ctaMode", mode.key)}
               className={cn(

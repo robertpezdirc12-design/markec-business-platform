@@ -82,11 +82,12 @@ describe("#96 struktura: tx povezava + checkout relink + org-scope", () => {
 // ============================================================
 
 import {
-  generateIntakeToken,
   isPlausibleIntakeToken,
   pickIntakeService,
   intakeLinkAllowed,
 } from "../src/lib/forms/intake"
+// FAZA 3 perf: generateIntakeToken je server le (forms/intake.ts je client-safe)
+import { generateIntakeToken } from "../src/lib/forms/intake-token"
 
 describe("#96 v2 generateIntakeToken", () => {
   it("48 znakov hex (192 bitov entropije)", () => {
@@ -163,12 +164,30 @@ describe("#96 v2 struktura: žeton na vseh treh kreacijah + javni tok", () => {
   })
 
   it("javna pot /intake/[token] preverja org + status + oddajo (G2)", () => {
-    const actions = src_appointments()
+    // #96 v3 (FAZA 3 perf): javne žetonske akcije so ločene v intake.ts,
+    // da booking graph ne pade v javne client bundle-je.
+    const actions = read("src/app/actions/intake.ts")
     expect(actions).toContain("getIntakeFormByToken")
     expect(actions).toContain("submitIntakeByToken")
     expect(actions).toContain('organization.status !== "ACTIVE"')
     expect(actions).toContain("intakeLinkAllowed(appointment.status)")
     expect(actions).toContain('code: "ALREADY_SUBMITTED"')
+  })
+
+  it("forms/intake.ts ostane client-safe (brez Node built-ins — FAZA 3 perf)", () => {
+    // randomBytes("crypto") je vlekel cel Node polyfill nabor (buffer,
+    // crypto-browserify, vm-browserify …) v JAVNI client bundle: 445 KB
+    // min / 133 KB gzip na vsaki javni strani. Guard: noben Node
+    // built-in se ne sme vrniti v to datoteko.
+    const src = read("src/lib/forms/intake.ts")
+    const lines = src.split("\n").filter((l) => !l.trim().startsWith("//"))
+    for (const banned of ['from "crypto"', "from 'crypto'", 'from "buffer"', 'from "fs"', "require("]) {
+      expect(lines.join("\n")).not.toContain(banned)
+    }
+    // … žeton pa mora ostati v server-only datoteki.
+    const token = read("src/lib/forms/intake-token.ts")
+    expect(token).toContain('from "crypto"')
+    expect(token).toContain("export function generateIntakeToken")
   })
 
   it("uspešna stran + admin detajl povezujeta gostu/administratorju", () => {

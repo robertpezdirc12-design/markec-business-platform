@@ -48,8 +48,8 @@ import {
 } from "@/app/actions/services"
 import { createCategory } from "@/app/actions/categories"
 import {
-  categoryPickerMode,
-  normalizeCategoryName,
+  
+  
 } from "@/lib/dashboard/category-picker"
 import {
   createServiceSchema,

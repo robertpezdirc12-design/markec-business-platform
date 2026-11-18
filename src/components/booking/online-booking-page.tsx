@@ -15,16 +15,8 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   CheckCircleIcon,
   ClockIcon,
-  CurrencyDollarIcon,
   UserIcon,
   CalendarIcon,
   ArrowRightIcon,
@@ -58,6 +50,19 @@ interface TimeSlot {
   available: boolean
 }
 
+// Static time slots (9:00–17:30). Deterministic availability — hoisted to
+// module scope so it is not recomputed on every render (no runtime deps).
+const TIME_SLOTS: TimeSlot[] = (() => {
+  const slots: TimeSlot[] = []
+  for (let h = 9; h < 18; h++) {
+    slots.push({ time: `${h.toString().padStart(2, "0")}:00`, available: true })
+    // Deterministic availability based on time (no Math.random)
+    const isAvailable = h % 3 !== 0 && h % 5 !== 0
+    slots.push({ time: `${h.toString().padStart(2, "0")}:30`, available: isAvailable })
+  }
+  return slots
+})()
+
 interface OnlineBookingPageProps {
   services: Service[]
   staff: StaffMember[]
@@ -83,17 +88,7 @@ export function OnlineBookingPage({
   const [customerPhone, setCustomerPhone] = useState("")
   const [notes, setNotes] = useState("")
 
-  // Generate time slots
-  const timeSlots = useMemo<TimeSlot[]>(() => {
-    const slots: TimeSlot[] = []
-    for (let h = 9; h < 18; h++) {
-      slots.push({ time: `${h.toString().padStart(2, "0")}:00`, available: true })
-      // Deterministic availability based on time (no Math.random)
-      const isAvailable = (h % 3 !== 0) && (h % 5 !== 0)
-      slots.push({ time: `${h.toString().padStart(2, "0")}:30`, available: isAvailable })
-    }
-    return slots
-  }, [selectedDate])
+  const timeSlots = TIME_SLOTS
 
   // Generate next 14 days
   const availableDates = useMemo(() => {

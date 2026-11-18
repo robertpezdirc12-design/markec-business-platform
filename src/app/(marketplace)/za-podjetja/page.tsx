@@ -10,11 +10,11 @@ import {
   CurrencyDollarIcon,
   TrendingUpIcon,
   StarIcon,
-  PhoneIcon,
+  
   EnvelopeIcon,
-  ClockIcon,
+  
   ShoppingBagIcon,
-  SparkleIcon,
+  
 } from "@/components/icons"
 
 // ============================================================

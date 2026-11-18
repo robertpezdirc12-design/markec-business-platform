@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma"
 import { requirePermissionOrg } from "@/lib/auth/guards"
 import { listProfileOptions, getProfile } from "@/lib/profiles/registry"
 import { materializeProfileAssets } from "@/lib/profiles/materialize"
-import { seedOrganizationCatalog, PALETTES } from "@/lib/verticals"
+import { PALETTES } from "@/lib/verticals"
+import { seedOrganizationCatalog } from "@/lib/verticals-seed"
 import { modulesForVertical } from "@/lib/profiles/modules"
 
 // ============================================================

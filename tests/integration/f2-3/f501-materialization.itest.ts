@@ -30,7 +30,7 @@ vi.mock("@/lib/tenant-proof", () => ({ ORG_PROOF_HEADER: "x", verifyOrgSlug: asy
 import { prisma } from "@/lib/prisma"
 import { resolveSkdProfile, SKD_PROFILE_EXCEPTIONS } from "@/lib/skd/profiles"
 import { SKD_BY_LEVEL } from "@/lib/skd/data/skd2025"
-import { seedOrganizationCatalog } from "@/lib/verticals"
+import { seedOrganizationCatalog } from "@/lib/verticals-seed"
 import { materializeProfileAssets } from "@/lib/profiles/materialize"
 
 const PREFIX = "f501-"
@@ -39,7 +39,7 @@ beforeAll(async () => {
   const rows = await prisma.$queryRawUnsafe<{ db: string }[]>("select current_database() as db")
   // F6.4: sprejme uradno izolirano materializacijsko bazo (markec_f501_test,
   // migrirana z official migracijami) ali legacy f23 (če je migrirana).
-  expect(["markec_f23_test", "markec_f501_test", "markec_e2e_test"]).toContain(rows[0].db)
+  expect(["markec_f23_test", "markec_f501_test", "markec_e2e_test", "markec_it"]).toContain(rows[0].db)
   await prisma.organization.deleteMany({ where: { id: { startsWith: PREFIX } } })
 })
 

@@ -41,15 +41,19 @@ function tail(text, max = 1_200) {
 
 /**
  * Fail-fast, če ni baze — ponovitve ne rešijo manjkajoče konfiguracije.
- * @param {{ DATABASE_URL?: string }} [env]
+ * @param {{ DATABASE_URL?: string, VERCEL_ENV?: string }} [env]
  * @param {{ log: (...a: unknown[]) => void, error: (...a: unknown[]) => void }} [log]
  */
 export function ensureDatabaseUrl(env = process.env, log = console) {
   if (!env.DATABASE_URL) {
-    log.error(
-      "[migrate-retry] DATABASE_URL ni nastavljen — migracij ne morem pognati. " +
-        "Preveri Vercel env / .env."
-    )
+    const isVercelProduction = env.VERCEL_ENV === "production"
+    const msg =
+      "[migrate-retry] DATABASE_URL ni nastavljen — " +
+      (isVercelProduction
+        ? "migracij ne morem pognati (Vercel production). Preveri Vercel env."
+        : "preskočim migracije (ni Vercel production / ni konfigurirane baze).")
+    if (isVercelProduction) log.error(msg)
+    else log.log(msg)
     return false
   }
   return true
@@ -122,13 +126,13 @@ async function main() {
     return
   }
 
-  // Če DATABASE_URL ni nastavljen, PRESKOČIMO migracije (ne pade build).
-  // Migracije se izvedejo ob prvem zagonu aplikacije ali ročno.
-  if (!process.env.DATABASE_URL) {
-    console.log(
-      "[migrate-retry] DATABASE_URL ni nastavljen — PRESKOČIM migracije. " +
-        "Build nadaljuje brez migracij (shema se uskladi ob prvem zagonu)."
-    )
+  // Če DATABASE_URL ni nastavljen: v Vercel production je to napaka konfiguracije
+  // (shema mora biti usklajena pred objavo), drugje pa migracije preskočimo
+  // (Cloudflare/CI buildi in lokalni buildi brez baze ne smejo pasti).
+  if (!ensureDatabaseUrl(process.env, console)) {
+    if (process.env.VERCEL_ENV === "production") {
+      process.exit(1)
+    }
     return
   }
 
