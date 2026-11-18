@@ -15,9 +15,16 @@ import {
 // ============================================================
 
 describe("ensureDatabaseUrl", () => {
-  it("fail-fast brez DATABASE_URL (ponovitve ne rešijo konfiguracije)", () => {
+  it("brez DATABASE_URL izven Vercel production migracije preskoči (CF/CI/lokalno)", () => {
     const log = { error: vi.fn(), log: vi.fn() }
     expect(ensureDatabaseUrl({}, log)).toBe(false)
+    expect(log.log).toHaveBeenCalledWith(expect.stringContaining("preskočim"))
+    expect(log.error).not.toHaveBeenCalled()
+  })
+
+  it("brez DATABASE_URL v Vercel production je fail-fast (napaka konfiguracije)", () => {
+    const log = { error: vi.fn(), log: vi.fn() }
+    expect(ensureDatabaseUrl({ VERCEL_ENV: "production" }, log)).toBe(false)
     expect(log.error).toHaveBeenCalledWith(expect.stringContaining("DATABASE_URL"))
   })
 
