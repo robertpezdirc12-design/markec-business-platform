@@ -25,11 +25,15 @@
     // na Vercelu en sam modulski client. Ta oznaka pove, kje smo — brez
     // nje bi Workers dobil singleton in bi spet javljal
     // "Cannot perform I/O on behalf of a different request".
-    "RUNTIME": "workers",
-    // Dokler Resend ni nastavljen, je potrditvena povezava edini način, da
-    // nov uporabnik aktivira račun (src/lib/email/config.ts). Ko dodate
-    // RESEND_API_KEY, to zastavico odstranite — sicer ostane javno vidna.
-    "EMAIL_VERIFICATION_FALLBACK": "1"
+    "RUNTIME": "workers"
+    // P0 (audit 2026-11): EMAIL_VERIFICATION_FALLBACK je ODSTRANJEN.
+    // Zastavica je v produkciji dovolila, da se potrditvena povezava (in
+    // prej tudi žeton za ponastavitev gesla) vrne v HTTP odgovoru — brez
+    // prijave. Posledica: prevzem kateregakoli računa, če RESEND_API_KEY na
+    // Workerju ni nastavljen. Brez zastavice velja fail-closed
+    // (src/lib/email/config.ts): v produkciji se povezava ne prikaže, v
+    // razvoju pa se izpiše v strežniški dnevnik. Za produkcijo nastavite
+    // RESEND_API_KEY; če ga namenoma nimate, uporabnike potrdite ročno.
   },
   "services": [
     {

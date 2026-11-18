@@ -5,6 +5,20 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    // P1 (audit 2026-11): `eslint-config-next` 16.4 prinaša react-hooks v6,
+    // ki "setState sinhrono v efektu" in "immutability" prvič označi kot
+    // NAPAKO. 16 obstoječih komponent (sidebar, command palette, i18n
+    // provider, site-editor …) uporablja ta vzorec za sinhronizacijo z
+    // localStorage/props — to je znan dolg, ne regresija te spremembe.
+    // Pravilo ostaja vidno kot opozorilo; popraviti ga je treba po
+    // komponentah (React 19: `useSyncExternalStore`/`useEffectEvent`), ne
+    // v istem koraku kot varnostni popravki.
+    rules: {
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/immutability": "warn",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
