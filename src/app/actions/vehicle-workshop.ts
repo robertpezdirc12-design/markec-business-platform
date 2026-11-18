@@ -486,7 +486,7 @@ export async function createWorkshopWorkOrder(input: z.input<typeof woInputSchem
     })
     revalidatePath("/dashboard/tire-service")
     return { ok: true, workOrderId: created.workOrderId }
-  } catch (e) {
+  } catch {
     return { ok: false, error: "TRANSACTION_FAILED" }
   }
 }

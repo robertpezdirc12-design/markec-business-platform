@@ -1735,26 +1735,29 @@ export async function updateAppointmentStatus(
   // own-appointment restriction below stays unchanged, and staff-portal
   // status updates are core STAFF self-service, never admin surface.
   const session = await auth()
-  if (!session?.user || !["ADMIN", "STAFF"].includes(session.user.role)) {
+  if (!session?.user?.id) {
     throw new UnauthorizedError("Unauthorized")
   }
-  if (session.user.role === "ADMIN") {
-    const org = await getSessionOrg()
-    if (!org) {
-      throw new UnauthorizedError("Unauthorized")
-    }
-    // F0: org-scoped permissions (role + custom role per-org).
-    const perms = await getEffectivePermissions(session.user.id, org.id)
-    if (!hasPermission(perms, "appointments.manage")) {
-      throw new UnauthorizedError(
-        "You do not have permission to perform this action"
-      )
-    }
-  }
 
+  // F0/F2.3.1: resolve the active org FIRST and evaluate the per-org role +
+  // custom role. The global JWT role must not decide cross-workspace access.
   const org = await getSessionOrg()
   if (!org) {
     throw new UnauthorizedError("Unauthorized")
+  }
+  const perms = await getEffectivePermissions(session.user.id, org.id)
+  const canManageAppointments = hasPermission(perms, "appointments.manage")
+  const membership = await prisma.organizationMember.findUnique({
+    where: {
+      organizationId_userId: { organizationId: org.id, userId: session.user.id },
+    },
+    select: { role: true },
+  })
+  const orgRole = membership?.role ?? session.user.role
+  if (!canManageAppointments && orgRole !== "STAFF") {
+    throw new UnauthorizedError(
+      "You do not have permission to perform this action"
+    )
   }
   const salonTz = await getOrgTimezone(org.id)
 
@@ -1779,7 +1782,7 @@ export async function updateAppointmentStatus(
   // SECURITY: STAFF may only update their OWN appointments in the CURRENT
   // org (ADMIN can update all). F2.3.1: org-scoped — never resolve the
   // staff row globally (a user may be staff in several orgs).
-  if (session.user.role === "STAFF") {
+  if (!canManageAppointments && orgRole === "STAFF") {
     const ownStaff = await prisma.staff.findUnique({
       where: {
         userId_organizationId: {
@@ -2156,20 +2159,31 @@ export async function recordAppointmentTip(
   input: { amount: number; method?: "cash" | "card" | null }
 ): Promise<{ success: boolean; error?: string }> {
   const session = await auth()
-  if (!session?.user || !["ADMIN", "STAFF"].includes(session.user.role)) {
+  if (!session?.user?.id) {
     throw new UnauthorizedError("Unauthorized")
   }
-  if (session.user.role === "ADMIN") {
-    const perms = await getEffectivePermissions(session.user.id)
-    if (!hasPermission(perms, "appointments.manage")) {
-      throw new UnauthorizedError(
-        "You do not have permission to perform this action"
-      )
-    }
-  }
+
+  // F2.3.1: resolve the active organization FIRST and evaluate permissions
+  // against it. The old code used the global JWT role/User.customRoleId — a
+  // user who is ADMIN in workspace A but STAFF in workspace B could pass the
+  // ADMIN branch while acting in B.
   const org = await getSessionOrg()
   if (!org) {
     throw new UnauthorizedError("Unauthorized")
+  }
+  const perms = await getEffectivePermissions(session.user.id, org.id)
+  const canManageAppointments = hasPermission(perms, "appointments.manage")
+  const membership = await prisma.organizationMember.findUnique({
+    where: {
+      organizationId_userId: { organizationId: org.id, userId: session.user.id },
+    },
+    select: { role: true },
+  })
+  const orgRole = membership?.role ?? session.user.role
+  if (!canManageAppointments && orgRole !== "STAFF") {
+    throw new UnauthorizedError(
+      "You do not have permission to perform this action"
+    )
   }
 
   const amount = input.amount
@@ -2185,7 +2199,7 @@ export async function recordAppointmentTip(
     return { success: false, error: "Termin ni bil najden" }
   }
 
-  if (session.user.role === "STAFF") {
+  if (!canManageAppointments && orgRole === "STAFF") {
     // F2.3.1: org-scoped — a user may be staff in several orgs, never
     // resolve the staff row globally.
     const ownStaff = await prisma.staff.findUnique({

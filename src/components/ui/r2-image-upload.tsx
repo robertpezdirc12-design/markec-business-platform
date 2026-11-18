@@ -10,7 +10,7 @@ import { useState, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { UploadIcon, CloseIcon, ImageIcon } from "@/components/icons"
-import { uploadImageToR2, prepareImageForUpload } from "@/lib/r2-upload-client"
+import { uploadImageToR2 } from "@/lib/r2-upload-client"
 import { cn } from "@/lib/utils"
 
 interface R2ImageUploadProps {

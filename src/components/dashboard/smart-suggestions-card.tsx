@@ -11,7 +11,7 @@
 // blocks anything — the surrounding workspace is always usable.
 // ============================================================
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { X } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"

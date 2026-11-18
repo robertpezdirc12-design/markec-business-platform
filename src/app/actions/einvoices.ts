@@ -125,7 +125,7 @@ export async function generateEinvoice(
       isCreditNote: kind === "CREDIT",
       standard: format === "ESLOG_2" ? "eSLOG-2.0" : "PEPPOL-BIS-3.0.21",
     })
-  } catch (e) {
+  } catch {
     official = await setNotVerified()
   }
 

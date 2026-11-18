@@ -541,7 +541,7 @@ export async function exportMyData(): Promise<MyDataExport | { success: false; e
     const [appointments, orders, reviews, formSubmissions, prepaidPurchases] =
       await Promise.all([
         prisma.appointment.findMany({
-          where: customerId ? { customerId } : {},
+          where: { customerId: customerId ?? "__no_customer__" },
           orderBy: { startTime: "desc" },
           select: {
             id: true,
@@ -551,7 +551,7 @@ export async function exportMyData(): Promise<MyDataExport | { success: false; e
           },
         }),
         prisma.order.findMany({
-          where: customerId ? { customerId } : {},
+          where: { customerId: customerId ?? "__no_customer__" },
           orderBy: { createdAt: "desc" },
           select: { id: true, status: true, total: true, createdAt: true },
         }),
@@ -561,12 +561,12 @@ export async function exportMyData(): Promise<MyDataExport | { success: false; e
           select: { id: true, rating: true, comment: true, createdAt: true },
         }),
         prisma.formSubmission.findMany({
-          where: customerId ? { customerId } : {},
+          where: { customerId: customerId ?? "__no_customer__" },
           orderBy: { createdAt: "desc" },
           select: { id: true, formDefinition: { select: { name: true } }, createdAt: true },
         }),
         prisma.prepaidPurchase.findMany({
-          where: customerId ? { customerId } : {},
+          where: { customerId: customerId ?? "__no_customer__" },
           orderBy: { purchasedAt: "desc" },
           select: { id: true, balance: true, sessionsLeft: true, purchasedAt: true },
         }),

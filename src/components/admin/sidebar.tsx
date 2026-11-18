@@ -18,7 +18,6 @@ import { toast } from "sonner"
 import { ChevronDown } from "lucide-react"
 import { switchActiveOrganization } from "@/app/actions/organization-switch"
 import { useI18n } from "@/lib/i18n/provider"
-import type { CapabilityKey } from "@/lib/profiles/types"
 import {
   LayoutDashboardIcon,
   ChartBarIcon,

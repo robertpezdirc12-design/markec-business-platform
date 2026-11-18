@@ -23,7 +23,7 @@ import {
   useState,
 } from "react"
 import { useRouter } from "next/navigation"
-import { LOCALE_COOKIE, Locale, localeLabels, locales } from "./config"
+import { LOCALE_COOKIE, Locale } from "./config"
 import type { Dictionary } from "./dictionaries"
 import { getProfile, term as profileTerm } from "@/lib/profiles/registry"
 import { applyOverrides, parseOverrides } from "@/lib/profiles/overrides"

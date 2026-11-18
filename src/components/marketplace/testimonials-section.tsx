@@ -6,7 +6,7 @@
 // Surpasses Fresha with better visual design and carousel.
 // ============================================================
 
-import { useState, useRef } from "react"
+import { useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"

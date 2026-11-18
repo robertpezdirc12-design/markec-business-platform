@@ -6,7 +6,7 @@
 // 'Ustvari delovni nalog iz rezervacije' in požene obvestilo/redirekcijo.
 // ============================================================
 
-import { useState, useTransition } from "react"
+import { useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import Link from "next/link"

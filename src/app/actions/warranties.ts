@@ -13,7 +13,7 @@ import { prisma } from "@/lib/prisma"
 import { requirePermissionOrg } from "@/lib/auth/guards"
 import { revalidatePath } from "next/cache"
 import { warrantyDefaultsForProfile, type WarrantyCreateInput, type WarrantyClaimInput, type WarrantyClaimUpdateInput, type WarrantySubjectType, type WarrantyStatus } from "@/lib/types/warranty"
-import { computeWarrantyStatus, EXPIRING_SOON_WINDOW_DAYS } from "@/lib/warranty-logic"
+import { computeWarrantyStatus } from "@/lib/warranty-logic"
 
 export interface WarrantyResultOk {
   ok: true

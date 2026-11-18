@@ -17,6 +17,13 @@ const eslintConfig = defineConfig([
     rules: {
       "react-hooks/set-state-in-effect": "warn",
       "react-hooks/immutability": "warn",
+      // Placeholder parametra (_orgId v javnih akcijah faq/galleries) obstajajo
+      // zaradi signaturne združljivosti — klicevi argument prenašajo po poziciji,
+      // brisanje parametra bi jih zlomilo. Konvencija: _ predpona = namerno neuporabljeno.
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
     },
   },
   // Override default ignores of eslint-config-next.

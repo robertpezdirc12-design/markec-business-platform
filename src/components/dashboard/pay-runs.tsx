@@ -11,8 +11,6 @@ import { useState, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import {
   Select,
@@ -39,8 +37,6 @@ import {
   TrendingUpIcon,
   
 } from "@/components/icons"
-import { format } from "date-fns"
-import { sl } from "date-fns/locale"
 
 interface StaffPayroll {
   staffId: string

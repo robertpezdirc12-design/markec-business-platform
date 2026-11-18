@@ -3,7 +3,6 @@
 import { tenantReturnBase } from "@/lib/tenant/return-base"
 import { getStripeForOrg } from "@/lib/stripe"
 import { auth } from "@/lib/auth/auth"
-import { headers } from "next/headers"
 import { prisma } from "@/lib/prisma"
 import { addMinutes } from "date-fns"
 import { after } from "next/server"
@@ -26,7 +25,6 @@ import {
   getOrgById,
   
 } from "@/lib/tenant"
-import { orgPath } from "@/lib/org-path"
 import { CreateCheckoutSessionData, CreateCheckoutSessionResult } from "@/lib/interfaces"
 import { hasResourceConflict } from "@/lib/booking/resources"
 // F5.1: promo engine + atomsko unovčenje za termin iz Stripe metadate.

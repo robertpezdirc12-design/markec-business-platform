@@ -24,37 +24,54 @@ const roleDataSchema = z.object({
 
 export type CustomRoleInput = z.infer<typeof roleDataSchema>
 
-/** All custom roles of the salon, newest first, with member counts. */
+/** All custom roles of the salon, newest first, with org-scoped member counts. */
 export async function listCustomRoles() {
   const { org } = await requirePermissionOrg("staff.manage")
 
-  return prisma.customRole.findMany({
-    where: { organizationId: org.id },
-    orderBy: { createdAt: "desc" },
-    include: {
-      _count: { select: { users: true } },
-    },
-  })
+  const [roles, counts] = await Promise.all([
+    prisma.customRole.findMany({
+      where: { organizationId: org.id },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.organizationMember.groupBy({
+      by: ["customRoleId"],
+      where: { organizationId: org.id, customRoleId: { not: null } },
+      _count: { _all: true },
+    }),
+  ])
+  const countByRole = new Map(counts.map((c) => [c.customRoleId, c._count._all]))
+
+  return roles.map((role) => ({
+    ...role,
+    _count: { users: countByRole.get(role.id) ?? 0 },
+  }))
 }
 
 /** Org members that can receive a custom role (ADMIN/STAFF only). */
 export async function listAssignableMembers() {
   const { org } = await requirePermissionOrg("staff.manage")
 
-  return prisma.user.findMany({
+  const members = await prisma.organizationMember.findMany({
     where: {
       organizationId: org.id,
       role: { in: ["ADMIN", "STAFF"] },
     },
     select: {
-      id: true,
-      name: true,
-      email: true,
+      userId: true,
       role: true,
       customRoleId: true,
+      user: { select: { id: true, name: true, email: true } },
     },
-    orderBy: [{ role: "asc" }, { name: "asc" }],
+    orderBy: [{ role: "asc" }, { user: { name: "asc" } }],
   })
+
+  return members.map((m) => ({
+    id: m.user.id,
+    name: m.user.name,
+    email: m.user.email,
+    role: m.role as "ADMIN" | "STAFF",
+    customRoleId: m.customRoleId,
+  }))
 }
 
 export async function createCustomRole(input: CustomRoleInput) {
@@ -124,9 +141,17 @@ export async function deleteCustomRole(id: string) {
     return { success: false as const, error: "Vloga ne obstaja." }
   }
 
-  // User.customRoleId is ON DELETE SET NULL — members keep their base
-  // ADMIN/STAFF role and immediately regain full legacy access.
-  await prisma.customRole.delete({ where: { id } })
+  // OrganizationMember.customRoleId is a stored FK without a Prisma
+  // relation, so ON DELETE SET NULL does not reach it. Clear the org-scoped
+  // assignments first (otherwise stale ids would linger), then delete.
+  // User.customRoleId keeps its ON DELETE SET NULL behaviour.
+  await prisma.$transaction([
+    prisma.organizationMember.updateMany({
+      where: { organizationId: org.id, customRoleId: id },
+      data: { customRoleId: null },
+    }),
+    prisma.customRole.delete({ where: { id } }),
+  ])
   return { success: true as const }
 }
 
@@ -168,9 +193,19 @@ export async function assignCustomRole(
     }
   }
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { customRoleId },
-  })
+  // G8 source of truth: the assignment is PER ORGANIZATION. The org-scoped
+  // permission path (src/lib/permissions/effective.ts) reads
+  // OrganizationMember.customRoleId; User.customRoleId is only kept in sync
+  // for legacy call sites that do not pass an organizationId.
+  await prisma.$transaction([
+    prisma.organizationMember.updateMany({
+      where: { organizationId: org.id, userId },
+      data: { customRoleId },
+    }),
+    prisma.user.update({
+      where: { id: userId },
+      data: { customRoleId },
+    }),
+  ])
   return { success: true as const }
 }

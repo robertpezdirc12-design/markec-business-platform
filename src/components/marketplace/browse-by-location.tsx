@@ -6,12 +6,10 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
   MapPinIcon,
   ArrowRightIcon,
 } from "@/components/icons"
-import { Heart } from "@phosphor-icons/react/dist/ssr"
 import { MARKETPLACE_CATEGORIES, countByCategory } from "@/lib/marketplace/categories"
 
 const countries = [
