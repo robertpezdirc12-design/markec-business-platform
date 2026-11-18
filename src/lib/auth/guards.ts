@@ -221,6 +221,29 @@ async function resolveSessionOrg(
 }
 
 /**
+ * Svež dokaz članstva za ADMIN-only akcije.
+ *
+ * JWT `role` je zamrznjen ob prijavi; po degradaciji ADMIN → STAFF bi
+ * odstavljeni admin še naprej opravljal admin akcije do osvežitve žetona.
+ * OrganizationMember je edini vir resnice — tu preverimo NJEGOVO vlogo v
+ * razrešeni organizaciji (fail-closed, če vrstice ni).
+ */
+async function assertAdminMembership(
+  userId: string,
+  organizationId: string
+): Promise<void> {
+  const member = await prisma.organizationMember.findUnique({
+    where: { organizationId_userId: { organizationId, userId } },
+    select: { role: true },
+  })
+  if (member?.role !== "ADMIN") {
+    throw new UnauthorizedError(
+      "You do not have permission to perform this action"
+    )
+  }
+}
+
+/**
  * F2.1 — evidence check for OWNER PREVIEW of an unpublished tenant.
  *
  * The old gates compared `session.user.organizationId === org.id`, i.e. a
@@ -273,6 +296,8 @@ export async function requirePermissionOrg(key: PermissionKey): Promise<{
   const org = await resolveSessionOrg(session)
   if (!org)
     throw new UnauthorizedError("No organization found for this account")
+  // JWT vloga je lahko zastarela (degradiran admin) — preveri sveže članstvo.
+  await assertAdminMembership(session.user.id, org.id)
   const perms = await getEffectivePermissions(session.user.id, org.id)
   if (!perms.includes(key)) {
     throw new UnauthorizedError(
@@ -314,6 +339,8 @@ export async function requireAnyPermissionOrg(keys: PermissionKey[]): Promise<{
   const org = await resolveSessionOrg(session)
   if (!org)
     throw new UnauthorizedError("No organization found for this account")
+  // JWT vloga je lahko zastarela (degradiran admin) — preveri sveže članstvo.
+  await assertAdminMembership(session.user.id, org.id)
   const perms = await getEffectivePermissions(session.user.id, org.id)
   const allowed = keys.some((k) => perms.includes(k))
   if (!allowed) {
@@ -448,6 +475,8 @@ export async function requireUnrestrictedAdmin(): Promise<{
   const org = await resolveSessionOrg(session)
   if (!org)
     throw new UnauthorizedError("No organization found for this account")
+  // Najnevarnejše akcije: sveža članska vloga ADMIN (ne samo JWT).
+  await assertAdminMembership(session.user.id, org.id)
   const perms = await getEffectivePermissions(session.user.id, org.id)
   if (!hasAllPermissions(perms)) {
     throw new UnauthorizedError(
