@@ -104,7 +104,7 @@ Univerzalna, modularna večnajemniška poslovna platforma za samostojne ponudnik
 ## Lokalna namestitev
 
 ### Predpogoji
-- **Node.js** ≥ 20.9 (priporočeno 22 LTS, kot v CI)
+- **Node ≥ 20.9** (priporočeno 22 LTS, kot v CI)
 - **pnpm** prek Corepacka (repo uporablja točno različico iz `package.json#packageManager`)
 - Dostop do PostgreSQL baze (lokalno ali Neon)
 

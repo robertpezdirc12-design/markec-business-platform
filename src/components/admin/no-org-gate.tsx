@@ -1,37 +1,51 @@
 "use client"
 
 // ============================================================
-// 2D-1E — Stanje B (prijavljen uporabnik, a brez aktivnega
-// poslovnega prostora/organizacije): usmerimo na izbor prostora
-// (/dashboard/workspaces). Uporablja client usePathname, da ne
-// pride do neskončne preusmeritve layouta na lastno stran pod
-// istim (admin) layoutom.
-// Ne prijavlja / login, ne ustvarja organizacije, ne spreminja
-// podatkov.
+// 2D-1E / self-service — prijavljen uporabnik brez aktivnega
+// poslovnega prostora: usmerimo na /self-service, ki samodejno
+// ustvari/izbere prostor ali pošlje na izbor prostorov.
 // ============================================================
 
 import { useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 
 export function NoOrgGate({ children }: { children: React.ReactNode }) {
+  const { data: session, status } = useSession()
   const pathname = usePathname()
   const router = useRouter()
 
-  // Ko je uporabnik prijavljen, a nima aktivne org: če ni že na
-  // izboru prostorov (/workspaces), preusmeri tja (client zankanje, brez
-  // neskončne preusmeritve).
+  // Ob aktivni seji brez organizacije prepusti pot /self-service (in
+  // /workspaces), ki poskrbita za samodejno ustvarjanje ali izbor.
   useEffect(() => {
-    if (pathname !== "/workspaces" && !pathname.startsWith("/workspaces/")) {
-      router.replace("/workspaces")
-    }
-  }, [pathname, router])
+    if (status !== "authenticated") return
+    if (session?.user?.organizationId) return
 
-  // Na izboru prostorov naj se stran izriše normalno (picker pokaže
-  // "na tem računu ni aktivnih prostorov", kadar jih ni).
-  if (pathname === "/workspaces" || pathname.startsWith("/workspaces/")) {
+    const isWorkspaces =
+      pathname === "/workspaces" || pathname.startsWith("/workspaces/")
+    const isSelfService =
+      pathname === "/self-service" || pathname.startsWith("/self-service/")
+    const isStart = pathname === "/start" || pathname.startsWith("/start/")
+
+    if (!isWorkspaces && !isSelfService && !isStart) {
+      router.replace("/self-service")
+    }
+  }, [pathname, router, session?.user?.organizationId, status])
+
+  const isWorkspaces =
+    pathname === "/workspaces" || pathname.startsWith("/workspaces/")
+  const isSelfService =
+    pathname === "/self-service" || pathname.startsWith("/self-service/")
+  const isStart = pathname === "/start" || pathname.startsWith("/start/")
+
+  if (isWorkspaces || isSelfService || isStart) {
     return <>{children}</>
   }
 
-  // Drugje (pred preusmeritvijo) kratek neutral placeholder.
-  return <div className="p-8 text-center text-muted-foreground">Nalaganje …</div>
+  // Če ni organizacije, /self-service poskrbi za nadaljevanje.
+  if (status === "authenticated" && !session?.user?.organizationId) {
+    return <div className="p-8 text-center text-muted-foreground">Nalaganje …</div>
+  }
+
+  return <>{children}</>
 }

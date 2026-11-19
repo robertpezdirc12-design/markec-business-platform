@@ -106,3 +106,8 @@ export function isTransitionAllowed(
   // optional: vse tri eksplicitno — lastnik izbira.
   return { ok: true }
 }
+
+// VSTOPNA IZKUŠNJA (2026-11): opt-in aktivacija modulov (planActivation,
+// buildSeedRows, seedNewOrgModuleStates) je v src/app/actions/modules.ts
+// — EN VIR RESNICE za seed ob nastanku org in za "Dodaj skupaj z
+// odvisnostmi" akcijo (enableModuleWithDependencies).

@@ -22,6 +22,7 @@ export const commonSl = {
   nav: {
     dashboard: "Nadzorna plošča",
     analytics: "Analitika",
+    modules: "Moduli",
     appointments: "Termini",
     waitlist: "Čakalna lista",
     chats: "Sprejem",
@@ -78,6 +79,7 @@ export const commonSl = {
     actionProduct: "Nov izdelek",
     actionSite: "Uredi spletno stran",
   },
+  // VSTOPNA IZKUŠNJA (2026-11) — mreža modulov: klik modul = modul dodan.
   header: {
     visitSite: "Obišči stran",
     notifications: "Obvestila",
@@ -290,6 +292,7 @@ export const commonEn: CommonDict = {
   nav: {
     dashboard: "Dashboard",
     analytics: "Analytics",
+    modules: "Modules",
     appointments: "Appointments",
     waitlist: "Waitlist",
     chats: "Reception",
@@ -344,6 +347,7 @@ export const commonEn: CommonDict = {
     actionProduct: "New product",
     actionSite: "Edit website",
   },
+  // VSTOPNA IZKUŠNJA (2026-11) — module grid: click a module = module added.
   header: {
     visitSite: "Visit Site",
     notifications: "Notifications",

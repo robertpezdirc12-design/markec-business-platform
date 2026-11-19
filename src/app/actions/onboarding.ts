@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs"
 import crypto from "crypto"
 import { after } from "next/server"
 import { auth, unstable_update } from "@/lib/auth/auth"
+import { resolveActiveOrganizationId } from "@/lib/auth/memberships"
 import { prisma } from "@/lib/prisma"
 import { isReservedSlug, isSlugAvailable, slugify } from "@/lib/tenant"
 import { PALETTES, verticalSiteContent, getVertical, presetStaffImage } from "@/lib/verticals"
@@ -22,6 +23,7 @@ import {
   allowVerificationFallback,
   isEmailServiceConfigured,
 } from "@/lib/email/config"
+import { seedNewOrgModuleStates } from "@/app/actions/modules"
 
 export interface CreateSalonInput {
   name: string
@@ -64,6 +66,7 @@ export interface CreateSalonInput {
 
 export interface CreateSalonResult {
   success: boolean
+  orgId?: string
   slug?: string
   salonName?: string
   error?: string
@@ -264,6 +267,15 @@ export async function createSalonOrganization(input: CreateSalonInput): Promise<
     })
 
     let staffId: string | null = null
+    // VSTOPNA IZKUŠNJA (2026-11): novi tenant začne z opt-in moduli —
+    // required jedro aktivno, ostalo izklopljeno dokler lastnik ne doda.
+    // Če seed pade, org obstaja (ni transakcije) — sanitizeModuleStates
+    // ob naslednji zahtevi sanira manjkajoča stanja; fail-open v varno.
+    try {
+      await seedNewOrgModuleStates(org.id, profile.id, secondaryVertical)
+    } catch (err) {
+      console.error("[onboarding] seedNewOrgModuleStates pade:", err)
+    }
     try {
       if (linkUserId) {
         // #100 8.A (M1): članstvo za NOVO podjetje (backfill pokrije stare;
@@ -472,6 +484,7 @@ export async function createSalonOrganization(input: CreateSalonInput): Promise<
 
     return {
       success: true,
+      orgId: org.id,
       slug,
       salonName: name,
       // 2D-4: za sveže anonimnega lastnika UX potrebuje presekano e-pošto.
@@ -517,4 +530,115 @@ export async function getVerticalContactMode(
   const profile = getProfile(verticalId)
   const mode = profile.website?.ctaMode
   return mode === "inquiry" || mode === "order" ? mode : "booking"
+}
+
+// ============================================================
+// SELF-SERVICE: ensure the signed-in user has a workspace
+// (EPIC #4 / Google self-service onboarding)
+//
+// After Google sign-in a brand-new user has no organization.
+// This helper auto-creates (if none) or resolves/selects (if
+// one exists) a workspace so the post-login flow is smooth.
+// Idempotent: safe to call multiple times.
+// ============================================================
+
+export type EnsureSelfServiceWorkspaceResult =
+  | { ok: true; organizationId: string; created: boolean }
+  | { ok: false; error: string }
+
+export async function ensureSelfServiceWorkspace(): Promise<EnsureSelfServiceWorkspaceResult> {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return { ok: false, error: "Za nadaljevanje se prijavite." }
+  }
+
+  // Resolve active workspace from memberships first (authoritative).
+  const activeOrgId = await resolveActiveOrganizationId(
+    session.user.id,
+    session.user.organizationId ?? null
+  )
+  if (activeOrgId) {
+    // Keep session in sync if it points elsewhere / is missing.
+    if (session.user.organizationId !== activeOrgId || session.user.role === "CLIENTE") {
+      // If the user is only CLIENTE at user-level but owns/manages a workspace,
+      // promote to ADMIN so they can access the business dashboard.
+      const membership = await prisma.organizationMember.findFirst({
+        where: { userId: session.user.id, organizationId: activeOrgId },
+        select: { role: true },
+      })
+      const nextRole =
+        membership && (membership.role === "OWNER" || membership.role === "ADMIN" || membership.role === "MANAGER")
+          ? "ADMIN"
+          : (session.user.role as string)
+      await unstable_update({
+        user: {
+          role: nextRole as "ADMIN" | "CLIENTE" | "STAFF",
+          organizationId: activeOrgId,
+        },
+      })
+    }
+    return { ok: true, organizationId: activeOrgId, created: false }
+  }
+
+  // No active membership — auto-provision a starter workspace for self-service.
+  // Only when the user has no memberships at all (avoid creating a stray org
+  // for someone who belongs to an inactive workspace by mistake).
+  const membershipCount = await prisma.organizationMember.count({
+    where: { userId: session.user.id },
+  })
+  if (membershipCount > 0) {
+    // Has memberships but none resolved as active — let caller route to picker.
+    return { ok: false, error: "NO_ACTIVE_WORKSPACE" }
+  }
+
+  const displayName =
+    session.user.name?.trim() ||
+    session.user.email?.split("@")[0]?.trim() ||
+    "Moj prostor"
+
+  const baseName = displayName.length >= 2 ? displayName : "Moj prostor"
+  const orgName = baseName.length > 80 ? baseName.slice(0, 80).trim() : baseName
+
+  // Generate a unique, available slug.
+  const baseSlug = slugify(orgName) || `moj-prostor-${session.user.id.slice(-6)}`
+  let slug = baseSlug.slice(0, 50)
+  if (slug.length < 2) slug = `moj-prostor-${session.user.id.slice(-6)}`
+  if (isReservedSlug(slug)) slug = `${slug}-biz`
+  for (let i = 0; i < 20; i++) {
+    const candidate = i === 0 ? slug : `${slug.slice(0, Math.max(2, 46 - String(i).length))}-${i}`
+    if (!isReservedSlug(candidate) && (await isSlugAvailable(candidate))) {
+      slug = candidate
+      break
+    }
+    if (i === 19) {
+      slug = `${slug.slice(0, 40)}-${crypto.randomBytes(3).toString("hex")}`
+    }
+  }
+
+  // Pick a sensible default palette.
+  const defaultPalette =
+    (PALETTES && (PALETTES["sage"] ? "sage" : Object.keys(PALETTES)[0])) || "sage"
+
+  const result = await createSalonOrganization({
+    name: orgName,
+    slug,
+    palette: defaultPalette,
+    vertical: "",
+    verticalSkipped: true,
+    secondaryVertical: null,
+    ownerName: displayName,
+    email: session.user.email ?? "",
+    password: "",
+  })
+
+  if (!result.success || !result.orgId) {
+    return {
+      ok: false,
+      error:
+        result.error ??
+        "Samodejna ustvaritev poslovnega prostora ni uspela. Poskusite znova.",
+    }
+  }
+
+  return { ok: true, organizationId: result.orgId, created: true }
 }

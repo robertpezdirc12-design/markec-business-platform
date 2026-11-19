@@ -39,14 +39,18 @@ export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: 
   // update() re-fetches the session so the SessionProvider context matches
   // the fresh cookie immediately (cart/checkout read it client-side).
   const { update } = useSession()
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
+  const rawCallback = searchParams.get("callbackUrl") || searchParams.get("redirectTo")
+  // Google OAuth preusmerja nazaj sem takoj po prijavi → vedno na
+  // /self-service (samodejno ustvari/izbere prostor; nov uporabnik pade
+  // na izbiro modulov). Večposlovni uporabnik dobi vstopno tablo.
+  const callbackUrl = "/self-service"
   // P2 #74: najemniško označena prijava (?org=) je VRATA STRANKE — iz nje
   // je gost prišel prek "Prijava" v nogi najemnikove strani. Nikoli ne
   // ponujaj provider CTA-ja ("Ustvari svoje podjetje") nekomu, ki kupuje
   // med; pot nazaj je trgovina, ne platforma. Nevtralni /login ostane
   // platformina lastna vrata (obe poti sta tam legitimni, glej #68).
   const isTenantContext =
-    Boolean(orgSlug) || Boolean(callbackUrl.startsWith("/s/"))
+    Boolean(orgSlug) || Boolean((rawCallback ?? "").startsWith("/s/"))
 
   const {
     register,
@@ -116,13 +120,27 @@ export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: 
         // platformina vrata — tam gremo vedno tja, kamor je kazal kupon.
         const isMultiWorkspace =
           !isTenantContext && (await getActiveWorkspaceCount()) > 1
+        // Ziheraški `next` cilj (samo lastne platformine poti, ne odprtega
+        // preusmerjevalnika), kadar preusmerjamo na vstopno tablo.
+        const safeNext =
+          rawCallback && rawCallback.startsWith("/") && !rawCallback.startsWith("//")
+            ? rawCallback
+            : null
+        // VSTOPNI TOK: nov uporabnik brez ustvarjenega prostora → /self-service
+        // samodejno ustvari/izbere prostor (in pade na izbiro modulov).
+        // Uporabnik z VEČ poslovnimi prostori → vstopna tabla /workspaces.
+        const multiTarget = isMultiWorkspace
+          ? safeNext
+            ? `/workspaces?next=${encodeURIComponent(safeNext)}`
+            : "/workspaces"
+          : "/self-service"
         // NOTE: do NOT call router.refresh() here — it runs synchronously
         // after router.push() and cancels the pending navigation, leaving the
         // user stuck on /login even though the session is authenticated and
         // getActiveWorkspaceCount() succeeded. update() above already
         // re-syncs the client SessionProvider, and the pushed route re-reads
         // the session cookie server-side.
-        router.push(isMultiWorkspace ? "/workspaces" : callbackUrl)
+        router.push(multiTarget)
       }
     } catch (error) {
       console.log("Login error:", error)

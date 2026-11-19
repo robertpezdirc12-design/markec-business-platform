@@ -21,6 +21,7 @@ import {
 import {
   getModuleOverview,
   setModuleState,
+  enableModuleWithDependencies,
   type ModuleView,
 } from "@/app/actions/modules"
 import { useI18n } from "@/lib/i18n/provider"
@@ -63,18 +64,48 @@ export function ModulesOverview() {
 
   function toggle(m: ModuleView, next: ModuleView["state"]) {
     startTransition(async () => {
-      const res = await setModuleState(m.id, next)
+      let res: { success: boolean; error?: string; warnings?: string[]; enabled?: string[] }
+      if (next === "ACTIVE") {
+        res = await enableModuleWithDependencies(m.id, locale === "en" ? "en" : "sl")
+      } else {
+        res = await setModuleState(m.id, next)
+      }
       if (!res.success) {
         toast.error(res.error ?? "Sprememba ni uspela.")
         return
       }
-      if (res.warnings && res.warnings.length > 0) {
+
+      if (next === "ACTIVE") {
+        const enabledIds = res.enabled ?? []
+        const extra = enabledIds.filter((id) => id !== m.id)
+        if (extra.length > 0) {
+          const extraNames = extra
+            .map((id) => {
+              const mod = modules.find((x) => x.id === id)
+              return mod ? n(mod) : id
+            })
+            .join(", ")
+          toast.success(
+            locale === "en"
+              ? `Module "${n(m)}" enabled (also enabled: ${extraNames}).`
+              : `Modul »${n(m)}« vklopljen (hkrati vklopljeno: ${extraNames}).`
+          )
+        } else {
+          toast.success(
+            locale === "en" ? `Module "${n(m)}" enabled.` : `Modul »${n(m)}« vklopljen.`
+          )
+        }
+      } else if (res.warnings && res.warnings.length > 0) {
         for (const w of res.warnings) toast.warning(w)
       } else {
         toast.success(
           next === "DEACTIVATED"
-            ? `Modul »${n(m)}« izklopljen — podatki ostanejo.`
-            : `Modul »${n(m)}« vklopljen.`
+            ? locale === "en"
+              ? `Module "${n(m)}" turned off — data is kept.`
+              : `Modul »${n(m)}« izklopljen — podatki ostanejo.`
+            : locale === "en"
+              ? `Module "${n(m)}" hidden from public site.`
+              : `Modul »${n(m)}« skrit iz javne strani.`
         )
       }
       router.refresh()
@@ -105,35 +136,47 @@ export function ModulesOverview() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Moji moduli</CardTitle>
+        <CardTitle className="text-base">
+          {locale === "en" ? "My modules" : "Moji moduli"}
+        </CardTitle>
         <CardDescription>
-          Izberi, kateri deli platforme so del tvojega poslovanja. Obvezni moduli dejavnosti
-          so zaklenjeni; izbrane lahko vklopiš ali izklopiš kadarkoli — podatki nikoli ne
-          izginejo, ponovni vklop jih vrne.
+          {locale === "en"
+            ? "Choose which parts of the platform are part of your business. Required modules for your activity are locked; the rest you can turn on or off at any time — data is never lost, re-enabling brings it back."
+            : "Izberi, kateri deli platforme so del tvojega poslovanja. Obvezni moduli dejavnosti so zaklenjeni; izbrane lahko vklopiš ali izklopiš kadarkoli — podatki nikoli ne izginejo, ponovni vklop jih vrne."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-          <Badge variant="outline">Obvezni: {counts.required}</Badge>
-          <Badge variant="outline">Priporočeni/aktivni: {counts.recommended}</Badge>
-          <Badge variant="outline">Razpoložljivi: {counts.available}</Badge>
+          <Badge variant="outline">
+            {locale === "en" ? "Required" : "Obvezni"}: {counts.required}
+          </Badge>
+          <Badge variant="outline">
+            {locale === "en" ? "Recommended/active" : "Priporočeni/aktivni"}: {counts.recommended}
+          </Badge>
+          <Badge variant="outline">
+            {locale === "en" ? "Available" : "Razpoložljivi"}: {counts.available}
+          </Badge>
           <Badge variant="outline" className="text-muted-foreground/70">
-            Ni na voljo: {counts.disabled}
+            {locale === "en" ? "Not available" : "Ni na voljo"}: {counts.disabled}
           </Badge>
         </div>
 
         <Input
-          placeholder="Išči modul …"
+          placeholder={locale === "en" ? "Search module …" : "Išči modul …"}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="h-9 max-w-sm"
-          aria-label="Iskanje modulov"
+          aria-label={locale === "en" ? "Search modules" : "Iskanje modulov"}
         />
 
         {loading ? (
-          <p className="text-muted-foreground text-sm">Nalagam module …</p>
+          <p className="text-muted-foreground text-sm">
+            {locale === "en" ? "Loading modules …" : "Nalagam module …"}
+          </p>
         ) : filtered.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Ni zadetkov.</p>
+          <p className="text-muted-foreground text-sm">
+            {locale === "en" ? "No results." : "Ni zadetkov."}
+          </p>
         ) : (
           <div className="space-y-1.5">
             {filtered.map((m) => {
@@ -206,7 +249,11 @@ export function ModulesOverview() {
                         disabled={pending || loading || isUnavailable}
                         onClick={() => toggle(m, "HIDDEN")}
                         className="px-2.5 py-1.5 transition-colors hover:bg-muted/50 disabled:opacity-40"
-                        title="Skri iz javne strani (plošča ostane delujoča)"
+                        title={
+                          locale === "en"
+                            ? "Hide from public page (module keeps working)"
+                            : "Skri iz javne strani (plošča ostane delujoča)"
+                        }
                       >
                         {locale === "en" ? "Hide" : "Skrij"}
                       </button>
@@ -229,10 +276,9 @@ export function ModulesOverview() {
         )}
 
         <p className="text-muted-foreground text-xs">
-          Obvezni moduli dejavnosti so vedno vklopljeni in jih ni mogoče izklopiti. Moduli, ki
-          niso na voljo za tvojo dejavnost, ostanejo izklopljeni. Izklop nikoli ne zbriše
-          podatkov — zgodovina, rezervacije in naročila ostanejo shranjeni, ponovni vklop jih
-          vrne.
+          {locale === "en"
+            ? "Required modules for your activity are always on and cannot be turned off. Modules not available for your activity stay off. Turning a module off never deletes data — history, bookings and orders stay saved, and re-enabling brings them back."
+            : "Obvezni moduli dejavnosti so vedno vklopljeni in jih ni mogoče izklopiti. Moduli, ki niso na voljo za tvojo dejavnost, ostanejo izklopljeni. Izklop nikoli ne zbriše podatkov — zgodovina, rezervacije in naročila ostanejo shranjeni, ponovni vklop jih vrne."}
         </p>
       </CardContent>
     </Card>

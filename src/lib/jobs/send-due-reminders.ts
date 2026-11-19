@@ -21,23 +21,12 @@ import { prisma } from "@/lib/prisma"
 import { isEmailServiceConfigured } from "@/lib/email/config"
 import { sendAppointmentReminderEmail } from "@/lib/email/appointment-reminder"
 import { formatSalonTime, safeTimezone } from "@/lib/booking-time"
+import { reminderWindow } from "@/lib/jobs/reminder-window"
 import { buildPushPayload } from "@/lib/push/core"
 import { notifyUser } from "@/lib/push/send"
 import { sendAppointmentReminderSms } from "@/app/actions/sms"
-import type { Prisma } from "@prisma/client"
 
 const BATCH_SIZE = 100
-
-/** Čisto okno opomnika (23–25 h v prihodnje) — testabilno. */
-export function reminderWindow(now: Date = new Date()): {
-  horizonStart: Date
-  horizonEnd: Date
-} {
-  return {
-    horizonStart: new Date(now.getTime() + 23 * 3_600_000),
-    horizonEnd: new Date(now.getTime() + 25 * 3_600_000),
-  }
-}
 
 export async function sendDueReminders(now: Date = new Date()): Promise<{
   sent: number
@@ -153,16 +142,4 @@ export async function sendDueReminders(now: Date = new Date()): Promise<{
   )
 
   return { sent, failed, detail: { due: due.length, horizonStart, horizonEnd } }
-}
-
-/** Prisma where za opomnike — export za teste pogodbe (statusi, okno). */
-export function dueReminderWhere(
-  now: Date = new Date()
-): Prisma.AppointmentWhereInput {
-  const { horizonStart, horizonEnd } = reminderWindow(now)
-  return {
-    status: { in: ["PENDING", "CONFIRMED"] },
-    reminderSentAt: null,
-    startTime: { gte: horizonStart, lt: horizonEnd },
-  }
 }

@@ -22,32 +22,36 @@ import {
   modulePolicyFor,
   type ModuleCategory,
 } from "@/lib/modules/policy"
-import { getProfile } from "@/lib/profiles/registry"
-import { applySecondaryProfile } from "@/lib/profiles/secondary"
-import { applyOverrides, parseOverrides } from "@/lib/profiles/overrides"
+// VSTOPNA IZKUŠNJA (2026-11): čista opt-in logika (seed + plan aktivacije)
+// je v src/lib/modules/activation.ts — en vir resnice, testabilno,
+// komponente in akcije ga delita.
+import {
+  baseCapabilitiesOf,
+  buildSeedRows,
+  planActivation,
+} from "@/lib/modules/activation"
 import type { CapabilityState } from "@/lib/profiles/types"
 
-// ============================================================
-// #100 8.C (F2) + F5.4.1 (P0) — MODULI (akcije)
-// Enoten konfigurator + AVTORITATIVNA politika:
-//   • module-tabela stanja NE sme preglasiti required/disabled profila;
-//   • required  → zaklenjeno (ni DEACTIVATED);
-//   • disabled  → nikoli vklopljeno (ACTIVE/HIDDEN zavrnjena);
-//   • optional  → lastnik vklopi/izklopi.
-// Izklop NIKOLI ne izgubi podatkov; odvisnosti deklarirane (opozorilo).
-// Vsaka sprememba gre v ConfigChangeLog.
-// ============================================================
 
-/** Bazna (rapidna) capability matrika = profil + secondary + overrides, BREZ moduleStates. */
-function baseCapabilitiesOf(org: {
-  vertical: string | null
-  secondaryVertical?: string | null
-  profileOverrides: unknown
-}): Record<string, CapabilityState> {
-  const withSecondary = applySecondaryProfile(getProfile(org.vertical), org.secondaryVertical)
-  const withOverrides = applyOverrides(withSecondary, parseOverrides(org.profileOverrides))
-  const caps = withOverrides.capabilities as unknown as Record<string, CapabilityState>
-  return { ...caps }
+export async function seedNewOrgModuleStates(
+  organizationId: string,
+  vertical: string | null,
+  secondaryVertical?: string | null,
+  profileOverrides?: unknown
+): Promise<void> {
+  const base = baseCapabilitiesOf({
+    vertical,
+    secondaryVertical,
+    profileOverrides,
+  })
+  const rows = buildSeedRows(base).map((r: { moduleId: string; state: ModuleState }) => ({
+    organizationId,
+    moduleId: r.moduleId,
+    state: r.state,
+  }))
+  if (rows.length > 0) {
+    await prisma.organizationModuleState.createMany({ data: rows })
+  }
 }
 
 /**
@@ -266,6 +270,65 @@ export async function setModuleState(
   revalidatePath("/dashboard/settings")
   revalidatePath("/dashboard")
   return { success: true, warnings, allowed: true }
+}
+
+// ============================================================
+// VSTOPNA IZKUŠNJA (2026-11) — "Dodaj modul" (en klik, z odvisnostmi).
+// Razlika od setModuleState: lastnik klika "Dodaj" na kartici modula,
+// sistem pa (a) izračuna plan s planActivation (čista logika), (b) če je
+ // modul odvisen od izklopljenih modulov, jih vklopi SKUPAJ (lastnik je z
+ // enim klikom potrdil celoten nabor), (c) vsako spremembo zapiše v
+ // ConfigChangeLog. Disabled odvisnost blokira celotno aktivacijo
+// (fail-closed, v skladu z avtoritativno politiko).
+// ============================================================
+export async function enableModuleWithDependencies(
+  moduleId: string,
+  locale: "sl" | "en" = "sl"
+): Promise<{ success: boolean; error?: string; enabled: string[] }> {
+  const { org, session } = await requireModuleManageOrg()
+
+  const mod = getModule(moduleId)
+  if (!mod || !MODULES.some((m) => m.id === moduleId)) {
+    return { success: false, error: "Neznan modul.", enabled: [] }
+  }
+
+  const base = baseCapabilitiesOf(org)
+  const rows = await loadStates(org.id)
+  const plan = planActivation(moduleId, base, rows)
+  if (!plan.ok) {
+    return {
+      success: false,
+      error: (locale === "en" ? plan.reasonEn : plan.reasonSl) ?? "Modul ni mogoče vklopiti.",
+      enabled: [],
+    }
+  }
+
+  const actorEmail = session.user.email ?? "unknown"
+  const enabled: string[] = []
+  for (const m of plan.toEnable) {
+    const previous = rows[m.id] ?? "ACTIVE"
+    if (previous === "ACTIVE") continue // že aktiven — ni spremembe
+    await prisma.organizationModuleState.upsert({
+      where: { organizationId_moduleId: { organizationId: org.id, moduleId: m.id } },
+      create: { organizationId: org.id, moduleId: m.id, state: "ACTIVE" },
+      update: { state: "ACTIVE" },
+    })
+    enabled.push(m.id)
+    await recordConfigChange({
+      organizationId: org.id,
+      actorEmail,
+      entityKey: `module:${m.id}`,
+      action: "UPDATE",
+      summary: `Modul ${m.nameSl}: ${previous} → ACTIVE (vklop prek mreže modulov)`,
+      previous: { state: previous },
+      next: { state: "ACTIVE" },
+    }).catch(() => undefined)
+  }
+
+  revalidatePath("/dashboard")
+  revalidatePath("/dashboard/modules")
+  revalidatePath("/dashboard/settings")
+  return { success: true, enabled }
 }
 
 // ============================================================

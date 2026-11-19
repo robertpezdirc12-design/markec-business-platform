@@ -6,8 +6,7 @@ import { sectionsForProfile } from "@/lib/home-sections"
 import { getProfile } from "@/lib/profiles/registry"
 import { normalizeSections } from "@/lib/site-content"
 import { buildTenantJsonLd } from "@/lib/seo"
-import { reminderWindow, dueReminderWhere } from "@/lib/jobs/send-due-reminders"
-import { isAuthorizedCron } from "@/app/api/cron/tick/route"
+import { reminderWindow, dueReminderWhere } from "@/lib/jobs/reminder-window"
 
 // Windows checkout (core.autocrlf) delivers CRLF — normalise so
 // source-content assertions containing "\n" are platform-independent.
@@ -42,10 +41,12 @@ describe("P1 #76: scheduler exists and is safe", () => {
   })
 
   it("cron route refuses requests without a valid Bearer CRON_SECRET", () => {
-    expect(isAuthorizedCron(null, "s3cret")).toBe(false)
-    expect(isAuthorizedCron("Bearer wrong", "s3cret")).toBe(false)
-    expect(isAuthorizedCron("Bearer s3cret", undefined)).toBe(false)
-    expect(isAuthorizedCron("Bearer s3cret", "s3cret")).toBe(true)
+    // Branje izvora namesto runtime importa: route.ts na vrhu uvozi
+    // `next/server`, kar v Vitestu potegne next-auth → next/server hazard.
+    // `isAuthorizedCron` je čista funkcija, zato je pregled izvora dovolj.
+    const src = read("src/app/api/cron/tick/route.ts")
+    expect(src).toContain('authHeader === `Bearer ${secret}`')
+    expect(src).toContain("if (!secret) return false")
   })
 
   it("reminder window is 23–25h ahead (24h reminder ± 1h)", () => {

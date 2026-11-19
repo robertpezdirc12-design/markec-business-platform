@@ -53,6 +53,7 @@ export type NavNameKey =
   | "seamstress"
   | "staff"
   | "roles"
+  | "modules"
   | "settings"
 
 export interface DashboardNavItem {
@@ -313,6 +314,10 @@ export const DASHBOARD_NAV: DashboardNavItem[] = [
   },
   // Custom roles (G8) — admin-only
   { nameKey: "roles", href: "/dashboard/roles", section: "manage" },
+  // VSTOPNA IZKUŠNJA (2026-11): "Moduli" je stalna vstopna točka v grid
+  // (po vstopu z Google se uporabnik tja preusmeri z ?welcome=1, a jo
+  // lahko kadarkoli ponovno odpre iz menija).
+  { nameKey: "modules", href: "/dashboard/setup", section: "manage" },
   {
     nameKey: "einvoices",
     href: "/dashboard/einvoices",
