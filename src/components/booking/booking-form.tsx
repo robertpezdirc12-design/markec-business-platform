@@ -506,14 +506,12 @@ export function BookingForm(props: BookingFormProps) {
           <BookingStepper
             label={t.booking.bookTitle}
             labels={{
-              service: t.booking.service,
-              staff: t.booking.staff,
+              selection: t.booking.service,
               dateTime: t.booking.dateTime,
               details: t.booking.yourDetails,
             }}
-            serviceDone={isStaffFirst ? !!selectedServiceId : true}
-            staffDone={isStaffFirst ? true : !!staffId}
-            slotDone={!!selectedDate && !!selectedTime}
+            selectionDone={isStaffFirst ? !!selectedServiceId : true}
+            dateTimeDone={!!selectedDate && !!selectedTime}
             detailsDone={!!(customerValues.firstName && customerValues.email && customerValues.phone)}
           />
           {/* Staff-first mode: Show preselected staff, then service selection */}

@@ -349,24 +349,28 @@ export function WorkOrdersClient({
                       <Link href={`/dashboard/work-orders/${o.id}`} className="hover:text-primary-text mt-1 block font-medium hover:underline">
                         {o.title}
                       </Link>
-                      {o.contactId ? (
-                        <Link href={`/dashboard/customers/${o.contactId}`} className="text-sm text-muted-foreground hover:underline">
-                          {o.contactName ?? "—"}
-                        </Link>
+                      {o.customerName ? (
+                        <p className="text-sm text-muted-foreground">{o.customerName}</p>
                       ) : (
-                        <p className="text-sm text-muted-foreground">—</p>
+                        <p className="text-sm text-muted-foreground">{labels.noCustomer}</p>
                       )}
                     </div>
-                    <span className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${STAGE_COLORS[o.stage] ?? ""}`}>
-                      {stageLabel(o.stage, labels)}
+                    <span
+                      className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusColors[o.status] ?? ""}`}
+                    >
+                      {labels.statusLabels[o.status] ?? o.status}
                     </span>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    {o.dueAt ? <span>Rok: {new Date(o.dueAt).toLocaleDateString("sl-SI")}</span> : null}
-                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${PRIORITY_COLORS[o.priority] ?? ""}`}>
-                      {PRIORITY_LABELS[o.priority] ?? o.priority}
+                    {o.status === "OPEN" && o.currentStageName ? (
+                      <span className="bg-primary/10 text-primary-text inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium">
+                        {o.currentStageName}
+                      </span>
+                    ) : null}
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${priorityColors[o.priority] ?? priorityColors.NORMAL}`}>
+                      {labels.priorityLabels[o.priority] ?? o.priority}
                     </span>
-                    {o.paymentLabel ? <span>{o.paymentLabel}</span> : null}
+                    <span>{o.dueDate ? formatDate(o.dueDate, locale) : labels.noDueDate}</span>
                   </div>
                   <div className="mt-3">
                     <Link href={`/dashboard/work-orders/${o.id}`} className="block">
