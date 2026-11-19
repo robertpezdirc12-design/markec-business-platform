@@ -22,9 +22,12 @@ export type PromotionCodeCheck =
 const eur = (n: number) =>
   n.toLocaleString("sl-SI", { style: "currency", currency: "EUR" })
 
-export async function checkPromotionCode(rawCode: string): Promise<PromotionCodeCheck> {
+export async function checkPromotionCode(rawCode: string, locale: string = "sl"): Promise<PromotionCodeCheck> {
+  const en = locale === "en"
   const org = await getPublicOrg()
-  if (!org) return { ok: false, message: "Koda ne obstaja." }
+  if (!org) {
+    return { ok: false, message: en ? "Code does not exist." : "Koda ne obstaja." }
+  }
 
   // Anti-zloraba (brute-force ugibanja kod): omejimo preverjanja na IP.
   // Fail-open — ob izpadu števca se preverjanje nadaljuje (zaščita, ne kviz).
@@ -36,11 +39,11 @@ export async function checkPromotionCode(rawCode: string): Promise<PromotionCode
     windowMs: 15 * 60_000,
   })
   if (!rl.ok) {
-    return { ok: false, message: "Preveč poskusov. Počakajte nekaj minut." }
+    return { ok: false, message: en ? "Too many attempts. Please wait a few minutes." : "Preveč poskusov. Počakajte nekaj minut." }
   }
 
   const code = rawCode.trim().toUpperCase()
-  if (!code) return { ok: false, message: "Vnesite kodo." }
+  if (!code) return { ok: false, message: en ? "Please enter a code." : "Vnesite kodo." }
 
   const promo = await prisma.promotion.findFirst({
     where: {
@@ -60,14 +63,14 @@ export async function checkPromotionCode(rawCode: string): Promise<PromotionCode
     },
   })
 
-  if (!promo) return { ok: false, message: "Ta promocijska koda ni veljavna." }
+  if (!promo) return { ok: false, message: en ? "This promotion code is not valid." : "Ta promocijska koda ni veljavna." }
 
   const now = new Date()
   if (promo.startsAt && promo.startsAt.getTime() > now.getTime()) {
-    return { ok: false, message: "Akcija s to kodo se še ni začela." }
+    return { ok: false, message: en ? "This promotion has not started yet." : "Akcija s to kodo se še ni začela." }
   }
   if (promo.endsAt && promo.endsAt.getTime() < now.getTime()) {
-    return { ok: false, message: "Akcija s to kodo je potekla." }
+    return { ok: false, message: en ? "This promotion has expired." : "Akcija s to kodo je potekla." }
   }
 
   // Anti-zloraba: če je skupna omejitev uporab dosežena, kode ni mogoče več
@@ -77,7 +80,7 @@ export async function checkPromotionCode(rawCode: string): Promise<PromotionCode
       where: { promotionId: promo.id, status: "REDEEMED" },
     })
     if (used >= promo.maxRedemptions) {
-      return { ok: false, message: "Ta promocija je dosegla največje število uporab." }
+      return { ok: false, message: en ? "This promotion has reached its maximum number of uses." : "Ta promocija je dosegla največje število uporab." }
     }
   }
 

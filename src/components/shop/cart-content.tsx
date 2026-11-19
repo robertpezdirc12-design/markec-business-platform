@@ -91,7 +91,7 @@ export function CartContent() {
   const handleCheckPromotionCode = () => {
     if (!promotionCode.trim()) return
     startCheckPromo(async () => {
-      const r = await checkPromotionCode(promotionCode)
+      const r = await checkPromotionCode(promotionCode, locale)
       setPromotionState(
         r.ok
           ? { ok: true, message: `${r.name} · ${r.discountLabel}` }
@@ -190,7 +190,7 @@ export function CartContent() {
       sharedCodeRef.current = true
       setPromotionCode(sharedCode.toUpperCase())
       startCheckPromo(async () => {
-        const r = await checkPromotionCode(sharedCode)
+        const r = await checkPromotionCode(sharedCode, locale)
         setPromotionState(
           r.ok
             ? { ok: true, message: `${r.name} · ${r.discountLabel}` }
@@ -242,16 +242,19 @@ export function CartContent() {
             }
           : undefined,
         giftCardCode.trim() || undefined,
-        promotionCode.trim() || undefined
+        promotionCode.trim() || undefined,
+        locale
       )
 
       if (!result.success) {
         if (result.stockErrors && result.stockErrors.length > 0) {
           result.stockErrors.forEach((error) => {
             toast.error(
-              locale === "en"
-                ? `${error.name}: Only ${error.available} ${error.available === 1 ? "piece" : "pieces"} left`
-                : `${error.name}: Na voljo le še ${error.available} kos`
+              pick(
+                locale,
+                `${error.name}: Na voljo le še ${error.available} kosov`,
+                `${error.name}: Only ${error.available} left in stock`
+              )
             )
           })
         } else {
@@ -450,7 +453,7 @@ export function CartContent() {
           {pick(
             locale,
             "Hiter prehod na varno plačilo (Apple Pay / Google Pay sta na voljo v Stripe Checkout, če sta podprta).",
-            "Fast path to secure payment (Apple Pay / Google Pay available in Stripe Checkout when supported)."
+            "Fast, secure checkout (Apple Pay / Google Pay are available in Stripe Checkout when supported)."
           )}
         </p>
       </div>

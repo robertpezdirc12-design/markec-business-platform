@@ -11,135 +11,126 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { CheckCircleIcon, ShoppingBagIcon, HouseIcon, SpinnerIcon, ReceiptIcon } from "@/components/icons"
-import { verifyProductOrder } from "@/app/actions/product-checkout"
+import { CheckCircleIcon, PackageIcon, HouseIcon } from "@/components/icons"
 import { useCartStore } from "@/store/cart-store"
-import { useOrgPrefix } from "@/lib/org-path-hooks"
+import { useLocale, pick } from "@/lib/i18n/client-locale"
 
 export default function CheckoutSuccessPage() {
+  const locale = useLocale()
   const searchParams = useSearchParams()
   const sessionId = searchParams.get("session_id")
-  const clearCart = useCartStore((state) => state.clearCart)
-  // Tenant prefix so cart / order-detail / home links stay inside
-  // /s/{slug} instead of falling back to the default org's surfaces.
-  const orgPrefix = useOrgPrefix()
-
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
-  const [orderId, setOrderId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const rawType = searchParams.get("type")
+  // Frontend whitelist — never echo an arbitrary `type` value into the UI
+  // (reflected-content / phishing risk).
+  const type = rawType === "products" ? rawType : "subscription"
+  const orgSlug = searchParams.get("org")
+  const orgPrefix = orgSlug ? `/s/${orgSlug}` : ""
+  const { clearCart } = useCartStore()
+  const [isClearing, setIsClearing] = useState(true)
 
   useEffect(() => {
-    async function verifyOrder() {
-      if (!sessionId) {
-        setStatus("error")
-        setError("Manjka ID plačilne seje")
-        return
-      }
-
-      const result = await verifyProductOrder(sessionId)
-
-      if (result.success) {
-        setStatus("success")
-        setOrderId(result.orderId || null)
-        // Clear the cart after successful payment
-        clearCart()
-      } else {
-        setStatus("error")
-        setError(result.error || "Preverjanje naročila ni uspelo")
-      }
+    // Clear cart if this was a product purchase
+    if (type === "products") {
+      clearCart()
     }
-
-    verifyOrder()
-  }, [sessionId, clearCart])
-
-  if (status === "loading") {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md text-center">
-          <CardHeader>
-            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-              <SpinnerIcon size={40} className="text-primary-text animate-spin" />
-            </div>
-            <CardTitle className="text-2xl">Preverjamo vaše naročilo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Prosimo, počakajte, da potrdimo vaše plačilo.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  if (status === "error") {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md text-center">
-          <CardHeader>
-            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-destructive/10">
-              <span className="text-4xl">!</span>
-            </div>
-            <CardTitle className="text-2xl">Prišlo je do napake</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              {error || "Vašega naročila nismo mogli preveriti. Kontaktirajte podporo."}
-            </p>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-3">
-            <Button asChild className="w-full">
-              <Link href={`${orgPrefix}/cart`}>Nazaj v košarico</Link>
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    )
-  }
+    setIsClearing(false)
+  }, [type, clearCart])
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-md text-center">
+    <div className="mx-auto max-w-2xl py-12">
+      <Card className="text-center">
         <CardHeader>
-          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-            <CheckCircleIcon size={48} weight="fill" className="text-green-600" />
+          <div className="bg-success/15 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+            <CheckCircleIcon
+              size={32}
+              weight="fill"
+              className="text-success-text"
+            />
           </div>
-          <CardTitle className="text-2xl">Naročilo potrjeno!</CardTitle>
+          <CardTitle className="text-2xl">
+            {pick(locale, "Plačilo uspešno!", "Payment successful!")}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">
-            Hvala za vaš nakup! Vaše naročilo je bilo uspešno oddano.
+            {pick(
+              locale,
+              "Hvala za vaše naročilo. Vaše plačilo je bilo uspešno obdelano.",
+              "Thank you for your order. Your payment was processed successfully."
+            )}
           </p>
-          {orderId && (
-            <div className="rounded-lg bg-muted p-4">
-              <p className="text-sm text-muted-foreground">Številka naročila</p>
-              <p className="font-mono font-semibold">{orderId}</p>
+          {sessionId && (
+            <p className="text-muted-foreground mt-2 font-mono text-xs">
+              {pick(locale, "Referenca", "Reference")}: {sessionId.slice(0, 20)}...
+            </p>
+          )}
+
+          <div className="space-y-3 pt-4 text-left">
+            <div className="bg-muted/50 flex items-center gap-3 rounded-lg p-3">
+              <PackageIcon className="text-primary h-5 w-5" />
+              <div>
+                <h3 className="font-semibold">
+                  {pick(locale, "Potrditev po e-pošti", "Email confirmation")}
+                </h3>
+                <p className="text-muted-foreground text-sm">
+                  {pick(
+                    locale,
+                    "Prejeli boste e-pošto s podrobnostmi naročila",
+                    "You'll receive an email with your order details"
+                  )}
+                </p>
+              </div>
             </div>
-          )}
-          <p className="text-sm text-muted-foreground">
-            V kratkem boste prejeli e-poštno potrditev s podrobnostmi naročila.
-          </p>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-3">
-          {orderId && (
-            <Button asChild className="w-full">
-              <Link href={`${orgPrefix}/my-orders/${orderId}`}>
-                <ReceiptIcon className="mr-2 h-4 w-4" />
-                Podrobnosti naročila
+
+            <div className="bg-muted/50 flex items-center gap-3 rounded-lg p-3">
+              <PackageIcon className="text-primary h-5 w-5" />
+              <div>
+                <h3 className="font-semibold">
+                  {pick(locale, "Dostava", "Delivery")}
+                </h3>
+                <p className="text-muted-foreground text-sm">
+                  {type === "products"
+                    ? pick(
+                        locale,
+                        "Vaše naročilo bo obdelano v 1-2 delovnih dneh",
+                        "Your order will be processed within 1-2 business days"
+                      )
+                    : pick(
+                        locale,
+                        "Vaša naročnina je aktivna",
+                        "Your subscription is active"
+                      )}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-muted-foreground pt-4 text-sm">
+            <p>
+              {pick(locale, "Imate vprašanja?", "Have questions?")}{" "}
+              <Link
+                href={`${orgPrefix || ""}/#contact`}
+                className="text-primary-text hover:underline"
+              >
+                {pick(locale, "Kontaktirajte nas", "Contact us")}
               </Link>
-            </Button>
-          )}
-          <Button variant={orderId ? "outline" : "default"} asChild className="w-full">
-            <Link href={`${orgPrefix}/shop`}>
-              <ShoppingBagIcon className="mr-2 h-4 w-4" />
-              Nadaljuj z nakupovanjem
+            </p>
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-center gap-3">
+          <Button asChild variant="outline">
+            {/* The order list lives in the authenticated (customer) segment, not
+                on the public shop — respect the org prefix. */}
+            <Link href={`${orgPrefix || ""}/my-orders`}>
+              <PackageIcon className="mr-2 h-4 w-4" />
+              {pick(locale, "Ogled naročil", "View orders")}
             </Link>
           </Button>
-          <Button variant="ghost" asChild className="w-full">
-            {/* "Home" = tenant home on /s/{slug}, platform root on bare routes */}
+          <Button asChild>
+            {/* Go back to the tenant's home, not the platform root on bare routes */}
             <Link href={orgPrefix || "/"}>
               <HouseIcon className="mr-2 h-4 w-4" />
-              Nazaj domov
+              {pick(locale, "Nazaj domov", "Back home")}
             </Link>
           </Button>
         </CardFooter>

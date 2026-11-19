@@ -75,23 +75,38 @@ interface CheckoutResult {
 
 /** Tolerant contact validation (server-side — the client form is a hint). */
 function validateContact(
-  contact: CheckoutContact | undefined
+  contact: CheckoutContact | undefined,
+  locale: "sl" | "en" = "sl"
 ): { ok: false; error: string } | { ok: true } {
+  const en = locale === "en"
   if (!contact) {
-    return { ok: false, error: "Za zaključek nakupa izpolnite svoje kontaktne podatke." }
+    return {
+      ok: false,
+      error: en
+        ? "Please fill in your contact details to complete the purchase."
+        : "Za zaključek nakupa izpolnite svoje kontaktne podatke.",
+    }
   }
   const name = contact.name?.trim() ?? ""
   const email = contact.email?.trim() ?? ""
   const phone = contact.phone?.trim() ?? ""
   if (name.length < 2) {
-    return { ok: false, error: "Vnesite ime in priimek." }
+    return { ok: false, error: en ? "Please enter your full name." : "Vnesite ime in priimek." }
   }
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)
   if (!email && !phone) {
-    return { ok: false, error: "Vnesite e-pošto ali telefonsko številko." }
+    return {
+      ok: false,
+      error: en
+        ? "Please enter an email address or phone number."
+        : "Vnesite e-pošto ali telefonsko številko.",
+    }
   }
   if (email && !emailOk) {
-    return { ok: false, error: "E-poštni naslov ni veljaven." }
+    return {
+      ok: false,
+      error: en ? "Please enter a valid email address." : "E-poštni naslov ni veljaven.",
+    }
   }
   return { ok: true }
 }
@@ -167,13 +182,16 @@ export async function createProductCheckoutSession(
   items: CheckoutLine[],
   contact?: CheckoutContact,
   giftCardCode?: string,
-  promotionCode?: string
+  promotionCode?: string,
+  locale: "sl" | "en" = "sl"
 ): Promise<CheckoutResult> {
   // F5.1.2: refs na funkcijski ravni za varen catch cleanup (rezervacija +
   // PENDING order), kadar ustvarjanje Stripe seje pade — `catch` ni v obsegu
   // bloka `try`, zato morajo biti deklarirani pred `try`.
   let order: { id: string } | null = null
   let reservationId: string | null = null
+  const en = locale === "en"
+  const t = (sl: string, enMsg: string) => (en ? enMsg : sl)
   try {
     // Get current session — OPTIONAL since #65: guests can order with
     // contact details; an account is offered, never required.
@@ -183,11 +201,11 @@ export async function createProductCheckoutSession(
     if (guest && !contact) {
       return {
         success: false,
-        error: "Za zaključek nakupa izpolnite svoje kontaktne podatke.",
+        error: t("Za zaključek nakupa izpolnite svoje kontaktne podatke.", "Please fill in your contact details to complete the purchase."),
       }
     }
     if (guest) {
-      const check = validateContact(contact)
+      const check = validateContact(contact, locale)
       if (!check.ok) return { success: false, error: check.error }
     }
 
@@ -196,7 +214,7 @@ export async function createProductCheckoutSession(
     if (!org) {
       return {
         success: false,
-        error: "Trgovina trenutno ni na voljo. Poskusite znova kasneje.",
+        error: t("Trgovina trenutno ni na voljo. Poskusite znova kasneje.", "The store is currently unavailable. Please try again later."),
       }
     }
 
@@ -216,7 +234,7 @@ export async function createProductCheckoutSession(
         return {
           success: false,
           error:
-            "Preveč poskusov zaključka nakupa. Poskusite znova čez nekaj minut.",
+            t("Preveč poskusov zaključka nakupa. Poskusite znova čez nekaj minut.", "Too many checkout attempts. Please try again in a few minutes."),
         }
       }
     }
@@ -234,7 +252,7 @@ export async function createProductCheckoutSession(
     if (items.length === 0) {
       return {
         success: false,
-        error: "Vaša košarica je prazna",
+        error: t("Vaša košarica je prazna", "Your cart is empty"),
       }
     }
 
@@ -296,7 +314,7 @@ export async function createProductCheckoutSession(
     if (dbProducts.length !== new Set(productIds).size) {
       return {
         success: false,
-        error: "Nekateri izdelki v košarici niso več na voljo",
+        error: t("Nekateri izdelki v košarici niso več na voljo", "Some items in your cart are no longer available"),
       }
     }
 
@@ -308,7 +326,7 @@ export async function createProductCheckoutSession(
       if (!v || v.productId !== item.productId) {
         return {
           success: false,
-          error: "Izbrana različica ni več na voljo",
+          error: t("Izbrana različica ni več na voljo", "The selected variant is no longer available"),
         }
       }
     }
@@ -415,20 +433,20 @@ export async function createProductCheckoutSession(
         return {
           success: false,
           error:
-            "Ta darilni bon ni iz te trgovine in ga tukaj ni mogoče unovčiti.",
+            t("Ta darilni bon ni iz te trgovine in ga tukaj ni mogoče unovčiti.", "This gift card is not from this store and cannot be redeemed here."),
         }
       }
       if (purchase.status === "PENDING") {
         return {
           success: false,
           error:
-            "Ta darilni bon še ni plačan. Plačilo mora biti zaključeno, preden bon unovčite.",
+            t("Ta darilni bon še ni plačan. Plačilo mora biti zaključeno, preden bon unovčite.", "This gift card has not been paid for yet. Payment must be completed before you can redeem it."),
         }
       }
       if (purchase.status === "EXHAUSTED") {
         return {
           success: false,
-          error: "Ta darilni bon je že porabljen (stanje 0 €).",
+          error: t("Ta darilni bon je že porabljen (stanje 0 €).", "This gift card has already been used (balance €0)."),
         }
       }
       if (purchase.status === "REFUNDED") {
@@ -437,12 +455,12 @@ export async function createProductCheckoutSession(
       if (purchase.expiresAt && purchase.expiresAt.getTime() < Date.now()) {
         return {
           success: false,
-          error: "Ta darilni bon je potekel in ga ni več mogoče unovčiti.",
+          error: t("Ta darilni bon je potekel in ga ni več mogoče unovčiti.", "This gift card has expired and can no longer be redeemed."),
         }
       }
       const balance = purchase.balance.toNumber()
       if (balance <= 0) {
-        return { success: false, error: "Ta darilni bon je že porabljen." }
+        return { success: false, error: t("Ta darilni bon je že porabljen.", "This gift card has already been used.") }
       }
 
       giftCard = {
@@ -919,7 +937,7 @@ export async function createProductCheckoutSession(
             }
           : {}),
       },
-      success_url: `${baseUrl}${tenantPrefix}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${baseUrl}${tenantPrefix}/checkout/success?session_id={CHECKOUT_SESSION_ID}${org ? `&org=${org.slug}` : ""}`,
       cancel_url: `${baseUrl}${tenantPrefix}/checkout/cancel`,
     })
 
@@ -958,7 +976,7 @@ export async function createProductCheckoutSession(
       .catch(() => undefined)
     return {
       success: false,
-      error: "Ustvarjanje plačilne seje ni uspelo. Poskusite znova.",
+      error: t("Ustvarjanje plačilne seje ni uspelo. Poskusite znova.", "Failed to create the payment session. Please try again."),
     }
   }
 }

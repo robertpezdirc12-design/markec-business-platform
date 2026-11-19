@@ -18,7 +18,10 @@ import {
   endOfWeek,
 } from "date-fns"
 import { StaffAppointmentFilters } from "@/lib/interfaces"
-import { StaffSelfUpdateFormData } from "@/lib/validations/staff"
+import {
+  staffSelfUpdateSchema,
+  type StaffSelfUpdateFormData,
+} from "@/lib/validations/staff"
 
 export type UpdateStaffInput = Partial<CreateStaffInput> & {
   serviceIds?: string[]
@@ -999,6 +1002,14 @@ export const updateStaffSelfProfile = async (data: StaffSelfUpdateFormData) => {
     }
   }
 
+  const parsed = staffSelfUpdateSchema.safeParse(data)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: "Neveljavni podatki profila.",
+    }
+  }
+
   try {
     const org = await getSessionOrg()
     if (!org) {
@@ -1024,20 +1035,20 @@ export const updateStaffSelfProfile = async (data: StaffSelfUpdateFormData) => {
     const updatedStaff = await prisma.staff.update({
       where: { id: existingStaff.id },
       data: {
-        name: data.name,
-        phone: data.phone,
-        bio: data.bio,
+        name: parsed.data.name,
+        phone: parsed.data.phone || null,
+        bio: parsed.data.bio || null,
       },
     })
 
-    revalidatePath("/staff/profile")
+    revalidatePath("/staff-portal/profile")
 
     return {
       success: true,
       staff: updatedStaff,
     }
   } catch (error) {
-    console.log("Error updating staff self profile:", error)
+    console.error("Error updating staff self profile:", error)
     return {
       success: false,
       error: "Failed to update staff profile.",
