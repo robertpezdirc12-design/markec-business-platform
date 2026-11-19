@@ -429,6 +429,10 @@ model User {
   id               String    @id @default(cuid())
   name             String?
   email            String    @unique
+  // Neobvezno unikatno uporabniško ime — prijava z email ALI username.
+  // Shranjuje se lowercase; indeks @@map za case-insensitive primerjavo
+  // (PostgreSQL) pokriva vnos z veliko začetnico.
+  username         String?   @unique
   emailVerified    DateTime?
   image            String?
   password         String?

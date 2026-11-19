@@ -2,7 +2,7 @@ export const authSl = {
   login: {
     welcomeBack: "Dobrodošli nazaj",
     signInSubtitle: "Prijavite se v svoj račun za nadaljevanje",
-    email: "E-pošta",
+    email: "E-pošta ali uporabniško ime",
     password: "Geslo",
     forgotPassword: "Pozabljeno geslo?",
     signIn: "Prijava",
@@ -34,6 +34,10 @@ export const authSl = {
     getStarted: "Vnesite svoje podatke za začetek",
     fullName: "Ime in priimek",
     email: "E-pošta",
+    username: "Uporabniško ime (neobvezno)",
+    usernamePlaceholder: "primer_123",
+    usernameHint:
+      "Neobvezno. 3–20 znakov: male črke, številke in podčrtaj. Prijava možna tudi z uporabniškim imenom.",
     password: "Geslo",
     confirmPassword: "Potrdite geslo",
     createAccountBtn: "Ustvari račun",
@@ -108,7 +112,7 @@ export const authEn: AuthDict = {
   login: {
     welcomeBack: "Welcome back",
     signInSubtitle: "Sign in to your account to continue",
-    email: "Email",
+    email: "Email or username",
     password: "Password",
     forgotPassword: "Forgot password?",
     signIn: "Sign In",
@@ -139,6 +143,10 @@ export const authEn: AuthDict = {
     getStarted: "Enter your information to get started",
     fullName: "Full Name",
     email: "Email",
+    username: "Username (optional)",
+    usernamePlaceholder: "jane_123",
+    usernameHint:
+      "Optional. 3–20 chars: lowercase letters, numbers and underscore. You can also sign in with your username.",
     password: "Password",
     confirmPassword: "Confirm Password",
     createAccountBtn: "Create Account",

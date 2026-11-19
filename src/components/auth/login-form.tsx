@@ -63,7 +63,7 @@ export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: 
   async function onSubmit(data: LoginInput) {
     try {
       const result = await signIn("credentials", {
-        email: data.email,
+        login: data.login,
         password: data.password,
         redirect: false,
       })
@@ -79,7 +79,7 @@ export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: 
           // "check your inbox" message for success, cooldown or unknown email.
           const resendAction = async () => {
             try {
-              await resendVerification({ email: data.email.trim() })
+              await resendVerification({ login: data.login.trim() })
             } catch {
               /* neutral — never reveal account existence */
             }
@@ -202,18 +202,20 @@ export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: 
               </>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">{t.auth.login.email}</Label>
+              <Label htmlFor="login">{t.auth.login.email}</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="ime@primer.si"
+                id="login"
+                type="text"
+                placeholder="ime@primer.si  ali  uporabnisko_ime"
                 disabled={isSubmitting}
-                autoComplete="email"
-                {...register("email")}
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                {...register("login")}
               />
-              {errors.email && (
+              {errors.login && (
                 <p className="text-destructive text-sm">
-                  {errors.email.message}
+                  {errors.login.message}
                 </p>
               )}
             </div>

@@ -24,6 +24,10 @@ import {
   registerLimits,
   forgotLimits,
 } from "@/lib/rate-limit"
+import {
+  resolveLoginToEmail,
+  normalizeUsername,
+} from "@/lib/auth/login-resolution"
 
 /** Pomožnik: vnese rate-limit v določeno akcijo. */
 async function blockedOrNull(
@@ -62,7 +66,24 @@ export async function registerUser(data: RegisterInput) {
     // normalizacije bi se "Foo@Example.com" shranil drugače kot prijava
     // (ki lowercasa) in uporabnik se ne bi mogel prijaviti.
     const email = validatedData.data.email.trim().toLowerCase()
+    // Optional username: normalize lowercase + trim skozi skupno pomočniko.
+    const username = normalizeUsername(validatedData.data.username)
     const hashedPassword = await bcrypt.hash(password, 10)
+
+    // Če je uporabnik izbral uporabniško ime, mora biti edinstveno
+    // (prisma @@unique) — preverimo naprej za prijazen error.
+    if (username) {
+      const taken = await prisma.user.findUnique({
+        where: { username },
+        select: { id: true },
+      })
+      if (taken) {
+        return {
+          success: false,
+          errors: [{ message: "To uporabniško ime je že zasedeno." }],
+        }
+      }
+    }
 
     const existingUser = await prisma.user.findFirst({
       where: { email: { equals: email, mode: "insensitive" } },
@@ -92,6 +113,7 @@ export async function registerUser(data: RegisterInput) {
           name,
           email,
           password: hashedPassword,
+          username,
           customer: {
             connect: { id: existingCustomer.id },
           },
@@ -110,6 +132,7 @@ export async function registerUser(data: RegisterInput) {
           name,
           email,
           password: hashedPassword,
+          username,
           customer: {
             create: {
               name,
@@ -167,10 +190,19 @@ export async function registerUser(data: RegisterInput) {
 // account. 2D-4: safe resend — only existing unverified emails; never reveals
 // whether an address exists (neutral response shape); a 24h cooldown prevents
 // abuse; each resend invalidates the previous token (single-use preserved).
-export async function resendVerification(data: { email?: string }) {
-  const email = (data?.email ?? "").trim().toLowerCase()
+export async function resendVerification(data: { login?: string; email?: string }) {
+  // Sprejme `login` (email ali username); podpremo tudi staro `email` obliko.
+  const rawLogin = String(data?.login ?? data?.email ?? "").trim()
+  if (!rawLogin) {
+    return { success: false, errors: [{ message: "E-poštni naslov ali uporabniško ime je obvezno." }] }
+  }
+  const isEmail = rawLogin.includes("@")
+  const email = isEmail
+    ? rawLogin.toLowerCase()
+    : (await resolveLoginToEmail(rawLogin)) ?? ""
   if (!email) {
-    return { success: false, errors: [{ message: "E-poštni naslov je obvezen." }] }
+    // Ne razkrijemo, ali login obstaja: za neznan email vrni "uspeh" kot spodaj.
+    return { success: true, emailSent: false, ignored: true }
   }
 
   // Rate-limit: ponovno pošiljanje na IP (poleg obstoječega 60s cooldowna).

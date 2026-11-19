@@ -1,7 +1,30 @@
 import { z } from "zod"
 
+// Deljeni validator za uporabniško ime (username). Neobvezna vrednost:
+// dovoli prazno (uporabnik ga ni izbral) ali veljavno uporabniško ime.
+export const usernameField = z
+  .string()
+  .trim()
+  .optional()
+  .refine((v) => !v || v.length >= 3, {
+    message: "Uporabniško ime mora imeti vsaj 3 znake",
+  })
+  .refine((v) => !v || v.length <= 20, {
+    message: "Uporabniško ime lahko ima največ 20 znakov",
+  })
+  .refine((v) => !v || /^[a-z0-9_]+$/.test(v), {
+    message:
+      "Uporabniško ime sme vsebovati le male črke, številke in podčrtaj",
+  })
+
+// Prijava sprejme e-poštni naslov ALI uporabniško ime v enem polju (login).
+// Ne validiramo ga kot e-pošto — authorize razloči po znaku "@".
 export const loginSchema = z.object({
-  email: z.string().min(1, "E-poštni naslov je obvezen").email("Neveljaven e-poštni naslov"),
+  login: z
+    .string()
+    .min(1, "Vnesite e-poštni naslov ali uporabniško ime")
+    .min(3, "Prekratek vnos")
+    .max(200, "Predolg vnos"),
   password: z
     .string()
     .min(1, "Geslo je obvezno")
@@ -18,6 +41,7 @@ export const registerSchema = z
       .string()
       .min(1, "E-poštni naslov je obvezen")
       .email("Neveljaven e-poštni naslov"),
+    username: usernameField,
     password: z
       .string()
       .min(1, "Geslo je obvezno")

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma"
 import { UserRole } from "@prisma/client"
 import { rateLimit, getClientIp, loginLimits } from "@/lib/rate-limit"
 import { authConfig } from "./auth.config"
+import { resolveLoginToEmail } from "@/lib/auth/login-resolution"
 
 // Custom error for email not verified
 class EmailNotVerifiedError extends CredentialsSignin {
@@ -54,19 +55,32 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
     Credentials({
       name: "credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        login: { label: "Email or username", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        // Prijava sprejme e-poštni naslov ALI uporabniško ime v enem polju
+        // (login). Podpremo tudi staro `email` obliko klica (backward-compat).
+        const rawLogin = String(
+          (credentials as Record<string, unknown>)?.login ??
+            (credentials as Record<string, unknown>)?.email ??
+            ""
+        ).trim()
+        if (!rawLogin || !credentials?.password) {
           throw new Error("Invalid credentials")
         }
+
+        // Razrešimo `login` na e-poštni naslov uporabnika: če vsebuje "@",
+        // gre za e-pošto, sicer poiščemo po uporabniškem imenu.
+        const isEmail = rawLogin.includes("@")
+        const email = isEmail
+          ? rawLogin.toLowerCase()
+          : (await resolveLoginToEmail(rawLogin)) ?? ""
 
         // Rate-limit prijave (točka 1): per IP in per e-pošta, DB-backed.
         // Blokiranim poskusom javimo "Invalid credentials" brez namiga, kaj
         // je narobe (ne razkrijemo obstoja e-pošte). Fail-open: ob izpadu
         // števca se prijava nadaljuje (rate limit je zaščita, ne avtorizacija).
-        const email = String(credentials.email).trim().toLowerCase()
         const { limit, windowMs } = loginLimits()
         const ip = await getClientIp()
         const [ipCheck, emailCheck] = await Promise.all([
@@ -77,21 +91,26 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           throw new Error("Invalid credentials")
         }
 
-        let user = await prisma.user.findUnique({
-          where: {
-            email,
-          },
-        })
-        // Legacy zapisi z mešano velikostjo črk: prijava lowercasa, zato
-        // exact-match zgreši. Poišči neobčutljivo in zapis normaliziraj.
-        if (!user) {
-          user = await prisma.user.findFirst({
-            where: { email: { equals: email, mode: "insensitive" } },
+        // Prazen email pomeni, da uporabniško ime ni obstajalo — prijava
+        // vseeno pade na spodnji `!user` branch, vendar prepreči fetch-po
+        // email-u s praznim ključem (in ne razkrije obstoja username-a).
+        let user: Awaited<ReturnType<typeof prisma.user.findUnique>> | null =
+          null
+        if (email) {
+          user = await prisma.user.findUnique({
+            where: { email },
           })
-          if (user && user.email !== email) {
-            await prisma.user
-              .update({ where: { id: user.id }, data: { email } })
-              .catch(() => undefined)
+          // Legacy zapisi z mešano velikostjo črk: prijava lowercasa, zato
+          // exact-match zgreši. Poišči neobčutljivo in zapis normaliziraj.
+          if (!user) {
+            user = await prisma.user.findFirst({
+              where: { email: { equals: email, mode: "insensitive" } },
+            })
+            if (user && user.email !== email) {
+              await prisma.user
+                .update({ where: { id: user.id }, data: { email } })
+                .catch(() => undefined)
+            }
           }
         }
 
