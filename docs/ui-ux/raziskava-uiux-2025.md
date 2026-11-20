@@ -43,6 +43,11 @@ spremembe so označene z ✅.
    enako oddaljen od dveh polj. ✅ single-column form + `space-y-2` ločnica.
 6. **"Test Tab-order."** → ključ za keyboard uporabnike. ✅ (U10: Tab-nav
    preverjeno; globalni `:focus-visible` + popravljeni iskalni vhodi).
+7. **"Test the schema / browser autofill."** → preveri da `autoComplete`
+   pravilno napoveduje vsa polja, da autofill deluje.
+   ✅ **NOVO (implementirano):** regression `tests/unit/wcag-nng-autofill-schema.test.ts`
+   preverja booking (given-name/family-name/email/tel + type/inputMode) in
+   login/register sheme (username / name / email / new-password / off).
 
 ### B. NN/g — heuristike, uporabne za salon
 
@@ -69,8 +74,8 @@ spremembe so označene z ✅.
 
 ## Učinek raziskave — ostane (roadmap)
 
-- Preskusiti autofill celotne forme (Zemljak Test → NN/g predlaga testiranje
-  shema). 
+- ✅ Autofill shema regression pokriva booking + auth forme kot prve step
+  ("test the schema"). Nadaljevanje: headerski test na celotni app (vse forme).
 - A/B: krajša oblika (dodatni podatki na "povleci" pozneje) — hkrati paziti,
   da polog 3.3.4 ostaja.
 - Navodilo datum/čas: parse potrebra bodočnosti (NN/g "do not ask for info
