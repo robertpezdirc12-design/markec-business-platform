@@ -9,9 +9,18 @@
 // ============================================================
 
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest"
-import { DirectHttpProvider, UnconfiguredProvider, buildProvider } from "@/lib/einvoice/providers"
+import {
+  DirectHttpProvider,
+  UnconfiguredProvider,
+  CertHttpProvider,
+  buildProvider,
+  buildHttpsRequestOptions,
+  eSlogJointWrapper,
+} from "@/lib/einvoice/providers"
 import { MAX_RETRIES } from "@/lib/einvoice/channel"
 import type { ChannelCfg, SubmitPayload } from "@/lib/einvoice/channel"
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import type { HttpsTransport } from "@/lib/einvoice/providers"
 
 const ORG = "org-1"
 const cfg: ChannelCfg = {
@@ -113,10 +122,116 @@ describe("F5.5.4.6.4 — UnconfiguredProvider + buildProvider", () => {
     expect(r.errors[0]).toContain("CHANNEL_UNCONFIGURED")
   })
 
-  it("buildProvider('direct') → DirectHttpProvider; neznani kanal → UnconfiguredProvider", () => {
+  it("buildProvider('direct') → DirectHttpProvider; ujp/peppol → CertHttpProvider; neznani → Unconfigured", () => {
     expect(buildProvider("direct")).toBeInstanceOf(DirectHttpProvider)
-    expect(buildProvider("ujp")).toBeInstanceOf(UnconfiguredProvider)
-    expect(buildProvider("peppol")).toBeInstanceOf(UnconfiguredProvider)
+    expect(buildProvider("ujp")).toBeInstanceOf(CertHttpProvider)
+    expect(buildProvider("peppol")).toBeInstanceOf(CertHttpProvider)
     expect(buildProvider("karkoli")).toBeInstanceOf(UnconfiguredProvider)
+  })
+})
+
+describe("F5.5.4.6.4 — CertHttpProvider (UJP/PEPPOL mTLS)", () => {
+  const certCfg: ChannelCfg = {
+    id: "cfg-ujp",
+    organizationId: ORG,
+    channel: "ujp",
+    providerEndpoint: "https://ujp-ppap.example/dostava",
+    credentials: { cert: "PEM-CERT", key: "PEM-KEY", ca: "PEM-CA", passphrase: "s3cret" },
+    config: {},
+  }
+
+  it("buildHttpsRequestOptions prenese cert/key/ca/passphrase in rejectUnauthorized", () => {
+    const opts = buildHttpsRequestOptions(certCfg, { "Content-Type": "application/xml" })
+    expect(opts.method).toBe("POST")
+    expect(opts.cert).toBe("PEM-CERT")
+    expect(opts.key).toBe("PEM-KEY")
+    expect(opts.ca).toBe("PEM-CA")
+    expect(opts.passphrase).toBe("s3cret")
+    expect(opts.rejectUnauthorized).toBe(true)
+    expect(opts.hostname).toBe("ujp-ppap.example")
+  })
+
+  it("rejectUnauthorized je false ob explicitnem insecureSkipVerify (samo interno)", () => {
+    const opts = buildHttpsRequestOptions(
+      { ...certCfg, config: { insecureSkipVerify: true } },
+      {}
+    )
+    expect(opts.rejectUnauthorized).toBe(false)
+  })
+
+  it("eSlogJointWrapper ovije UBL XML v vd:JointDokument", () => {
+    const wrapped = eSlogJointWrapper("<Invoice/>")
+    expect(wrapped).toContain("vd:JointDokument")
+    expect(wrapped).toContain("vd:Vsebina")
+    expect(wrapped).toContain("<Invoice/>")
+  })
+
+  it("ujp + mode eslog-joint pošlje ovojnico; peppol pošlje surov XML", async () => {
+    const sent: string[] = []
+    const transport: HttpsTransport = async (_opts, xml) => {
+      sent.push(xml)
+      return { status: 202, headers: { "x-provider-message-id": "ujp-1" }, body: "accepted" }
+    }
+    const ujp = new CertHttpProvider("UJP", { transport })
+    await ujp.submit(ORG, { ...certCfg, config: { mode: "eslog-joint" } }, payload)
+    expect(sent[0]).toContain("vd:JointDokument")
+    expect(sent[0]).toContain("<Invoice/>")
+
+    const peppolSent: string[] = []
+    const pepTransport: HttpsTransport = async (_opts, xml) => {
+      peppolSent.push(xml)
+      return { status: 202, headers: {}, body: "" }
+    }
+    const pep = new CertHttpProvider("PEPPOL_AP", { transport: pepTransport })
+    await pep.submit(ORG, { ...certCfg, channel: "peppol" }, payload)
+    expect(peppolSent[0]).toBe("<Invoice/>")
+  })
+
+  it("2xx → accepted SUBMITTED (tehnično), providerMessageId iz glave", async () => {
+    const transport: HttpsTransport = async () => ({
+      status: 202,
+      headers: { "x-provider-message-id": "ap-99" },
+      body: "accepted",
+    })
+    const p = new CertHttpProvider("PEPPOL_AP", { transport })
+    const r = await p.submit(ORG, certCfg, payload)
+    expect(r.accepted).toBe(true)
+    expect(r.state).toBe("SUBMITTED")
+    expect(r.providerMessageId).toBe("ap-99")
+  })
+
+  it("4xx → FAILED brez retryja (en klic)", async () => {
+    const fn = vi.fn<HttpsTransport>(async () => ({ status: 403, headers: {}, body: "denied" }))
+    const p = new CertHttpProvider("UJP", { transport: fn })
+    const r = await p.submit(ORG, certCfg, payload)
+    expect(r.state).toBe("FAILED")
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  it("5xx → retry do MAX_RETRIES, nazadnje FAILED", async () => {
+    const fn = vi.fn<HttpsTransport>(async () => ({ status: 503, headers: {}, body: "busy" }))
+    const p = new CertHttpProvider("UJP", { transport: fn })
+    const r = await p.submit(ORG, certCfg, payload)
+    expect(r.state).toBe("FAILED")
+    expect(fn).toHaveBeenCalledTimes(MAX_RETRIES)
+  })
+
+  it("mrežna napaka → FAILED (retry vključeno)", async () => {
+    const fn = vi.fn<HttpsTransport>(async () => {
+      throw new Error("UNABLE_TO_VERIFY_LEAF_SIGNATURE")
+    })
+    const p = new CertHttpProvider("PEPPOL_AP", { transport: fn })
+    const r = await p.submit(ORG, certCfg, payload)
+    expect(r.state).toBe("FAILED")
+    expect(fn).toHaveBeenCalledTimes(MAX_RETRIES)
+  })
+
+  it("brez providerEndpoint → FAILED, brez transportnega klica", async () => {
+    const fn = vi.fn<HttpsTransport>()
+    const p = new CertHttpProvider("UJP", { transport: fn })
+    const r = await p.submit(ORG, { ...certCfg, providerEndpoint: null as unknown as string }, payload)
+    expect(r.state).toBe("FAILED")
+    expect(r.errors[0]).toContain("CHANNEL_NOT_READY")
+    expect(fn).not.toHaveBeenCalled()
   })
 })
