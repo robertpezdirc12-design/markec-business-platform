@@ -29,23 +29,75 @@ export const PEPPOL_CUSTOMIZATION_ID = "urn:cen.eu:en16931:2017#compliant#urn:fd
 export const PEPPOL_PROFILE_01 = "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0"
 export const PEPPOL_PROFILE_02 = "urn:fdc:peppol.eu:2017:poacc:billing:02:1.0"
 
-/** EndpointID / Party ID scheme: 0088 = GS1 GLN (EAS; veljavno za B2B v PEPPOL). */
-const EAS_SI = "0088"
+/** EndpointID / Party ID scheme: 0088 = GS1 GLN, 9929 = VAT (CDF OBID). */
+const EAS_VAT = "9929"
 
-function endpointId(party: { electronicId?: string | null; electronicIdScheme?: string | null }): string {
-  const id = party.electronicId
+/** Veljavna GLN (GS1 EAN·UCC): 13 števk z veljavno kontrolno števko (GS1 check digit). */
+function isGln(value: string | null | undefined): boolean {
+  if (!value || !/^\d{13}$/.test(value)) return false
+  const digits = value.split("").map(Number)
+  let sum = 0
+  for (let i = 0; i < 12; i++) sum += digits[i] * (i % 2 === 0 ? 1 : 3)
+  const check = (10 - (sum % 10)) % 10
+  return check === digits[12]
+}
+
+/** PEPPOL BIS: EAS shema za EndpointID.
+ * - pravi GLN (0088) kadar je validna GS1 GLN;
+ * - sicer davčna shema (9929 VAT) kadar je prisoten davčni ID;
+ * - sicer prazna shema brez EAS (ni PEPPOL-skladno, a ni lažnega GLN). */
+function easScheme(party: {
+  electronicId?: string | null
+  electronicIdScheme?: string | null
+  vatId?: string | null
+}): string {
+  const explicit = party.electronicIdScheme || ""
+  if (explicit === "0088" && isGln(party.electronicId)) return "0088"
+  if (explicit === "9929" || (party.electronicId && explicit)) return explicit
+  if (party.vatId || party.electronicIdScheme === EAS_VAT) return EAS_VAT
+  return ""
+}
+
+/** EN 16931 (CEN BR-CL-10): identifikacijska shema za cac:PartyIdentification/ID
+ * MORA biti ISO 6523 ICD (0002…0248), NE PEPPOL EAS (9929 ni veljaven).
+ * - matična številka (registrationNumber) → ICD "0002" (SIREN/CVR/EUID);
+ * - pravi GLN → "0088";
+ * - sicer davčna/prazna → "0088" le če velja GLN, drugače prazno (ogiba se
+ *   lažnega ICD; dokument tedaj ni PEPPOL-skladen, kar je pošteno). */
+function iso6523Scheme(party: {
+  electronicId?: string | null
+  electronicIdScheme?: string | null
+  registrationNumber?: string | null
+}): string {
+  if (party.registrationNumber) return "0002"
+  if (isGln(party.electronicId)) return "0088"
+  return ""
+}
+
+function endpointId(party: {
+  electronicId?: string | null
+  electronicIdScheme?: string | null
+  vatId?: string | null
+}): string {
+  const id = party.electronicId ?? party.vatId
   if (!id) return ""
-  const scheme = party.electronicIdScheme || EAS_SI
+  const scheme = easScheme(party)
+  if (!scheme) return ""
   return `      <cbc:EndpointID schemeID="${esc(scheme)}">${esc(id)}</cbc:EndpointID>\n`
 }
 
 function sellerParty(m: EInvoiceModel): string {
-  const supplierId = m.seller.vatId ?? m.seller.electronicId ?? m.seller.registrationNumber ?? m.seller.name
+  const scheme = iso6523Scheme(m.seller)
+  // PartyIdentification/ID v ISO 6523 ICD shemi: za 0002 matična, za 0088 GLN/eID.
+  const supplierId = scheme === "0002"
+    ? (m.seller.registrationNumber ?? m.seller.taxNumber ?? "")
+    : (m.seller.electronicId ?? "")
   const myVat = m.seller.vatId
+  const regNum = m.seller.registrationNumber
   return `    <cac:AccountingSupplierParty>
       <cac:Party>
 ${endpointId(m.seller)}        <cac:PartyIdentification>
-          <cbc:ID schemeID="${esc(m.seller.electronicIdScheme ?? EAS_SI)}">${esc(supplierId)}</cbc:ID>
+          <cbc:ID${scheme ? ` schemeID="${esc(scheme)}"` : ""}>${esc(supplierId)}</cbc:ID>
         </cac:PartyIdentification>
         <cac:PartyName>
           <cbc:Name>${esc(m.seller.legalName ?? m.seller.name)}</cbc:Name>
@@ -64,19 +116,24 @@ ${endpointId(m.seller)}        <cac:PartyIdentification>
         </cac:PartyTaxScheme>
         <cac:PartyLegalEntity>
           <cbc:RegistrationName>${esc(m.seller.legalName ?? m.seller.name)}</cbc:RegistrationName>
-          <cbc:CompanyID schemeID="0002">${esc(m.seller.registrationNumber ?? "")}</cbc:CompanyID>
+          ${regNum ? `<cbc:CompanyID schemeID="0002">${esc(regNum)}</cbc:CompanyID>` : ""}
         </cac:PartyLegalEntity>
       </cac:Party>
     </cac:AccountingSupplierParty>`
 }
 
 function buyerParty(m: EInvoiceModel): string {
-  const customerId = m.buyer.electronicId ?? m.buyer.vatId ?? m.buyer.buyerReference ?? m.buyer.name
+  const scheme = iso6523Scheme(m.buyer)
+  // PartyIdentification/ID v ISO 6523 ICD shemi: za 0002 matična, za 0088 GLN/eID.
+  const customerId = scheme === "0002"
+    ? (m.buyer.registrationNumber ?? m.buyer.taxNumber ?? "")
+    : (m.buyer.electronicId ?? "")
   const myVat = m.buyer.vatId
+  const regNum = m.buyer.registrationNumber
   return `    <cac:AccountingCustomerParty>
       <cac:Party>
 ${endpointId(m.buyer)}        <cac:PartyIdentification>
-          <cbc:ID schemeID="${esc(m.buyer.electronicIdScheme ?? (m.buyer.vatId ? EAS_SI : EAS_SI))}">${esc(customerId)}</cbc:ID>
+          <cbc:ID${scheme ? ` schemeID="${esc(scheme)}"` : ""}>${esc(customerId)}</cbc:ID>
         </cac:PartyIdentification>
         <cac:PartyName>
           <cbc:Name>${esc(m.buyer.legalName ?? m.buyer.name)}</cbc:Name>
@@ -95,7 +152,7 @@ ${endpointId(m.buyer)}        <cac:PartyIdentification>
         </cac:PartyTaxScheme>
         <cac:PartyLegalEntity>
           <cbc:RegistrationName>${esc(m.buyer.legalName ?? m.buyer.name)}</cbc:RegistrationName>
-          <cbc:CompanyID schemeID="0002">${esc(m.buyer.registrationNumber ?? "")}</cbc:CompanyID>
+          ${regNum ? `<cbc:CompanyID schemeID="0002">${esc(regNum)}</cbc:CompanyID>` : ""}
         </cac:PartyLegalEntity>
       </cac:Party>
     </cac:AccountingCustomerParty>`
@@ -215,7 +272,7 @@ function header(m: EInvoiceModel, ns: string, root: string): string {
         ${m.servicePeriod ? `      <cbc:EndDate>${esc(m.servicePeriod.split(" – ")[1] ?? "")}</cbc:EndDate>` : ""}
       </cac:InvoicePeriod>`
     : ""
-  const paymentDue = m.dueDate ? `    <cbc:PaymentDueDate>${esc(m.dueDate)}</cbc:PaymentDueDate>` : ""
+  const paymentDue = m.dueDate ? `    <cbc:DueDate>${esc(m.dueDate)}</cbc:DueDate>` : ""
   const buyerRef = m.buyer.buyerReference ? `    <cbc:BuyerReference>${esc(m.buyer.buyerReference)}</cbc:BuyerReference>` : ""
   const orderRef = m.buyer.orderReference
     ? `    <cac:OrderReference>\n      <cbc:ID>${esc(m.buyer.orderReference)}</cbc:ID>\n    </cac:OrderReference>`
@@ -233,8 +290,8 @@ function header(m: EInvoiceModel, ns: string, root: string): string {
   ${orderRef}
   ${period}
   ${creditRef}${advanceRefs}
-  <cac:AccountingSupplierParty>${sellerParty(m)}</cac:AccountingSupplierParty>
-  <cac:AccountingCustomerParty>${buyerParty(m)}</cac:AccountingCustomerParty>
+  ${sellerParty(m)}
+  ${buyerParty(m)}
   ${payments(m)}
   ${taxTotal(m)}
   ${legalMonetary(m)}
