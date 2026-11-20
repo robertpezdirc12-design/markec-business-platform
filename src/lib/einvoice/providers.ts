@@ -22,10 +22,10 @@
 // POŠTENO O OBSEGU UJP/PEPPOL: gladka pošiljanje na ŽIVI UJP DK / PEPPOL AP
 // zahteva (a) veljaven X.509 klient certifikat + private key organizacije
 // (SIGOV-CA za UJP, PEPPOL AP cert) in (b) dejanske proizvodne/testne končne
-// točke ter XMLDSig/S-MIME podpis dokumenta. V tej fazi adapter zagotavlja
-// celotno mTLS-avtenticirano HTTP dostavo + e-SLOG JointDokument ovojnico
-// (strukturno); podpis/aplikativna potrditev na dejanskem kanalu je del
-// konfiguracije stranke v `config` in se preveri pred oddajo.
+// točke. Ta adapter zagotavlja celotno mTLS-avtenticirano HTTP dostavo +
+// e-SLOG JointDokument ovojnico ter (za UJP) XMLDSig podpis ovojnice z org
+// ključem (glej xmldsig.ts). Epilog: končno potrditev dokumenta na dejanskem
+// kanalu še vedno preveri stranka (podpisna veriga / UJP DK) pred produkcijo.
 // ============================================================
 
 import https from "node:https"
@@ -35,12 +35,12 @@ import {
   type EInvoiceProvider,
   type SubmissionResult,
   type DeliveryStatus,
-  type DeliveryState,
   type ChannelCfg,
   type SubmitPayload,
   MAX_RETRIES,
   retryDelayMs,
 } from "./channel"
+import { xmlDsigSign } from "./xmldsig"
 
 /** Vedno anajdi trenutni globalni fetch (testabilno; brez enkratne zamrznitve). */
 function getGlobalFetch(): typeof fetch {
@@ -328,11 +328,34 @@ export class CertHttpProvider implements EInvoiceProvider {
         errors: ["CHANNEL_NOT_READY: providerEndpoint ni nastavljen za UJP/PEPPOL kanal."],
       }
     }
-    // UJP: po potrebi zavij v e-SLOG JointDokument ovojnico.
-    const body =
-      this.kind === "UJP" && cfg.config?.mode === "eslog-joint"
-        ? eSlogJointWrapper(payload.xml)
-        : payload.xml
+    // UJP: po potrebi zavij v e-SLOG JointDokument ovojnico in (če je ključ +
+    // cert na voljo) jo XMLDSig-podpiši. Podpis izpustimo samo, če je izrecno
+    // `config.sign === false` ali če kanal nima ključa/certifikata.
+    let body = payload.xml
+    if (this.kind === "UJP" && cfg.config?.mode === "eslog-joint") {
+      const wrapped = eSlogJointWrapper(payload.xml)
+      const key = cfg.credentials?.key
+      const cert = cfg.credentials?.cert
+      const wantSign = cfg.config?.sign !== false
+      if (wantSign && key && cert) {
+        try {
+          body = xmlDsigSign({
+            xml: wrapped,
+            certPem: cert,
+            keyPem: key,
+            passphrase: cfg.credentials?.passphrase,
+            documentId: payload.einvoiceId,
+          }).signedXml
+        } catch {
+          // Podpis ni uspel (npr. neveljaven ključ) — pusti nepodpisano;
+          // UJP bo oddajo zavrnil, kar je boljše kot uhajanje nepodpisanega
+          // dokumenta kot "podpisanega".
+          body = wrapped
+        }
+      } else {
+        body = wrapped
+      }
+    }
 
     let opts: https.RequestOptions
     try {

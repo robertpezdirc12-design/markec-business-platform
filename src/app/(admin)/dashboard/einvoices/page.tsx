@@ -111,6 +111,8 @@ export default async function EinvoicesPage() {
           channelConfigMode: d.channelConfigMode,
           channelConfigModeRaw: d.channelConfigModeRaw,
           channelConfigModeJoint: d.channelConfigModeJoint,
+          channelSign: d.channelSign,
+          channelSignHint: d.channelSignHint,
           channelInsecure: d.channelInsecure,
           channelSave: d.channelSave,
           channelSaving: d.channelSaving,

@@ -85,6 +85,8 @@ type Labels = {
   channelConfigMode: string
   channelConfigModeRaw: string
   channelConfigModeJoint: string
+  channelSign: string
+  channelSignHint: string
   channelInsecure: string
   channelSave: string
   channelSaving: string
@@ -154,6 +156,7 @@ export function EinvoicesClient({
   const [chanCa, setChanCa] = useState<string>("")
   const [chanPass, setChanPass] = useState<string>("")
   const [chanMode, setChanMode] = useState<string>("raw")
+  const [chanSign, setChanSign] = useState(true)
   const [chanInsecure, setChanInsecure] = useState(false)
   const [chanBusyMsg, setChanBusyMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null)
 
@@ -190,6 +193,7 @@ export function EinvoicesClient({
         credentials: creds,
         config: {
           mode: chanType === "ujp" && chanMode === "joint" ? "eslog-joint" : undefined,
+          sign: chanType === "ujp" && chanMode === "joint" ? chanSign : undefined,
           insecureSkipVerify: chanInsecure ? true : undefined,
         },
       })
@@ -202,6 +206,7 @@ export function EinvoicesClient({
         setChanCa("")
         setChanPass("")
         setChanMode("raw")
+        setChanSign(true)
         setChanInsecure(false)
       } else {
         setChanBusyMsg({ kind: "err", text: res.error ?? labels.channelSaveFailed })
@@ -311,6 +316,19 @@ export function EinvoicesClient({
                   <option value="raw">{labels.channelConfigModeRaw}</option>
                   <option value="joint">{labels.channelConfigModeJoint}</option>
                 </select>
+                {chanMode === "joint" && (
+                  <div className="mt-2 space-y-1">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={chanSign}
+                        onChange={(e) => setChanSign(e.target.checked)}
+                      />
+                      <span className="text-xs font-medium">{labels.channelSign}</span>
+                    </label>
+                    <p className="text-[11px] text-muted-foreground">{labels.channelSignHint}</p>
+                  </div>
+                )}
               </div>
             )}
             <label className="flex items-center gap-2 text-sm">

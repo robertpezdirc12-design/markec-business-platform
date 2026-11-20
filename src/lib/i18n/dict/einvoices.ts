@@ -66,6 +66,9 @@ export const einvoicesSl = {
   channelConfigMode: "Način oddaje",
   channelConfigModeRaw: "Surov UBL/e-SLOG XML",
   channelConfigModeJoint: "e-SLOG 2.0 JointDokument ovojnica",
+  channelSign: "XMLDSig podpis ovojnice (XAdES-BES s ključem)",
+  channelSignHint:
+    "Ob prisotnem zasebnem ključu in certifikatu se JointDokument pred oddajo digitalno podpiše (SHA-256 / RSA). Priporočeno za dejansko UJP oddajo.",
   channelInsecure: "Sprejmi nezaupanja vredne sertifikate (samo interno/test)",
   channelSave: "Shrani kanal",
   channelSaving: "Shranjevanje…",
@@ -146,6 +149,9 @@ export const einvoicesEn = {
   channelConfigMode: "Delivery mode",
   channelConfigModeRaw: "Raw UBL/e-SLOG XML",
   channelConfigModeJoint: "e-SLOG 2.0 JointDocument envelope",
+  channelSign: "XMLDSig-sign the envelope (XAdES-BES with key)",
+  channelSignHint:
+    "When a private key + certificate are present, the JointDocument is digitally signed (SHA-256 / RSA) before submission. Recommended for real UJP delivery.",
   channelInsecure: "Accept untrusted server certificates (internal/test only)",
   channelSave: "Save channel",
   channelSaving: "Saving…",
