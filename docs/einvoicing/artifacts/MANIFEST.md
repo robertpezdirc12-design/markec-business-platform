@@ -118,3 +118,37 @@ Vir: `https://www.gov.si/zbirke/storitve/posiljanje-eracunov/` (Uprava RS za jav
 
 > Te dokumentacije UJP **podpirajo** ciljni standard PEPPOL BIS 3.0.21 (UBL 2.1 subset) za
 > avtomatski B2G/B2B prenos; samostojne e-SLOG 2.0 XSD UJP javno ne izda več.
+
+---
+
+## Transport (AS4 / ebMS3) — ugotovitve raziskave (2026)
+
+Vir: `docs.peppol.eu/edelivery/as4/specification/` (OpenPeppol AS4 Profile 2.0.3,
+gradi na CEF eDelivery AS4 Profile 1.14).
+
+**AS4 v omrežju Peppol** pošilja asinhrono med "corner 2" in "corner 3" (Four-Corner
+Topology), pri čemer uporablja Peppol PKI za podpis/šifriranje na AS4-u in SMP/SML
+za dinamično odkrivanje. Plast se da razstaviti na dve NEODVISNI podplasti, ki se
+lahko gradita in preverjata ločeno:
+
+1. **ebMS3 User Message (deterministično, brez omrežja):**
+   SOAP 1.2 (application/soap+xml) z `eb:UserMessage` glavo + MIME multipart telesa.
+   Obvezna polja po profilu: `AgreementRef` = `urn:fdc:peppol.eu:2017:agreements:tia:ap_provider`,
+   `PartyId` s shemo `iso6523-actorid-upis`, `Service`/`Action`/`Role` iz UPI-ja,
+   `ConversationId`, privzeti `defaultMPC`, Primary/Qualified `MessageId`.
+   Payload: **SBDH** (Standard Business Document Header) kot prva MIME priloga,
+   mu sledi dokument. Podpis na AS4 nivoju: `BinarySecurityToken` X509v3.
+
+2. **Peppol PKI + SMP/SML (potrebuje pravo tiskanje / AP):**
+   dinamično iskanje naslova in šifrirnega certa prejemnega AP-ja iz SMP-ja prek SML-a.
+   Za dejansko oddajo v omrežje je nujen bodisi registriran Access Point
+   (podjetniško pogodbo TIA-AP-PROV), bodisi zunanji testni AP npr. **Goroute API
+   sandbox** (14-dnevni test z testnim participant ID) ali lokalni **Oxalis AS4**
+   (open-source Java AP) za end-to-end preverbo brez zunanjega omrežja.
+
+**Sklep:** prvič, `buildUbl21Xml` zdaj proizvaja dokumente, ki **preidejo živi uradni
+PEPPOL BIS 3.0.21 validacijo** (XSD + PEPPOL-EN16931 + CEN-EN16931, brez fatal —
+le 2 nefatal CEN warninga), kar je bilo najnižja izhodiščna predpostavka za AS4 oddajo.
+Drugače: AS4 *User Message* plast se lahko zgradi in enotno verificira brez omrežja;
+živa oddaja pa ostaja vezana na zunanji testni AP / pravi AP cert (ni na voljo v tej
+repo-zanki). Modul: `src/lib/einvoice/as4.ts`.
