@@ -40,7 +40,7 @@ export default function MarketplaceLayout({
               <input
                 type="text"
                 placeholder="Kaj iščete? (storitev, salon...)"
-                className="flex-1 bg-transparent text-sm outline-none"
+                className="flex-1 rounded-md bg-transparent text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
               />
             </div>
             <div className="flex items-center gap-2 rounded-full border px-4 py-2">
@@ -48,7 +48,7 @@ export default function MarketplaceLayout({
               <input
                 type="text"
                 placeholder="Lokacija"
-                className="w-32 bg-transparent text-sm outline-none"
+                className="w-32 rounded-md bg-transparent text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
               />
             </div>
             <Button size="sm" className="rounded-full px-6">

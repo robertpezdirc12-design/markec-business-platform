@@ -21,7 +21,7 @@
 | U7 | **Admin: števci/badges v navigaciji** | Srednji | S | ★★★☆☆ | ✅ |
 | U8 | **Command palette: uvrsti pogoste akcije višje** | Srednji | S | ★★★☆☆ | ✅ |
 | U9 | **Varno stanje formularjev (draft, brez izgube ob prekinitvi)** | Srednji | M | ★★★☆☆ | ✅ |
-| U10 | **WCAG 2.2: fokus red, error-preventivno, contrast passed** | Visok | M | ★★★★☆ | ✅1 |
+| U10 | **WCAG 2.2: fokus red, error-preventivno, contrast passed** | Visok | M | ★★★★☆ | ✅ |
 
 **Legenda:** ✅ že implemente-ran v bazi · ➡️ v teku · (prazno) odprto
 
@@ -55,6 +55,12 @@
   plačaj €X»/«Prekliči»; potrjuje isto React 19 action (inline znotraj form),
   `role="alert"` (4.1.3). Client + i18n `booking.review*`. Employee/direct
   submit ostane. Regresija: `tests/unit/wcag-error-prevention-confirm.test.ts`.
+- **U10 → WCAG 2.4.7 ✅ (Focus Visible audit)** — avtomatiziran CI-audit
+  (test): globalni `*:focus-visible` z `outline 2px var(--ring)`; med auditom
+  popravljeni **5 iskalnih vhodov** brez vidnega fokusa (`(marketplace)/layout`,
+  `command-palette`, `platform-landing`, `hero-section` → dodan
+  `focus-visible:ring-2 ...`); Radix itemi z `focus:bg-accent` prepoznani kot
+  viden fokus. Regresija: `tests/unit/focus-visible-audit.test.ts`.
 - **U5 ✅** — `services-list.tsx`: hitri filter + sort (cena/trajanje/rating)
   je že bil v `services-filter.tsx` (P1 #29). Dopolnjen je bil *pravi UX manko*:
   CTA gumb je bil `opacity-0`/hover-only → na mobilnih nerekviden. Gumb je zdaj
@@ -224,10 +230,21 @@ outline-a) + `autocomplete` na booking form novih polj.
   form) / «Prekliči». Komponenta je postala client (`useState`, `role="alert"`
   za 4.1.3). Employee/brez-pologa ostanejo direktni submit (ni finančne
   transakcije → 3.3.4 ne zahteva). i18n `booking.review*`.
+- **WCAG 2.4.7 Focus Visible (audit)** — izveden avtomatiziran audit (test):
+  (a) globalni `*:focus-visible` = `outline: 2px solid var(--ring)` (viden,
+  ne skriva); (b) vsi interaktivni elementi z `outline-none` imajo vizualno
+  nadomestilo (`focus:ring`/`focus-visible:ring`/`focus:bg-accent`) — med
+  auditom je bilo popravljenih **5 iskalnih vhodov** ki NISO imeli vidnega
+  fokusa (`(marketplace)/layout.tsx`, `command-palette.tsx`,
+  `platform-landing.tsx`, `hero-section.tsx` → dodan `focus-visible:ring-2
+  focus-visible:ring-ring`); Radix `dropdown-menu`/`select` itemi z
+  `focus:bg-accent` so prepoznani kot veljaven (viden) fokus; (c) audio
+  preveri, da se ta regresija ne vrne v CI.
 - `autocomplete` na booking form poljih je že bil (given/family name, email,
-  tel) — potrjeno. Še odprto: namenski audit page `:focus-visible`.
-Regresija: `tests/unit/wcag-status-announcements.test.ts` in
-`tests/unit/wcag-error-prevention-confirm.test.ts`.
+  tel) — potrjeno.
+Regresija: `tests/unit/wcag-status-announcements.test.ts`,
+`tests/unit/wcag-error-prevention-confirm.test.ts` in
+`tests/unit/focus-visible-audit.test.ts`.
 
 ---
 

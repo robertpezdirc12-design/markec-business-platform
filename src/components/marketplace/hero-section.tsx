@@ -74,7 +74,7 @@ export function HeroSection({
                 defaultValue={initialQuery}
                 aria-label="Storitev ali podjetje"
                 placeholder="Kaj iščete? (striženje, masaža, pedikura...)"
-                className="min-w-0 flex-1 bg-transparent text-base outline-none"
+                className="min-w-0 flex-1 rounded-md bg-transparent text-base outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
               />
             </label>
             <label className="flex items-center gap-3 rounded-xl border px-4 py-4">
@@ -85,7 +85,7 @@ export function HeroSection({
                 defaultValue={initialLocation}
                 aria-label="Kraj"
                 placeholder="Lokacija"
-                className="w-36 min-w-0 bg-transparent text-base outline-none"
+                className="w-36 min-w-0 rounded-md bg-transparent text-base outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
               />
             </label>
             <Button type="submit" size="lg" className="rounded-xl px-8 py-4 text-base">

@@ -311,7 +311,7 @@ export function CommandPalette() {
               onKeyDown={onKeyDown}
               placeholder={t.common.navGroups.searchPlaceholder}
               aria-label={t.common.navGroups.searchPlaceholder}
-              className="placeholder:text-muted-foreground h-12 w-full bg-transparent text-sm outline-none"
+              className="placeholder:text-muted-foreground h-12 w-full rounded-md bg-transparent text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
             />
             {pending && <span className="text-muted-foreground text-xs">…</span>}
           </div>

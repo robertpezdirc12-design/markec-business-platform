@@ -333,7 +333,7 @@ export function PlatformLanding({
                       ? "What are you looking for?"
                       : "Kaj iščete? (striženje, masaža...)"
                   }
-                  className="min-w-0 flex-1 bg-transparent text-base outline-none"
+                  className="min-w-0 flex-1 rounded-md bg-transparent text-base outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                 />
               </label>
               <label className="flex items-center gap-2 rounded-xl border px-4 py-3 sm:w-40">
@@ -343,7 +343,7 @@ export function PlatformLanding({
                   name="location"
                   aria-label={isEn ? "Location" : "Kraj"}
                   placeholder={isEn ? "Location" : "Kraj"}
-                  className="w-full min-w-0 bg-transparent text-base outline-none"
+                  className="w-full min-w-0 rounded-md bg-transparent text-base outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                 />
               </label>
               <Button
