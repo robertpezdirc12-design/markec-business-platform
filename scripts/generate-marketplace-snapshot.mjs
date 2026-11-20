@@ -100,7 +100,11 @@ async function main() {
 
   try {
     const organizations = await prisma.organization.findMany({
-      where: { status: "ACTIVE" },
+      // JAVNO prikažemo SAMO objavljena podjetja. Vzeli SMO vse ACTIVE
+      // (ne-stale) — a javni /s/{slug} se odpre le PUBLISHED (glej
+      // headerOrgAccessible in tenant.ts). Rezultat: imenik je reklamiral
+      // podjetja, ki so se ob kliku končala na 404. Zdaj le objavljena.
+      where: { status: "ACTIVE", publishState: "PUBLISHED" },
       orderBy: { createdAt: "desc" },
       take: 500,
       include: {
@@ -164,7 +168,11 @@ async function main() {
     })
 
     const [totalBusinesses, totalAppointments, totalCustomers] = await Promise.all([
-      prisma.organization.count({ where: { status: "ACTIVE" } }),
+      // Štejemo SAMO objavljene — tako "38 aktivnih podjetij" nikoli ne
+      // preseže dejanskega števila ogledljivih podjetij (prej ACTIVE).
+      prisma.organization.count({
+        where: { status: "ACTIVE", publishState: "PUBLISHED" },
+      }),
       prisma.appointment.count(),
       prisma.customer.count(),
     ])
