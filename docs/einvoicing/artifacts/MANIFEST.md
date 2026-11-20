@@ -176,3 +176,23 @@ UJP kanal je nespremenjen (e-SLOG/`vd:JointDokument` ovojnica ali goli XML po
 `config.mode`). Delovanje PEPPOL kanala je pokrito z regresijskimi testi v
 `tests/unit/einvoice-provider.test.ts` (AS4 multipart, SBDH, dokument priloga).
 Oddaja v živo še vedno zahteva pravi/testni AP cert in SMP/SML lookup (ni v tej repo-zanki).
+
+### (F5.5.4.6.7) PEPPOL SMP/SML — dinamično odkrivanje prejemnika
+
+Nova (kot del "druge podplasti prenosa" iz zgornje razstavitve): modul
+`src/lib/einvoice/smp.ts` zgradi participant sifro iz (icd + id) po PEPPOL
+pravilu `b-<id>:<icd>`, izračuna SML-DNS ime (SHA1 digest nad participantom),
+in razreši SMP metapodatke prejemnika (EndpoinURL + X509 cert) z HTTP GET,
+kar nosi pot mdr. transport profil `peppol-transport-as4-v2_0`.
+
+Razmejena tako, da je v samem modulu deterministična in testabilna brez
+pravega omrežja: `resolveSmp` sprejme injectable `fetch` (testi mockajo),
+`resolveSmpMock` pa vrne statičen strukturni rezultat. `/SML-DNS` hoče pravo
+DNS razreševanje — tu modul pokriva participant-izgradnjo, SML-DNS izračun,
+SMP HTTP poizvedbo in ekstrakcijo (extractEndpoint/extractCertificate).
+
+Testi: `tests/unit/einvoice-smp.test.ts` (6) — participant-sifra, SML-DNS
+SHA1, ekstrakcija XML, mock rezultat, resolveSmp z mock fetch (success/404/najdi).
+Pri dejanski B2B oddaji naj se prejemnikov AP endpoint + cert iz tega modula
+napajata v `buildAs4Multipart` namesto fiksne cfg endpoint — a ker omrežna
+klica zahtevata realni SML + SMP (ni v repo-zanki), ostaja kot podplast.
