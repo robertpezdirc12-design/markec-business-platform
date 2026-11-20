@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { downloadEinvoice, submitEinvoice } from "@/app/actions/einvoices"
+import { downloadEinvoice, submitEinvoice, saveEinvoiceChannel } from "@/app/actions/einvoices"
 
 type Row = {
   id: string
@@ -19,6 +19,16 @@ type Row = {
   sha256: string
   createdAt: string
   validationMessages: string | null
+}
+
+/** Redakcijirano zstanje kanala (brez polnih poverilnic v klientu). */
+type ChannelInfo = {
+  channel: string
+  label: string
+  status: string
+  providerEndpoint: string | null
+  hasCredentials: boolean
+  mode?: string
 }
 
 type Labels = {
@@ -58,6 +68,33 @@ type Labels = {
   alreadySent: string
   needsChannel: string
   chooseChannel: string
+  noChannelConfigured: string
+  // F5.5.4.6.4 — kanalska konfiguracija (direct/ujp/peppol)
+  channelSetup: string
+  channelSetupHint: string
+  channelType: string
+  channelTypeDirect: string
+  channelTypeUjp: string
+  channelTypePeppol: string
+  channelEndpoint: string
+  channelEndpointHint: string
+  channelCert: string
+  channelKey: string
+  channelCa: string
+  channelPassphrase: string
+  channelConfigMode: string
+  channelConfigModeRaw: string
+  channelConfigModeJoint: string
+  channelInsecure: string
+  channelSave: string
+  channelSaving: string
+  channelSaved: string
+  channelSaveFailed: string
+  channelEndpointInvalid: string
+  channelTypeRequired: string
+  channelExisting: string
+  channelNone: string
+  closeSetup: string
 }
 
 function shortHash(h: string): string {
@@ -94,15 +131,89 @@ export function EinvoicesClient({
   rows,
   labels,
   channels,
+  allChannels = [],
 }: {
   rows: Row[]
   labels: Labels
   channels: { id: string; label: string }[]
+  allChannels?: ChannelInfo[]
 }) {
   const [downloading, setDownloading] = useState<string | null>(null)
   const [sendingId, setSendingId] = useState<string | null>(null)
   const [channel, setChannel] = useState<string>("")
   const [notice, setNotice] = useState<{ kind: "ok" | "err"; text: string } | null>(null)
+
+  // Kanalski setup obrazec
+  const [setupOpen, setSetupOpen] = useState(false)
+  const [savingChannel, setSavingChannel] = useState(false)
+  const [chanType, setChanType] = useState<string>("direct")
+  const [chanLabel, setChanLabel] = useState<string>("")
+  const [chanEndpoint, setChanEndpoint] = useState<string>("")
+  const [chanCert, setChanCert] = useState<string>("")
+  const [chanKey, setChanKey] = useState<string>("")
+  const [chanCa, setChanCa] = useState<string>("")
+  const [chanPass, setChanPass] = useState<string>("")
+  const [chanMode, setChanMode] = useState<string>("raw")
+  const [chanInsecure, setChanInsecure] = useState(false)
+  const [chanBusyMsg, setChanBusyMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null)
+
+  const labelForType = (t: string) =>
+    t === "ujp"
+      ? labels.channelTypeUjp
+      : t === "peppol"
+        ? labels.channelTypePeppol
+        : labels.channelTypeDirect
+
+  const saveChannel = async () => {
+    if (!chanType) {
+      setChanBusyMsg({ kind: "err", text: labels.channelTypeRequired })
+      return
+    }
+    let endpoint: string | null = chanEndpoint.trim() || null
+    if (endpoint && !/^https:\/\//i.test(endpoint)) {
+      setChanBusyMsg({ kind: "err", text: labels.channelEndpointInvalid })
+      return
+    }
+    endpoint = endpoint ? endpoint.replace(/\/+$/, "") : null
+    setSavingChannel(true)
+    setChanBusyMsg(null)
+    try {
+      const creds: Record<string, string> = {}
+      if (chanCert.trim()) creds.cert = chanCert.trim()
+      if (chanKey.trim()) creds.key = chanKey.trim()
+      if (chanCa.trim()) creds.ca = chanCa.trim()
+      if (chanPass) creds.passphrase = chanPass
+      const res = await saveEinvoiceChannel({
+        channel: chanType,
+        label: chanLabel.trim() || labelForType(chanType),
+        providerEndpoint: endpoint,
+        credentials: creds,
+        config: {
+          mode: chanType === "ujp" && chanMode === "joint" ? "eslog-joint" : undefined,
+          insecureSkipVerify: chanInsecure ? true : undefined,
+        },
+      })
+      if (res.ok) {
+        setChanBusyMsg({ kind: "ok", text: labels.channelSaved })
+        setChanLabel("")
+        setChanEndpoint("")
+        setChanCert("")
+        setChanKey("")
+        setChanCa("")
+        setChanPass("")
+        setChanMode("raw")
+        setChanInsecure(false)
+      } else {
+        setChanBusyMsg({ kind: "err", text: res.error ?? labels.channelSaveFailed })
+      }
+    } catch {
+      setChanBusyMsg({ kind: "err", text: labels.channelSaveFailed })
+    } finally {
+      setSavingChannel(false)
+      // Po shranjevanju osveži stran (revalidate v action) — dropdown vzame dari page.
+      window.location.reload()
+    }
+  }
 
   const download = async (row: Row) => {
     setDownloading(row.id)
@@ -148,17 +259,181 @@ export function EinvoicesClient({
     }
   }
 
+  // Kanalski setup obrazec (dostopen vedno — tudi ni e-računov).
+  const channelSetupSection = (
+    <div className="rounded-lg border p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="font-semibold">{labels.channelSetup}</h3>
+          <p className="text-xs text-muted-foreground">{labels.channelSetupHint}</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setSetupOpen((v) => !v)}>
+          {setupOpen ? labels.closeSetup : labels.channelSetup}
+        </Button>
+      </div>
+
+      {setupOpen && (
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-medium">{labels.channelType}</label>
+              <select
+                value={chanType}
+                onChange={(e) => setChanType(e.target.value)}
+                className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+                aria-label={labels.channelType}
+              >
+                <option value="direct">{labels.channelTypeDirect}</option>
+                <option value="ujp">{labels.channelTypeUjp}</option>
+                <option value="peppol">{labels.channelTypePeppol}</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium">{labels.channelEndpoint}</label>
+              <input
+                value={chanEndpoint}
+                onChange={(e) => setChanEndpoint(e.target.value)}
+                placeholder="https://…"
+                className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+                aria-label={labels.channelEndpoint}
+              />
+              <p className="mt-0.5 text-[11px] text-muted-foreground">{labels.channelEndpointHint}</p>
+            </div>
+            {chanType === "ujp" && (
+              <div>
+                <label className="text-xs font-medium">{labels.channelConfigMode}</label>
+                <select
+                  value={chanMode}
+                  onChange={(e) => setChanMode(e.target.value)}
+                  className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+                  aria-label={labels.channelConfigMode}
+                >
+                  <option value="raw">{labels.channelConfigModeRaw}</option>
+                  <option value="joint">{labels.channelConfigModeJoint}</option>
+                </select>
+              </div>
+            )}
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={chanInsecure}
+                onChange={(e) => setChanInsecure(e.target.checked)}
+              />
+              <span className="text-xs">{labels.channelInsecure}</span>
+            </label>
+          </div>
+
+          {(chanType === "ujp" || chanType === "peppol") ? (
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium">{labels.channelCert}</label>
+                <textarea
+                  value={chanCert}
+                  onChange={(e) => setChanCert(e.target.value)}
+                  rows={3}
+                  className="w-full rounded-md border bg-background px-2 py-1.5 font-mono text-[11px]"
+                  aria-label={labels.channelCert}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium">{labels.channelKey}</label>
+                <textarea
+                  value={chanKey}
+                  onChange={(e) => setChanKey(e.target.value)}
+                  rows={3}
+                  className="w-full rounded-md border bg-background px-2 py-1.5 font-mono text-[11px]"
+                  aria-label={labels.channelKey}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium">{labels.channelCa}</label>
+                <textarea
+                  value={chanCa}
+                  onChange={(e) => setChanCa(e.target.value)}
+                  rows={2}
+                  className="w-full rounded-md border bg-background px-2 py-1.5 font-mono text-[11px]"
+                  aria-label={labels.channelCa}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium">{labels.channelPassphrase}</label>
+                <input
+                  type="password"
+                  value={chanPass}
+                  onChange={(e) => setChanPass(e.target.value)}
+                  className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+                  aria-label={labels.channelPassphrase}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <label className="text-xs font-medium">{labels.channelEndpoint}</label>
+              <p className="text-xs text-muted-foreground">{labels.channelSetupHint}</p>
+            </div>
+          )}
+
+          <div className="lg:col-span-2 flex items-center gap-3">
+            <Button
+              type="button"
+              onClick={saveChannel}
+              disabled={savingChannel}
+            >
+              {savingChannel ? labels.channelSaving : labels.channelSave}
+            </Button>
+            {chanBusyMsg && (
+              <span className={`text-xs ${chanBusyMsg.kind === "ok" ? "text-emerald-600" : "text-red-600"}`}>
+                {chanBusyMsg.text}
+              </span>
+            )}
+          </div>
+
+          <div className="lg:col-span-2">
+            <p className="mb-1 text-xs font-medium">{labels.channelExisting}</p>
+            {allChannels.length === 0 ? (
+              <p className="text-xs text-muted-foreground">{labels.channelNone}</p>
+            ) : (
+              <ul className="space-y-1 text-xs">
+                {allChannels.map((c) => (
+                  <li key={c.channel} className="flex items-center gap-2">
+                    <span className="font-medium">{c.label}</span>
+                    <span
+                      className={`rounded px-1.5 py-0.5 ${
+                        c.status === "ENABLED"
+                          ? "bg-emerald-500/15 text-emerald-700"
+                          : "bg-amber-500/15 text-amber-700"
+                      }`}
+                    >
+                      {c.status}
+                    </span>
+                    <span className="text-muted-foreground">{c.channel}</span>
+                    {c.providerEndpoint ? <span className="max-w-[220px] truncate">{c.providerEndpoint}</span> : null}
+                    {c.hasCredentials ? <span className="text-emerald-600">✓ cert</span> : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
   if (rows.length === 0) {
     return (
-      <div className="rounded-lg border p-8 text-center text-muted-foreground">
-        <p className="font-medium">{labels.empty}</p>
-        <p className="text-sm">{labels.emptyHint}</p>
+      <div className="space-y-4">
+        {channelSetupSection}
+        <div className="rounded-lg border p-8 text-center text-muted-foreground">
+          <p className="font-medium">{labels.empty}</p>
+          <p className="text-sm">{labels.emptyHint}</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="rounded-lg border">
+    <div className="rounded-lg border p-4">
+      {channelSetupSection}
       {notice ? (
         <div
           className={`px-3 py-2 text-sm ${notice.kind === "ok" ? "bg-emerald-500/10 text-emerald-700" : "bg-red-500/10 text-red-700"}`}

@@ -274,36 +274,56 @@ export async function saveEinvoiceChannel(input: {
   providerEndpoint?: string | null
   credentials?: Record<string, string>
   config?: Record<string, unknown>
-}) {
+}): Promise<{ ok: boolean; id?: string; channel?: string; label?: string; error?: string }> {
+  if (!input.channel || !["direct", "ujp", "peppol"].includes(input.channel)) {
+    return { ok: false, error: "INVALID_CHANNEL: dovoljeni so direct, ujp ali peppol." }
+  }
+  if (input.providerEndpoint && !/^https:\/\//i.test(input.providerEndpoint)) {
+    return { ok: false, error: "INVALID_ENDPOINT: providerEndpoint mora biti HTTPS URL." }
+  }
+  if (input.channel !== "direct" && input.providerEndpoint && !input.credentials) {
+    // UJP/PEPPOL brez certifikata lahko shraniš (mTLS pripravi pozneje),
+    // ampak brez certifikata pošiljanje ne bo uspelo — opozori prek statusa PENDING.
+  }
+
   const { org } = await requirePermissionOrg("finances.view")
 
-  // Šifriraj vsako neobčutljivo poverilnico posebej v en JSON payload.
-  const secretPayload = input.credentials && Object.keys(input.credentials).length
-    ? encryptSecret(JSON.stringify(input.credentials))
-    : null
+  try {
+    // Šifriraj vsako neobčutljivo poverilnico posebej v en JSON payload.
+    const secretPayload = input.credentials && Object.keys(input.credentials).length
+      ? encryptSecret(JSON.stringify(input.credentials))
+      : null
 
-  const config = input.config ?? {}
-  const row = await prisma.eInvoiceChannelConfig.upsert({
-    where: { organizationId_channel: { organizationId: org.id, channel: input.channel } },
-    create: {
-      organizationId: org.id,
-      channel: input.channel,
-      label: input.label,
-      status: "PENDING",
-      providerEndpoint: input.providerEndpoint ?? null,
-      encryptedSecret: secretPayload,
-      encryptedKeyRef: input.channel, // ločen ref ključa (identifikator v DB, ne sam secret)
-      config: config as Prisma.InputJsonValue,
-    },
-    update: {
-      label: input.label,
-      providerEndpoint: input.providerEndpoint ?? null,
-      ...(secretPayload ? { encryptedSecret: secretPayload, encryptedKeyRef: input.channel } : {}),
-      config: config as Prisma.InputJsonValue,
-    },
-  })
-  revalidatePath("/dashboard/einvoices")
-  return { ok: true, id: row.id, channel: row.channel, label: row.label }
+    const config = input.config ?? {}
+    // Kanala je pošiljiv (ENABLED) le, ko ima endpoint in (pri UJP/PEPPOL) certifikat.
+    const hasEndpoint = Boolean(input.providerEndpoint)
+    const hasCert = Boolean(input.credentials && (input.credentials.cert || input.credentials.key))
+    const ready = hasEndpoint && (input.channel === "direct" ? true : hasCert)
+    const row = await prisma.eInvoiceChannelConfig.upsert({
+      where: { organizationId_channel: { organizationId: org.id, channel: input.channel } },
+      create: {
+        organizationId: org.id,
+        channel: input.channel,
+        label: input.label,
+        status: ready ? "ENABLED" : "PENDING",
+        providerEndpoint: input.providerEndpoint ?? null,
+        encryptedSecret: secretPayload,
+        encryptedKeyRef: input.channel, // ločen ref ključa (identifikator v DB, ne sam secret)
+        config: config as Prisma.InputJsonValue,
+      },
+      update: {
+        label: input.label,
+        providerEndpoint: input.providerEndpoint ?? null,
+        ...(secretPayload ? { encryptedSecret: secretPayload, encryptedKeyRef: input.channel } : {}),
+        status: ready ? "ENABLED" : "PENDING",
+        config: config as Prisma.InputJsonValue,
+      },
+    })
+    revalidatePath("/dashboard/einvoices")
+    return { ok: true, id: row.id, channel: row.channel, label: row.label }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "CHANNEL_SAVE_FAILED" }
+  }
 }
 
 /** Vrni kanale z redakcijo poverilnic (nikoli poln secret; samo tag za prikaz). */

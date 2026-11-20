@@ -21,6 +21,16 @@ export default async function EinvoicesPage() {
     .filter((c) => c.status === "ENABLED" && Boolean(c.providerEndpoint))
     .map((c) => ({ id: c.channel, label: c.label || c.channel }))
 
+  // Za kanalski setup prikažemo vse shranjene kanale (redakcijirano).
+  const allChannels = channels.map((c) => ({
+    channel: c.channel,
+    label: c.label || c.channel,
+    status: c.status,
+    providerEndpoint: c.providerEndpoint,
+    hasCredentials: c.hasCredentials,
+    mode: (c.config as { mode?: string } | null)?.mode,
+  }))
+
   const kindLabel = (k: string) =>
     k === "ADVANCE" ? d.kindAdvance : k === "CREDIT" ? d.kindCredit : d.kindInvoice
 
@@ -33,6 +43,7 @@ export default async function EinvoicesPage() {
 
       <EinvoicesClient
         channels={sendableChannels}
+        allChannels={allChannels}
         rows={rows.map((r) => ({
           id: r.id,
           docCode: r.docCode,
@@ -84,6 +95,32 @@ export default async function EinvoicesPage() {
           alreadySent: d.alreadySent,
           needsChannel: d.needsChannel,
           chooseChannel: d.chooseChannel,
+          noChannelConfigured: d.noChannelConfigured,
+          channelSetup: d.channelSetup,
+          channelSetupHint: d.channelSetupHint,
+          channelType: d.channelType,
+          channelTypeDirect: d.channelTypeDirect,
+          channelTypeUjp: d.channelTypeUjp,
+          channelTypePeppol: d.channelTypePeppol,
+          channelEndpoint: d.channelEndpoint,
+          channelEndpointHint: d.channelEndpointHint,
+          channelCert: d.channelCert,
+          channelKey: d.channelKey,
+          channelCa: d.channelCa,
+          channelPassphrase: d.channelPassphrase,
+          channelConfigMode: d.channelConfigMode,
+          channelConfigModeRaw: d.channelConfigModeRaw,
+          channelConfigModeJoint: d.channelConfigModeJoint,
+          channelInsecure: d.channelInsecure,
+          channelSave: d.channelSave,
+          channelSaving: d.channelSaving,
+          channelSaved: d.channelSaved,
+          channelSaveFailed: d.channelSaveFailed,
+          channelEndpointInvalid: d.channelEndpointInvalid,
+          channelTypeRequired: d.channelTypeRequired,
+          channelExisting: d.channelExisting,
+          channelNone: d.channelNone,
+          closeSetup: d.closeSetup,
         }}
       />
       <Card>
