@@ -166,7 +166,7 @@ describe("F5.5.4.6.4 — CertHttpProvider (UJP/PEPPOL mTLS)", () => {
     expect(wrapped).toContain("<Invoice/>")
   })
 
-  it("ujp + mode eslog-joint pošlje ovojnico; peppol pošlje surov XML", async () => {
+  it("ujp + mode eslog-joint pošlje ovojnico", async () => {
     const sent: string[] = []
     const transport: HttpsTransport = async (_opts, xml) => {
       sent.push(xml)
@@ -176,7 +176,9 @@ describe("F5.5.4.6.4 — CertHttpProvider (UJP/PEPPOL mTLS)", () => {
     await ujp.submit(ORG, { ...certCfg, config: { mode: "eslog-joint" } }, payload)
     expect(sent[0]).toContain("vd:JointDokument")
     expect(sent[0]).toContain("<Invoice/>")
+  })
 
+  it("peppol pošlje AS4 multipart/related z dokumentom (ne golega XML)", async () => {
     const peppolSent: string[] = []
     const pepTransport: HttpsTransport = async (_opts, xml) => {
       peppolSent.push(xml)
@@ -184,7 +186,15 @@ describe("F5.5.4.6.4 — CertHttpProvider (UJP/PEPPOL mTLS)", () => {
     }
     const pep = new CertHttpProvider("PEPPOL_AP", { transport: pepTransport })
     await pep.submit(ORG, { ...certCfg, channel: "peppol" }, payload)
-    expect(peppolSent[0]).toBe("<Invoice/>")
+    const raw = peppolSent[0]
+    // PEPPOL kanala NE sme več poslati golega XML — pošlje AS4 multipart/related.
+    expect(raw).not.toBe("<Invoice/>")
+    expect(raw).toContain("Content-Type: application/soap+xml")
+    expect(raw).toContain("eb:UserMessage")
+    expect(raw).toContain("Content-ID: <sbh>")
+    expect(raw).toContain("Content-ID: <payload>")
+    // Dokument je vključen kot zadnja MIME priloga (cid:payload).
+    expect(raw).toContain("<Invoice/>")
   })
 
   it("2xx → accepted SUBMITTED (tehnično), providerMessageId iz glave", async () => {

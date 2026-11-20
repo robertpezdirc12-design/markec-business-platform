@@ -152,3 +152,27 @@ le 2 nefatal CEN warninga), kar je bilo najnižja izhodiščna predpostavka za A
 Drugače: AS4 *User Message* plast se lahko zgradi in enotno verificira brez omrežja;
 živa oddaja pa ostaja vezana na zunanji testni AP / pravi AP cert (ni na voljo v tej
 repo-zanki). Modul: `src/lib/einvoice/as4.ts`.
+
+### (F5.5.4.6.5) PEPPOL kanal je sedaj POVEZAN na AS4
+
+`CertHttpProvider` (`src/lib/einvoice/providers.ts`) za kanal `PEPPOL_AP` ne pošilja
+več golega XML — ob oddaji sestavi poln AS4 `multipart/related` paket prek
+`buildAs4Multipart` (SOAP 1.2 + `eb:UserMessage` glava + SBDH kot prva MIME priloga +
+dokument kot `cid:payload`), `Content-Type` je `multipart/related; ...; boundary="…"`.
+
+Viri usmerjanja iz `ChannelCfg`:
+
+| AS4 podatek | Polje |
+|---|---|
+| `sendingPartyId` (iso6523-actorid-upis) | `config.sendingPartyId` ▸ `credentials.upis` ▸ `organizationId` (fallback) |
+| `receivingPartyId` | `payload.recipientId` (prejemnikov PEPPOL/ICD id ali davčna) |
+| `service` | `urn:fdc:peppol.eu:2017:poacc:billing:3.0::Invoice` |
+| `action` | `urn:fdc:peppol.eu:2017:poacc:billing:3.0::3.0` |
+| `role` | `urn:fdc:peppol.eu:2017:roles:ap_provider` |
+| `conversationId` | `payload.einvoiceId` |
+| X509 cert (podpis/šifriranje AS4) | `credentials.cert` (`BinarySecurityToken`) |
+
+UJP kanal je nespremenjen (e-SLOG/`vd:JointDokument` ovojnica ali goli XML po
+`config.mode`). Delovanje PEPPOL kanala je pokrito z regresijskimi testi v
+`tests/unit/einvoice-provider.test.ts` (AS4 multipart, SBDH, dokument priloga).
+Oddaja v živo še vedno zahteva pravi/testni AP cert in SMP/SML lookup (ni v tej repo-zanki).

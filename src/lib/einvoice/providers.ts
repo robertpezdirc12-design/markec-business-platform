@@ -41,6 +41,7 @@ import {
   retryDelayMs,
 } from "./channel"
 import { xmlDsigSign } from "./xmldsig"
+import { buildAs4Multipart } from "./as4"
 
 /** Vedno anajdi trenutni globalni fetch (testabilno; brez enkratne zamrznitve). */
 function getGlobalFetch(): typeof fetch {
@@ -306,9 +307,9 @@ export class CertHttpProvider implements EInvoiceProvider {
     this.transport = opts?.transport ?? nodeHttpsTransport
   }
 
-  private headersFor(cfg: ChannelCfg, p: SubmitPayload): Record<string, string> {
+  private headersFor(cfg: ChannelCfg, p: SubmitPayload, contentType = "application/xml; charset=utf-8"): Record<string, string> {
     return {
-      "Content-Type": "application/xml; charset=utf-8",
+      "Content-Type": contentType,
       Accept: "application/json, application/xml",
       "Idempotency-Key": p.einvoiceId,
       "X-EInvoice-Sha256": p.xmlSha256,
@@ -332,6 +333,25 @@ export class CertHttpProvider implements EInvoiceProvider {
     // cert na voljo) jo XMLDSig-podpiši. Podpis izpustimo samo, če je izrecno
     // `config.sign === false` ali če kanal nima ključa/certifikata.
     let body = payload.xml
+    let contentType = "application/xml; charset=utf-8"
+    // PEPPOL_AP: dejanski Prenos je AS4/ebMS3 — sestavi multipart/related paket
+    // (SOAP 1.2 + SBDH + dokument), ne pa golega XML. Zahteva prejemnikov
+    // iso6523-actorid-upis ter localno UPI (sendingPartyId).
+    if (this.kind === "PEPPOL_AP") {
+      const as4 = buildAs4Multipart({
+        sendingPartyId:
+          (cfg.config?.sendingPartyId as string) ?? cfg.credentials?.upis ?? cfg.organizationId,
+        receivingPartyId: payload.recipientId ?? "",
+        service: "urn:fdc:peppol.eu:2017:poacc:billing:3.0::Invoice",
+        action: "urn:fdc:peppol.eu:2017:poacc:billing:3.0::3.0",
+        role: "urn:fdc:peppol.eu:2017:roles:ap_provider",
+        documentXml: payload.xml,
+        certPem: cfg.credentials?.cert,
+        conversationId: payload.einvoiceId,
+      })
+      body = as4.multipartBody
+      contentType = as4.contentType
+    }
     if (this.kind === "UJP" && cfg.config?.mode === "eslog-joint") {
       const wrapped = eSlogJointWrapper(payload.xml)
       const key = cfg.credentials?.key
@@ -359,7 +379,7 @@ export class CertHttpProvider implements EInvoiceProvider {
 
     let opts: https.RequestOptions
     try {
-      opts = buildHttpsRequestOptions(cfg, this.headersFor(cfg, payload))
+      opts = buildHttpsRequestOptions(cfg, this.headersFor(cfg, payload, contentType))
     } catch (e) {
       return {
         accepted: false,
