@@ -1414,7 +1414,7 @@ export async function getUserAppointments() {
       },
       // P1 #107: ali salon sploh lahko sprejme spletno plačilo? Kartica
       // termina tega ne more uganiti, zato pošljemo izpeljan boolean
-      // (ključa salonа NE pošiljamo na odjemalca).
+      // (ključa salona NE pošiljamo na odjemalca).
       organization: { select: { stripeSecretKey: true } },
     },
     orderBy: { startTime: "desc" }, // Most recent first

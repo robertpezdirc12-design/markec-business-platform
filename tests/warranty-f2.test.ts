@@ -72,4 +72,10 @@ describe("warrantyDefaultsForProfile (F2 §3.3)", () => {
   it("neznan profil → varno falthrough 90 dni", () => {
     expect(warrantyDefaultsForProfile("nepoznan").periodDays).toBe(90)
   })
+  it("oblačilna delavnica: 90 dni (napake v izdelavi)", () => {
+    expect(warrantyDefaultsForProfile("apparel").periodDays).toBe(90)
+  })
+  it("tetovirni studio: 30 dni (popolnitev/barva)", () => {
+    expect(warrantyDefaultsForProfile("tattoo-studio").periodDays).toBe(30)
+  })
 })

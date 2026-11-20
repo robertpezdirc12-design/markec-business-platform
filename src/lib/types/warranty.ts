@@ -49,6 +49,8 @@ export interface WarrantyProfileDefaults {
  * - mehanik (tire-service): 180 dni ALI 10.000 km (kar prej)
  * - šiviljstvo (seamstress): 90 dni (le napake v izdelavi)
  * - čebelarstvo (beekeeping): zakonsko jamstvo (2 leti), kakovost/varnost/teža
+ * - oblačilna delavnica (apparel): 90 dni (le napake v izdelavi)
+ * - tetovirni studio (tattoo-studio): 30 dni (popolnitev/barva)
  */
 export const WARRANTY_PROFILE_DEFAULTS: WarrantyProfileDefaults[] = [
   {
@@ -66,6 +68,16 @@ export const WARRANTY_PROFILE_DEFAULTS: WarrantyProfileDefaults[] = [
     profileId: "beekeeping",
     periodDays: 365 * 2,
     note: "Zakonsko jamstvo (2 leti): kakovost, varnost, teža izdelka.",
+  },
+  {
+    profileId: "apparel",
+    periodDays: 90,
+    note: "90 dni, le na napake v izdelavi; ne na spremembe mer po dostavi.",
+  },
+  {
+    profileId: "tattoo-studio",
+    periodDays: 30,
+    note: "30 dni popravila/barve (popolnitev) brez doplačila.",
   },
 ]
 

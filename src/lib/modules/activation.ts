@@ -1,7 +1,11 @@
-"use client"
-
 // ============================================================
 // VSTOPNA IZKUŠNJA (2026-11) — OPT-IN MODULI, ČISTA LOGIKA.
+//
+// Izomorfo (brez "use client", brez "use server", brez prisma):
+// seedNewOrgModuleStates (src/app/actions/modules.ts) to kliče na
+// strežniku, komponente in testi pa jo uvažajo na klientu. Dreveso
+// odvisnosti (catalog → registry → extensions/overrides/secondary/types)
+// je enako vse client-safe.
 //
 // En vir resnice za (a) seed ob nastanku NOVE organizacije
 // (required jedro profila = ACTIVE, optional = DEACTIVATED,

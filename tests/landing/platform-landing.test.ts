@@ -121,7 +121,7 @@ describe("landing dictionary", () => {
 
 describe("example cards = sample of 5 of the whole registry", () => {
   const ids = listProfileOptions().map((v) => v.id)
-  const TOTAL = ids.length // real registry count (currently 34)
+  const TOTAL = ids.length // real registry count (currently 36)
 
   it("registry is not empty and contains the curated example profiles", () => {
     // Do not hardcode: the count derives from the single source of truth.
@@ -129,6 +129,9 @@ describe("example cards = sample of 5 of the whole registry", () => {
     expect(ids).toContain("beauty")
     expect(ids).toContain("frizer")
     expect(ids).toContain("seamstress")
+    // 2026-12: nova profila (T96.991 tetoviranje, C14 oblačila) sta v registru.
+    expect(ids).toContain("tattoo-studio")
+    expect(ids).toContain("apparel")
     // every skd-* section profile is registered (A–V)
     const skd = ids.filter((id) => id.startsWith("skd-"))
     expect(skd).toHaveLength(22)

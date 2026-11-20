@@ -165,7 +165,7 @@ export function sanitizeWizardDraftData(
   }
 }
 
-/** Whitelist + cap seznam kod (F1) — neznane/tujе vrednosti strukturno padejo. */
+/** Whitelist + cap seznam kod (F1) — neznane/tuje vrednosti strukturno padejo. */
 function clampCodeList(value: unknown, maxCount: number, maxLen: number, allowed: readonly string[]): string[] {
   if (!Array.isArray(value)) return []
   const out: string[] = []

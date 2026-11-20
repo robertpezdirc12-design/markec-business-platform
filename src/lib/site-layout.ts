@@ -59,6 +59,8 @@ const BY_PROFILE: Record<string, Partial<LayoutManifest>> = {
   mehanik: { heroVariant: "split", primary: "workflow", showStats: true, prominentCta: true },
   // Atelje/šivilja: povpraševanje je osrednje, skromna predstava.
   seamstress: { heroVariant: "minimal", primary: "workflow", showStats: false, prominentCta: false },
+  // Oblačilna delavnica (C14): proizvodnja po delovnih nalogah — isti vzorec kot šivilja.
+  apparel: { heroVariant: "minimal", primary: "workflow", showStats: false, prominentCta: false },
   // Lepota/rezervacijski: centered karske predstava + storitve.
   beauty: { heroVariant: "centered", primary: "services", showStats: true, prominentCta: true },
   frizer: { heroVariant: "centered", primary: "services", showStats: true, prominentCta: true },
@@ -67,6 +69,8 @@ const BY_PROFILE: Record<string, Partial<LayoutManifest>> = {
   cosmetica: { heroVariant: "centered", primary: "services", showStats: true, prominentCta: true },
   massage: { heroVariant: "centered", primary: "services", showStats: false, prominentCta: true },
   epilation: { heroVariant: "centered", primary: "services", showStats: false, prominentCta: true },
+  // Tetovirni studio: termin-centričen salon — rezervacijski vzorec (services).
+  "tattoo-studio": { heroVariant: "centered", primary: "services", showStats: true, prominentCta: true },
 }
 
 /**
@@ -80,6 +84,8 @@ const DEFAULT_TEMPLATE_BY_PROFILE: Record<string, string> = {
   "tire-service": "modern-bold",
   // Šivilja / atelje → minimalni, prostren.
   seamstress: "minimal-light",
+  // Oblačilna delavnica → isti minimalni ateljejski vzorec.
+  apparel: "minimal-light",
   // Pridelovalec → minimalni + izdelki.
   beekeeping: "minimal-light",
   // Lepota/rezervacijski → klasična elegantna (centered).
@@ -90,6 +96,8 @@ const DEFAULT_TEMPLATE_BY_PROFILE: Record<string, string> = {
   cosmetica: "classic-elegant",
   massage: "classic-elegant",
   epilation: "classic-elegant",
+  // Tetovirni studio → klasična elegantna (centered + services).
+  "tattoo-studio": "classic-elegant",
 }
 const DEFAULT_FALLBACK_TEMPLATE = "classic-elegant"
 

@@ -9,7 +9,7 @@
 
 import type { SiteContent } from "@/lib/site-content"
 
-/** Identifikator, ki ga rodi star основ urejevalnik. */
+/** Identifikator, ki ga rodi star osnovni urejevalnik. */
 export const EDITOR_SOURCE = "markec-site-editor"
 /** Identifikator, ki ga pošlje vgrajeni predogled. */
 export const PREVIEW_SOURCE = "markec-site-editor-preview"

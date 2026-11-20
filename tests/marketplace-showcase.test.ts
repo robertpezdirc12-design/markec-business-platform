@@ -49,12 +49,12 @@ describe("marketplace kartice: nadomestne slike", () => {
 
   it("različne dejavnosti dobijo različne slike (isti izbor kot VERTICAL_IMAGERY)", () => {
     const images = new Set(
-      ["barber", "massage", "seamstress", "mehanik", "beekeeping", "generic"].map(
+      ["barber", "massage", "seamstress", "apparel", "tattoo-studio", "mehanik", "beekeeping", "generic"].map(
         (v) => verticalCardImage(v)
       )
     )
-    // 6 različnih dejavnosti → 6 različnih slik (prej: ena sama za vse).
-    expect(images.size).toBe(6)
+    // 8 različnih dejavnosti → 8 različnih slik (prej: ena sama za vse).
+    expect(images.size).toBe(8)
   })
 })
 

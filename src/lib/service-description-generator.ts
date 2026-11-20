@@ -30,7 +30,7 @@ const categoryTemplates: Record<string, string[]> = {
   massage: [
     "Sprostite telo in um s storitvijo {name}. Naše maserke poskrbijo za popolno sprostitev in regeneracijo.",
     "{name} je popoln način za lajšanje stresa in napetosti. Prepustite se izkušenim rokam in uživajte v miru.",
-    "Privоščite si {name} — masažo, ki sprosti mišice, izboljša prekrvavitev in napolni z energijo.",
+    "Privoščite si {name} — masažo, ki sprosti mišice, izboljša prekrvavitev in napolni z energijo.",
   ],
   // Nails / Nohti
   nails: [

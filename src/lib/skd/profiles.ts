@@ -2,7 +2,7 @@
 // F5.0 — SKD 2025 → poslovni profil preslikava.
 //
 // Za vsak konkretni podrazred (raven 5) določimo ustrezen poslovni
-// profil (34 obstoječih iz src/lib/profiles/registry.ts). Pravilo je
+// profil (36 obstoječih iz src/lib/profiles/registry.ts). Pravilo je
 // deterministično in pregledno:
 //
 //   1. SECTION default — vsaka sekcija (A–V) ima svoj `skd-*` profil;
@@ -61,6 +61,12 @@ const DIVISION_PROFILE: Record<string, string> = {
   // Poslovne storitve za končne uporabnike, kjer je "storitveni" profil z
   // delovnimi nalogi pravi ekvivalent.
   // (privzeto skd-* je že smiselno za veliko večino; tu le redke izjeme.)
+
+  // --- Proizvodnja oblačil (sekcija C) -> apparel ---
+  // C14 zajema krojenje po meri in serijsko proizvodnjo — delovni proces
+  // z meritvami, predračuni in serijami; širše od profila seamstress,
+  // ki pokriva samo popravila/spremembe po meri.
+  "C14": "apparel",
 }
 
 // ------------------------------------------------------------
@@ -72,7 +78,7 @@ const SUBCLASS_PROFILE: Record<string, string> = {
   "T96.210": "frizer", // frizerska in brivska
   "T96.220": "beauty", // kozmetična in pedikerska (manikira/pedikira/lepota)
   "T96.230": "massage", // savne in parne kopeli (wellness) -> masaŽni profil
-  "T96.991": "generic", // tetoviranje in pirsing (ni lastnega profila)
+  "T96.991": "tattoo-studio", // tetoviranje in pirsing — sterilni obrtniški studio
 
   // --- Popravila motornih vozil (sekcija T) -> mehanik ---
   "T95.310": "mehanik", // popravila in vzdrževanje motornih vozil
@@ -81,9 +87,9 @@ const SUBCLASS_PROFILE: Record<string, string> = {
   // --- Kmetijstvo -> beekeeping za poljedeljske/čebelarske niše ni
   //     samostojnega podrazreda; sekcija A je že preslika beekeeping katalog. ---
 
-  // --- Šivanje / krojenje po meri (sekcija C) -> seamstress ---
-  // Krojenje po meri spada v C14 (proizvodnja oblačil); ni lastnega podrazreda,
-  // zato ni točnega override-a — ostane skd-c (dokumentirano v exceptionih).
+  // --- Šivanje / krojenje po meri (sekcija C) -> apparel ---
+  // Krojenje po meri in serijska proizvodnja oblačil (C14) dobita
+  // profil apparel prek DIVISION_PROFILE (gibanje navzgor po hierarhiji).
 }
 
 // ------------------------------------------------------------
@@ -104,18 +110,11 @@ export interface SkdProfileException {
 
 export const SKD_PROFILE_EXCEPTIONS: SkdProfileException[] = [
   {
-    code: "T96.991",
-    usedProfile: "generic",
+    code: "S92.0",
+    usedProfile: "skd-s-culture-sport",
     reason:
-      "Tetoviranje in pirsing — noben obstoječi profil (zdravstveni/lepotni) ne pokriva sterilnega obrtniškega salona z naročili na termin in portfoliem motiva.",
-    suggestedProfile: "tattoo-studio",
-  },
-  {
-    code: "C14",
-    usedProfile: "skd-c-manufacturing",
-    reason:
-      "Proizvodnja oblačil in krojenje po meri — delovnopravni proces (merjenje → red → šivanje → poprava) bolje ustreza profilu seamstress, a SKD C14 ima več podrazredov, ki zajemajo tudi serijsko (ne samo po-meri) proizvodnjo.",
-    suggestedProfile: "apparel",
+      "Prirejanje iger na srečo (S92.001–S92.009, vklj. stavne urednike in kockarnice) — licencirana dejavnost z regulatorno evidence (stave, izplačila, omejitve) in brez poslovnega kataloga; trenutno deluje v skd-s izhodišču, novi profil bi dodal evidenco stav in izplačil.",
+    suggestedProfile: "gambling",
   },
 ]
 

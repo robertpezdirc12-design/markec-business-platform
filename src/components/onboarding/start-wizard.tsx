@@ -66,10 +66,10 @@ function _normalizeHr(value: string): string {
 const _GROUPED_ACTIVITIES = [
   {
     label: "Lepota in osebna nega",
-    ids: ["beauty", "frizer", "barber", "nails", "cosmetica", "massage", "epilation"],
+    ids: ["beauty", "frizer", "barber", "nails", "cosmetica", "massage", "epilation", "tattoo-studio"],
   },
   { label: "Vozila in servis", ids: ["tire-service", "mehanik"] },
-  { label: "Obrt in izdelava", ids: ["seamstress"] },
+  { label: "Obrt in izdelava", ids: ["seamstress", "apparel"] },
   { label: "Kmetijstvo", ids: ["beekeeping"] },
   { label: "Univerzalno", ids: ["generic"] },
 ]

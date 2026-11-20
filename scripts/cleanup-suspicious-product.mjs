@@ -9,7 +9,7 @@
  *
  * NAČELO (issue #105 — runbook):
  *   1. NARROW ujemanje: dobesedno "defacer.id" ALI "raxor404"
- *      (brez širokega regexa — nameravamo samo dokazane nizе).
+ *      (brez širokega regexa — nameravamo samo dokazane nize).
  *   2. DRY-RUN (privzeto): samo IZPIS polne evidence prizadetih
  *      vrstic (id, org, časovni žigi, isActive, presetSeed) čez
  *      Product + ostale javno vidne tekstovne tabele.

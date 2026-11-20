@@ -134,7 +134,7 @@ export const landingSl = {
     title: "Neobvezna izbira dejavnosti",
     lead: "Dejavnost je samo pomočnik pri začetni nastavitvi — lahko jo preskočite. Vsaka predloga prinese pripravljen katalog, obrazce in besedila, ki jih poljubno spreminjate.",
     tag: "Pripravljena predloga",
-    more: "Prikazanih je 5 od 34 dejavnosti, ki so na voljo v platformi — vzorec, ne celoten seznam.",
+    more: "Prikazanih je 5 od 36 dejavnosti, ki so na voljo v platformi — vzorec, ne celoten seznam.",
     // Demo tur (interaktivna "video" predstavitev) — odpre se na klik, brez prijave.
     demo: {
       label: "Oglej si demo (čebelarstvo)",
@@ -408,7 +408,7 @@ export const landingEn: LandingDictionary = {
     title: "Choosing an activity is optional",
     lead: "An activity is only a helper for the initial setup — you can skip it. Every preset brings a ready catalog, forms and copy that you can change freely.",
     tag: "Ready-made preset",
-    more: "Showing 5 of the 34 activities available in the platform — a sample, not the full list.",
+    more: "Showing 5 of the 36 activities available in the platform — a sample, not the full list.",
     demo: {
       label: "See demo (beekeeping)",
       steps: [

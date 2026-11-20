@@ -135,7 +135,7 @@ export const catalogDocsSl = {
     advanceStatusLabels: {
       DRAFT: "Osnutek",
       ISSUED: "Izdan",
-      PARTIALLY_PAID: "Delnо plačan",
+      PARTIALLY_PAID: "Delno plačan",
       PAID: "Plačan",
       CANCELLED: "Preklican",
     },

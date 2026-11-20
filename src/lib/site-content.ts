@@ -791,6 +791,77 @@ export function defaultSiteContent(vertical: string): SiteContent {
         buttonHref: "/shop",
       },
     },
+    // 2026-12: tetovirni studio (T96.991) — termin-centričen sterilni salon.
+    // CTA /booking (appointments: required); portfolij je v workspace, ne
+    // v ocenah.
+    "tattoo-studio": {
+      hero: {
+        eyebrow: "Tetoviranje & Pirsing",
+        title: "Vaš motiv, naša igla",
+        subtitle:
+          "Individualni dizajni, sterilna izvedba in skrb po intervenciji. Povpreševanje in ceno določita posvet — rezervirajte termin.",
+        primaryCta: { label: "Rezerviraj termin", href: "/booking" },
+        secondaryCta: { label: "Poglej storitve", href: "/services" },
+      },
+      about: {
+        title: "Studio za individualno tetoviranje",
+        paragraphs: [
+          "Vsak motiv začne z razgovorom in skico: velikost, lokacija, stil in ocena cene so jasni že na prvem posvetu.",
+          "Delamo z sterilno opremo in preverjenimi pigmenti. Po izvedbi dobite pisna navodila za nego in kontrolni termin.",
+        ],
+        stats: [],
+      },
+      features: {
+        title: "Kaj lahko pričakujete",
+        subtitle: "Od ideje do končne izvedbe",
+        items: [
+          { icon: "ShieldCheck", title: "Sterilno delovno okolje", description: "Enkratna oprema in certificirani pigmenti pri vsakem terminu." },
+          { icon: "FileText", title: "Dizajnski posvet", description: "Skica, referenca in ocena cene, še preden se lotimo igle." },
+          { icon: "HeartHandshake", title: "Negovna spremljava", description: "Pisna navodila po izvedbi in kontrolni termin vključeno." },
+        ],
+      },
+      cta: {
+        title: "Imate idejo za motiv?",
+        text: "Rezervirajte posvet — povejte nam idejo, velikost in predviden del telesa, odgovorimo s terminom in oceno cene.",
+        buttonLabel: "Rezerviraj termin",
+        buttonHref: "/booking",
+      },
+    },
+    // 2026-12: oblačilna delavnica (C14) — po meri in serijska izdelava.
+    // CTA /inquiry (appointments: disabled; povpraševalski profil).
+    apparel: {
+      hero: {
+        eyebrow: "Oblačilna delavnica",
+        title: "Od prve mere do končnega videza",
+        subtitle:
+          "Oblačila po meri in serijska izdelava — meritve, predračun in rok so jasni pred začetkom. Oddajte povpraševanje z želeno vrsto izdelka.",
+        primaryCta: { label: "Oddaj povpraševanje", href: "/inquiry" },
+        secondaryCta: { label: "Storitve in cene", href: "/services" },
+      },
+      about: {
+        title: "Delavnica za izdelavo oblačil",
+        paragraphs: [
+          "Vsako naročilo poteka po jasnem procesu: meritve, predračun, izdelava, približanje in predaja. Vse korake vidite v svojem naročilu.",
+          "Poleg izdelave po meri sprejemamo tudi serije — po vaši specifikaciji in z oznako vsakega lota.",
+        ],
+        stats: [],
+      },
+      features: {
+        title: "Kako delamo",
+        subtitle: "Jasen proces od meritve do predaje",
+        items: [
+          { icon: "FileText", title: "Meritve po meri", description: "Merilni list je zapisan in shranjen pri vašem naročilu." },
+          { icon: "Clock", title: "Predračun pred začetkom", description: "Cena in rok sta potrjena, še preden se lotimo kroja." },
+          { icon: "LayoutGrid", title: "Serijska izdelava", description: "Lote označujemo in beležimo — vsak kos sledljiv." },
+        ],
+      },
+      cta: {
+        title: "Pregovorimo vaše naročilo",
+        text: "Oddajte povpraševanje z vrsto izdelka, količino in željenim rokom — odgovorimo s predračunom.",
+        buttonLabel: "Oddaj povpraševanje",
+        buttonHref: "/inquiry",
+      },
+    },
     // lastnik (6. 11. 2026, korekcija #100): NEVTRALNA ≠ platformski
     // prodajni tekst. Najemnikova javna stran govori STRANKAM o NJEGOVI
     // dejavnosti — platformski pitch ("MARKEC, univerzalna platforma,

@@ -4,7 +4,7 @@
 // lastnik (7. 11. 2026): "vse združi v padajočo linijo … po temu se
 // spustni meni odpre, da ni natopano na vmesniku vse brez potrebe."
 // EN spustni meni, ki odpre CELOTEN imenik:
-//   • pripravljene predloge (12), grupirane po področjih
+//   • pripravljene predloge (14), grupirane po področjih
 //   • področja SKD 2025 (več izbir — samo nasvet za module)
 //   • sekcije SKD 2025 (A–V, več izbir)
 //   • lastna oznaka
@@ -54,10 +54,10 @@ function normalizeHr(value: string): string {
 const PREPARED_GROUPS = [
   {
     label: "Lepota in osebna nega",
-    ids: ["beauty", "frizer", "barber", "nails", "cosmetica", "massage", "epilation"],
+    ids: ["beauty", "frizer", "barber", "nails", "cosmetica", "massage", "epilation", "tattoo-studio"],
   },
   { label: "Vozila in servis", ids: ["tire-service", "mehanik"] },
-  { label: "Obrt in izdelava", ids: ["seamstress"] },
+  { label: "Obrt in izdelava", ids: ["seamstress", "apparel"] },
   { label: "Kmetijstvo", ids: ["beekeeping"] },
   { label: "Univerzalno", ids: ["generic"] },
 ].map(({ label, ids }) => ({

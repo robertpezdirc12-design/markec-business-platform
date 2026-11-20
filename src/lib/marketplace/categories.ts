@@ -74,6 +74,20 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
     description: "Popravila, krajšanja in šivanje po meri.",
   },
   {
+    slug: "oblacilne-delavnice",
+    label: "Oblačilne delavnice",
+    icon: "👗",
+    verticals: ["apparel"],
+    description: "Oblačila po meri in serijska proizvodnja.",
+  },
+  {
+    slug: "tetovirni-studii",
+    label: "Tetovirni studii",
+    icon: "🖋️",
+    verticals: ["tattoo-studio"],
+    description: "Tetoviranje in pirsing po terminih.",
+  },
+  {
     slug: "avtoservis",
     label: "Avtoservis in vulkanizer",
     icon: "🔧",

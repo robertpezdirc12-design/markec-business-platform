@@ -20,6 +20,10 @@ const VERTICAL_CARD_IMAGE: Record<string, string> = {
   kozmetika: "/img/presets/hero-spa.jpg",
   epilation: "/img/presets/hero-laser.jpg",
   seamstress: "/img/presets/hero-atelier.jpg",
+  // Oblačilna delavnica: šivalni stroj (hero iz VERTICAL_IMAGERY) —
+  // opomba: ta mapa je vzporedna z VERTICAL_IMAGERY in se ročno usklaja.
+  apparel: "/img/presets/sewing.jpg",
+  "tattoo-studio": "/img/presets/workspace.jpg",
   "tire-service": "/img/presets/hero-garage.jpg",
   mehanik: "/img/presets/hero-garage.jpg",
   beekeeping: "/img/presets/hero-apiary.jpg",

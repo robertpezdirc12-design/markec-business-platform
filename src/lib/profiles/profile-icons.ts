@@ -27,9 +27,11 @@ import {
   LayoutGrid,
   MonitorSmartphone,
   Pickaxe,
+  PenTool,
   Ruler,
   Scissors,
   Shield,
+  Shirt,
   ShoppingBag,
   Sparkle,
   Sparkles,
@@ -53,6 +55,9 @@ export const PROFILE_ICONS: Record<string, LucideIcon> = {
   epilation: Feather,
   generic: LayoutGrid,
   seamstress: Ruler,
+  // 2026-12: nova obrtniška profila (SKD_PROFILE_EXCEPTIONS, zdaj izdelana).
+  "tattoo-studio": PenTool,
+  apparel: Shirt,
   "tire-service": Wrench,
   // #100-nadaljevanje: avtomehanik — svoja ikona (ločen profil).
   mehanik: Car,

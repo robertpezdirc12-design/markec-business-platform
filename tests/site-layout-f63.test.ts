@@ -63,6 +63,19 @@ describe("F6.3 resolveLayout — dejanska strukturna razlika po dejavnosti", () 
     expect(l.showStats).toBe(false)
   })
 
+  it("oblačilna delavnica dobi minimal hero + delovni nalog kot primarno (kot šivilja)", () => {
+    const l = resolveLayout(defaultTemplateForProfile("apparel"), "apparel")
+    expect(l.heroVariant).toBe("minimal")
+    expect(l.primary).toBe("workflow")
+    expect(l.showStats).toBe(false)
+  })
+
+  it("tetovirni studio dobi centered hero + storitve (rezervacijski vzorec)", () => {
+    const l = resolveLayout(defaultTemplateForProfile("tattoo-studio"), "tattoo-studio")
+    expect(l.heroVariant).toBe("centered")
+    expect(l.primary).toBe("services")
+  })
+
   it("generic (nepreverjen profil) ostane na varnem privzetem manifestu", () => {
     const l = resolveLayout(null, undefined)
     expect(l).toEqual(DEFAULT_MANIFEST)

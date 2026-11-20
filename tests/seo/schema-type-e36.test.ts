@@ -25,6 +25,10 @@ const EXPECTED: Record<string, string> = {
   mehanik: "AutoRepair",
   // Storitveni posel — ClothingStore pomeni malico in je napačen (#36).
   seamstress: "ProfessionalService",
+  // 2026-12: novi profila — tetovirni studio (termin-centričen salon) in
+  // oblačilna delavnica (proizvodnja po delovnih nalogih, ne malica).
+  "tattoo-studio": "BeautySalon",
+  apparel: "ProfessionalService",
   beekeeping: "Store",
   generic: "LocalBusiness",
 

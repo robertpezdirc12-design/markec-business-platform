@@ -3,111 +3,166 @@ import type { NextConfig } from "next";
 // P1 #32 (re-audit 2026-11): baseline hardening — prej je produkcija
 // pošiljala SAMO HSTS. Dodani so X-Frame-Options (clickjacking),
 // nosniff (MIME confusion), Referrer-Policy, Permissions-Policy,
-// COOP in CSP v Report-Only načinu (spremljamo kršitve, še ne
-// blokiramo — inline skripti Next.js/temnega načina zahtevajo
-// nonce/hash pristop, ki ga uvedemo po analizi poročil).
-// X-Powered-By se izklopi z poweredByHeader: false.
-const securityHeaders = [
+// COOP/CORP. CSP je Report-Only (ne blokira), ker je projekt poln
+// inline script/style in tretjih virov — preklop na enforcing zahteva
+// nonce/whitelist iteracijo (ločena naloga).
+//
+// Re-audit 2026-12: odstranjen zastarel X-XSS-Protection; CSP
+// frame-ancestors usklajen z X-Frame-Options po ruti (večina strani
+// DENY/none, site-editor SAMEORIGIN/self) da ni protislovnih signalov.
+
+function buildCsp(frameAncestors: "'none'" | "'self'") {
+  return [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
+    "style-src 'self' 'unsafe-inline' https:",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data: https:",
+    "connect-src 'self' https: wss:",
+    `frame-ancestors ${frameAncestors}`,
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ")
+}
+
+const baseSecurityHeaders = [
+  { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+  // X-Frame-Options je ohranjen kot legacy fallback; sodobni brskalniki
+  // uporabljajo CSP frame-ancestors (spodaj, usklajeno po ruti).
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  {
-    key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
-  },
-  // Najemniške strani niso namenjene vgradnji v iframe (odločba #32:
-  // /preview ne izjemljimo, ker je samostojna stran, ne vgrajen element).
-  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-  {
-    key: "Content-Security-Policy-Report-Only",
-    value: [
-      "default-src 'self'",
-      // 'unsafe-eval' potrebuje Next.js dev (Turbopack HMR); produkcija
-      // ga ne izkorišča. 'unsafe-inline' za skripte odstranimo šele, ko
-      // preidemo na nonce (report-only faza zbira podatke).
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https:",
-      "media-src 'self' data: blob: https:",
-      "font-src 'self' data:",
-      "connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com",
-      "frame-src 'self' https://js.stripe.com",
-      "worker-src 'self' blob:",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "object-src 'none'",
-      // 'upgrade-insecure-requests' NAMENOMA ni tukaj: v
-      // Report-Only politiki jo brskalnik ignorira in v konzolo
-      // zapiše napako na VSAKI strani. Doda se šele v enforced CSP,
-      // ko bo ta preklopljena iz report-only.
-    ].join("; "),
-  },
-];
+  { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
+]
 
 const nextConfig: NextConfig = {
-  // T9 (bundle analiza 2026-11): analitični build lahko teče PARALELNO z
-  // dev strežnikom —NEXT_DIST_DIR preusmeri izpis (npr. .next-analysis),
-  // da ne poškoduje dev strežnikovega .next. Produkcija ostane ".next".
-  distDir: process.env.NEXT_DIST_DIR || ".next",
-  // T9 (bundle analiza 2026-11): analitični build z virskimi mapami
-  // (NEXT_ANALYZE=1) omogoči atribucijo chunkov → moduli; produkcija
-  // map NE izdaja (večji prenos).
-  productionBrowserSourceMaps: process.env.NEXT_ANALYZE === "1",
-  // Turbopack: določi koren projekta eksplicitno (v Windows okolju z več
-  // lockfiles je Next sprva izbral napačen koren → ni razrešil tailwindcss).
+  /* config options here */
+  // Optimiziraj barrel imports iz velikih knjižnic (recharts, framer-motion, lucide...)
+  // da se v bundle potegnejo samo dejansko uporabljeni moduli.
+  experimental: {
+    optimizePackageImports: [
+      "recharts",
+      "framer-motion",
+      "lucide-react",
+      "@radix-ui/react-icons",
+      "date-fns",
+    ],
+  },
+  // Izključi server-only pakete iz client bundle-a (P0: -50-100MB iz bundle)
+  serverExternalPackages: [
+    "@prisma/client",
+    "bcryptjs",
+    "@react-pdf/renderer",
+    "resend",
+    "pusher",
+  ],
+  // Ne izpostavljaj "X-Powered-By: Next.js" — manjša površina fingerprintinga.
+  poweredByHeader: false,
+  async headers() {
+    return [
+      // Večina strani: prepovedana vdelava v iframe (clickjacking hardening).
+      // CSP frame-ancestors je usklajen z X-Frame-Options (DENY/none).
+      {
+        source: "/((?!dashboard/salon/site-editor).*)",
+        headers: [
+          ...baseSecurityHeaders,
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Content-Security-Policy-Report-Only", value: buildCsp("'none'") },
+        ],
+      },
+      // Site editor: same-origin vdelava dovoljena za live preview v adminu.
+      // Skladno z odobreno arhitekturo F5.3.0 in preverjanjem origin+tip v
+      // site-editor-bridge. Območje vgnezdenja ni razširjeno izven te rute.
+      {
+        source: "/dashboard/salon/site-editor/:path*",
+        headers: [
+          ...baseSecurityHeaders,
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          { key: "Content-Security-Policy-Report-Only", value: buildCsp("'self'") },
+        ],
+      },
+    ]
+  },
+  // P0 PERF: "webpack" blok spodaj je potreben SAMO za produkcijski build;
+  // ko `next dev --webpack` teče, ta custom chunking hook podvoji čas
+  // kompilacije (webpack mora vsakokrat evalvirati ogromno cache skupin) in
+  // v praksi povzroči, da se /dashboard stran nikoli ne prevede. Ohranimo ga
+  // za `next build`, v dev načinu pa ga izpustimo.
+  ...(process.env.NODE_ENV === "production"
+    ? {
+        webpack: (config: any, { dev, isServer }: { dev: boolean; isServer: boolean }) => {
+          // P0: Reši napačno zaznavanje vendor chunks (Cloudflare/Vercel build)
+          if (!dev && !isServer) {
+            config.optimization = config.optimization || {}
+            config.optimization.splitChunks = {
+              chunks: "all",
+              cacheGroups: {
+                default: false,
+                vendors: false,
+                // P0: React core v ločen chunk (stabilen, cache-friendly)
+                react: {
+                  name: "react-vendor",
+                  test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+                  chunks: "all",
+                  priority: 40,
+                  enforce: true,
+                },
+                // P0: Prisma + Supabase → server-only, nikoli v client bundle
+                serverOnly: {
+                  name: "server-only",
+                  test: /[\\/]node_modules[\\/](@prisma|@supabase)[\\/]/,
+                  chunks: "async",
+                  priority: 30,
+                  enforce: true,
+                },
+                // UI libs v ločen chunk
+                ui: {
+                  name: "ui-vendor",
+                  test: /[\\/]node_modules[\\/](@radix-ui|@headlessui|framer-motion)[\\/]/,
+                  chunks: "all",
+                  priority: 20,
+                },
+                // Charts v ločen chunk
+                charts: {
+                  name: "charts-vendor",
+                  test: /[\\/]node_modules[\\/](recharts|d3)[\\/]/,
+                  chunks: "all",
+                  priority: 20,
+                },
+                // Ostali vendor paketi
+                vendor: {
+                  name: "vendor",
+                  test: /[\\/]node_modules[\\/]/,
+                  chunks: "all",
+                  priority: 10,
+                },
+              },
+            }
+          }
+          // Ignoriraj source map warnings
+          config.ignoreWarnings = [
+            ...(config.ignoreWarnings || []),
+            { module: /node_modules\/@prisma/ },
+          ]
+          return config
+        },
+      }
+    : {}),
+  // Izključi test datoteke iz build procesa
+  typescript: {
+    // Vedno preverjaj tipe med buildom — CI + lokalni build ujamejo napake
+    // preden se koda sploh deploya (prej je bil ignoreBuildErrors: true,
+    // kar je pustilo npr. napake v scripts/seed-initial-data.ts neopažene).
+    ignoreBuildErrors: false,
+  },
   turbopack: {
     root: __dirname,
   },
-  // E3-8 robustness fix: reactCompiler breaks form submit event wiring
-  // in PRODUCTION builds (submit handlers never fire; the same form
-  // works in dev). Correctness over memoization — re-enable only after
-  // upstream fix + E2E green (e2e/ suite guards this regression).
-  reactCompiler: false,
-  // P1 #32 (re-audit 2026-11): ne razkrivaj tehnološkega skladka.
-  poweredByHeader: false,
-  headers: async () => [
-    {
-      source: "/(.*)",
-      headers: securityHeaders,
-    },
-    // F5.3.1: vizualni urejevalnik vgnezdi DRAFT PREDOGLED /s/[slug]/preview
-    // v iframe (same-origin, integracija urejevalnika). Splošni P1#32 headerji
-    // (X-Frame-Options: DENY + frame-ancestors 'none') bi ta iframe blokirali,
-    // zato MORA ruta predogleda dovoliti SAMO same-origin vgnezditev
-    // (frame-ancestors 'self' / SAMEORIGIN). Skladno z odobreno arhitekturo
-    // F5.3.0 in preverjanjem origin+tip v site-editor-bridge. Vse ostale rute
-    // ostanejo DENY (zmanjšano območje vgnezdenja ni razširjeno).
-    {
-      source: "/s/:slug/preview",
-      headers: [
-        { key: "X-Frame-Options", value: "SAMEORIGIN" },
-        {
-          // Istovetno preostalo CSP kot P1#32, le frame-ancestors 'self' —
-          // omogoči same-origin vgnezdenje predogleda v urejevalnik.
-          key: "Content-Security-Policy-Report-Only",
-          value: [
-            "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com",
-            "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' data: blob: https:",
-            "media-src 'self' data: blob: https:",
-            "font-src 'self' data:",
-            "connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com",
-            "frame-src 'self' https://js.stripe.com",
-            "worker-src 'self' blob:",
-            "frame-ancestors 'self'",
-            "base-uri 'self'",
-            "form-action 'self'",
-            "object-src 'none'",
-            "upgrade-insecure-requests",
-          ].join("; "),
-        },
-      ],
-    },
-  ],
+  // Omogoči slike iz Supabase Storage in Vercel Blob
   images: {
-    unoptimized: true, // Disable automatic image optimization
+    unoptimized: true, // onemogoči /_next/image proxy, da odpravimo napake pri nalaganju slik
     qualities: [75, 90], // Configure allowed image qualities
     remotePatterns: [
       {

@@ -333,6 +333,8 @@ const PRESET_STAFF_IMAGE: Record<string, string> = {
   massage: IMG.staffMaserka,
   epilation: IMG.staffEpilacija,
   seamstress: IMG.staffSivilja,
+  "tattoo-studio": IMG.staffKozmeticka,
+  apparel: IMG.staffSivilja,
   "tire-service": IMG.staffMehanik,
   // #100-nadaljevanje: avtomehanik dobi svojo preset sliko (obstaja že od #85).
   mehanik: IMG.staffMehanik,
@@ -358,12 +360,16 @@ const VERTICAL_IMAGERY: Record<string, { hero?: string; about?: string; cta?: st
   massage: { hero: IMG.heroSpa, about: IMG.massage, cta: IMG.hotStone },
   epilation: { hero: IMG.heroLaser, about: IMG.laser, cta: IMG.wax },
   seamstress: { hero: IMG.heroAtelier, about: IMG.sewing, cta: IMG.customDress },
+  // Oblačilna delavnica: šivalni stroj kot hero (proizvodnja), detail (zip) in ročno delo.
+  apparel: { hero: IMG.sewing, about: IMG.zipper, cta: IMG.craft },
   "tire-service": { hero: IMG.heroGarage, about: IMG.tireChange, cta: IMG.oilChange },
   // #100-nadaljevanje: avtomehanik — ista garažna imidž banka, drugačno poudarki.
   mehanik: { hero: IMG.heroGarage, about: IMG.oilChange, cta: IMG.brakes },
   beekeeping: { hero: IMG.heroApiary, about: IMG.honeycomb, cta: IMG.honeyJars },
   // P2 #85: generic dobi lastne nevtralne slike — ne deduje salon/transform.
   generic: { hero: IMG.heroWorkspace, about: IMG.workspace, cta: IMG.craft },
+  // Tetovirni studio: temen obrtniški workspace (charcoal paleta), ročno delo.
+  "tattoo-studio": { hero: IMG.workspace, about: IMG.craft, cta: IMG.workspace },
 }
 
 export interface PresetService {
@@ -901,6 +907,56 @@ export const VERTICALS: VerticalPreset[] = [
       { name: "Čebelji vosek — sveča", description: "Ročno vlita sveča iz čistega čebeljega voska.", price: 6, stockQuantity: 90, imageUrl: IMG.propolis },
     ],
     siteContent: defaultSiteContent("beekeeping"),
+  },
+  {
+    // 2026-12: TETOVIRNI STUDIO (T96.991) — termin-centričen sterilni salon.
+    // Naročila na termin; cene so „od“ (odvisne od motiva/velicine).
+    id: "tattoo-studio",
+    label: "Tetovirni studio",
+    description: "Tetoviranje in pirsing — naročila na termin, sterilni studio",
+    palette: "charcoal",
+    currency: "EUR",
+    locale: "sl",
+    timezone: "Europe/Ljubljana",
+    categories: [
+      { name: "Tetoviranje", slug: "tetoviranje", services: [
+        { name: "Tetoviranje — cena od", description: "Individualen motiv, cena odvisna od velikosti in zapletenosti", duration: 180, price: 150, isFeatured: true, imageUrl: IMG.workspace },
+        { name: "Popolnitev tetoviranja", description: "Osvežitev barve in linij obstoječe tetovaže", duration: 60, price: 80, imageUrl: IMG.craft },
+        { name: "Pokrivanje tetoviranja", description: "Prekrivanje obstoječe tetovaže z novim motivom", duration: 180, price: 200, isFeatured: true, imageUrl: IMG.workspace },
+      ]},
+      { name: "Pirsing", slug: "pirsing", services: [
+        { name: "Pirsing — ušesni predel", description: "Zlata/zdravstvena jekla, vklj. nega in kontrola", duration: 30, price: 40, imageUrl: IMG.craft },
+        { name: "Pirsing — drug predel", description: "Pirsing izven ušesnega predela (cena od)", duration: 45, price: 60, imageUrl: IMG.craft },
+      ]},
+    ],
+    siteContent: defaultSiteContent("tattoo-studio"),
+  },
+  {
+    // 2026-12: OBLAČILNA DELAVNICA (C14) — po meri + serijska proizvodnja.
+    // Proces po delovnih nalogih (merjenje → predračun → izdelava → predaja).
+    id: "apparel",
+    label: "Oblačilna delavnica",
+    description: "Proizvodnja oblačil po meri in v serijah",
+    palette: "teal",
+    currency: "EUR",
+    locale: "sl",
+    timezone: "Europe/Ljubljana",
+    categories: [
+      { name: "Ušitje po meri", slug: "usitje-po-meri", services: [
+        { name: "Obleka po meri", description: "Krojenje, šivanje in približanje po vaših merah", duration: 240, price: 180, isFeatured: true, imageUrl: IMG.customDress },
+        { name: "Srajca po meri", description: "Ročno ušita srajca po vaši meri", duration: 180, price: 90, imageUrl: IMG.sewing },
+        { name: "Hlače po meri", description: "Ušite hlače po vaši meri s pritrditvijo pasu", duration: 180, price: 70, imageUrl: IMG.sewing },
+      ]},
+      { name: "Serijska proizvodnja", slug: "serijska-proizvodnja", services: [
+        { name: "Serijska izdelava (kos)", description: "Produkcija po vaši specifikaciji, cena na kos", duration: 120, price: 40, isFeatured: true, imageUrl: IMG.craft },
+      ]},
+      { name: "Spremembe in popravila", slug: "spremembe-in-popravila", services: [
+        { name: "Skratitev hlač", description: "Skratitev z ohranitvijo originalnega robova", duration: 30, price: 12, imageUrl: IMG.sewing },
+        { name: "Menjava zipa", description: "Menjava poškodovanega zapiralke", duration: 45, price: 25, imageUrl: IMG.zipper },
+        { name: "Sprememba po meri", description: "Prilagoditev obstoječega kosja (cena od)", duration: 60, price: 30, imageUrl: IMG.sewing },
+      ]},
+    ],
+    siteContent: defaultSiteContent("apparel"),
   },
 ]
 

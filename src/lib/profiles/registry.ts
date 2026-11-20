@@ -360,6 +360,176 @@ const PROFILE_LIST: ActivityProfile[] = [
     extensions: ["workspace-resources"],
     catalog: { seedVerticalId: "epilation" },
   },
+
+  // TATTOO STUDIO — T96.991 (SKD_PROFILE_EXCEPTIONS, zdaj izdelan).
+  // Termin-centričen STERILEN obrtniški salon: posvet → dizajn →
+  // izvedba → nega; portfolij motiva (ne cenenik storitev), blagajna
+  // za gotovinske depozite, brez delovnih nalogov in brez ocene.
+  {
+    id: "tattoo-studio",
+    version: 1,
+    label: "Tetovirni studio",
+    description: "Tetoviranje in pirsing — sterilni obrtniški studio z naročili na termin",
+    palette: "charcoal",
+    // P2 #36: schema.org @type — najbližji ustreznik za tetovirni studio.
+    schemaType: "BeautySalon",
+    capabilities: {
+      appointments: "required",
+      workOrders: "disabled",
+      shop: "optional",
+      services: "required",
+      inventory: "optional",
+      customers: "required",
+      staff: "required",
+      analytics: "required",
+      reviews: "disabled", // portfolij, ne ocene storitev
+      forms: "required",
+      workflows: "disabled", // življenjski cikel terminov je native
+      documents: "disabled",
+      delivery: "disabled",
+      walkIn: "optional", // #98 (AD-02): modul je na voljo vsaki dejavnosti
+      cashRegister: "required", // WP-1: blagajna za gotovinske depozite/izvedbo
+    },
+    terminology: terms({
+      businessSingular: "studio",
+      businessIn: "v studiu",
+      businessGenitive: "studia",
+      businessEn: { singular: "studio", in: "at the studio", genitive: "the studio's" },
+      orderSingular: "Spletno naročilo",
+      orderPlural: "Spletna naročila",
+      bookingCta: "Rezerviraj termin",
+      orderEn: { singular: "Shop order", plural: "Shop orders" },
+      ctaEn: "Book an appointment",
+    }),
+    forms: [
+      {
+        key: "tattoo-brief",
+        name: "Dizajnski brief",
+        description: "Vrsta izvedbe, motiv in lokacija na telesu — podlaga za posvet in oceno cene.",
+        fields: [
+          { key: "procedure", label: "Vrsta izvedbe", type: "select", required: true, options: ["Tetoviranje", "Pirsing", "Popolnitev tetoviranja", "Pokrivanje", "Drugo"] },
+          { key: "style", label: "Stil", type: "select", required: false, options: ["Realistično", "Črno-bel", "Color", "Fine line", "Tradicionalno", "Japonsko", "Drug"] },
+          { key: "body_area", label: "Del telesa", type: "text", required: true },
+          { key: "size_cm", label: "Predvidena velikost", type: "number", required: false, unit: "cm" },
+          { key: "idea", label: "Ideja / opis motiva", type: "textarea", required: true },
+          { key: "reference", label: "Referenčne slike (opis ali povezava)", type: "textarea", required: false },
+        ],
+      },
+      {
+        key: "aftercare",
+        name: "Navodila po izvedbi",
+        description: "Negovna opozorila po izvedbi — dokumentirana za vsak termin.",
+        fields: [
+          { key: "procedure", label: "Izvedba", type: "text", required: true },
+          { key: "aftercare", label: "Navodila za nego", type: "textarea", required: true },
+          { key: "followup_days", label: "Priporočeni pregled čez", type: "number", required: false, unit: "dni" },
+        ],
+      },
+    ],
+    workflows: [],
+    dashboardWidgets: ["todayAppointments", "revenue", "customers", "topServices", "recentOrders"],
+    website: { ctaMode: "booking" },
+    extensions: ["workspace-resources"], // portfolij motiva = dokumenti/datoteke v workspace
+    catalog: { seedVerticalId: "tattoo-studio" },
+  },
+
+  // APPAREL — C14 (SKD_PROFILE_EXCEPTIONS, zdaj izdelan). Proizvodnja
+  // oblačil: po-meri proces (merjenje → krojenje → šivanje → poprava)
+  // Z delovnimi nalogi in serijsko proizvodnjo (batches/lots) — širše
+  // od seamstress (samo popravila/spremembe po meri).
+  {
+    id: "apparel",
+    version: 1,
+    label: "Oblačilna delavnica",
+    description: "Proizvodnja oblačil po meri in v serijah z delovnimi nalogi in meritvami",
+    palette: "teal",
+    // P2 #36: schema.org @type — obrtniška delavnica (proizvodnja, ne malica).
+    // ClothingStore pomeni malico in je napačen za storitveno platformo (#36);
+    // ista konvencija kot seamstress.
+    schemaType: "ProfessionalService",
+    capabilities: {
+      appointments: "disabled",
+      workOrders: "required",
+      shop: "optional",
+      services: "required",
+      inventory: "required",
+      customers: "required",
+      staff: "required",
+      analytics: "required",
+      reviews: "disabled",
+      forms: "required",
+      workflows: "required",
+      documents: "required", // predračuni za naročila
+      delivery: "optional", // dostava/poslanje končnih izdelkov
+      walkIn: "optional", // #98 (AD-02): modul je na voljo vsaki dejavnosti
+      cashRegister: "required", // WP-1: blagajna (eno jedro, capability-vidnost)
+    },
+    terminology: terms({
+      businessSingular: "delavnica",
+      businessIn: "v delavnici",
+      businessGenitive: "delavnice",
+      businessEn: { singular: "workshop", in: "at the workshop", genitive: "the workshop's" },
+      appointmentSingular: "Povpraševanje",
+      appointmentPlural: "Povpraševanja",
+      orderSingular: "Proizvodno naročilo",
+      orderPlural: "Proizvodna naročila",
+      bookingCta: "Oddaj naročilo",
+      orderEn: { singular: "Production order", plural: "Production orders" },
+      ctaEn: "Send an order",
+    }),
+    forms: [
+      {
+        key: "order-details",
+        name: "Podrobnosti naročila",
+        description: "Vrsta izdelka, material, količina in rok.",
+        fields: [
+          { key: "garment_type", label: "Vrsta izdelka", type: "select", required: true, options: ["Suknja", "Obleka", "Srajca", "Hlače", "Jakna", "Kap", "Domača/tekstilna", "Drug"] },
+          { key: "production_mode", label: "Način izdelave", type: "select", required: true, options: ["Po meri", "Serijska", "Popravek/sprememba"] },
+          { key: "material", label: "Material", type: "text", required: false },
+          { key: "quantity", label: "Količina kosov", type: "number", required: false, unit: "kosov" },
+          { key: "deadline", label: "Želen datum prevzema", type: "date", required: false },
+        ],
+      },
+      {
+        key: "measurements",
+        name: "Merilni list",
+        description: "Mere telesa ali izdelka po meri (cm).",
+        fields: [
+          { key: "chest_cm", label: "Obseg prsi", type: "number", required: false, unit: "cm" },
+          { key: "waist_cm", label: "Obseg pasu", type: "number", required: false, unit: "cm" },
+          { key: "hips_cm", label: "Obseg bokov", type: "number", required: false, unit: "cm" },
+          { key: "sleeve_cm", label: "Dolžina rokava", type: "number", required: false, unit: "cm" },
+          { key: "inseam_cm", label: "Notranja dolžina hlač", type: "number", required: false, unit: "cm" },
+        ],
+      },
+    ],
+    workflows: [
+      {
+        key: "production-order",
+        name: "Proizvodni proces naročila",
+        entity: "order",
+        stages: [
+          { key: "inquiry", name: "Povpraševanje", description: "Stranka odda želje in mere." },
+          { key: "measurements", name: "Meritve", description: "Snemanje merilnega lista." },
+          { key: "quote", name: "Predračun", description: "Priprava predračuna z rokom." },
+          { key: "approval", name: "Potrditev stranke", description: "Stranka potrdi ceno in rok." },
+          { key: "production", name: "Izdelava", description: "Kroje/šivanje v teku." },
+          { key: "fitting", name: "Približanje", description: "Približanje in morebitne korekcije." },
+          { key: "delivery", name: "Predaja", description: "Prevzem oziroma pošiljanje." },
+          { key: "payment", name: "Plačilo", description: "Zaključek plačila." },
+          { key: "done", name: "Zaključeno", isFinal: true },
+        ],
+      },
+    ],
+    dashboardWidgets: ["activeOrders", "deadlines", "pendingApprovals", "readyForDelivery", "revenue", "customers"],
+    website: { ctaMode: "inquiry" },
+    // Meritve strank (append-only) + serije/lotsi (serijska proizvodnja) +
+    // dobavitelji (tekstil). Projekti (E2-3) ostajajo na generic+seamstress —
+    // višidnevna izdelava se tu sledi prek delovnih nalogov (workOrders).
+    extensions: ["seamstress-measurements", "batch-production", "suppliers"],
+    catalog: { seedVerticalId: "apparel" },
+  },
+
   {
     id: "generic",
     version: 1,
