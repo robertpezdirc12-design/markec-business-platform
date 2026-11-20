@@ -30,6 +30,9 @@ export const publicSl = {
   cartWithCount: (n: number) => `Košarica (${n} izdelkov)`,
   addToCart: "Dodaj v košarico",
   addToCartNamed: (name: string) => `Dodaj v košarico: ${name}`,
+  // AT feedback ob dodaji v košarico (WCAG 4.1.3 / NN/g) — napove
+  // bralniku, ker vizualne tare sprejemljive ni mogoče.
+  addedToCart: "Dodano v košarico",
   details: "Podrobnosti",
   noImage: "Brez slike",
   allServices: "Vse storitve",
@@ -101,6 +104,7 @@ export const publicEn: PublicDict = {
   cartWithCount: (n: number) => `Cart (${n} items)`,
   addToCart: "Add to cart",
   addToCartNamed: (name: string) => `Add to cart: ${name}`,
+  addedToCart: "Added to cart",
   details: "Details",
   noImage: "No image",
   allServices: "All services",

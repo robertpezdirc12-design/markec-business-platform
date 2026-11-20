@@ -1,5 +1,6 @@
 "use client"
 import { useFormatPrice } from "@/lib/currency"
+import { useEffect, useRef, useState } from "react"
 
 import {
   Card,
@@ -16,7 +17,7 @@ import {
 } from "@/components/ui/tooltip"
 import Link from "next/link"
 import Image from "next/image"
-import { ToteIcon } from "@/components/icons"
+import { ToteIcon, CheckIcon } from "@/components/icons"
 import { useCartStore } from "@/store/cart-store"
 import { useI18n } from "@/lib/i18n/context"
 
@@ -35,6 +36,12 @@ export function ProductCard({ id, name, price, category, image, hrefPrefix = "" 
   const addItem = useCartStore((state) => state.addItem)
   const { t } = useI18n()
 
+  const [added, setAdded] = useState(false)
+  const announceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (announceTimeout.current) clearTimeout(announceTimeout.current)
+  }, [])
+
   const handleAddToCart = () => {
     addItem({
       productId: id,
@@ -42,6 +49,11 @@ export function ProductCard({ id, name, price, category, image, hrefPrefix = "" 
       image: image ?? null,
       price,
     })
+    // AT + vizualni feedback: dodajanje v košarico mora biti nedvoumno
+    // (NN/g feedback / WCAG 4.1.3) — live regija stalno v DOM.
+    if (announceTimeout.current) clearTimeout(announceTimeout.current)
+    setAdded(true)
+    announceTimeout.current = setTimeout(() => setAdded(false), 1600)
   }
 
   return (
@@ -89,13 +101,18 @@ export function ProductCard({ id, name, price, category, image, hrefPrefix = "" 
                 aria-label={t.public.addToCartNamed(name)}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground"
               >
-                <ToteIcon size={16} aria-hidden />
+                {added ? <CheckIcon size={16} aria-hidden /> : <ToteIcon size={16} aria-hidden />}
               </Button>
             </TooltipTrigger>
             <TooltipContent>
               <p>{t.public.addToCart}</p>
             </TooltipContent>
           </Tooltip>
+          {/* Live regija stalno v DOM — bralnik napove "Dodano v košarico"
+              (vizualna sprememba ikone je za AT ne-vidna; WCAG 4.1.3). */}
+          <p role="status" className="sr-only" aria-live="polite">
+            {added ? t.public.addedToCart : ""}
+          </p>
         </div>
       </CardContent>
     </Card>

@@ -41,4 +41,14 @@ describe("shop/cart — AT-status med async operacijami", () => {
     expect(a).toContain("{added ? pick(locale, \"Dodano v košarico\", \"Added to cart\") : \"\"}")
     expect(a).toContain("setAdded(true)")
   })
+
+  it("landing product-card: dodajo v košarico ima AT-napoved (CheckIcon + role=status)", () => {
+    const p = read("src/components/landing/product-card.tsx")
+    expect(p).toContain('<p role="status" className="sr-only" aria-live="polite">')
+    expect(p).toContain("{added ? t.public.addedToCart : \"\"}")
+    expect(p).toContain("added ? <CheckIcon size={16} aria-hidden /> : <ToteIcon size={16} aria-hidden />")
+    const pub = read("src/lib/i18n/dict/public.ts")
+    expect(pub).toContain('addedToCart: "Dodano v košarico",')
+    expect(pub).toContain('addedToCart: "Added to cart",')
+  })
 })

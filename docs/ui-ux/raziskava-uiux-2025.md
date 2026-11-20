@@ -109,6 +109,11 @@ spremembe so označene z ✅.
   add-to-cart gumb napove "Dodano v košarico" (live regija stalno v DOM,
   vizualni pulse je za bralnik ne-viden); gift card + promo že imata
   `role="status"`. Zajeto v `tests/unit/cart-ux.test.ts`.
+- ✅ **Landing product kartice — AT feedback ob dodaji** (Baymard/NN/g):
+  klj interfoto "Dodaj v košarico" → ikona Tote → **Check** + `role="status"`
+  "Dodano v košarico" (live regija stalno v DOM, bralnik napove tudi če je
+  vizualni prehod ne-viden). Obstoječa eno-tab-stop `asChild` struktura
+  (P1 #8) ohranjena. Zajeto v `tests/unit/cart-ux.test.ts`.
 - ✅ **Performance-as-UX / bundle audit** regresija:
   `tests/unit/performance-bundle-audit.test.ts` — potrdi da težke
   (react-hook-form+zod+date-fns) kot `ReviewForm` na landing ostajajo
