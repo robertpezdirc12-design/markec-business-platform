@@ -659,11 +659,14 @@ export function BookingForm(props: BookingFormProps) {
               je EKSPPLICITNA (checkbox z pravno formulacijo); brez nje se
               garancija ne aktivira. */}
           {guarantee.available && (
-            <div className="rounded-xl border bg-muted/30 p-4">
-              <p className="text-sm font-semibold">
+            <fieldset className="rounded-xl border bg-muted/30 p-4">
+              {/* WCAG 1.3.1/4.1.2: radio grupa mora biti programatično
+                  določljiva kot ena skupina — legend je obvezen za brajalnik
+                  zaslona, da se načina pologa razbereta kot skupaj. */}
+              <legend className="text-sm font-semibold">
                 Polog — {guarantee.depositAmount.toFixed(2)}{" "}
                 {guarantee.currency}
-              </p>
+              </legend>
               <div className="mt-3 space-y-2">
                 <label className="flex cursor-pointer items-start gap-2 text-sm">
                   <input
@@ -710,7 +713,7 @@ export function BookingForm(props: BookingFormProps) {
                   </details>
                 </div>
               )}
-            </div>
+            </fieldset>
           )}
 
           {/* F5.1: promocijska koda */}

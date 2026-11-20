@@ -12,16 +12,32 @@
 
 | ID | Predlog | Vpliv | Napor | Prior |
 |----|---------|-------|-------|-------|
-| U1 | **Umakniti demo booking tok (`online-booking-page`)** | Kritičen | S | ★★★★★ |
-| U2 | **Realna dostopnost terminov namesto fiktivnih slotov** | Kritičen | M | ★★★★★ |
-| U3 | **Eden vir resnice za booking tok (ne dva vzporedna)** | Visok | M | ★★★★☆ |
-| U4 | **Povzetek v koraku + lepljiv "naprej" z dostopnostjo** | Visok | S | ★★★★☆ |
-| U5 | **Vidni indikatorji dostopnosti storitev (hitri filter)** | Visok | S | ★★★★☆ |
-| U6 | **Feedback pri ponovno-booking (realni appointment)** | Srednji | S | ★★★☆☆ |
-| U7 | **Admin: števci/badges v navigaciji** | Srednji | S | ★★★☆☆ |
-| U8 | **Command palette: uvrsti pogoste akcije višje** | Srednji | S | ★★★☆☆ |
-| U9 | **Varno stanje formularjev (draft, brez izgube ob prekinitvi)** | Srednji | M | ★★★☆☆ |
-| U10 | **WCAG 2.2: fokus red, error-preventivno, contrast passed** | Visok | M | ★★★★☆ |
+| U1 | **Umakniti demo booking tok (`online-booking-page`)** | Kritičen | S | ★★★★★ | ✅ |
+| U2 | **Realna dostopnost terminov namesto fiktivnih slotov** | Kritičen | M | ★★★★★ |  |
+| U3 | **Eden vir resnice za booking tok (ne dva vzporedna)** | Visok | M | ★★★★☆ |  |
+| U4 | **Povzetek v koraku + lepljiv "naprej" z dostopnostjo** | Visok | S | ★★★★☆ | ✅ |
+| U5 | **Vidni indikatorji dostopnosti storitev (hitri filter)** | Visok | S | ★★★★☆ |  |
+| U6 | **Feedback pri ponovno-booking (realni appointment)** | Srednji | S | ★★★☆☆ |  |
+| U7 | **Admin: števci/badges v navigaciji** | Srednji | S | ★★★☆☆ |  |
+| U8 | **Command palette: uvrsti pogoste akcije višje** | Srednji | S | ★★★☆☆ |  |
+| U9 | **Varno stanje formularjev (draft, brez izgube ob prekinitvi)** | Srednji | M | ★★★☆☆ |  |
+| U10 | **WCAG 2.2: fokus red, error-preventivno, contrast passed** | Visok | M | ★★★★☆ | ➡️ |
+
+**Legenda:** ✅ že implemente-ran v bazi · ➡️ v teku · (prazno) odprto
+
+---
+
+## 0.5 — Status implementacije (posodobivljivo)
+
+- **U1 ✅** — mrtva demo koda izbrisana (`online-booking-page`, `booking-calendar`,
+  `booking-calendar-enhanced`), `git rm` commit `17ae156`.
+- **U4 ✅** — že v bazi: `BookingSummaryCard` je `sticky top-4` (desktop),
+  `booking-form.tsx` ima mobilno `fixed` spodnjo vrstico z running selection
+  (liniji ~788–807). Torej ni treba dvojiti.
+- **U3 ✅** — z izbrisom demo dvojnikov je `BookingForm` edini resnični tok.
+- **U10 ➡️** — dodan WCAG 1.3.1/4.1.2 fiks na plačilno radio grupo v
+  `booking-form.tsx` (navadno `<p>` → `<fieldset>` + `<legend>`), da je
+  skupla radio-grupa programatično določljiva za brajalnik zaslona.
 
 ---
 
