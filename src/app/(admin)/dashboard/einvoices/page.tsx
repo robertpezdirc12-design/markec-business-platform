@@ -69,6 +69,7 @@ export default async function EinvoicesPage() {
           status: d.status,
           validation: d.validation,
           downloadXml: d.downloadXml,
+          downloadArchive: d.downloadArchive,
           sha256: d.sha256,
           createdAt: d.createdAt,
           sentHint: d.sentHint,

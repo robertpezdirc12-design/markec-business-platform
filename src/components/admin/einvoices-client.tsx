@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { downloadEinvoice, submitEinvoice, saveEinvoiceChannel } from "@/app/actions/einvoices"
+import { downloadEinvoice, submitEinvoice, saveEinvoiceChannel, exportEinvoiceArchive } from "@/app/actions/einvoices"
 
 type Row = {
   id: string
@@ -40,6 +40,7 @@ type Labels = {
   status: string
   validation: string
   downloadXml: string
+  downloadArchive: string
   sha256: string
   createdAt: string
   sentHint: string
@@ -226,6 +227,23 @@ export function EinvoicesClient({
       const res = await downloadEinvoice(row.id)
       if (!res) return
       const blob = new Blob([res.xml], { type: "application/xml" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = res.filename
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setDownloading(null)
+    }
+  }
+
+  const downloadArchive = async (row: Row) => {
+    setDownloading(row.id)
+    try {
+      const res = await exportEinvoiceArchive(row.id)
+      if (!res) return
+      const blob = new Blob([res.content], { type: "application/octet-stream" })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
@@ -527,9 +545,14 @@ export function EinvoicesClient({
                     {shortHash(r.sha256)}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <Button size="sm" variant="outline" disabled={downloading === r.id} onClick={() => download(r)}>
-                      {downloading === r.id ? "…" : labels.downloadXml}
-                    </Button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button size="sm" variant="outline" disabled={downloading === r.id} onClick={() => download(r)}>
+                        {downloading === r.id ? "…" : labels.downloadXml}
+                      </Button>
+                      <Button size="sm" variant="outline" disabled={downloading === r.id} onClick={() => downloadArchive(r)}>
+                        {downloading === r.id ? "…" : labels.downloadArchive}
+                      </Button>
+                    </div>
                   </td>
                   <td className="px-3 py-2 text-right">
                     {sent ? (

@@ -23,6 +23,7 @@ import { validateEInvoice, EInvoiceValidationResult } from "@/lib/einvoice/valid
 import { validateOfficial } from "@/lib/einvoice/official"
 import { encryptSecret, decryptSecret, redact } from "@/lib/einvoice/secrets"
 import { formatLabel } from "@/lib/einvoice/format"
+import { buildEinvoiceArchive } from "@/lib/einvoice/archive"
 import { buildProvider } from "@/lib/einvoice/providers"
 import type { SubmitPayload, ChannelCfg } from "@/lib/einvoice/channel"
 import { writeFile, mkdir } from "node:fs/promises"
@@ -257,7 +258,43 @@ export async function downloadEinvoice(einvoiceId: string): Promise<{ xml: strin
   return { xml, sha256: row.sha256, filename: `${row.docCode}.${row.kind === "CREDIT" ? "credit" : "invoice"}.xml` }
 }
 
-/** Konfiguracija kanala — SAMO vmesnik (pošiljanje v naslednji fazi). */
+/**
+ * F5.5.4.6.6 — izvozi e-račun kot samostojen arhivski paket (.earc),
+ * primeren za zakonsko hrambo (FURS e-arhiv, B2B 2027/2028). Vsebuje
+ * original XML + manifest (izdajatelj, standard, validacijski statusi) +
+ * SHA-256 kontrolno vsoto cele datoteke. Prene dobržuje integriteto shranjenega
+ * XML, preden ga zapakira.
+ */
+export async function exportEinvoiceArchive(
+  einvoiceId: string
+): Promise<{ filename: string; content: string; sha256: string } | null> {
+  const { org } = await requirePermissionOrg("finances.view")
+  const row = await prisma.eInvoice.findFirst({
+    where: { id: einvoiceId, organizationId: org.id },
+  })
+  if (!row) return null
+  const xml = Buffer.from(row.xml, "base64").toString("utf8")
+  // Preveri integriteto shranjenega XML pred pakiranjem.
+  if (sha256hex(xml) !== row.sha256) return null
+
+  const file = buildEinvoiceArchive({
+    docCode: row.docCode,
+    kind: row.kind,
+    format: row.format,
+    standardVersion: row.standardVersion,
+    validatorVersion: row.validatorVersion,
+    xmlValidatedXsd: row.xmlValidatedXsd,
+    xmlValidatedBusiness: row.xmlValidatedBusiness,
+    status: row.status,
+    sha256: row.sha256,
+    size: row.size,
+    issuedAt: null,
+    generatedAt: row.createdAt.toISOString(),
+    orgName: org.name,
+    xml,
+  })
+  return { filename: file.filename, content: file.content, sha256: file.sha256 }
+}
 export async function getEinvoiceChannels() {
   const { org } = await requirePermissionOrg("finances.view")
   return prisma.eInvoiceChannelConfig.findMany({ where: { organizationId: org.id } })
