@@ -2,9 +2,10 @@
 // F5.5.4.6.2 — SOLUGA E-RAČUNOV (server akcije).
 //
 // Generiranje e-računov (INVOICE/ADVANCE prek Document, CREDIT prek
-// CreditNote), validacija, NESPREMENLJIV arhiv (SHA-256), prenos.
-// Pošiljanje/prejemanje NISO implementirana — le podatkovna podlaga in
-// vmesnik za poznejše kanale.
+// CreditNote), validacija, NESPREMENLJIV arhiv (SHA-256), prenos in
+// POŠILJANJE na ponudnika e-poti (direct HTTP / SaaS posrednik).
+// Prejemanje (povratna sporočila UJP/PEPPOL) je nadgrajeno prek
+// EInvoiceReceipt in EInvoiceDeliveryEvent.
 // ============================================================
 
 "use server"
@@ -22,6 +23,8 @@ import { validateEInvoice, EInvoiceValidationResult } from "@/lib/einvoice/valid
 import { validateOfficial } from "@/lib/einvoice/official"
 import { encryptSecret, decryptSecret, redact } from "@/lib/einvoice/secrets"
 import { formatLabel } from "@/lib/einvoice/format"
+import { buildProvider } from "@/lib/einvoice/providers"
+import type { SubmitPayload, ChannelCfg } from "@/lib/einvoice/channel"
 import { writeFile, mkdir } from "node:fs/promises"
 import * as path from "node:path"
 
@@ -328,4 +331,113 @@ export async function readChannelCredentials(channel: string): Promise<Record<st
   const dec = decryptSecret(row?.encryptedSecret ?? null)
   if (!dec) return null
   try { return JSON.parse(dec) } catch { return null }
+}
+
+/**
+ * F5.5.4.6.4 — POŠLJI NESPREMENLJIVO ARHIVIRAN e-račun na ponudnika e-poti.
+ *
+ * Bere arhiv iz eInvoice (SHA-256 preverjen), izgradi SubmitPayload, pokliče
+ * provider.submit() (direct HTTP, idempotentno prek Idempotency-Key) in zapiše:
+ *   • EInvoiceDeliveryEvent — SUBMITTED / DELIVERED / FAILED z opisom
+ *   • EInvoiceReceipt       — DELIVERY_ACK ob 2xx, sicer FAILURE
+ *
+ * Pošiljanje zahteva `finances.documents.manage` (močnejša od branja) in kanal
+ * z nastavljeno `providerEndpoint`. Ponovni poskus istega e-računa je
+ * IDEMPOTENTEN — vrača obstoječe stanje brez novega omrežnega klica.
+ */
+export async function submitEinvoice(einvoiceId: string, channel: string): Promise<{
+  ok: boolean
+  error?: string
+  state?: string
+  alreadySubmitted?: boolean
+}> {
+  const { org, session } = await requirePermissionOrg("finances.documents.manage")
+
+  const row = await prisma.eInvoice.findFirst({
+    where: { id: einvoiceId, organizationId: org.id },
+    include: { document: true },
+  })
+  if (!row) return { ok: false, error: "E-račun ne obstaja." }
+
+  // Idempotenca: že poslan → vrni obstoječe, brez novega klica.
+  if (row.status === "DELIVERED" || row.status === "SENT") {
+    return { ok: true, state: row.status, alreadySubmitted: true }
+  }
+
+  // Nespremenljivost: preverimo SHA-256 arhivirane vsebine.
+  const xml = Buffer.from(row.xml, "base64").toString("utf8")
+  if (sha256hex(xml) !== row.sha256) {
+    return { ok: false, error: "Arhiv je poškodovan (SHA-256 neskladje)." }
+  }
+
+  // Naslov prejemnika (elektronska točka kupca) pride iz živega Customer,
+  // vezanega na izvorni dokument — OLJP/PEPPOL naslavljajo po EAS + ID.
+  let recipientId: string | undefined
+  if (row.document?.customerId) {
+    const customer = await prisma.customer.findFirst({
+      where: { id: row.document.customerId, organizationId: org.id },
+    })
+    recipientId = customer?.electronicId ?? undefined
+  }
+
+  const provider = buildProvider(channel)
+  const credentials = await readChannelCredentials(channel)
+  const payload: SubmitPayload = {
+    einvoiceId: row.id,
+    organizationId: org.id,
+    docCode: row.docCode,
+    format: row.format,
+    xml,
+    xmlSha256: row.sha256,
+    recipientId,
+  }
+  const channelCfg = await prisma.eInvoiceChannelConfig.findFirst({
+    where: { organizationId: org.id, channel },
+  })
+  const submitCfg: ChannelCfg = {
+    id: channelCfg?.id ?? channel,
+    organizationId: org.id,
+    channel,
+    providerEndpoint: channelCfg?.providerEndpoint ?? null,
+    credentials: credentials ?? {},
+    config: (channelCfg?.config as Record<string, unknown>) ?? {},
+  }
+
+  const result = await provider.submit(org.id, submitCfg, payload)
+  const state = result.accepted ? ("SENT" as const) : ("FAILED" as const)
+
+  await prisma.$transaction(async (tx) => {
+    await tx.eInvoice.update({ where: { id: row.id }, data: { status: state } })
+    await tx.eInvoiceDeliveryEvent.create({
+      data: {
+        organizationId: org.id,
+        einvoiceId: row.id,
+        kind: state === "FAILED" ? "FAILED" : "SENT",
+        message:
+          result.errors.length > 0
+            ? `Pošiljanje prek '${channel}': ${result.errors.join("; ")}`
+            : result.providerMessageId
+              ? `E-račun poslan prek '${channel}' (${provider.label}). Provider: ${result.providerMessageId}`
+              : `E-račun poslan prek '${channel}' (${provider.label}).`,
+        actorUserId: session?.user?.id ?? null,
+      },
+    })
+    await tx.eInvoiceReceipt.create({
+      data: {
+        organizationId: org.id,
+        einvoiceId: row.id,
+        kind: state === "SENT" ? "DELIVERY_ACK" : "FAILURE",
+        status: state,
+        message: result.errors.length ? result.errors.join("; ") : null,
+        data: result.providerMessageId ? Buffer.from(result.providerMessageId).toString("base64") : null,
+        sha256: result.providerMessageId ? sha256hex(result.providerMessageId) : null,
+      },
+    })
+  })
+
+  revalidatePath("/dashboard/einvoices")
+  if (state === "FAILED") {
+    return { ok: false, error: result.errors.join("; ") || "Pošiljanje ni uspelo." }
+  }
+  return { ok: true, state }
 }

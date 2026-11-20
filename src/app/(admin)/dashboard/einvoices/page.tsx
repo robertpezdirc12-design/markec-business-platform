@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { requirePagePermission } from "@/lib/auth/guards"
 import { getServerI18n } from "@/lib/i18n/server"
-import { listEinvoices } from "@/app/actions/einvoices"
+import { listEinvoices, listEinvoiceChannelsRedacted } from "@/app/actions/einvoices"
 import { formatLabel } from "@/lib/einvoice/format"
 import { EinvoicesClient } from "@/components/admin/einvoices-client"
 
@@ -9,8 +9,17 @@ export const metadata = { title: "Elektronski računi" }
 
 export default async function EinvoicesPage() {
   await requirePagePermission("finances.view")
-  const [{ t }, rows] = await Promise.all([getServerI18n(), listEinvoices()])
+  const [{ t }, rows, channels] = await Promise.all([
+    getServerI18n(),
+    listEinvoices(),
+    listEinvoiceChannelsRedacted(),
+  ])
   const d = t.einvoices
+
+  // Za pošiljanje ponudimo SAMO kanale z nastavljeno potjo in omogočene.
+  const sendableChannels = channels
+    .filter((c) => c.status === "ENABLED" && Boolean(c.providerEndpoint))
+    .map((c) => ({ id: c.channel, label: c.label || c.channel }))
 
   const kindLabel = (k: string) =>
     k === "ADVANCE" ? d.kindAdvance : k === "CREDIT" ? d.kindCredit : d.kindInvoice
@@ -23,6 +32,7 @@ export default async function EinvoicesPage() {
       </div>
 
       <EinvoicesClient
+        channels={sendableChannels}
         rows={rows.map((r) => ({
           id: r.id,
           docCode: r.docCode,
@@ -66,6 +76,14 @@ export default async function EinvoicesPage() {
           peppolPass: d.peppolPass,
           xsdFail: d.xsdFail,
           peppolFail: d.peppolFail,
+          send: d.send,
+          sendTo: d.sendTo,
+          sending: d.sending,
+          sentState: d.sentState,
+          failedSend: d.failedSend,
+          alreadySent: d.alreadySent,
+          needsChannel: d.needsChannel,
+          chooseChannel: d.chooseChannel,
         }}
       />
       <Card>

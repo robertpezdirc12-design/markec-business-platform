@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { downloadEinvoice } from "@/app/actions/einvoices"
+import { downloadEinvoice, submitEinvoice } from "@/app/actions/einvoices"
 
 type Row = {
   id: string
@@ -49,6 +49,15 @@ type Labels = {
   peppolPass: string
   xsdFail: string
   peppolFail: string
+  // F5.5.4.6.4 — pošiljanje
+  send: string
+  sendTo: string
+  sending: string
+  sentState: string
+  failedSend: string
+  alreadySent: string
+  needsChannel: string
+  chooseChannel: string
 }
 
 function shortHash(h: string): string {
@@ -81,8 +90,19 @@ function validatePill(r: Row, l: Labels): { text: string; cls: string } {
   return { text: l.notValidated, cls: "bg-amber-500/15 text-amber-600" }
 }
 
-export function EinvoicesClient({ rows, labels }: { rows: Row[]; labels: Labels }) {
+export function EinvoicesClient({
+  rows,
+  labels,
+  channels,
+}: {
+  rows: Row[]
+  labels: Labels
+  channels: { id: string; label: string }[]
+}) {
   const [downloading, setDownloading] = useState<string | null>(null)
+  const [sendingId, setSendingId] = useState<string | null>(null)
+  const [channel, setChannel] = useState<string>("")
+  const [notice, setNotice] = useState<{ kind: "ok" | "err"; text: string } | null>(null)
 
   const download = async (row: Row) => {
     setDownloading(row.id)
@@ -101,6 +121,33 @@ export function EinvoicesClient({ rows, labels }: { rows: Row[]; labels: Labels 
     }
   }
 
+  const doSend = async (row: Row) => {
+    const ch = channel || channels[0]?.id
+    if (!ch) {
+      setNotice({ kind: "err", text: labels.needsChannel })
+      return
+    }
+    setSendingId(row.id)
+    setNotice(null)
+    try {
+      const res = await submitEinvoice(row.id, ch)
+      if (res.ok) {
+        setNotice({ kind: "ok", text: res.alreadySubmitted ? labels.alreadySent : labels.sentState })
+        // Po osvežitvi statusa preprosto preberi — revalidatePath na strežniku
+        // preobrusi podatke; lokalno status pustimo isti, iz strani jo sproži owner.
+        row.status = res.state ?? row.status
+        if (res.state === "FAILED") setNotice({ kind: "err", text: res.error ?? labels.failedSend })
+        else if (res.state === "SENT" || res.state === "DELIVERED") setNotice({ kind: "ok", text: labels.sentState })
+      } else {
+        setNotice({ kind: "err", text: res.error ?? labels.failedSend })
+      }
+    } catch {
+      setNotice({ kind: "err", text: labels.failedSend })
+    } finally {
+      setSendingId(null)
+    }
+  }
+
   if (rows.length === 0) {
     return (
       <div className="rounded-lg border p-8 text-center text-muted-foreground">
@@ -112,6 +159,29 @@ export function EinvoicesClient({ rows, labels }: { rows: Row[]; labels: Labels 
 
   return (
     <div className="rounded-lg border">
+      {notice ? (
+        <div
+          className={`px-3 py-2 text-sm ${notice.kind === "ok" ? "bg-emerald-500/10 text-emerald-700" : "bg-red-500/10 text-red-700"}`}
+        >
+          {notice.text}
+        </div>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
+        <span className="text-xs text-muted-foreground">{labels.sendTo}:</span>
+        <select
+          value={channel}
+          onChange={(e) => setChannel(e.target.value)}
+          className="rounded border bg-background px-2 py-1 text-sm"
+          aria-label={labels.chooseChannel}
+        >
+          {channels.length === 0 ? <option value="">{labels.needsChannel}</option> : null}
+          {channels.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
@@ -123,19 +193,21 @@ export function EinvoicesClient({ rows, labels }: { rows: Row[]; labels: Labels 
               <th className="px-3 py-2">{labels.validation}</th>
               <th className="hidden px-3 py-2 lg:table-cell">{labels.sha256}</th>
               <th className="px-3 py-2 text-right">{labels.downloadXml}</th>
+              <th className="px-3 py-2 text-right">{labels.sendTo}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {rows.map((r) => {
               const pill = validatePill(r, labels)
               const st = stages(r, labels)
+              const sent = r.status === "SENT" || r.status === "DELIVERED"
               return (
                 <tr key={r.id} className="align-top">
                   <td className="px-3 py-2 font-mono text-xs">{r.docCode}</td>
                   <td className="hidden px-3 py-2 sm:table-cell">{r.kindLabel}</td>
                   <td className="hidden px-3 py-2 md:table-cell text-xs">{r.format}</td>
                   <td className="px-3 py-2">
-                    <span className={`rounded px-1.5 py-0.5 text-xs ${r.status === "VALIDATED" ? "bg-emerald-500/15 text-emerald-600" : r.status === "INVALID" ? "bg-red-500/15 text-red-600" : "bg-amber-500/15 text-amber-600"}`}>
+                    <span className={`rounded px-1.5 py-0.5 text-xs ${sent ? "bg-emerald-500/15 text-emerald-600" : r.status === "FAILED" ? "bg-red-500/15 text-red-600" : r.status === "VALIDATED" ? "bg-emerald-500/15 text-emerald-600" : "bg-amber-500/15 text-amber-600"}`}>
                       {r.status}
                     </span>
                     {r.standardVersion ? (
@@ -147,7 +219,6 @@ export function EinvoicesClient({ rows, labels }: { rows: Row[]; labels: Labels 
                     {!r.businessOk && r.validationMessages ? (
                       <span className="block mt-1 text-[10px] text-amber-600">{r.validationMessages.slice(0, 70)}…</span>
                     ) : null}
-                    {/* stopnje — jasna ločitev stanj */}
                     <div className="mt-2 space-y-1">
                       {st.map((sg) => (
                         <div key={sg.label} className="flex items-center gap-1.5">
@@ -166,6 +237,15 @@ export function EinvoicesClient({ rows, labels }: { rows: Row[]; labels: Labels 
                     <Button size="sm" variant="outline" disabled={downloading === r.id} onClick={() => download(r)}>
                       {downloading === r.id ? "…" : labels.downloadXml}
                     </Button>
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    {sent ? (
+                      <span className="text-xs text-emerald-600">{labels.sentState}</span>
+                    ) : (
+                      <Button size="sm" disabled={sendingId === r.id || channels.length === 0} onClick={() => doSend(r)}>
+                        {sendingId === r.id ? labels.sending : labels.send}
+                      </Button>
+                    )}
                   </td>
                 </tr>
               )

@@ -37,6 +37,7 @@ import {
   generateEinvoice,
   downloadEinvoice,
   listEinvoices,
+  submitEinvoice,
 } from "@/app/actions/einvoices"
 import { EInvoiceFormat } from "@/lib/einvoice/model"
 import { isWellFormedXml } from "@/lib/einvoice/validate"
@@ -243,5 +244,109 @@ describe("F5.5.4.6.2 — arhiv, izolacija, org-scoped", () => {
     expect(dl2!.xml).not.toContain("POVSEM DRUGA")
     // Povrni kupca (za cleaned druge teste).
     await prisma.customer.update({ where: { id: CUST }, data: { legalName: "Ana Novak s.p.", vatId: "SI87654321", street: "Trg 1" } })
+  })
+})
+
+describe("F5.5.4.6.4 — oddaja e-računa (submitEinvoice)", () => {
+  async function seedDirectChannel() {
+    await (prisma as any).eInvoiceChannelConfig.deleteMany({ where: { organizationId: ORGA, channel: "direct" } }).catch(() => {})
+    await (prisma as any).eInvoiceChannelConfig.create({
+      data: {
+        organizationId: ORGA,
+        channel: "direct",
+        label: "Partner proxy",
+        status: "ENABLED",
+        providerEndpoint: "https://partner.local/api/submit",
+        config: {},
+        encryptedSecret: "",
+      },
+    })
+  }
+
+  it("2xx → status SENT, DeliveryEvent + DELIVERY_ACK receipt, provider ID", async () => {
+    // DirectHttpProvider prebere globalni fetch ob klicu (vi.stubGlobal).
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response("submitted", { status: 202, headers: { "x-provider-message-id": "pm-1" } }) as Response
+    ))
+    const inv = await mk("INVOICE", 100)
+    const gen = await generateEinvoice(inv, "UBL21_PEPPOL_3" as EInvoiceFormat)
+    expect(gen.ok).toBe(true)
+    await seedDirectChannel()
+
+    const res = await submitEinvoice(gen.id!, "direct")
+    expect(res.ok).toBe(true)
+    expect(res.state).toBe("SENT")
+
+    const row = await prisma.eInvoice.findUnique({ where: { id: gen.id! } })
+    expect(row!.status).toBe("SENT")
+
+    const evts = await prisma.eInvoiceDeliveryEvent.findMany({
+      where: { einvoiceId: gen.id!, organizationId: ORGA },
+    })
+    expect(evts.map((e) => e.kind)).toContain("SENT")
+
+    const rcpts = await prisma.eInvoiceReceipt.findMany({
+      where: { einvoiceId: gen.id!, organizationId: ORGA },
+      orderBy: { receivedAt: "desc" },
+    })
+    expect(rcpts[0].kind).toBe("DELIVERY_ACK")
+    expect(rcpts[0].status).toBe("SENT")
+  })
+
+  it("idempotenca: ponovni submit istega e-računa ne pošlje znova", async () => {
+    const spy = vi.fn(async () => new Response("ok", { status: 200 }))
+    vi.stubGlobal("fetch", spy)
+    const inv = await mk("INVOICE", 60)
+    const gen = await generateEinvoice(inv, "ESLOG_2" as EInvoiceFormat)
+    await seedDirectChannel()
+
+    const first = await submitEinvoice(gen.id!, "direct")
+    expect(first.ok).toBe(true)
+    expect(spy).toHaveBeenCalledTimes(1)
+
+    const second = await submitEinvoice(gen.id!, "direct")
+    expect(second.ok).toBe(true)
+    expect(second.alreadySubmitted).toBe(true)
+    expect(spy).toHaveBeenCalledTimes(1) // ni novega omrežnega klica
+  })
+
+  it("brez providerEndpoint → FAILED z CHANNEL_NOT_READY, brez omrežja", async () => {
+    const spy = vi.fn()
+    vi.stubGlobal("fetch", spy)
+    const inv = await mk("INVOICE", 40)
+    const gen = await generateEinvoice(inv, "UBL21_PEPPOL_3" as EInvoiceFormat)
+    // Najprej izbrišemo morebitni obstoječ 'direct' kanal (unique org+channel),
+    // nato ustvarimo brezpotne tistega, da submit pade v CHANNEL_NOT_READY.
+    await (prisma as any).eInvoiceChannelConfig.deleteMany({ where: { organizationId: ORGA, channel: "direct" } }).catch(() => {})
+    await (prisma as any).eInvoiceChannelConfig.create({
+      data: {
+        organizationId: ORGA,
+        channel: "direct",
+        label: "brez poti",
+        status: "ENABLED",
+        providerEndpoint: null,
+        config: {},
+        encryptedSecret: "",
+      },
+    })
+
+    const res = await submitEinvoice(gen.id!, "direct")
+    expect(res.ok).toBe(false)
+    expect(res.error).toContain("CHANNEL_NOT_READY")
+    expect(spy).not.toHaveBeenCalled()
+    const row = await prisma.eInvoice.findUnique({ where: { id: gen.id! } })
+    expect(row!.status).toBe("FAILED")
+  })
+
+  it("5xx → FAILED po retrijih", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("server error", { status: 500 })))
+    await seedDirectChannel()
+    const inv = await mk("INVOICE", 30)
+    const gen = await generateEinvoice(inv, "UBL21_PEPPOL_3" as EInvoiceFormat)
+    const res = await submitEinvoice(gen.id!, "direct")
+    expect(res.ok).toBe(false)
+    expect(res.error).toContain("HTTP 500")
+    const row = await prisma.eInvoice.findUnique({ where: { id: gen.id! } })
+    expect(row!.status).toBe("FAILED")
   })
 })

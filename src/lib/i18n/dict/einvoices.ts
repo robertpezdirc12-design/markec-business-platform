@@ -38,6 +38,17 @@ export const einvoicesSl = {
   peppolPass: "PEPPOL/e-SLOG skladen",
   xsdFail: "XSD napaka",
   peppolFail: "PEPPOL/e-SLOG napaka",
+  // F5.5.4.6.4 — pošiljanje na ponudnika e-poti
+  send: "Pošlji na e-pot",
+  sendTo: "Pošlji prek kanala",
+  sending: "Pošiljanje…",
+  sent: "Poslan",
+  sentState: "Poslano",
+  failedSend: "Pošiljanje ni uspelo",
+  alreadySent: "Že poslan",
+  needsChannel: "Ni konfiguriranega kanala za pošiljanje.",
+  chooseChannel: "Izberi kanal",
+  noChannelConfigured: "Ni kanala z nastavljenim providerEndpoint.",
 }
 
 export const einvoicesEn = {
@@ -80,4 +91,15 @@ export const einvoicesEn = {
   peppolPass: "PEPPOL/e-SLOG compliant",
   xsdFail: "XSD error",
   peppolFail: "PEPPOL/e-SLOG error",
+  // F5.5.4.6.4 — send to e-path provider
+  send: "Send via e-path",
+  sendTo: "Send via channel",
+  sending: "Sending…",
+  sent: "Sent",
+  sentState: "Sent",
+  failedSend: "Sending failed",
+  alreadySent: "Already sent",
+  needsChannel: "No sending channel configured.",
+  chooseChannel: "Choose channel",
+  noChannelConfigured: "No channel with providerEndpoint configured.",
 }
