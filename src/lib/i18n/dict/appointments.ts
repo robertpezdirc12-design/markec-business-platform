@@ -147,6 +147,10 @@ export const appointmentsSl = {
     create: "Ustvari termin",
     createFailed: "Ustvarjanje termina ni uspelo",
     createFailedRetry: "Ustvarjanje termina ni uspelo. Poskusite znova.",
+    draftRestored: "Obnovljen neshranjen osnutek terminov",
+    draftRestoredHint: "Podatki iz prejšnjega obiska so bili obnovljeni.",
+    draftDiscard: "Zavrzi osnutek",
+    draftDismiss: "Zapri",
   },
 
   // #90: čakalna lista — /dashboard/waitlist
@@ -335,6 +339,10 @@ export const appointmentsEn: AppointmentsDict = {
     create: "Create Appointment",
     createFailed: "Failed to create appointment",
     createFailedRetry: "Failed to create appointment. Please try again.",
+    draftRestored: "Unsaved appointment draft restored",
+    draftRestoredHint: "Your data from the last session was recovered.",
+    draftDiscard: "Discard draft",
+    draftDismiss: "Dismiss",
   },
 
   // #90: waitlist — /dashboard/waitlist

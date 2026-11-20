@@ -76,6 +76,7 @@ export default function AdminAppointmentForm({
     handleSubmit,
     watch,
     setValue,
+    reset,
     formState: { errors },
   } = useForm<AdminAppointmentInput>({
     resolver: zodResolver(adminAppointmentSchema),
@@ -93,6 +94,61 @@ export default function AdminAppointmentForm({
   const selectedServiceId = watch("serviceId")
   const selectedStaffId = watch("staffId")
   const selectedDate = watch("date")
+
+  // ── U9: varno stanje formularja (draft) ───────────────────────
+  // Shrani auto-draft v versioned localStorage, tako da prekinitev (osvežitev,
+  // zaprto okno, pomotni odhod) termina ne izgubi podatkov. Shranjuje se
+  // debounced (~600 ms) na vsako spremembo; ob ponovnem vstopu se osnutek
+  // obnovi kot zavesten "Povrni" strip (dismissible) — nikoli tiho.
+  const DRAFT_KEY = "mec:admin-appt-draft:v1"
+  const [draftVisible, setDraftVisible] = useState(false)
+
+  // Obnovi obstoječi osnutek ob prvi namestitvi obrazca.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      const raw = window.localStorage.getItem(DRAFT_KEY)
+      if (!raw) return
+      const saved = JSON.parse(raw) as Partial<AdminAppointmentInput> & {
+        date?: string | null
+      }
+      const restored = { ...saved, date: saved.date ? new Date(saved.date) : undefined } as AdminAppointmentInput
+      if (Object.keys(saved).length > 0) {
+        reset(restored)
+        setDraftVisible(true)
+      }
+    } catch {
+      // pokvarjen/neberljiv osnutek — ignoriraj, ne kvarimo obrazca
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Auto-draft: debounced write na localStorage ob vsaki spremembi vrednosti.
+  useEffect(() => {
+    let saveTimer: number | null = null
+    const subscription = watch((values) => {
+      // Debounce ~600 ms — shrani na mir (dlje, kot je nehal tipkati).
+      if (saveTimer) window.clearTimeout(saveTimer)
+      saveTimer = window.setTimeout(() => {
+        try {
+          const { date, ...rest } = values as Partial<AdminAppointmentInput> & {
+            date?: Date | null
+          }
+          window.localStorage.setItem(
+            DRAFT_KEY,
+            JSON.stringify({ ...rest, date: date ? (date as Date).toISOString() : null })
+          )
+        } catch {
+          /* lokalno shranjevanje lahko pade (npr. private mode) — ignoriraj */
+        }
+      }, 600)
+    })
+    return () => {
+      if (saveTimer) window.clearTimeout(saveTimer)
+      subscription.unsubscribe()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Get selected service duration
   const selectedService = services.find((s) => s.id === selectedServiceId)
@@ -195,6 +251,11 @@ export default function AdminAppointmentForm({
       })
 
       if (result.success) {
+        try {
+          window.localStorage.removeItem(DRAFT_KEY)
+        } catch {
+          /* ignoriraj — draft je best-effort */
+        }
         router.push("/dashboard/appointments")
       } else {
         alert(result.error || t.appointments.form.createFailed)
@@ -207,8 +268,50 @@ export default function AdminAppointmentForm({
     }
   }
 
+  const discardDraft = () => {
+    try {
+      window.localStorage.removeItem(DRAFT_KEY)
+    } catch {
+      /* ignoriraj */
+    }
+    setDraftVisible(false)
+  }
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {/* U9 — obnovljen neshranjen osnutek: zavedno, dismissal strip */}
+      {draftVisible && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3"
+        >
+          <div className="flex flex-wrap items-center gap-x-2">
+            <span className="text-sm font-medium">{t.appointments.form.draftRestored}</span>
+            <span className="text-sm text-muted-foreground">
+              {t.appointments.form.draftRestoredHint}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={discardDraft}
+            >
+              {t.appointments.form.draftDiscard}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDraftVisible(false)}
+            >
+              {t.appointments.form.draftDismiss}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Existing Customer Selection (optional) */}
       {customers && customers.length > 0 && (
         <div className="space-y-2">

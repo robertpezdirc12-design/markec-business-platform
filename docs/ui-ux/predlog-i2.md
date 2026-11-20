@@ -20,7 +20,7 @@
 | U6 | **Feedback pri ponovno-booking (realni appointment)** | Srednji | S | ★★★☆☆ | ✅ |
 | U7 | **Admin: števci/badges v navigaciji** | Srednji | S | ★★★☆☆ | ✅ |
 | U8 | **Command palette: uvrsti pogoste akcije višje** | Srednji | S | ★★★☆☆ | ✅ |
-| U9 | **Varno stanje formularjev (draft, brez izgube ob prekinitvi)** | Srednji | M | ★★★☆☆ |  |
+| U9 | **Varno stanje formularjev (draft, brez izgube ob prekinitvi)** | Srednji | M | ★★★☆☆ | ✅ |
 | U10 | **WCAG 2.2: fokus red, error-preventivno, contrast passed** | Visok | M | ★★★★☆ | ➡️ |
 
 **Legenda:** ✅ že implemente-ran v bazi · ➡️ v teku · (prazno) odprto
@@ -59,6 +59,12 @@
   obisk (N× pri Ime)" ko je `visitCount > 0`. Brez prijave se število ne
   izpostavlja; štetje je best-effort (`catch`) — ne sme vreči rezervacije.
   i18n `booking.revisit`/`booking.revisitCount`. Regresija: `tests/unit/revisit-feedback.test.ts`.
+- **U9 ✅** — `admin-appointment-form.tsx` auto-draftira v versioned localStorage
+  (`mec:admin-appt-draft:v1`, debounced ~600 ms) ob vsaki spremembi obrazca;
+  ob ponovnem vstopu obnovi osnutek kot zavedno, dismissal "Povrni" strip
+  (`role="status"`), s "Zavrzi osnutek"/"Zapri"; ključ se izbriše po uspešnem
+  ustvarjanju. Vse safe (`try/catch`). i18n `appointments.form.draft*`.
+  Regresija: `tests/unit/admin-appointment-draft.test.ts`.
 
 ---
 
@@ -206,6 +212,17 @@ renderira prvega. Regresija: `tests/unit/command-palette-mru.test.ts` (5 testov)
 **Kaj:** pri dolgih admin obrazcih (npr. new appointment, invoicer, product)
 — auto-draft v localStorage/sessionStorage z "Povrni" ipd., da se ob
 prekinitvi temnega kadra izguba podatkov prepreči. Vključiti v redesign-existing-projects.
+
+**Implementirano ✅ (admin novi termin).** `admin-appointment-form.tsx`
+auto-draftira v versioned localStorage (`mec:admin-appt-draft:v1`) debounced
+(~600 ms) ob vsaki spremembi obrazca (RHF `watch((values)=>)` + timer). Ob
+ponovnem vstopu se osnutek ZAVESTNO obnovi — `reset` + inerten, dismissal
+strip `role="status"` **"Obnovljen neshranjen osnutek terminov"** z gumboma
+"Zavrzi osnutek" (isti `DRAFT_KEY` remove) in "Zapri"; nikoli tihega
+prepisovanja. Po uspešnem ustvarjanju se ključ izbriše. Vse v
+`try/catch` — morebitni padec localStorage (private mode) ne kvari obrazca.
+i18n `appointments.form.draft*`. Regresija:
+`tests/unit/admin-appointment-draft.test.ts` (5 testov).
 
 ---
 
