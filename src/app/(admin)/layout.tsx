@@ -1,4 +1,3 @@
-import { AdminSidebar } from "@/components/admin/sidebar"
 import { AdminHeader } from "@/components/admin/header"
 import { PermissionsProvider } from "@/components/admin/permissions-provider"
 import { PushSetup } from "@/components/dashboard/push-setup"
@@ -126,13 +125,6 @@ export default async function AdminLayout({
         <div className="admin-sans-headings bg-background flex h-screen overflow-hidden">
           {/* #99: registracija service workerja (push kanal, tiha napaka) */}
           <PushSetup />
-          {/* Desktop Sidebar */}
-          <AdminSidebar
-            organizations={organizations}
-            currentOrganizationId={org?.id ?? null}
-            currentOrgName={currentOrgName}
-            currentVerticalLabel={currentVerticalLabel}
-          />
 
           {/* Main content area */}
           <div className="flex flex-1 flex-col overflow-hidden">

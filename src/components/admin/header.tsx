@@ -91,12 +91,13 @@ export function AdminHeader({
     <>
       <header className="bg-card sticky top-0 z-40 shrink-0 shadow-sm">
         <div className="flex h-16 items-center justify-between px-4 sm:px-6">
-          {/* Left side - Mobile menu + identity */}
+          {/* Left side - Menu (drawer) + identity — navigacija je v drsnem meniju
+              (drawer) na vseh velikostih; leva stran je prosta za delovno površino. */}
           <div className="flex min-w-0 items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden"
+              className="shrink-0"
               onClick={() => setMobileMenuOpen(true)}
             >
               <MenuIcon size={20} />
@@ -252,6 +253,8 @@ export function AdminHeader({
         onOpenChange={setMobileMenuOpen}
         organizations={organizations}
         currentOrganizationId={currentOrganizationId}
+        currentOrgName={currentOrgName}
+        currentVerticalLabel={currentVerticalLabel}
       />
     </>
   )
