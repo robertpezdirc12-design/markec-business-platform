@@ -75,9 +75,10 @@ spremembe so označene z ✅.
 ## Učinek raziskave — ostane (roadmap)
 
 - ✅ Autofill shema regression zdaj pokriva **booking, auth (login/register),
-  in cart guest-checkout** (name/email/tel/street-address + type/inputMode).
-  Ostane: headerski test na preostalih manjših formah (inquiry, walk-in),
-  ki pa so bile ročno pregledane in so že pravne.
+  cart guest-checkout** in **javne forme (inquiry + walk-in)**
+  (name/email/tel + type/inputMode). Celoten contact-formni del je avditan —
+  med avditom dodana manjkajoča `inputMode="tel"/"email"` na inquiry form in
+  `type="tel"` na walk-in.
 - A/B: krajša oblika (dodatni podatki na "povleci" pozneje) — hkrati paziti,
   da polog 3.3.4 ostaja.
 - Navodilo datum/čas: parse potrebra bodočnosti (NN/g "do not ask for info

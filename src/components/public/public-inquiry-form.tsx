@@ -168,6 +168,7 @@ export function PublicInquiryForm({
           <Input
             id={`${form.id}-email`}
             type="email"
+            inputMode="email"
             value={contact.email}
             onChange={(e) => setContact((c) => ({ ...c, email: e.target.value }))}
             placeholder="ana@primer.si"
@@ -179,6 +180,7 @@ export function PublicInquiryForm({
           <Input
             id={`${form.id}-phone`}
             type="tel"
+            inputMode="tel"
             value={contact.phone}
             onChange={(e) => setContact((c) => ({ ...c, phone: e.target.value }))}
             placeholder="040 123 456"

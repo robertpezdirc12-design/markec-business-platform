@@ -56,4 +56,18 @@ describe("NN/g — browser autofill shema (test the schema)", () => {
     expect(src).toContain('autoComplete="tel"')
     expect(src).toContain('autoComplete="street-address"')
   })
+
+  it("javne forme (inquiry + walk-in) imajo pravilno tipkovnico in sheme", () => {
+    const inquiry = read("src/components/public/public-inquiry-form.tsx")
+    // email in tel imata type + inputMode (mobilna numerična/email tipkovnica)
+    expect(inquiry).toContain('type="email"')
+    expect(inquiry).toContain('inputMode="email"')
+    expect(inquiry).toContain('type="tel"')
+    expect(inquiry).toContain('inputMode="tel"')
+    const walkIn = read("src/components/public/walk-in-public.tsx")
+    expect(walkIn).toContain('autoComplete="name"')
+    expect(walkIn).toContain('type="tel"')
+    expect(walkIn).toContain('inputMode="tel"')
+    expect(walkIn).toContain('autoComplete="tel"')
+  })
 })

@@ -177,6 +177,7 @@ export function WalkInPublicClient() {
           <Label htmlFor="walkin-phone">Telefon (neobvezno)</Label>
           <Input
             id="walkin-phone"
+            type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="npr. 040 123 456"
