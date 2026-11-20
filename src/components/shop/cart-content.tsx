@@ -783,6 +783,13 @@ export function CartContent() {
                   pick(locale, "Zaključi nakup", "Checkout")
                 )}
               </Button>
+              {/* AT status med async checkout: live region v DOM od začetka →
+                  bralnik napove "Ustvarjam plačilno sejo…" (WCAG 4.1.3, NN/g). */}
+              <p role="status" className="sr-only" aria-live="polite">
+                {isCheckingOut
+                  ? pick(locale, "Ustvarjam plačilno sejo…", "Creating payment session…")
+                  : ""}
+              </p>
               {/* P1 #45: najemniški prefiks — glej zgoraj. */}
               <Button variant="outline" className="w-full" asChild>
                 <Link href={`${orgPrefix}/shop`}>
