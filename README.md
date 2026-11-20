@@ -36,13 +36,15 @@ Univerzalna, modularna večnajemniška poslovna platforma za samostojne ponudnik
 ## Ključne zmožnosti
 
 ### Profilni motor in dejavnosti (EPIC #1)
-- **11 profilov dejavnosti:** lepotni salon, frizer, barber, nohti, kozmetika, masaža, epilacija, šiviljstvo, vulkanizer/avtoservis, čebelarstvo ter univerzalni profil.
-- **Profil določa izkušnjo:** module, terminologijo (SL/EN), obrazce, delovne procese, dashboard widgete, javni CTA način (`booking | inquiry | order | quote`) in razširitve.
-- **Matrika zmožnosti `required | optional | disabled`:** nepomembni moduli se ne izrisujejo (npr. čebelarstvo brez terminov/delovnih nalog tam, kjer niso smiselni).
+- **36 profilov dejavnosti:** 12 poimenovanih (lepotni salon, frizer, barber, nohti, kozmetika, masaža, epilacija, tetoviranje, šiviljstvo, vulkanizer/avtoservis, čebelarstvo, univerzalni) + **24 SKD-sekcij** (trgovina, kmetijstvo, gozdarstvo, transport, gostinstvo, javna uprava, obrt, gradbeništvo, znanost in druge). Na te profile se preslika **~500 SKD dejavnosti** — novi panogi ni treba pisati kode.
+- **Profil določa izkušnjo:** privzeto vklopljene (jedrne) module, terminologijo (SL/EN), obrazce, delovne procese, dashboard widgete, javni CTA način (`booking | inquiry | order | quote`) in razširitve.
+- **Vseh 15 modulov na voljo vsaki dejavnosti (`required | optional`):** podjetje si **spozna module, ki jih potrebuje** — vsak modul lahko vklopi, izklopi ali skrije iz lastne nadzorne plošče, ne glede na panogo. `required` so samo privzeto vklopljena jedra (npr. računi za salone, delovna naročila za obrt/kmetijo, trgovina+zaloge za trgovce).
+- **15 modulov:** rezervacije in koledar, delovna naročila, storitve in cenik, spletna trgovina, zaloge, stranke, zaposleni in urniki, statistika in poročila, ocene strank, obrazci in povpraševanja, poslovni procesi, **dokumenti (ponudbe in računi)**, dostava, walk-in vrsta in blagajna.
 - **Univerzalna delovna naročila** s konfigurabilnimi stopnjami, validiranimi prehodi in sledjo dogodkov.
 - **Dinamični obrazci:** javna povpraševanja, admin inbox, urejanje polj brez kode in strežniška validacija.
 - **Evidence po razširitvah:** vozila/gume (vulkanizer), serije/žetev (čebelarstvo), mere (šiviljstvo) prek registra razširitev — brez migracije za nov tip evidence.
 - **Katalog in prodaja:** storitve, izdelki, variante, paketi, ponudbe in računi s številčenjem po najemniku.
+- **E-računi (e-invoice):** generiranje **UBL 2.1** in **e-SLOG 2.0**, lokalna uradna validacija (XSD + Schematron), nespremenljiv SHA-256 arhiv, konfiguracija kanalov in **oddaja (submit)** na ponudnika e-poti (direct/HTTP; vmesnik pripravljen za UJP/PEPPOL).
 - **Lastniška prilagoditev brez programiranja:** moduli, dashboard widgeti, obrazci in procesi z verzioniranjem.
 
 ### Razširitve in več dejavnosti (EPIC #2)
