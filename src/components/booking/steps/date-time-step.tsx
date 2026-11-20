@@ -289,8 +289,16 @@ export function DateTimeStep({
                                   key={slot.time}
                                   type="button"
                                   onClick={() => slot.available && onSelectTime(slot.time)}
-                                  disabled={!slot.available}
+                                  aria-disabled={!slot.available}
                                   aria-pressed={isSelected}
+                                  aria-label={
+                                    slot.available
+                                      ? undefined
+                                      : `${t.booking.busySlot}: ${slot.formattedTime}`
+                                  }
+                                  title={
+                                    slot.available ? undefined : `${t.booking.busySlot}: ${slot.formattedTime}`
+                                  }
                                   className={cn(
                                     "min-w-20 rounded-xl border px-3 py-2 text-sm font-medium tabular-nums transition-colors",
                                     isSelected

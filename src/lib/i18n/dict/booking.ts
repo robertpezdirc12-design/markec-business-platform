@@ -31,6 +31,9 @@ export const bookingSl = {
     "Termin bomo rezervirali tudi za izbrani prostor; preverili bomo, ali je prost.",
   slotsFor: (date: string) => `Prosti termini za ${date}`,
   noSlots: "Za ta dan ni prostih terminov",
+  // Zaseden termin — vidno + v aria-label, da je dostopen bralniku (prej
+  // disabled je AT element povsem izločil → uporabnik ni vedel, da ura obstaja).
+  busySlot: "Zasedeno",
   // #90: izhod iz polnega dne — povezava na prijavo na čakalno listo
   waitlistHint: "Zasedeno? Prijavite se na čakalno listo ↓",
   // #92: izbirni dodatki storitve (cena/trajanje se prištejeta atomarno)
@@ -165,6 +168,7 @@ export const bookingEn: BookingDict = {
     "The slot will also be reserved for the chosen space — we make sure it is free.",
   slotsFor: (date: string) => `Available slots for ${date}`,
   noSlots: "No available slots for this day",
+  busySlot: "Unavailable",
   // #90: exit for a fully-booked day — link to the waitlist join form
   waitlistHint: "Fully booked? Join the waitlist ↓",
   // #92: optional service add-ons (price/duration added atomically)

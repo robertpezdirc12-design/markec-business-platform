@@ -88,6 +88,15 @@ spremembe so označene z ✅.
   (`src/app/actions/ab-tracking.ts` → tabela `BookingExperimentEvent`);
   dashboard `dashboard/experiments` prikazuje konverzijo po varianti.
   Regresija: `tests/unit/ab-tracking-dashboard.test.ts` + visual-fixes.
+- ✅ **Error recovery — fokus na prvo polje z napako ob submitu** (NN/g
+  H5/H9, WCAG 3.3.1 + 2.4.3): po neuspelem submitu `focusFirstFormError()`
+  premakne fokus + `scrollIntoView` na prvo `[aria-invalid="true"]` polje,
+  da uporabnik s tipkovnico/bralnikom takoj ve kje popraviti. Zajeto v
+  `tests/unit/booking-error-focus.test.ts`.
+- ✅ **Zasedeni termini so AT-dostopni** (NN/g status visibility, WCAG 1.3.1):
+  zaseden ura v mreži ni več pravi `disabled` (bralnik jo je povsem izpustil)
+  — zdaj `aria-disabled` + `aria-label="Zasedeno: 09:00"` + `title`, onClick
+  guard še vedno prepreči izbor. Vizual ostaja bled + prečrtan.
 - ✅ **Performance-as-UX / bundle audit** regresija:
   `tests/unit/performance-bundle-audit.test.ts` — potrdi da težke
   (react-hook-form+zod+date-fns) kot `ReviewForm` na landing ostajajo

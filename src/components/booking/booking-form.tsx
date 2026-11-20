@@ -56,6 +56,22 @@ import {
 
 import { BookingFormProps, BookingFormValues } from "@/lib/interfaces"
 
+// NN/g "error recovery": po neuspelem submitu premaknemo fokus na prvo
+// polje z napako (`aria-invalid="true"`), da uporabnik s tipkovnico in
+// bralnikom ekrana takoj ve, kje mora popraviti (WCAG 2.4.3 / 3.3.1).
+function focusFirstFormError() {
+  // nežen requestAnimationFrame, da se aria-invalid slike z errorjem odrenderajo
+  requestAnimationFrame(() => {
+    const first = document.querySelector<HTMLElement>(
+      '[aria-invalid="true"], [data-error="true"]'
+    )
+    if (first) {
+      first.focus({ preventScroll: false })
+      first.scrollIntoView({ block: "center", behavior: "smooth" })
+    }
+  })
+}
+
 export function BookingForm(props: BookingFormProps) {
   const {
     salonConfig,
@@ -330,6 +346,7 @@ export function BookingForm(props: BookingFormProps) {
       if (!parsedValues.staffId) {
         setError("staffId", { message: t.booking.staffRequired })
         toast.error(t.booking.staffRequiredToast)
+        focusFirstFormError()
         return { ok: false }
       }
 
@@ -343,6 +360,7 @@ export function BookingForm(props: BookingFormProps) {
         // odstranjen (TEMP-DEBUG) in skrita polja (telefon v zaposlenem
         // načinu) so padla tiho.
         toast.error(parsed.error.issues[0]?.message ?? t.booking.checkoutFailed)
+        focusFirstFormError()
         return { ok: false }
       }
 
