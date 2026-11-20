@@ -18,7 +18,7 @@
 | U4 | **Povzetek v koraku + lepljiv "naprej" z dostopnostjo** | Visok | S | ★★★★☆ | ✅ |
 | U5 | **Vidni indikatorji dostopnosti storitev (hitri filter)** | Visok | S | ★★★★☆ | ✅ |
 | U6 | **Feedback pri ponovno-booking (realni appointment)** | Srednji | S | ★★★☆☆ |  |
-| U7 | **Admin: števci/badges v navigaciji** | Srednji | S | ★★★☆☆ |  |
+| U7 | **Admin: števci/badges v navigaciji** | Srednji | S | ★★★☆☆ | ✅ |
 | U8 | **Command palette: uvrsti pogoste akcije višje** | Srednji | S | ★★★☆☆ |  |
 | U9 | **Varno stanje formularjev (draft, brez izgube ob prekinitvi)** | Srednji | M | ★★★☆☆ |  |
 | U10 | **WCAG 2.2: fokus red, error-preventivno, contrast passed** | Visok | M | ★★★★☆ | ➡️ |
@@ -43,6 +43,11 @@
   CTA gumb je bil `opacity-0`/hover-only → na mobilnih nerekviden. Gumb je zdaj
   vedno viden (afrdance za tap), z i18n label `common.actions.viewDetails`
   namesto tvrde SL "Podrobnosti". Regresija: `tests/unit/services-list-ux.test.ts`.
+- **U7 ✅** — admin navigacija (sidebar) prikazuje operativne števce za
+  recepcijo: neprebrani pogovori (chats), čakajoča čakalna lista (waitlist),
+  nepotrjene termine (appointments). Server action `getNavCounters` je
+  org-scoped (requirePermissionOrg appointments.view); navigacija ne blokira,
+  če klic pade. Regresija: `tests/unit/sidebar-nav-counters.test.ts`.
 
 ---
 

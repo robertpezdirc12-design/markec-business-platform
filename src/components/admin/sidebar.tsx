@@ -12,11 +12,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import { useState, useTransition, useMemo } from "react"
+import { useState, useTransition, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { ChevronDown } from "lucide-react"
 import { switchActiveOrganization } from "@/app/actions/organization-switch"
+import {
+  getNavCounters,
+  type NavCounters,
+} from "@/app/actions/nav-counters"
 import { useI18n } from "@/lib/i18n/provider"
 import {
   LayoutDashboardIcon,
@@ -121,6 +125,27 @@ function SidebarNav({ onNavigate }: SidebarNavProps) {
     [profile.capabilities, profile.extensions, permissions, isAdmin]
   )
 
+  // U7 — operativni števci v nav (at-a-glance za recepcijo). Ne blokirajo
+  // prikaza navigacije: če klic pade, navigacija ostane brez badge.
+  const [counters, setCounters] = useState<NavCounters | null>(null)
+  useEffect(() => {
+    let alive = true
+    getNavCounters().then((r) => {
+      if (alive && r.ok && r.counters) setCounters(r.counters)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  const countFor = (href: string): number | undefined => {
+    if (!counters) return undefined
+    if (href === "/dashboard/waitlist") return counters.waitlist
+    if (href === "/dashboard/chats") return counters.chatActive
+    if (href === "/dashboard/appointments") return counters.apptPending
+    return undefined
+  }
+
   // Zložene skupine (2026-11-18): 23 postavk v enem stolpcu je bilo
   // neobvladljivih — zdaj 6 skupin, stanje se ohrani med obiski.
   const [collapsed, setCollapsed] = useState<NavSectionKey[]>(() => {
@@ -157,6 +182,7 @@ function SidebarNav({ onNavigate }: SidebarNavProps) {
     const label = item.termKey
       ? term(item.termKey)
       : t.common.nav[item.nameKey]
+    const count = countFor(item.href)
     return (
       <Link
         key={item.nameKey}
@@ -172,6 +198,19 @@ function SidebarNav({ onNavigate }: SidebarNavProps) {
       >
         <IconComponent size={18} className={cn(isActive && "text-primary-foreground")} />
         <span className="truncate">{label}</span>
+        {count != null && count > 0 && (
+          <span
+            className={cn(
+              "ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold leading-none",
+              isActive
+                ? "bg-primary-foreground/20 text-primary-foreground"
+                : "bg-primary/15 text-primary"
+            )}
+            aria-label={`${count}`}
+          >
+            {count > 99 ? "99+" : count}
+          </span>
+        )}
       </Link>
     )
   }
