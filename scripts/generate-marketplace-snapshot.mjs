@@ -140,14 +140,17 @@ async function main() {
     })
 
     // Notranje (demo/test/qa) najemnike izpustimo iz javne tržnice —
-    // isti filter kot sitemap/robots (isInternalTenantSlug) PLUS testno
-    // poštno domeno (@markec-test.si). Slug regex ne zajame vseh oblik
-    // (npr. "vizualna-testna-delavnica" — pridevnik "testna"), zato
-    // dodatno merimo na domeno, ki jo uporablja vsa testna baza.
+    // isti filter kot sitemap/robots (isInternalTenantSlug) PLUS testne
+    // poštne domene. Slug regex ne zajame vseh oblik
+    // (npr. "vizualna-testna-delavnica" — pridevnik "testna"), pa tudi
+    // testni najemniki ne uporabljajo vedno @markec-test.si — "Vizualna
+    // Testna Delavnica" ima @example.com (RFC 2606 testna domena).
+    // Filter na domene je varen: prava podjetja nimajo @markec-test.si
+    // niti @example.com.
     const publicOrganizations = organizations.filter(
       (org) =>
         !isInternalTenantSlug(org.slug) &&
-        !/@markec-test\.si$/i.test(org.salonConfig?.email ?? "")
+        !/@(?:markec-test\.si|example\.(?:com|org|net))$/i.test(org.salonConfig?.email ?? "")
     )
 
     const businesses = publicOrganizations.map((org) => {
