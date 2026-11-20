@@ -60,7 +60,12 @@ export function CustomerInfoStep({
 
   const errorText = (field: string) =>
     errors[field] ? (
-      <p id={`${field}-error`} className="text-sm text-destructive">
+      // U10/WCAG 4.1.3: role="alert" → screen-reader takoj najavi ob pojavu
+      <p
+        id={`${field}-error`}
+        role="alert"
+        className="text-sm text-destructive"
+      >
         {errors[field].message}
       </p>
     ) : null
@@ -177,10 +182,16 @@ export function CustomerInfoStep({
             name="notes"
             placeholder={t.booking.notesPlaceholder}
             rows={3}
+            aria-invalid={!!errors.notes || undefined}
+            aria-describedby={errors.notes ? "notes-error" : undefined}
             value={values.notes}
             onChange={(e) => onChange("notes", e.target.value)}
           />
-          {errors.notes && <p className="text-sm text-destructive">{errors.notes.message}</p>}
+          {errors.notes && (
+            <p id="notes-error" role="alert" className="text-sm text-destructive">
+              {errors.notes.message}
+            </p>
+          )}
         </div>
 
         {/* #96: sprejemni obrazec storitve — gost izpolni ob rezervaciji;

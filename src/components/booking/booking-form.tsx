@@ -744,6 +744,8 @@ export function BookingForm(props: BookingFormProps) {
             </div>
             {promotionState && (
               <p
+                role={promotionState.ok ? "status" : "alert"}
+                aria-live={promotionState.ok ? "polite" : "assertive"}
                 className={`text-xs ${
                   promotionState.ok
                     ? "text-green-600 dark:text-green-400"

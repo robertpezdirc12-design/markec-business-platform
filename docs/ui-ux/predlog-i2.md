@@ -21,7 +21,7 @@
 | U7 | **Admin: števci/badges v navigaciji** | Srednji | S | ★★★☆☆ | ✅ |
 | U8 | **Command palette: uvrsti pogoste akcije višje** | Srednji | S | ★★★☆☆ | ✅ |
 | U9 | **Varno stanje formularjev (draft, brez izgube ob prekinitvi)** | Srednji | M | ★★★☆☆ | ✅ |
-| U10 | **WCAG 2.2: fokus red, error-preventivno, contrast passed** | Visok | M | ★★★★☆ | ➡️ |
+| U10 | **WCAG 2.2: fokus red, error-preventivno, contrast passed** | Visok | M | ★★★★☆ | ✅1 |
 
 **Legenda:** ✅ že implemente-ran v bazi · ➡️ v teku · (prazno) odprto
 
@@ -39,9 +39,16 @@
   `orgPath(slug, link.href)`, services item+CTA `orgPath`, `services-price-list`
   CTA sedaj sprejema `bookUrl` prop (namesto trdega bare `/booking`).
   Regresija: `tests/unit/booking-single-source.test.ts`.
-- **U10 ➡️** — dodan WCAG 1.3.1/4.1.2 fiks na plačilno radio grupo v
-  `booking-form.tsx` (navadno `<p>` → `<fieldset>` + `<legend>`), da je
-  skupla radio-grupa programatično določljiva za brajalnik zaslona.
+- **U10 ➡️→✅ del** — WCAG 1.3.1/4.1.2 `<fieldset>`+`<legend>` na plačilno
+  radio grupo (`booking-form.tsx`). **Nov korak iz spletne raziskave (WebAIM
+  "Accessible Forms", W3C WCAG 4.1.3):** error/recovery sporočila v booking
+  toku zdaj najavi screen-reader:
+  - `customer-info-step` errorji `role="alert"` (+ `aria-describedby` že povezuje
+    id, notes je razširjen z id+aria), tako reaktivni MVC error ob submitu se
+    takoj announce-ajo; in
+  - promocijska koda `role="status"/"alert"` + `aria-live` (uspeh/neuspeh) —
+    ni več tiho zeleno/rdeče.
+  Regresija: `tests/unit/wcag-status-announcements.test.ts`.
 - **U5 ✅** — `services-list.tsx`: hitri filter + sort (cena/trajanje/rating)
   je že bil v `services-filter.tsx` (P1 #29). Dopolnjen je bil *pravi UX manko*:
   CTA gumb je bil `opacity-0`/hover-only → na mobilnih nerekviden. Gumb je zdaj
@@ -195,6 +202,19 @@ doseg — evropski dostop).
 ki preveri `focus-visible` po vseh interaktivnih elementih (brez modrobega
 outline-a) + `autocomplete` na booking form novih polj.
 
+**Opravljeno ✅ (del — spletna raziskava je potrdila in zakrila):**
+- **WCAG 4.1.3 Status Messages / error recovery** (vir: WebAIM "Accessible
+  Forms" — "Error recovery must be intuitive and descriptive"): validation
+  errorji v `customer-info-step` (`firstName/lastName/email/phone/notes`)
+  imajo `role="alert"` (+ `aria-describedby` na inputu), sprejemne/popisne
+  srede `notes` je razširjena z `id`+aria; off ne nachati.
+- **Promo-koda** `booking-form` ima `role="status"/"alert"` + `aria-live`
+  (uspeh→polite, napaka→assertive) — rezultat računske potrditve se najavi.
+- `autocomplete` na booking form poljih je že bil (given/family name, email,
+  tel) — potrjeno. Še odprto: namenski audit page `:focus-visible` in
+  error-prevention "Ste prepričani?" pred zaključnim submitom.
+Regresija: `tests/unit/wcag-status-announcements.test.ts`.
+
 ---
 
 ## 3. SREDNJE
@@ -273,3 +293,5 @@ i18n `appointments.form.draft*`. Regresija:
 - Baymard Institute — e-commerce UX barvani za check-out/booking.
 - Fresha / Booksy — SaaS booking tokovi kot industrijski referencni.
 - WCAG 2.2 — AA kontrast, focus-visible, error-prevention (§3.3).
+- WebAIM "Accessible Forms" — labeling, `<fieldset>/<legend>`, `aria-describedby`,
+  "error recovery must be intuitive and descriptive" (vir za U10 korak).
