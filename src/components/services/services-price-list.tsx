@@ -31,6 +31,9 @@ interface ServicesPriceListProps {
   categories: PriceListCategory[]
   businessName?: string
   showBookButton?: boolean
+  /** U3 — org-scoped booking URL za spodnji CTA (orgPath(slug, "/booking")).
+   *  Brez njega pade na bare "/booking" (default org / backward-compatible). */
+  bookUrl?: string
 }
 
 function PriceListRow({ item }: { item: PriceListItem }) {
@@ -77,6 +80,7 @@ export function ServicesPriceList({
   categories,
   businessName,
   showBookButton = true,
+  bookUrl,
 }: ServicesPriceListProps) {
   return (
     <div className="space-y-8">
@@ -122,7 +126,7 @@ export function ServicesPriceList({
       {/* Book Now CTA */}
       {showBookButton && (
         <div className="text-center">
-          <Link href="/booking">
+          <Link href={bookUrl ?? "/booking"}>
             <Button size="lg" className="px-8">
               Rezervirajte termin zdaj
               <ArrowRightIcon size={16} className="ml-2" />

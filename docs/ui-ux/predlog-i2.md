@@ -14,7 +14,7 @@
 |----|---------|-------|-------|-------|
 | U1 | **Umakniti demo booking tok (`online-booking-page`)** | Kritičen | S | ★★★★★ | ✅ |
 | U2 | **Realna dostopnost terminov namesto fiktivnih slotov** | Kritičen | M | ★★★★★ | ✅ |
-| U3 | **Eden vir resnice za booking tok (ne dva vzporedna)** | Visok | M | ★★★★☆ |  |
+| U3 | **Eden vir resnice za booking tok (ne dva vzporedna)** | Visok | M | ★★★★☆ | ✅ |
 | U4 | **Povzetek v koraku + lepljiv "naprej" z dostopnostjo** | Visok | S | ★★★★☆ | ✅ |
 | U5 | **Vidni indikatorji dostopnosti storitev (hitri filter)** | Visok | S | ★★★★☆ | ✅ |
 | U6 | **Feedback pri ponovno-booking (realni appointment)** | Srednji | S | ★★★☆☆ | ✅ |
@@ -34,7 +34,11 @@
 - **U4 ✅** — že v bazi: `BookingSummaryCard` je `sticky top-4` (desktop),
   `booking-form.tsx` ima mobilno `fixed` spodnjo vrstico z running selection
   (liniji ~788–807). Torej ni treba dvojiti.
-- **U3 ✅** — z izbrisom demo dvojnikov je `BookingForm` edini resnični tok.
+- **U3 ✅** — `BookingForm` edini tok (demo dvojniki izbrisani). Vse povezave
+  delijo en vir, org-scoped `/booking` preko `orgPath(slug,…)`: footer render
+  `orgPath(slug, link.href)`, services item+CTA `orgPath`, `services-price-list`
+  CTA sedaj sprejema `bookUrl` prop (namesto trdega bare `/booking`).
+  Regresija: `tests/unit/booking-single-source.test.ts`.
 - **U10 ➡️** — dodan WCAG 1.3.1/4.1.2 fiks na plačilno radio grupo v
   `booking-form.tsx` (navadno `<p>` → `<fieldset>` + `<legend>`), da je
   skupla radio-grupa programatično določljiva za brajalnik zaslona.
@@ -133,12 +137,22 @@ Regresija te strožje zahteve: `tests/unit/booking-real-availability.test.ts`.
 ### U3 — En vir resnice za booking
 
 **Kaj:** dve vzporedni booking UI-vrstici (demo + realna) = dvojno vzdrževanje,
-nedoslednosti, stalen strah. 
+nedoslednosti, stalen strah.
 
 **Zakaj:** NN/g: redundantna, diverzirajoča navigacija med "top 10 nejasnosti".
 
-**Kako:** Po U1 ostane `BookingForm` + `booking-stepper` (i18n) kot edini. Vse
-povezave (hero, navbar CTA, services page) vedno vodijo na eno točko.
+**Implementirano ✅.** Po U1 (demo tok odstranjen) ostaja `BookingForm` +
+`booking-stepper` kot edina booking pot. Preverjeno v kodi, da **vse** booking
+povezave delijo en vir — org-scoped `/booking` preko `orgPath(slug, …)`:
+- `footer.tsx` render screen linkov skozi `orgPath(slug, link.href)` (tudi
+  `/booking` v quick-links);
+- `services/page.tsx` — item CTA `orgPath(slug, "/booking?service=…")` in glavni
+  `BookingButton` `orgPath(slug, content.cta.buttonHref)`;
+- `staff/[name]` → `orgPath`;
+- `services-price-list.tsx` — spodnji CTA ni več trdo bare `/booking`; sprejema
+  nov `bookUrl` prop (orgPath), fallback le za default-org/backward-compatible;
+  manjka dedna `tenantScopedHref` je samo za platform login link `#53`.
+Regresija: `tests/unit/booking-single-source.test.ts`.
 
 ### U4 — Povzetek v koraku + lepljiv "Naprej"
 
