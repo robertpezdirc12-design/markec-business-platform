@@ -28,6 +28,17 @@ import { fileURLToPath } from "node:url"
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUTPUT = resolve(__dirname, "../src/data/marketplace-snapshot.json")
 
+// Enako pravilo kot src/lib/tenant-flags.ts (isInternalTenantSlug):
+// demo/test/qa najemniki se ne smejo pojavljati v JAVNI tržnici —
+// isti filter že varuje sitemap.xml in robots.txt za /s/<slug>. Generator
+// snapshot-a ga je do zdaj spregledal, zato so QA/Test podjetja
+// (npr. "QA Meh Mehanik", "Atelje Test Šivilja QA") končala v /podjetja.
+// Ujame predpono ("demo-", "test-", "qa-") in notranji segment ("-test-").
+const INTERNAL_TENANT_SLUG = /^(demo|test|qa)[-]|[-](demo|test|qa)[-]/i
+function isInternalTenantSlug(slug) {
+  return !!(slug && INTERNAL_TENANT_SLUG.test(slug))
+}
+
 const EMPTY = {
   generatedAt: null,
   businesses: [],
@@ -100,10 +111,10 @@ async function main() {
 
   try {
     const organizations = await prisma.organization.findMany({
-      // JAVNO prikažemo SAMO objavljena podjetja. Vzeli SMO vse ACTIVE
-      // (ne-stale) — a javni /s/{slug} se odpre le PUBLISHED (glej
-      // headerOrgAccessible in tenant.ts). Rezultat: imenik je reklamiral
-      // podjetja, ki so se ob kliku končala na 404. Zdaj le objavljena.
+      // JAVNO prikažemo izključno PUBLISHED podjetja. Prej smo vzeli vse
+      // ACTIVE — toda javni /s/{slug} se odpre le PUBLISHED (glej
+      // headerOrgAccessible in tenant.ts): ob kliku smo dobili 404.
+      // Poleg tega spodaj v JS izpustimo demo/test/qa najemnike.
       where: { status: "ACTIVE", publishState: "PUBLISHED" },
       orderBy: { createdAt: "desc" },
       take: 500,
@@ -128,7 +139,18 @@ async function main() {
       },
     })
 
-    const businesses = organizations.map((org) => {
+    // Notranje (demo/test/qa) najemnike izpustimo iz javne tržnice —
+    // isti filter kot sitemap/robots (isInternalTenantSlug) PLUS testno
+    // poštno domeno (@markec-test.si). Slug regex ne zajame vseh oblik
+    // (npr. "vizualna-testna-delavnica" — pridevnik "testna"), zato
+    // dodatno merimo na domeno, ki jo uporablja vsa testna baza.
+    const publicOrganizations = organizations.filter(
+      (org) =>
+        !isInternalTenantSlug(org.slug) &&
+        !/@markec-test\.si$/i.test(org.salonConfig?.email ?? "")
+    )
+
+    const businesses = publicOrganizations.map((org) => {
       const avgRating =
         org.reviews.length > 0
           ? org.reviews.reduce((sum, r) => sum + r.rating, 0) / org.reviews.length
@@ -167,12 +189,11 @@ async function main() {
       }
     })
 
-    const [totalBusinesses, totalAppointments, totalCustomers] = await Promise.all([
-      // Štejemo SAMO objavljene — tako "38 aktivnih podjetij" nikoli ne
-      // preseže dejanskega števila ogledljivih podjetij (prej ACTIVE).
-      prisma.organization.count({
-        where: { status: "ACTIVE", publishState: "PUBLISHED" },
-      }),
+    // totalBusinesses = število JAVNIH (PUBLISHED, ne-notranjih) podjetij —
+    // štejemo že filtriran seznam, ne več Prisma count (ki bi štel tudi
+    // demo/test/qa najemnike in tako "napihnil" števec nad ogledljiva).
+    const totalBusinesses = publicOrganizations.length
+    const [totalAppointments, totalCustomers] = await Promise.all([
       prisma.appointment.count(),
       prisma.customer.count(),
     ])
