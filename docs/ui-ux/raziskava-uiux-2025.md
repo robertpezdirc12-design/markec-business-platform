@@ -97,6 +97,13 @@ spremembe so označene z ✅.
   zaseden ura v mreži ni več pravi `disabled` (bralnik jo je povsem izpustil)
   — zdaj `aria-disabled` + `aria-label="Zasedeno: 09:00"` + `title`, onClick
   guard še vedno prepreči izbor. Vizual ostaja bled + prečrtan.
+- ✅ **Submit-feedback za bralnike** (NN/g "status visibility", WCAG 4.1.3):
+  med asinhrono oddajo forme `<form aria-busy={isPending}>` + stalna sr-only
+  `role="status"` regija v summary-card, ki ob submitu napove "Oddajam
+  rezervacijo…" (živi region v DOM od začetka, da je registriran). Gumb ima
+  spinner + `disabled`. Realtime inline validacija (blur + veljavnost-sproti)
+  je bila že izvedena (P1 #9) in ostaja. Zajeto v
+  `tests/unit/booking-error-focus.test.ts`.
 - ✅ **Performance-as-UX / bundle audit** regresija:
   `tests/unit/performance-bundle-audit.test.ts` — potrdi da težke
   (react-hook-form+zod+date-fns) kot `ReviewForm` na landing ostajajo

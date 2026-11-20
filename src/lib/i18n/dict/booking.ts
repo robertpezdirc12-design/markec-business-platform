@@ -36,6 +36,9 @@ export const bookingSl = {
   busySlot: "Zasedeno",
   // #90: izhod iz polnega dne — povezava na prijavo na čakalno listo
   waitlistHint: "Zasedeno? Prijavite se na čakalno listo ↓",
+  // #submit-feedback: bralnik ekrana najavi med asinhrono oddajo forme
+  // (NN/g "feedback & status visibility" / WCAG 4.1.3).
+  submitting: "Oddajam rezervacijo…",
   // #92: izbirni dodatki storitve (cena/trajanje se prištejeta atomarno)
   addonsTitle: "Dodatki (neobvezno)",
   // Deli dneva — termini so združeni, ne ena sama mreža.
@@ -168,6 +171,7 @@ export const bookingEn: BookingDict = {
     "The slot will also be reserved for the chosen space — we make sure it is free.",
   slotsFor: (date: string) => `Available slots for ${date}`,
   noSlots: "No available slots for this day",
+  submitting: "Submitting reservation…",
   busySlot: "Unavailable",
   // #90: exit for a fully-booked day — link to the waitlist join form
   waitlistHint: "Fully booked? Join the waitlist ↓",

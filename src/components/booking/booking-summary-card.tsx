@@ -349,6 +349,11 @@ export function BookingSummaryCard({
                 {t.booking.reviewNoShowNote}
               </p>
               <div className="mt-3 flex gap-2">
+                {/* role="status" je STALNO v DOM → live region od začetka;
+                    ob async oddaji AT prebere "Oddajam rezervacijo…" (WCAG 4.1.3). */}
+                <p role="status" className="sr-only">
+                  {submitting ? t.booking.submitting : ""}
+                </p>
                 <Button type="submit" size="lg" disabled={submitting} className="flex-1">
                   {submitting ? (
                     <SpinnerGapIcon size={20} className="animate-spin" weight="regular" />

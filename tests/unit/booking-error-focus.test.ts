@@ -60,4 +60,17 @@ describe("booking — fokus na prvo polje z napako ob submitu", () => {
     expect(bk).toContain('busySlot: "Zasedeno",')
     expect(bk).toContain('busySlot: "Unavailable",')
   })
+
+  it("submit-feedback: form ima aria-busy + sr-only role=status med oddajo (AT napove async submit)", () => {
+    const f = read("src/components/booking/booking-form.tsx")
+    // async sima → aria-busy na form
+    expect(f).toContain('<form action={formAction} aria-busy={isPending}')
+    const s = read("src/components/booking/booking-summary-card.tsx")
+    // live region POSTOJI v DOM od starta (ne pogojen!) → AT ga registrira
+    expect(s).toContain('<p role="status" className="sr-only">')
+    expect(s).toContain("{submitting ? t.booking.submitting : \"\"}")
+    const bk = read("src/lib/i18n/dict/booking.ts")
+    expect(bk).toContain('submitting: "Oddajam rezervacijo…",')
+    expect(bk).toContain('submitting: "Submitting reservation…",')
+  })
 })

@@ -540,7 +540,7 @@ export function BookingForm(props: BookingFormProps) {
   )
 
   return (
-    <form action={formAction} className="pb-20 lg:pb-0">
+    <form action={formAction} aria-busy={isPending} className="pb-20 lg:pb-0">
       {/* Employee Banner */}
       {isEmployee && (
         <Alert className="mb-6 border-primary/30 bg-linear-to-r from-primary/5 via-primary/10 to-accent/5 dark:border-primary/40 dark:from-primary/10 dark:via-primary/15 dark:to-accent/10">
