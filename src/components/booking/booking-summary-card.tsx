@@ -1,3 +1,6 @@
+"use client"
+
+import { useState } from "react"
 import { useFormatPrice } from "@/lib/currency"
 import {
   Card,
@@ -67,6 +70,10 @@ export function BookingSummaryCard({
 }: BookingSummaryCardProps) {
   const fmt = useFormatPrice()
   const { t, locale, withBusiness } = useI18n()
+
+  // WCAG 3.3.4: confirm korak za plačljive rezervacije — uporabnik preveri
+  // podatke in eksplicitno potrdi polog, preden gre v Stripe/Server Action.
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   // #79: polog je PRAVILO — isti čisti helper kot na strežniku (booking
   // akcija, Stripe, webhook). 15 € storitev z org pologom 50 € prikaže 15 €,
@@ -309,11 +316,74 @@ export function BookingSummaryCard({
               </ul>
             </div>
           )}
+          {confirmOpen && (
+            /* WCAG 3.3.4 (Error Prevention — financial/legal): končno preverjanje
+               pred plačilom. Inline (znotraj <form>) zato, da "Potrdi" submit-a
+               isti React 19 action kot prej — brez spremembe poti. role="alert"
+               (4.1.3) takoj najavi prikaz. */
+            <div
+              role="alert"
+              className="mb-3 rounded-xl border border-destructive/40 bg-destructive/5 p-4"
+            >
+              <p className="text-sm font-semibold">{t.booking.reviewTitle}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t.booking.reviewIntro}
+              </p>
+              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                <dt className="text-muted-foreground">{t.booking.reviewService}</dt>
+                <dd className="text-right font-medium">{service?.name}</dd>
+                <dt className="text-muted-foreground">{t.booking.reviewStaff}</dt>
+                <dd className="text-right font-medium">{selectedStaff?.name}</dd>
+                <dt className="text-muted-foreground">{t.booking.reviewDate}</dt>
+                <dd className="text-right font-medium">
+                  {selectedDate ? format(selectedDate, "eee, d. MMMM", { locale: dfLocale }) : "—"}
+                </dd>
+                <dt className="text-muted-foreground">{t.booking.reviewTime}</dt>
+                <dd className="text-right font-medium">{selectedTime ?? "—"}</dd>
+                <dt className="text-muted-foreground">{t.booking.reviewDeposit}</dt>
+                <dd className="text-right font-semibold text-primary-text">
+                  {fmt(resolvedDeposit)}
+                </dd>
+              </dl>
+              <p className="mt-3 text-xs text-muted-foreground">
+                {t.booking.reviewNoShowNote}
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Button type="submit" size="lg" disabled={submitting} className="flex-1">
+                  {submitting ? (
+                    <SpinnerGapIcon size={20} className="animate-spin" weight="regular" />
+                  ) : (
+                    t.booking.reviewConfirm(fmt(resolvedDeposit))
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setConfirmOpen(false)}
+                  disabled={submitting}
+                >
+                  {t.booking.reviewCancel}
+                </Button>
+              </div>
+            </div>
+          )}
+
           <Button
-            type="submit"
+            type={
+              // WCAG 3.3.4: plačljiva enota → najprej confirm korak (type="button");
+              // employee/brez-pologa → neposredno submit (ni finančne transakcije).
+              paymentsEnabled && !isEmployee && !depositExempt && resolvedDeposit > 0
+                ? "button"
+                : "submit"
+            }
             className="w-full text-base shadow-lg transition-all hover:scale-105"
             size="lg"
             disabled={submitting}
+            onClick={
+              paymentsEnabled && !isEmployee && !depositExempt && resolvedDeposit > 0
+                ? () => setConfirmOpen(true)
+                : undefined
+            }
           >
             {submitting ? (
               <SpinnerGapIcon

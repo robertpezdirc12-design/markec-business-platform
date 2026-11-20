@@ -89,6 +89,19 @@ export const bookingSl = {
   confirmEmployee: "Potrdi rezervacijo zaposlenega",
   submitNoPayment: "Oddaj rezervacijo (brez pologa)",
 
+  // ---- WCAG 3.3.4: preveri pred plačilom (confirm korak) ----
+  reviewTitle: "Preverite in potrdite",
+  reviewIntro: "Termin je skoraj potrjen. Preglejte podatke pred plačilom:",
+  reviewDate: "Datum",
+  reviewTime: "Ura",
+  reviewStaff: "Specialist",
+  reviewService: "Storitev",
+  reviewDeposit: "Polog ta zdaj",
+  reviewTotal: "Skupaj",
+  reviewNoShowNote: "Rezervacijski polog je zavezujoč — neporavnani termin (no-show) se ne vrača.",
+  reviewCancel: "Nazaj / Prekliči",
+  reviewConfirm: (amount: string) => `Potrdi in plačaj ${amount}`,
+
   // ---- Zaposleni banner ----
   employeeBanner: "Rezervirate kot zaposleni.",
   employeeBannerDiscount: "popust 20 %",
@@ -204,6 +217,19 @@ export const bookingEn: BookingDict = {
   payAndConfirm: (amount: string) => `Pay ${amount} and confirm booking`,
   confirmEmployee: "Confirm employee booking",
   submitNoPayment: "Submit booking (no deposit)",
+
+  reviewTitle: "Review and confirm",
+  reviewIntro: "Your appointment is almost booked. Review the details before paying:",
+  reviewDate: "Date",
+  reviewTime: "Time",
+  reviewStaff: "Specialist",
+  reviewService: "Service",
+  reviewDeposit: "Deposit now",
+  reviewTotal: "Total",
+  reviewNoShowNote:
+    "The booking deposit is binding — a missed appointment (no-show) is not refunded.",
+  reviewCancel: "Back / Cancel",
+  reviewConfirm: (amount: string) => `Confirm & pay ${amount}`,
 
   employeeBanner: "You are booking as an employee.",
   employeeBannerDiscount: "20% discount",

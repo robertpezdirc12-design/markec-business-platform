@@ -49,6 +49,12 @@
   - promocijska koda `role="status"/"alert"` + `aria-live` (uspeh/neuspeh) —
     ni več tiho zeleno/rdeče.
   Regresija: `tests/unit/wcag-status-announcements.test.ts`.
+- **U10 → WCAG 3.3.4 ✅** — confirm korak pred plačljivo rezervacijo:
+  `booking-summary-card` za polog/payments odpre inline pregled (storitev,
+  specialist, datum, ura, polog + zavezujoč no-show opomnik) z «Potrdi in
+  plačaj €X»/«Prekliči»; potrjuje isto React 19 action (inline znotraj form),
+  `role="alert"` (4.1.3). Client + i18n `booking.review*`. Employee/direct
+  submit ostane. Regresija: `tests/unit/wcag-error-prevention-confirm.test.ts`.
 - **U5 ✅** — `services-list.tsx`: hitri filter + sort (cena/trajanje/rating)
   je že bil v `services-filter.tsx` (P1 #29). Dopolnjen je bil *pravi UX manko*:
   CTA gumb je bil `opacity-0`/hover-only → na mobilnih nerekviden. Gumb je zdaj
@@ -210,10 +216,18 @@ outline-a) + `autocomplete` na booking form novih polj.
   srede `notes` je razširjena z `id`+aria; off ne nachati.
 - **Promo-koda** `booking-form` ima `role="status"/"alert"` + `aria-live`
   (uspeh→polite, napaka→assertive) — rezultat računske potrditve se najavi.
+- **WCAG 3.3.4 Error Prevention (financial/legal)** — `booking-summary-card`
+  za **plačljive** rezervacije (polog zaslepljen, payments on) sedaj odpre
+  **inline confirm korak** pred submitom: pregled podatkov (storitev,
+  specialist, datum, ura, polog), opomnik o zavezujočem no-show pologu ter
+  gumba «Potrdi in plačaj €X» (submint iste React 19 action — inline znotraj
+  form) / «Prekliči». Komponenta je postala client (`useState`, `role="alert"`
+  za 4.1.3). Employee/brez-pologa ostanejo direktni submit (ni finančne
+  transakcije → 3.3.4 ne zahteva). i18n `booking.review*`.
 - `autocomplete` na booking form poljih je že bil (given/family name, email,
-  tel) — potrjeno. Še odprto: namenski audit page `:focus-visible` in
-  error-prevention "Ste prepričani?" pred zaključnim submitom.
-Regresija: `tests/unit/wcag-status-announcements.test.ts`.
+  tel) — potrjeno. Še odprto: namenski audit page `:focus-visible`.
+Regresija: `tests/unit/wcag-status-announcements.test.ts` in
+`tests/unit/wcag-error-prevention-confirm.test.ts`.
 
 ---
 
