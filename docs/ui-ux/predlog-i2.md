@@ -13,7 +13,7 @@
 | ID | Predlog | Vpliv | Napor | Prior |
 |----|---------|-------|-------|-------|
 | U1 | **Umakniti demo booking tok (`online-booking-page`)** | Kritičen | S | ★★★★★ | ✅ |
-| U2 | **Realna dostopnost terminov namesto fiktivnih slotov** | Kritičen | M | ★★★★★ |  |
+| U2 | **Realna dostopnost terminov namesto fiktivnih slotov** | Kritičen | M | ★★★★★ | ✅ |
 | U3 | **Eden vir resnice za booking tok (ne dva vzporedna)** | Visok | M | ★★★★☆ |  |
 | U4 | **Povzetek v koraku + lepljiv "naprej" z dostopnostjo** | Visok | S | ★★★★☆ | ✅ |
 | U5 | **Vidni indikatorji dostopnosti storitev (hitri filter)** | Visok | S | ★★★★☆ | ✅ |
@@ -65,6 +65,13 @@
   (`role="status"`), s "Zavrzi osnutek"/"Zapri"; ključ se izbriše po uspešnem
   ustvarjanju. Vse safe (`try/catch`). i18n `appointments.form.draft*`.
   Regresija: `tests/unit/admin-appointment-draft.test.ts`.
+- **U2 ✅ (že implementirano, zdaj dokumentirano+zavarovano)** — realna
+  dostopnost iz appointments, ne fiktivnih slotov: `getAvailableTimeSlots`
+  (delovne ure, overlap s realnim trajanjem, vir, blok preteklih) + optimistic
+  barrier ob rezervaciji (`getAvailableTimeSlots` re-check → `$transaction`
+  → advisory `pg_advisory_xact_lock` → conflict check pod ključavnico; izguba
+  = lokalizirana napaka). Preverjeno v kodi — prisotnost/vrstni red varovan v
+  `tests/unit/booking-real-availability.test.ts`.
 
 ---
 
@@ -102,11 +109,22 @@ appointments) — brez fiktivnih "is available".
 **Zakaj:** Booking je transakcija v realnem času. Baymard: "calendar slot,
 which is not actually available" = top conversion killer (price/napolnjenost.)
 
-**Kako:** Preveriti da server action `getAvailable...` (že u `appointments.ts`)
-uporablja pravo zasedenost (appointments za datum+staff), ne hevristike. Če
-je že — samo zapreti demo tok (U1), da se uporabnik ne vodi v anketo. Dodati
-**moment rezervacije**: zakleniti slot ob izbiri (optimistic lock), da dva
-kupca nezahtevata isti čas.
+**Implementirano ✅ (oba dela, preverjeno v kodi).** Del (1) — **realna
+zasedenost**: `getAvailableTimeSlots` (`appointments.ts`) v svoji logiki
+nima fiktivnih slotov; slote gradi iz (a) realnih delovnih ur osebja, (b)
+overlapa z obstoječimi `PENDING`/`CONFIRMED` termini preko realnega
+trajanja (`startTime < endTime && endTime > startInstant`), (c) konfliktov
+vira/prostora (`resourceBusy`), (d) blokiranja **preteklih** slotov. Del
+(2) — **moment rezervacije / optimistic barrier**: `createAppointment` in
+`rescheduleAppointment` pokličeta `getAvailableTimeSlots` še enkrat ob
+rezervaciji (klientov slot ni dovolj — server vrne avtoritativni re-check),
+nato `prisma.$transaction` + `acquireBookingLocks` (PostgreSQL advisory
+`pg_advisory_xact_lock`, urejen deadlock-free red, cross-instance/DB level)
+ter conflict-check **znotraj transakcije** pod ključavnico — izgubnik vidi
+zaseden slot in dobi lokalizirano napako (`"Izbrani termin ni več prost…"`),
+ne DB izjeme. Paketne seanse #80 so atomic. Vse poti delijo isti guard
+(`src/lib/booking/locking.ts`, kritje v `tests/booking-integrity-93`).
+Regresija te strožje zahteve: `tests/unit/booking-real-availability.test.ts`.
 
 ---
 
