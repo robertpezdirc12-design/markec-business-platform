@@ -68,8 +68,13 @@ export function VariantSelector({
               <button
                 key={v.id}
                 type="button"
-                onClick={() => setSelectedId(v.id)}
-                disabled={v.stockQuantity <= 0}
+                onClick={() => v.stockQuantity > 0 && setSelectedId(v.id)}
+                aria-disabled={out}
+                aria-pressed={isSel}
+                aria-label={
+                  out ? `Ni na zalogi: ${v.name}` : undefined
+                }
+                title={out ? `Ni na zalogi: ${v.name}` : undefined}
                 className={cn(
                   "rounded-lg border px-3 py-2 text-sm transition-colors",
                   isSel

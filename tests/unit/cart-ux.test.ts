@@ -51,4 +51,15 @@ describe("shop/cart — AT-status med async operacijami", () => {
     expect(pub).toContain('addedToCart: "Dodano v košarico",')
     expect(pub).toContain('addedToCart: "Added to cart",')
   })
+
+  it("variant-selector: razprodane variante so AT-dostopne (aria-disabled, ne disabled)", () => {
+    const v = read("src/components/shop/variant-selector.tsx")
+    expect(v).toContain("aria-disabled={out}")
+    expect(v).toContain("aria-pressed={isSel}")
+    // onClick guard še vedno prepreči izbor razprodane variante
+    expect(v).toContain("onClick={() => v.stockQuantity > 0 && setSelectedId(v.id)}")
+    // bralnik prebere ime + nedostopnost
+    expect(v).toContain("`Ni na zalogi: ${v.name}`")
+    expect(v).toContain("out && \"opacity-50 line-through\"")
+  })
 })

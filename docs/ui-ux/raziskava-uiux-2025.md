@@ -114,6 +114,11 @@ spremembe so označene z ✅.
   "Dodano v košarico" (live regija stalno v DOM, bralnik napove tudi če je
   vizualni prehod ne-viden). Obstoječa eno-tab-stop `asChild` struktura
   (P1 #8) ohranjena. Zajeto v `tests/unit/cart-ux.test.ts`.
+- ✅ **Variant selector — razprodane variante AT-dostopne** (NN/g status
+  visibility, WCAG 4.1.3): razprodana varianta ni več `disabled` (bralnik
+  jo izpusti) — `aria-disabled` + `aria-label`/"`Ni na zalogi: {ime}`" +
+  `aria-pressed` za izbrano; onClick guard prepreči izbor, vizual ostaja
+  striečen. Zajeto v `tests/unit/cart-ux.test.ts`.
 - ✅ **Performance-as-UX / bundle audit** regresija:
   `tests/unit/performance-bundle-audit.test.ts` — potrdi da težke
   (react-hook-form+zod+date-fns) kot `ReviewForm` na landing ostajajo
