@@ -179,14 +179,16 @@ describe("F5.5.4.6.4 — CertHttpProvider (UJP/PEPPOL mTLS)", () => {
   })
 
   it("peppol pošlje AS4 multipart/related z dokumentom (ne golega XML)", async () => {
-    const peppolSent: string[] = []
-    const pepTransport: HttpsTransport = async (_opts, xml) => {
-      peppolSent.push(xml)
+    const peppolSent: { opts: { headers: unknown }; body: string }[] = []
+    const pepTransport: HttpsTransport = async (opts, xml) => {
+      peppolSent.push({ opts: opts as { headers: unknown }, body: xml })
       return { status: 202, headers: {}, body: "" }
     }
     const pep = new CertHttpProvider("PEPPOL_AP", { transport: pepTransport })
     await pep.submit(ORG, { ...certCfg, channel: "peppol" }, payload)
-    const raw = peppolSent[0]
+    const { opts, body: raw } = peppolSent[0]
+    // Content-Type zahtevka je multipart/related z boundary, ne application/xml.
+    expect((opts.headers as { "Content-Type": string })["Content-Type"]).toMatch(/^multipart\/related/)
     // PEPPOL kanala NE sme več poslati golega XML — pošlje AS4 multipart/related.
     expect(raw).not.toBe("<Invoice/>")
     expect(raw).toContain("Content-Type: application/soap+xml")
