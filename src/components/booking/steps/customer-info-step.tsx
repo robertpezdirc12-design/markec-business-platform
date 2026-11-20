@@ -168,12 +168,19 @@ export function CustomerInfoStep({
             placeholder={t.booking.phonePlaceholder}
             className="placeholder:text-muted-foreground/60"
             aria-invalid={!!errors.phone || undefined}
-            aria-describedby={describedBy("phone")}
+            aria-describedby={errors.phone ? "phone-error" : "phone-hint"}
             value={values.phone}
             onChange={(e) => onChange("phone", e.target.value)}
             onBlur={() => onBlurField?.("phone")}
           />
           {errorText("phone")}
+          {!errors.phone && (
+            // NN/g "Web Form Design": razloži format vezave pred vnosom — zmanjša
+            // napake in meglo; povezan z input prek aria-describedby.
+            <p id="phone-hint" className="text-xs text-muted-foreground/70">
+              {t.booking.phoneHint}
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="notes">{t.booking.specialRequests}</Label>

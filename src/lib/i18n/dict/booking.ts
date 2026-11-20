@@ -54,6 +54,7 @@ export const bookingSl = {
   lastNamePlaceholder: "Novak",
   emailPlaceholder: "janez@primer.si",
   phonePlaceholder: "040 123 456",
+  phoneHint: "Npr. +386 41 234 567",
   notesPlaceholder: "Kakšne posebne želje ali preference?",
 
   // ---- Povzetek ----
@@ -186,6 +187,7 @@ export const bookingEn: BookingDict = {
   lastNamePlaceholder: "Smith",
   emailPlaceholder: "john@example.com",
   phonePlaceholder: "040 123 456",
+  phoneHint: "e.g. +386 41 234 567",
   notesPlaceholder: "Any special requests or preferences?",
 
   summaryTitle: "Booking summary",
