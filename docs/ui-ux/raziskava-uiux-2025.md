@@ -74,8 +74,10 @@ spremembe so označene z ✅.
 
 ## Učinek raziskave — ostane (roadmap)
 
-- ✅ Autofill shema regression pokriva booking + auth forme kot prve step
-  ("test the schema"). Nadaljevanje: headerski test na celotni app (vse forme).
+- ✅ Autofill shema regression zdaj pokriva **booking, auth (login/register),
+  in cart guest-checkout** (name/email/tel/street-address + type/inputMode).
+  Ostane: headerski test na preostalih manjših formah (inquiry, walk-in),
+  ki pa so bile ročno pregledane in so že pravne.
 - A/B: krajša oblika (dodatni podatki na "povleci" pozneje) — hkrati paziti,
   da polog 3.3.4 ostaja.
 - Navodilo datum/čas: parse potrebra bodočnosti (NN/g "do not ask for info

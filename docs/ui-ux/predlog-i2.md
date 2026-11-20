@@ -273,8 +273,16 @@ i18n: `booking.revisit`/`booking.revisitCount`. Regresija:
 "Čakalnica: 4", "Nepotrjeni naročila: 2") prek `reception-inbox-client`
 podatkov; vezano na command paletto.
 
-**Zakaj:** NN/g: prioritizacija po aktualnosti; admin dashboardsberiaja
-"at-a-glance operational".
+**Implementirano ✅.** `src/app/actions/nav-counters.ts` — server action
+`getNavCounters()` (org-scoped prek `requirePermissionOrg("appointments.view")`,
+prisma.$transaction) vrne tri števce: `chatActive` (pogovori ACTIVE — čakajo
+odgovor), `waitlist` (čakalna lista WAITING), `apptPending` (nepotrjeni
+termini PENDING). `SidebarNav` (sidebar.tsx) z `useState`+`useEffect` pokliče
+action; `countFor(href)` mapira href → števec in omnibus ševčenke `> 0` prikaže
+kot badge ob postavki nav (Čakalnica / Pogovori / Termini). Neuspeh klica se
+tiho ignorira — navigacija ostane brez badge, ne pade. Org-scoped: števci
+nikoli ne razkrivajo druge organizacije. (Mnogo uporabno tudi z U8: command
+paleta deli isti capability-pravilo.) Regresija: `tests/unit/sidebar-nav-counters.test.ts`.
 
 ### U8 — Command palette prioriteta pogostih
 

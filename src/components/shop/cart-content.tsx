@@ -570,6 +570,7 @@ export function CartContent() {
                   <Input
                     id="guest-phone"
                     type="tel"
+                    inputMode="tel"
                     autoComplete="tel"
                     placeholder="+386 40 123 456"
                     value={contact.phone}

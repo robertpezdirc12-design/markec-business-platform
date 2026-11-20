@@ -46,4 +46,14 @@ describe("NN/g — browser autofill shema (test the schema)", () => {
     expect(register).toContain('autoComplete="new-password"')
     expect(register).toContain('autoComplete="off"')
   })
+
+  it("cart guest-checkout ima polno kontaktno shemo (name/email/tel/street-address)", () => {
+    const src = read("src/components/shop/cart-content.tsx")
+    expect(src).toContain('autoComplete="name"')
+    expect(src).toContain('type="email"')
+    expect(src).toContain('autoComplete="email"')
+    expect(src).toContain('type="tel"')
+    expect(src).toContain('autoComplete="tel"')
+    expect(src).toContain('autoComplete="street-address"')
+  })
 })
