@@ -17,6 +17,7 @@ import {
   getCurrentUserStaffId,
 } from "@/app/actions/appointments"
 import { BookingForm } from "@/components/booking/booking-form"
+import { getBookingABVariant } from "@/lib/ab/variant"
 import { WaitlistCard } from "@/components/booking/waitlist-card"
 import { getStripeForOrg } from "@/lib/stripe"
 import { getServerI18n } from "@/lib/i18n/server"
@@ -49,6 +50,8 @@ export default async function BookingPage(props: BookingPageProps) {
   const p = (path: string) => orgPath(org?.slug, path)
   // 2D-1W: delavnica vozil je omogočena za tire-service / mehanik.
   const showVehicle = !!org && ["tire-service", "mehanik"].includes(org.vertical ?? "")
+  // A/B runtime //xeno: varianta se določi na serverju (ne ob build).
+  const abVariant = await getBookingABVariant(org?.id)
   // Profile guard (EPIC #1 §21) lives in booking/layout.tsx — shell faza,
   // tako da je preusmeritev pravi 307 (P0 #24).
 
@@ -141,6 +144,8 @@ export default async function BookingPage(props: BookingPageProps) {
             paymentsEnabled={paymentsEnabled}
             defaultValues={defaultValues}
             showVehicle={showVehicle}
+            abVariant={abVariant}
+            organizationId={org?.id}
           />
         </div>
       </div>
@@ -278,6 +283,8 @@ export default async function BookingPage(props: BookingPageProps) {
           addons={addons}
           defaultValues={defaultValues}
           showVehicle={showVehicle}
+          abVariant={abVariant}
+          organizationId={org?.id}
         />
 
         {/* #90: čakalna lista — vstop za zasedene dneve (anchor iz

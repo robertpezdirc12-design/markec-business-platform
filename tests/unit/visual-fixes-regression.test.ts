@@ -45,12 +45,20 @@ describe("regresijska zaščita vizualnih UX fix-ov", () => {
     expect(src).toContain('type="submit"') // gumb "Potrdi in plačaj" še lahko oddá
   })
 
-  it("A/B feature-flag za krajšo obliko ostaja (NEXT_PUBLIC_BOOKING_AB_VARIANT)", () => {
-    const src = read("src/components/booking/steps/customer-info-step.tsx")
-    // flag se bere iz NEXT_PUBLIC_BOOKING_AB_VARIANT ("short" skrije notes),
-    // notes polje pa je pogojeno z showNotesField.
-    expect(src).toContain("NEXT_PUBLIC_BOOKING_AB_VARIANT")
-    expect(src).toContain("showNotesField")
-    expect(src).toContain('{showNotesField && (')
+  it("A/B runtime //xeno: server posreduje varianto, client skriva notes", () => {
+    const step = read("src/components/booking/steps/customer-info-step.tsx")
+    // varianta prihaja kot prop (server-določena), ne build-time env
+    expect(step).toContain("variant?: \"short\" | \"full\"")
+    expect(step).toContain('variant = "full"')
+    expect(step).toContain("const showNotesField = variant !== \"short\"")
+    expect(step).toContain("{showNotesField && (")
+    // server page določa varianto prek lib/ab/variant (runtime //xeno)
+    const page = read("src/app/(customer)/booking/page.tsx")
+    expect(page).toContain('getBookingABVariant(org?.id)')
+    expect(page).toContain("abVariant={abVariant}")
+    // lib/ab/variant: vedno bere server env + deterministična razdelitev
+    const ab = read("src/lib/ab/variant.ts")
+    expect(ab).toContain("BOOKING_AB_VARIANT")
+    expect(ab).toContain("BookingABVariant")
   })
 })

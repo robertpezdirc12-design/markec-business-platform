@@ -3175,3 +3175,33 @@ model Message {
 
   @@index([conversationId, createdAt])
 }
+
+// ============================================================
+// A/B eksperiment (krajša booking forma) — analitični dogodki.
+// Nova samostojna tabela (ne spreminja Appointment). Shranjuje
+// VIEW (stran naložena v določeni varianti) in CONVERSION (oddan
+// termin v tej varianti), da dashboard meri konverzijo po varianti
+// ("full" baseline vs "short" krajše oblike). `sessionKey` je
+// konzisten ključ obiskovalca (org + cookie hash), da se več
+// dogodkov istega uporabnika spači; `appointmentId` kadar
+// CONVERSION.
+// ============================================================
+enum BookingExperimentKind {
+  VIEW
+  CONVERSION
+}
+
+model BookingExperimentEvent {
+  id        String @id @default(cuid())
+  organizationId String
+  variant   String // "short" | "full"
+  kind      BookingExperimentKind
+  // konzistentni ključ uporabnika (org + cookie hash) za dedup/skupinjenje
+  sessionKey String?
+  // AppointmentId, ko je to CONVERSION (take)
+  appointmentId String?
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, variant, kind, createdAt])
+  @@index([organizationId, sessionKey])
+}

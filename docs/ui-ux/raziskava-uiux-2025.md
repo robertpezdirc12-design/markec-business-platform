@@ -79,18 +79,23 @@ spremembe so označene z ✅.
   (name/email/tel + type/inputMode). Celoten contact-formni del je avditan —
   med avditom dodana manjkajoča `inputMode="tel"/"email"` na inquiry form in
   `type="tel"` na walk-in.
-- ✅ **A/B feature-flag krajše oblike** (NN/g "vsako polje zniža konverzijo"):
-  `NEXT_PUBLIC_BOOKING_AB_VARIANT=short` skrije ne-obvezno `notes` polje v
-  booking `customer-info` (krajša forma, 4 obvezna polja); notes izgub nima,
-  isti action shrani. Privzeto polna. Dokumentacija v `.env.example`.
-  Regresija: `tests/unit/visual-fixes-regression.test.ts`.
+- ✅ **A/B — krajša forma, runtime //xeno + tracking + dashboard** (NN/g
+  "vsako polje zniža konverzijo"): varianta ni več build-time, ampak jo določi
+  **server ob requestu** (`src/lib/ab/variant.ts` → `getBookingABVariant`).
+  `BOOKING_AB_VARIANT=short` skrije ne-obvezno `notes` polje (4 polja); prazno
+  → deterministična 50/50 razdelitev po org (prav A/B grupa). Ob nalaganju
+  forme `BookingForm` zabeleži **VIEW**, ob oddaji termina **CONVERSION**
+  (`src/app/actions/ab-tracking.ts` → tabela `BookingExperimentEvent`);
+  dashboard `dashboard/experiments` prikazuje konverzijo po varianti.
+  Regresija: `tests/unit/ab-tracking-dashboard.test.ts` + visual-fixes.
 - ✅ **Performance-as-UX / bundle audit** regresija:
   `tests/unit/performance-bundle-audit.test.ts` — potrdi da težke
   (react-hook-form+zod+date-fns) kot `ReviewForm` na landing ostajajo
   `next/dynamic` (T9) in da največja admin editorja (branding, documents,
   product) niso nikoli uvožena na javni/customer poti (route-level izolacija).
-- A/B merjenje same konverzije (krajše oblike) je na lastniku — flag je
-  build-time, ni runtime maska.
+- A/B merjenje je zdaj **vgrajeno**: dashboard prikazuje realne dogodke
+  (VIEW/CONVERSION) že od prvega prikaza; lastnik le izbere varianto ali pusti
+  uteženo 50/50 razdelitev.
 
 ## Zaključek
 

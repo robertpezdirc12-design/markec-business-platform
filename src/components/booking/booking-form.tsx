@@ -13,6 +13,10 @@ import {
   getBookingGuaranteeOptions,
 } from "@/app/actions/stripe"
 import {
+  trackBookingView,
+  trackBookingConversion,
+} from "@/app/actions/ab-tracking"
+import {
   NO_SHOW_CONSENT_LABEL,
   NO_SHOW_POLICY_TEXT,
 } from "@/lib/booking/no-show-policy"
@@ -59,11 +63,25 @@ export function BookingForm(props: BookingFormProps) {
     isEmployee,
     paymentsEnabled = true,
     defaultValues = {},
+    abVariant = "full",
+    organizationId = "",
   } = props
   const { locale, t, withBusiness } = useI18n()
   // F2.2.2 P0-2: najemniška pripona za client-side režime (push na uspešno
   // stran brez plačila). "" na golih poteh (custom domena servi golo).
   const tenantPrefix = useOrgPrefix()
+
+  // A/B runtime //xeno: ob prvem nalaganju forme zabeleži VIEW dogodek
+  // v varianti (za dash metric konverzije). Enkrat na mount; ognjena
+  // stran se NE šteje kot konverzija — to se zgodi ob dejanskem submitu.
+  useEffect(() => {
+    if (organizationId) {
+      void trackBookingView({ organizationId, variant: abVariant }).catch(
+        () => {}
+      )
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId, abVariant])
 
   const router = useRouter()
   const [flowError, setFlowError] = useState<string | null>(null)
@@ -351,6 +369,14 @@ export function BookingForm(props: BookingFormProps) {
           })
 
           if (result.success && result.appointmentId) {
+            // A/B: zabeleži konverzijo (oddan termin) — samo za dashboard.
+            if (organizationId) {
+              void trackBookingConversion({
+                organizationId,
+                variant: abVariant,
+                appointmentId: result.appointmentId,
+              }).catch(() => {})
+            }
             router.push(`/my-appointments?new=${result.appointmentId}`)
             return { ok: true }
           }
@@ -449,6 +475,14 @@ export function BookingForm(props: BookingFormProps) {
           })
 
           if (fallback.success && fallback.appointmentId) {
+            // A/B: konverzija tudi za "brez plačila" pot (fallback).
+            if (organizationId) {
+              void trackBookingConversion({
+                organizationId,
+                variant: abVariant,
+                appointmentId: fallback.appointmentId,
+              }).catch(() => {})
+            }
             toast.info(t.booking.noPaymentToast)
             if (isAuthenticated) {
               router.push(`/my-appointments?new=${fallback.appointmentId}`)
@@ -611,6 +645,7 @@ export function BookingForm(props: BookingFormProps) {
             onIntakeChange={(key, value) =>
               setIntakeAnswers((prev) => ({ ...prev, [key]: value }))
             }
+            variant={abVariant}
           />
 
           {/* 2D-1W — neobavezni podatki o vozilu (delavnica vozil / tire-service).

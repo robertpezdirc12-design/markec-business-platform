@@ -419,6 +419,9 @@ export interface CreateAppointmentData {
   // — shranjena/povezana z obstoječim vozilom te org, org-scoped. Neobvezno.
   vehiclePlate?: string
   vehicleName?: string
+  // A/B runtime //xeno: varianta, v kateri je bila forma oddana ("short"|"full").
+  // Shranimo serverno za meritev konverzije po varianti (A/B dashboard).
+  abVariant?: "short" | "full"
 }
 
 export interface AppointmentCreationResult {
@@ -687,6 +690,10 @@ interface BookingFormBaseProps {
   }
   // 2D-1W: prikaži neobvezne podatke o vozilu (delavnica vozil / tire-service).
   showVehicle?: boolean
+  // A/B runtime //xeno: izbrana varianta (določena server-side ob requestu).
+  abVariant?: "short" | "full"
+  // A/B tracking: org, ki mu pripadajo dogodki (za izolacijo v dashboardu).
+  organizationId?: string
 }
 
 // Service-first mode: service is preselected, user picks staff

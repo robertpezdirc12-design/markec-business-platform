@@ -4,13 +4,12 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useI18n } from "@/lib/i18n/context"
 
-// A/B feature-list BCK (U4-2025-01). `NEXT_PUBLIC_BOOKING_AB_VARIANT=short`
-// skrije ne-obvezno polje "posebne želje" (notes) v customer-info koraku.
-// Krajša forma = manj kognitivne obremenitve (NN/g "vsako polje zniža
-// konverzijo"); notes ostaja shranjen skozi isti action — izgub ni.
-// Privzeto (brez env ali "full") se prikaže polna forma.
-const showNotesField =
-  process.env.NEXT_PUBLIC_BOOKING_AB_VARIANT !== "short"
+// A/B runtime //xeno (U4-2025-01). Varianto določi SERVER (lib/ab/variant),
+// ne build-time env — lastnik jo lahko zamenja ob živo. `variant="short"`
+// skrije ne-obvezno polje "posebne želje" (notes): krajša forma = manj
+// kognitivne obremenitve (NN/g "vsako polje zniža konverzijo"); notes
+// ostaja shranjen skozi isti action — izgub ni.
+// Full oblike privzeto (default "full").
 
 // F1 (E3-8 follow-up): the booking form submits through the React 19
 // `action={}` pathway, which resets UNCONTROLLED inputs after every
@@ -47,6 +46,8 @@ interface CustomerInfoStepProps {
   } | null
   intakeAnswers?: Record<string, string>
   onIntakeChange?: (key: string, value: string) => void
+  /** A/B runtime //xeno: server-določena varianta. "short" skrije notes. */
+  variant?: "short" | "full"
 }
 
 export function CustomerInfoStep({
@@ -58,8 +59,12 @@ export function CustomerInfoStep({
   intakeForm = null,
   intakeAnswers = {},
   onIntakeChange,
+  variant = "full",
 }: CustomerInfoStepProps) {
   const { t } = useI18n()
+
+  // Krajša forma ("short") skrije notes polje (A/B eksperiment).
+  const showNotesField = variant !== "short"
 
   // P1 #9: inline error slots get stable ids wired via aria-describedby, so
   // screen readers announce the message next to the field.
