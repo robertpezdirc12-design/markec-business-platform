@@ -19,7 +19,7 @@
 | U5 | **Vidni indikatorji dostopnosti storitev (hitri filter)** | Visok | S | ★★★★☆ | ✅ |
 | U6 | **Feedback pri ponovno-booking (realni appointment)** | Srednji | S | ★★★☆☆ |  |
 | U7 | **Admin: števci/badges v navigaciji** | Srednji | S | ★★★☆☆ | ✅ |
-| U8 | **Command palette: uvrsti pogoste akcije višje** | Srednji | S | ★★★☆☆ |  |
+| U8 | **Command palette: uvrsti pogoste akcije višje** | Srednji | S | ★★★☆☆ | ✅ |
 | U9 | **Varno stanje formularjev (draft, brez izgube ob prekinitvi)** | Srednji | M | ★★★☆☆ |  |
 | U10 | **WCAG 2.2: fokus red, error-preventivno, contrast passed** | Visok | M | ★★★★☆ | ➡️ |
 
@@ -48,6 +48,11 @@
   nepotrjene termine (appointments). Server action `getNavCounters` je
   org-scoped (requirePermissionOrg appointments.view); navigacija ne blokira,
   če klic pade. Regresija: `tests/unit/sidebar-nav-counters.test.ts`.
+- **U8 ✅** — `command-palette.tsx` pomni nazadnje uporabljene akcije/strani v
+  versioned localStorage (`mec:palette-recent:v1`, max 8, pravilo #19) in jih
+  ob odprtju palete (prazen query) prikaže kot prvo skupino "Zadnje"; ta id
+  so iz poznejših skupin izločeni, da ni dvojnikov. Iskalni zadetki se ne
+  pomnijo. i18n ključ `navGroups.recent`. Regresija: `tests/unit/command-palette-mru.test.ts`.
 
 ---
 
@@ -167,8 +172,17 @@ podatkov; vezano na command paletto.
 
 ### U8 — Command palette prioriteta pogostih
 
-**Kaj:** `command-palette.tsx` naj trend-driven ali static prikaže najprogosteje
-uporabljene module višje (MRU od Recent).
+**Kaj (original):** `command-palette.tsx` naj trend-driven ali static prikaže
+najpogosteje uporabljene module višje (MRU od Recent).
+
+**Implementirano ✅** — MRU (most-recently-used) pomnilnik. Ko recepcionist
+odpre paleto brez vprašanja, se pogosto uporabljene akcije/strani pokažejo v
+novi, prvi skupini **"Zadnje"** (i18n `navGroups.recent`). Vnos se zapiše ob
+izvedbi (`run` → `remember`) v versioned localStorage key `mec:palette-recent:v1`
+(max 8 id-jev, dedup, pravilo #19); iskalni zadetki se ne pomnijo. Id-i v
+"Zadnje" so izključeni iz "Quick actions"/"Go to", da ni dvojnega prikaza.
+PaletteEntry dobi `kind: "recent"`, `groups` prepozna ključ `recent` in ga
+renderira prvega. Regresija: `tests/unit/command-palette-mru.test.ts` (5 testov).
 
 ### U9 — Varno stanje formularjev (draft)
 

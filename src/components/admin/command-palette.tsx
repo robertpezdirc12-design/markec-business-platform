@@ -44,12 +44,13 @@ interface PaletteEntry {
   label: string
   hint?: string | null
   href: string
-  kind: "action" | "destination" | SearchHit["kind"]
+  kind: "action" | "destination" | "recent" | SearchHit["kind"]
 }
 
 const KIND_ICON: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   action: PlusIcon,
   destination: CalendarIcon,
+  recent: CalendarIcon,
   customer: UsersIcon,
   service: ScissorsIcon,
   product: PackageIcon,
@@ -112,6 +113,38 @@ export function CommandPalette() {
     [t, term]
   )
 
+  // ── U8: MRU (most-recently-used) prioriteta ─────────────────
+  // Pogosto uporabljene akcije/strani se ob odprtju palete (prazen query)
+  // pokažejo kot prva skupina "Zadnje". Shranjeno versioned v localStorage
+  // (CLAUDE.md → pravilo #19: versioned + minimizirano, max 8 vnosov).
+  const RECENT_KEY = "mec:palette-recent:v1"
+  const [recentIds, setRecentIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return []
+    try {
+      const raw = window.localStorage.getItem(RECENT_KEY)
+      const parsed = raw ? (JSON.parse(raw) as string[]) : []
+      return Array.isArray(parsed) ? parsed.slice(0, 8) : []
+    } catch {
+      return []
+    }
+  })
+
+  const remember = useCallback(
+    (entry?: PaletteEntry) => {
+      if (!entry) return
+      if (entry.kind !== "action" && entry.kind !== "destination" && entry.kind !== "recent")
+        return
+      const next = [entry.id, ...recentIds.filter((id) => id !== entry.id)].slice(0, 8)
+      setRecentIds(next)
+      try {
+        window.localStorage.setItem(RECENT_KEY, JSON.stringify(next))
+      } catch {
+        /* lokalno shranjevanje lahko pade (npr. private mode) — ignoriraj */
+      }
+    },
+    [RECENT_KEY, recentIds]
+  )
+
   const entries = useMemo<PaletteEntry[]>(() => {
     const q = query.trim().toLocaleLowerCase("sl")
     const match = (text: string) => !q || text.toLocaleLowerCase("sl").includes(q)
@@ -150,11 +183,22 @@ export function CommandPalette() {
         }))
       )
 
-    // Brez vprašanja: samo dejanja + strani. Z vprašanjem: zadetki najprej.
+    // U8 — zgradi MRU skupino (Zadnje) iz pomnjenih id akcij/strani.
+    // Brinalco: recent id, ki ni več v nav (npr. odstranjen modul), se
+    // izpusti; dejanja/strani z istim id ne morejo še enkrat spodaj.
+    const recent: PaletteEntry[] = recentIds
+      .map((id) => [...actions, ...destinations].find((e) => e.id === id))
+      .filter((e): e is PaletteEntry => Boolean(e))
+      .map((e) => ({ ...e, kind: "recent" as const }))
+    const recentIdSet = new Set(recentIds)
+    const actionsRest = actions.filter((a) => !recentIdSet.has(a.id))
+    const destinationsRest = destinations.filter((d) => !recentIdSet.has(d.id))
+
+    // Brez vprašanja: dejanja + strani, MRU (Zadnje) na vrhu.
     return q
       ? [...dbEntries, ...destinations, ...actions]
-      : [...actions, ...destinations]
-  }, [query, navItems, results, label, t, navCtx])
+      : [...recent, ...actionsRest, ...destinationsRest]
+  }, [query, navItems, results, label, t, navCtx, recentIds])
 
   // Iskanje po bazi z zakasnitvijo — brez poizvedbe na vsak pritisk.
   useEffect(() => {
@@ -182,10 +226,11 @@ export function CommandPalette() {
   const run = useCallback(
     (entry?: PaletteEntry) => {
       if (!entry) return
+      remember(entry)
       setOpen(false)
       router.push(entry.href)
     },
-    [router]
+    [router, remember]
   )
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -215,7 +260,9 @@ export function CommandPalette() {
           ? "actions"
           : entry.kind === "destination"
             ? "destinations"
-            : "results"
+            : entry.kind === "recent"
+              ? "recent"
+              : "results"
       const list = bySection.get(key) ?? []
       list.push(entry)
       bySection.set(key, list)
@@ -228,7 +275,9 @@ export function CommandPalette() {
       ? t.common.navGroups.quickActions
       : key === "destinations"
         ? t.common.navGroups.destinations
-        : t.common.navGroups.results
+        : key === "recent"
+          ? t.common.navGroups.recent
+          : t.common.navGroups.results
 
   return (
     <>
@@ -273,7 +322,7 @@ export function CommandPalette() {
                 {t.common.navGroups.noResults}
               </p>
             ) : (
-              (["results", "destinations", "actions"] as const).map((key) => {
+              (["recent", "results", "destinations", "actions"] as const).map((key) => {
                 const list = groups.get(key)
                 if (!list?.length) return null
                 return (
