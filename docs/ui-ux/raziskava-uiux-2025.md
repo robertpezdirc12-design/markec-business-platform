@@ -79,10 +79,18 @@ spremembe so označene z ✅.
   (name/email/tel + type/inputMode). Celoten contact-formni del je avditan —
   med avditom dodana manjkajoča `inputMode="tel"/"email"` na inquiry form in
   `type="tel"` na walk-in.
-- A/B: krajša oblika (dodatni podatki na "povleci" pozneje) — hkrati paziti,
-  da polog 3.3.4 ostaja.
-- Navodilo datum/čas: parse potrebra bodočnosti (NN/g "do not ask for info
-  that can be inferred").
+- ✅ **A/B feature-flag krajše oblike** (NN/g "vsako polje zniža konverzijo"):
+  `NEXT_PUBLIC_BOOKING_AB_VARIANT=short` skrije ne-obvezno `notes` polje v
+  booking `customer-info` (krajša forma, 4 obvezna polja); notes izgub nima,
+  isti action shrani. Privzeto polna. Dokumentacija v `.env.example`.
+  Regresija: `tests/unit/visual-fixes-regression.test.ts`.
+- ✅ **Performance-as-UX / bundle audit** regresija:
+  `tests/unit/performance-bundle-audit.test.ts` — potrdi da težke
+  (react-hook-form+zod+date-fns) kot `ReviewForm` na landing ostajajo
+  `next/dynamic` (T9) in da največja admin editorja (branding, documents,
+  product) niso nikoli uvožena na javni/customer poti (route-level izolacija).
+- A/B merjenje same konverzije (krajše oblike) je na lastniku — flag je
+  build-time, ni runtime maska.
 
 ## Zaključek
 

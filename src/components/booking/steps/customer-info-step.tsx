@@ -4,6 +4,14 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useI18n } from "@/lib/i18n/context"
 
+// A/B feature-list BCK (U4-2025-01). `NEXT_PUBLIC_BOOKING_AB_VARIANT=short`
+// skrije ne-obvezno polje "posebne želje" (notes) v customer-info koraku.
+// Krajša forma = manj kognitivne obremenitve (NN/g "vsako polje zniža
+// konverzijo"); notes ostaja shranjen skozi isti action — izgub ni.
+// Privzeto (brez env ali "full") se prikaže polna forma.
+const showNotesField =
+  process.env.NEXT_PUBLIC_BOOKING_AB_VARIANT !== "short"
+
 // F1 (E3-8 follow-up): the booking form submits through the React 19
 // `action={}` pathway, which resets UNCONTROLLED inputs after every
 // action submission — so all customer fields are controlled here and
@@ -182,24 +190,26 @@ export function CustomerInfoStep({
             </p>
           )}
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="notes">{t.booking.specialRequests}</Label>
-          <Textarea
-            id="notes"
-            name="notes"
-            placeholder={t.booking.notesPlaceholder}
-            rows={3}
-            aria-invalid={!!errors.notes || undefined}
-            aria-describedby={errors.notes ? "notes-error" : undefined}
-            value={values.notes}
-            onChange={(e) => onChange("notes", e.target.value)}
-          />
-          {errors.notes && (
-            <p id="notes-error" role="alert" className="text-sm text-destructive">
-              {errors.notes.message}
-            </p>
-          )}
-        </div>
+        {showNotesField && (
+          <div className="space-y-2">
+            <Label htmlFor="notes">{t.booking.specialRequests}</Label>
+            <Textarea
+              id="notes"
+              name="notes"
+              placeholder={t.booking.notesPlaceholder}
+              rows={3}
+              aria-invalid={!!errors.notes || undefined}
+              aria-describedby={errors.notes ? "notes-error" : undefined}
+              value={values.notes}
+              onChange={(e) => onChange("notes", e.target.value)}
+            />
+            {errors.notes && (
+              <p id="notes-error" role="alert" className="text-sm text-destructive">
+                {errors.notes.message}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* #96: sprejemni obrazec storitve — gost izpolni ob rezervaciji;
             odgovori grejo kot FormSubmission (contextType appointment). */}
