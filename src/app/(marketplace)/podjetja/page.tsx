@@ -14,6 +14,7 @@ import {
   getShowcase,
   snapshotAgeLabel,
 } from "@/lib/marketplace/snapshot"
+import { resolveCategoryQuery } from "@/lib/marketplace/category-query"
 
 // Podatki so generirani ob buildu v snapshot JSON in uvoženi kot navaden
 // modul — ob zahtevku NI DB poizvedb. Stran ostane dynamic, da searchParams
@@ -35,15 +36,8 @@ function first(value: string | string[] | undefined): string {
 }
 
 // Marketplace category pills use human labels, while the snapshot stores
-// vertical ids. Map the six public labels to a search term the filter understands.
-const CATEGORY_QUERY: Record<string, string> = {
-  "Frizerski saloni": "frizer",
-  Kozmetika: "kozmet",
-  Masaža: "masaž",
-  Brivci: "briv",
-  Nohti: "noht",
-  Wellness: "wellness",
-}
+// vertical ids. Preslikava in case-normalizacija živita v
+// src/lib/marketplace/category-query.ts (#case-fix: case-insensitive).
 
 export default async function MarketplacePage({
   searchParams,
@@ -53,7 +47,10 @@ export default async function MarketplacePage({
   const params = await searchParams
   const categoryParam = first(params.kategorija)
   const rawQuery = first(params.q) || categoryParam
-  const query = CATEGORY_QUERY[rawQuery] ?? rawQuery
+  // #case-normalize: obiskovalec lahko vnese "Frizerski Saloni" (velika črka)
+  // ali kategorijo iz URL-ja z drugačno velikostjo — prevedemo prek
+  // case-insensitive preslikave, da ne dobimo praznih (0 podjetij) rezultatov.
+  const query = resolveCategoryQuery(rawQuery)
   const location = first(params.location) || first(params.mesto)
   const hasSearch = Boolean(query || location)
 
