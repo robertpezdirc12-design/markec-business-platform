@@ -16,7 +16,7 @@
 | U2 | **Realna dostopnost terminov namesto fiktivnih slotov** | Kritičen | M | ★★★★★ |  |
 | U3 | **Eden vir resnice za booking tok (ne dva vzporedna)** | Visok | M | ★★★★☆ |  |
 | U4 | **Povzetek v koraku + lepljiv "naprej" z dostopnostjo** | Visok | S | ★★★★☆ | ✅ |
-| U5 | **Vidni indikatorji dostopnosti storitev (hitri filter)** | Visok | S | ★★★★☆ |  |
+| U5 | **Vidni indikatorji dostopnosti storitev (hitri filter)** | Visok | S | ★★★★☆ | ✅ |
 | U6 | **Feedback pri ponovno-booking (realni appointment)** | Srednji | S | ★★★☆☆ |  |
 | U7 | **Admin: števci/badges v navigaciji** | Srednji | S | ★★★☆☆ |  |
 | U8 | **Command palette: uvrsti pogoste akcije višje** | Srednji | S | ★★★☆☆ |  |
@@ -38,6 +38,11 @@
 - **U10 ➡️** — dodan WCAG 1.3.1/4.1.2 fiks na plačilno radio grupo v
   `booking-form.tsx` (navadno `<p>` → `<fieldset>` + `<legend>`), da je
   skupla radio-grupa programatično določljiva za brajalnik zaslona.
+- **U5 ✅** — `services-list.tsx`: hitri filter + sort (cena/trajanje/rating)
+  je že bil v `services-filter.tsx` (P1 #29). Dopolnjen je bil *pravi UX manko*:
+  CTA gumb je bil `opacity-0`/hover-only → na mobilnih nerekviden. Gumb je zdaj
+  vedno viden (afrdance za tap), z i18n label `common.actions.viewDetails`
+  namesto tvrde SL "Podrobnosti". Regresija: `tests/unit/services-list-ux.test.ts`.
 
 ---
 

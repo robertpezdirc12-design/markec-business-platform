@@ -1,5 +1,6 @@
 "use client"
 import { useFormatPrice } from "@/lib/currency"
+import { useI18n } from "@/lib/i18n/context"
 
 import { useMemo, useState, useTransition } from "react"
 import Image from "next/image"
@@ -37,6 +38,7 @@ export function ServicesList({
 }: ServicesListProps) {
   const fmt = useFormatPrice()
   const router = useRouter()
+  const { t } = useI18n()
   const searchParams = useSearchParams()
   const [services, setServices] = useState(initialServices)
   const [isPending, startTransition] = useTransition()
@@ -163,10 +165,12 @@ export function ServicesList({
               )}
             </div>
 
-            {/* Hover Button */}
-            <div className="mt-3 translate-y-2 transform opacity-0 transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100">
-              <div className="text-accent-text border-accent/50 inline-flex items-center border-b pb-1 text-xs font-medium">
-                Podrobnosti
+            {/* CTA — vedno vidno (touch-friendly); hover samo poudari.
+                U5-2026: prej opacity-0/hover — na mobilnih nikoli ni bilo
+                vidne afrdance, da kartica vodi naprej. */}
+            <div className="mt-3 transition-transform duration-500 group-hover:translate-x-1">
+              <div className="text-accent-text border-accent/50 inline-flex items-center border-b pb-1 text-xs font-medium group-hover:border-accent-text">
+                {t.common.actions.viewDetails}
                 <svg
                   className="ml-1 h-3 w-3"
                   fill="none"
