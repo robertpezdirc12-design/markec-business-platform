@@ -76,7 +76,17 @@ export function StaffStep({
                     )}
                   </span>
                   <span className="block p-3 sm:p-4">
-                    <span className="block font-semibold">{staff.name}</span>
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="block font-semibold">{staff.name}</span>
+                      {staff.visitCount ? (
+                        <span className="bg-primary/10 text-primary-foreground rounded-full px-2 py-0.5 text-[11px] font-medium">
+                          {t.booking.revisit} ·{" "}
+                          {t.booking.revisitCount
+                            .replace("{count}", String(staff.visitCount))
+                            .replace("{name}", staff.name)}
+                        </span>
+                      ) : null}
+                    </span>
                     {staff.bio && (
                       <span className="text-muted-foreground mt-1 line-clamp-2 block text-sm">
                         {staff.bio}

@@ -366,6 +366,8 @@ export interface AvailableStaffMember {
   bio: string | null
   image: string | null
   isActive: boolean
+  /** U6 — kolikokrat je prijavljena stranka že obiskala tega strokovnjaka. */
+  visitCount?: number
 }
 
 export interface BookingFormData {

@@ -247,7 +247,43 @@ export async function getAvailableStaff(
       },
     },
   })
-  return availableStaff.map((s) => s.staff)
+
+  const staffMembers: AvailableStaffMember[] = availableStaff.map((s) => s.staff)
+
+  // U6 — ponovni obisk: za prijavljeno stranko priloži število njenih
+  // preteklih (veljavnih) terminov pri vsakem strokovnjaku, da lahko UI
+  // pokaže "Ponovni obisk (3× pri Marku)". Brez prijave je visitCount
+  // izpuščen, tako da javno okolje ne razkrije številk.
+  try {
+    const session = await auth()
+    const userId = session?.user?.id
+    if (userId) {
+      const customer = await prisma.customer.findUnique({ where: { userId } })
+      if (customer) {
+        const staffIds = staffMembers.map((s) => s.id)
+        const counts = await prisma.appointment.groupBy({
+          by: ["staffId"],
+          where: {
+            customerId: customer.id,
+            staffId: { in: staffIds },
+            status: {
+              notIn: ["CANCELLED", "NO_SHOW"],
+            },
+          },
+          _count: { _all: true },
+        })
+        const byId = new Map(counts.map((c) => [c.staffId, c._count._all]))
+        for (const staff of staffMembers) {
+          const n = byId.get(staff.id)
+          if (n) staff.visitCount = n
+        }
+      }
+    }
+  } catch {
+    // Štetje obiskov je bonusa (best-effort) — ne sme vreči rezervacije.
+  }
+
+  return staffMembers
 }
 
 // Get staff member with their services for booking (staff-first flow)

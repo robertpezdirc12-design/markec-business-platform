@@ -17,7 +17,7 @@
 | U3 | **Eden vir resnice za booking tok (ne dva vzporedna)** | Visok | M | ★★★★☆ |  |
 | U4 | **Povzetek v koraku + lepljiv "naprej" z dostopnostjo** | Visok | S | ★★★★☆ | ✅ |
 | U5 | **Vidni indikatorji dostopnosti storitev (hitri filter)** | Visok | S | ★★★★☆ | ✅ |
-| U6 | **Feedback pri ponovno-booking (realni appointment)** | Srednji | S | ★★★☆☆ |  |
+| U6 | **Feedback pri ponovno-booking (realni appointment)** | Srednji | S | ★★★☆☆ | ✅ |
 | U7 | **Admin: števci/badges v navigaciji** | Srednji | S | ★★★☆☆ | ✅ |
 | U8 | **Command palette: uvrsti pogoste akcije višje** | Srednji | S | ★★★☆☆ | ✅ |
 | U9 | **Varno stanje formularjev (draft, brez izgube ob prekinitvi)** | Srednji | M | ★★★☆☆ |  |
@@ -53,6 +53,12 @@
   ob odprtju palete (prazen query) prikaže kot prvo skupino "Zadnje"; ta id
   so iz poznejših skupin izločeni, da ni dvojnikov. Iskalni zadetki se ne
   pomnijo. i18n ključ `navGroups.recent`. Regresija: `tests/unit/command-palette-mru.test.ts`.
+- **U6 ✅** — `getAvailableStaff` za prijavljeno stranko doda `visitCount` na
+  vsakega strokovnjaka (štetje njenih veljavnih terminov per staff, `groupBy`,
+  izključena `CANCELLED`/`NO_SHOW`); `staff-step.tsx` prikaže badge "Ponovni
+  obisk (N× pri Ime)" ko je `visitCount > 0`. Brez prijave se število ne
+  izpostavlja; štetje je best-effort (`catch`) — ne sme vreči rezervacije.
+  i18n `booking.revisit`/`booking.revisitCount`. Regresija: `tests/unit/revisit-feedback.test.ts`.
 
 ---
 
@@ -159,7 +165,18 @@ outline-a) + `autocomplete` na booking form novih polj.
 
 **Kaj:** če se prijavljena stranka ponovno naroči pri istem strokovnjaku,
 pokazati "Ponovni obisk (3x pri Marku)" + možnost hitre izbire že izbranih
-preferenc (ko tudi priljubljeni čas). 
+preferenc (ko tudi priljubljeni čas).
+
+**Implementirano ✅ (število obiskov).** `getAvailableStaff`
+(`appointments.ts`) za prijavljeno stranko (`auth()` → `Customer.userId`)
+prešteje njene veljavne termine per staff (`prisma.appointment.groupBy`,
+izključena `CANCELLED`/`NO_SHOW`) in nastavi `AvailableStaffMember.visitCount`.
+`StaffStep` to izkoristi kot volnen badge **"Ponovni obisk · 3× pri Marku"**
+kot značko na izboru specialista. Brez prijave (ali neobstoječi Customer)
+je `visitCount` izpuščen — javno okolje ne razkriva številk. Štetje je
+best-effort: morebitna napaka se ujame, rezervacija nikoli ne pade.
+i18n: `booking.revisit`/`booking.revisitCount`. Regresija:
+`tests/unit/revisit-feedback.test.ts` (5 testov). 
 
 ### U7 — Admin: števci/badges v navigaciji
 

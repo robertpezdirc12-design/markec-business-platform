@@ -13,6 +13,8 @@ export const bookingSl = {
   chooseSpecialist: "Izberite specialista",
   chooseSpecialistDesc: "Izberite svojega specialista",
   noStaffForService: "Za to storitev ni prostega osebja",
+  revisit: "Ponovni obisk",
+  revisitCount: "{count}× pri {name}",
   yourSpecialist: "Vaš specialist",
   yourSpecialistDesc: "Rezervirate pri tem specialistu",
 
@@ -134,6 +136,8 @@ export const bookingEn: BookingDict = {
   chooseSpecialist: "Choose a specialist",
   chooseSpecialistDesc: "Choose your specialist",
   noStaffForService: "No staff available for this service",
+  revisit: "Returning visit",
+  revisitCount: "{count}× with {name}",
   yourSpecialist: "Your specialist",
   yourSpecialistDesc: "You are booking with this specialist",
 
