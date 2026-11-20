@@ -51,6 +51,14 @@ function normalizeHr(value: string): string {
     .trim()
 }
 
+/** Pravilno slovensko sklanjanje števca izbranih dejavnosti: 1 izbrana, 2 izbrani, 5 izbranih. */
+function skloniIzbranih(n: number): string {
+  if (n === 1) return "izbrana"
+  if (n === 2) return "izbrani"
+  if (n >= 3 && n <= 4) return "izbrane"
+  return "izbranih"
+}
+
 const PREPARED_GROUPS = [
   {
     label: "Lepota in osebna nega",
@@ -173,7 +181,7 @@ export function ActivityDirectoryPicker({
           {selectedActivity
             ? selectedActivity.label
             : skdCodes.length > 0
-              ? `${skdCodes.length} izbranih po SKD 2025 (nasvet)`
+              ? `${skdCodes.length} ${skloniIzbranih(skdCodes.length)} po SKD 2025 (nasvet)`
               : "Izberite dejavnost — npr. frizer, mehanik, čebelar …"}
         </span>
         <ChevronDown

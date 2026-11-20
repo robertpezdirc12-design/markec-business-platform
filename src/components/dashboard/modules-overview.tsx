@@ -28,12 +28,14 @@ import { useI18n } from "@/lib/i18n/provider"
 
 const CATEGORY_LABEL: Record<ModuleView["category"], { sl: string; en: string }> = {
   required: { sl: "Obvezen", en: "Required" },
-  recommended: { sl: "Priporočen", en: "Recommended" },
+  recommended: { sl: "Privzeto vklopljen", en: "Default on" },
   available: { sl: "Razpoložljiv", en: "Available" },
-  disabled: { sl: "Ni na voljo za tvojo dejavnost", en: "Not available for your activity" },
+  // Politika "VSI MODULI ZA VSE" (2026): noben modul ni več nedovoljen,
+  // oznaka ostane le tipskim fallback (nikoli se ne prikaže).
+  disabled: { sl: "Ni na voljo", en: "Not available" },
 }
 
-const CATEGORY_ORDER: ModuleView["category"][] = ["required", "recommended", "available", "disabled"]
+const CATEGORY_ORDER: ModuleView["category"][] = ["recommended", "available"]
 
 export function ModulesOverview() {
   const { locale } = useI18n()
@@ -128,7 +130,7 @@ export function ModulesOverview() {
   }, [modules, query, locale])
 
   const counts = useMemo(() => {
-    const c = { required: 0, recommended: 0, available: 0, disabled: 0 }
+    const c = { recommended: 0, available: 0 }
     for (const m of modules) if (m.category in c) c[m.category as keyof typeof c] += 1
     return c
   }, [modules])
@@ -141,23 +143,17 @@ export function ModulesOverview() {
         </CardTitle>
         <CardDescription>
           {locale === "en"
-            ? "Choose which parts of the platform are part of your business. Required modules for your activity are locked; the rest you can turn on or off at any time — data is never lost, re-enabling brings it back."
-            : "Izberi, kateri deli platforme so del tvojega poslovanja. Obvezni moduli dejavnosti so zaklenjeni; izbrane lahko vklopiš ali izklopiš kadarkoli — podatki nikoli ne izginejo, ponovni vklop jih vrne."}
+            ? "Every module is available to your activity — turn any of them on or off at any time. Data is never lost; re-enabling brings it back."
+            : "Vsak modul je na voljo tvoji dejavnosti — kateregakoli vklopiš ali izklopiš kadarkoli. Podatki nikoli ne izginejo; ponovni vklop jih vrne."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
           <Badge variant="outline">
-            {locale === "en" ? "Required" : "Obvezni"}: {counts.required}
+            {locale === "en" ? "Active/default" : "Aktivni/privzeti"}: {counts.recommended}
           </Badge>
           <Badge variant="outline">
-            {locale === "en" ? "Recommended/active" : "Priporočeni/aktivni"}: {counts.recommended}
-          </Badge>
-          <Badge variant="outline">
-            {locale === "en" ? "Available" : "Razpoložljivi"}: {counts.available}
-          </Badge>
-          <Badge variant="outline" className="text-muted-foreground/70">
-            {locale === "en" ? "Not available" : "Ni na voljo"}: {counts.disabled}
+            {locale === "en" ? "Available (off)" : "Razpoložljivi (izklopljeni)"}: {counts.available}
           </Badge>
         </div>
 
@@ -180,6 +176,9 @@ export function ModulesOverview() {
         ) : (
           <div className="space-y-1.5">
             {filtered.map((m) => {
+              // Politika "VSI MODULI ZA VSE" (2026): noben modul ni zaklenjen
+              // ali nedovoljen — vsak je preklopljiv. Ta koda je konservativna
+              // zaščita, če bi category kdaj vrnil staro vrednost.
               const isLocked = m.category === "required"
               const isUnavailable = m.category === "disabled"
               const deps = (m.dependsOn ?? []).length
@@ -277,8 +276,8 @@ export function ModulesOverview() {
 
         <p className="text-muted-foreground text-xs">
           {locale === "en"
-            ? "Required modules for your activity are always on and cannot be turned off. Modules not available for your activity stay off. Turning a module off never deletes data — history, bookings and orders stay saved, and re-enabling brings them back."
-            : "Obvezni moduli dejavnosti so vedno vklopljeni in jih ni mogoče izklopiti. Moduli, ki niso na voljo za tvojo dejavnost, ostanejo izklopljeni. Izklop nikoli ne zbriše podatkov — zgodovina, rezervacije in naročila ostanejo shranjeni, ponovni vklop jih vrne."}
+            ? "Every module is available to your activity — you can turn any of them on or off at any time. Turning a module off never deletes data: history, bookings and orders stay saved, and re-enabling brings them back."
+            : "Vsak modul je na voljo tvoji dejavnosti — kateregakoli vklopiš ali izklopiš kadarkoli. Izklop nikoli ne zbriše podatkov: zgodovina, rezervacije in naročila ostanejo shranjeni, ponovni vklop jih vrne."}
         </p>
       </CardContent>
     </Card>

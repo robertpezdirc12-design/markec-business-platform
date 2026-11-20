@@ -414,7 +414,12 @@ export async function createSalonOrganization(input: CreateSalonInput): Promise<
       // contributes capability modules (the union), never duplicated
       // terminology or definitions. The owner can add catalog items of the
       // second activity manually in the shared modules.
-      await seedOrganizationCatalog(org.id, profile.id)
+      // SKD #118: SKD-grouped profiles (e.g. skd-f-construction) carry a
+      // dedicated vertical preset under `catalog.seedVerticalId` distinct
+      // from the profile id — seed from THAT so the tenant gets the real
+      // activity catalog (construction), not the generic fallback.
+      const seedVertical = profile.catalog?.seedVerticalId ?? profile.id
+      await seedOrganizationCatalog(org.id, seedVertical)
 
       // F5.2.3: podjetje z več dejavnostmi ob ustvarjanju — sekundarna
       // dejavnost prav tako prispeva svoje predloge kategorij (idempotentno).
@@ -446,7 +451,7 @@ export async function createSalonOrganization(input: CreateSalonInput): Promise<
 
       // Salon configuration with profile-driven defaults (locale, currency,
       // timezone come from the activity preset — no more hardcoded values).
-      const preset = getVertical(profile.id)
+      const preset = getVertical(seedVertical)
       await prisma.salonConfig.create({
         data: {
           organizationId: org.id,
@@ -460,7 +465,7 @@ export async function createSalonOrganization(input: CreateSalonInput): Promise<
           timezone: preset.timezone || "Europe/Ljubljana",
           bookingDeposit: 10,
           cancellationPolicy: "Odpoved možna najkasneje 24 ur pred terminom.",
-          siteContent: verticalSiteContent(profile.id) as unknown as object,
+          siteContent: verticalSiteContent(seedVertical) as unknown as object,
           primaryColor: paletteOption?.primary ?? "#000000",
           secondaryColor: "#ffffff",
           accentColor: paletteOption?.accent ?? "#d4af37",

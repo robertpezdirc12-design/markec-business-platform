@@ -30,7 +30,7 @@ function salonCapabilities(): CapabilityMatrix {
   // Appointment-centric service business (existing behavior preserved).
   return {
     appointments: "required",
-    workOrders: "disabled",
+    workOrders: "optional",
     shop: "required",
     services: "required",
     inventory: "optional",
@@ -39,9 +39,9 @@ function salonCapabilities(): CapabilityMatrix {
     analytics: "required",
     reviews: "optional",
     forms: "optional",
-    workflows: "disabled", // appointment lifecycle is native
-    documents: "disabled",
-    delivery: "disabled",
+    workflows: "optional", // appointment lifecycle is native
+    documents: "required", // računi so zakonsko-obvezni za vsak salon (P2 #101)
+    delivery: "optional",
     walkIn: "optional", // #98: modul je na voljo vsaki dejavnosti (AD-02)
     cashRegister: "required", // WP-1: blagajna (eno jedro, capability-vidnost)
   }
@@ -375,18 +375,18 @@ const PROFILE_LIST: ActivityProfile[] = [
     schemaType: "BeautySalon",
     capabilities: {
       appointments: "required",
-      workOrders: "disabled",
+      workOrders: "optional",
       shop: "optional",
       services: "required",
       inventory: "optional",
       customers: "required",
       staff: "required",
       analytics: "required",
-      reviews: "disabled", // portfolij, ne ocene storitev
+      reviews: "optional", // portfolij, ne ocene storitev
       forms: "required",
-      workflows: "disabled", // življenjski cikel terminov je native
-      documents: "disabled",
-      delivery: "disabled",
+      workflows: "optional", // življenjski cikel terminov je native
+      documents: "optional",
+      delivery: "optional",
       walkIn: "optional", // #98 (AD-02): modul je na voljo vsaki dejavnosti
       cashRegister: "required", // WP-1: blagajna za gotovinske depozite/izvedbo
     },
@@ -448,7 +448,7 @@ const PROFILE_LIST: ActivityProfile[] = [
     // ista konvencija kot seamstress.
     schemaType: "ProfessionalService",
     capabilities: {
-      appointments: "disabled",
+      appointments: "optional",
       workOrders: "required",
       shop: "optional",
       services: "required",
@@ -456,7 +456,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       customers: "required",
       staff: "required",
       analytics: "required",
-      reviews: "disabled",
+      reviews: "optional",
       forms: "required",
       workflows: "required",
       documents: "required", // predračuni za naročila
@@ -550,7 +550,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       reviews: "optional",
       forms: "optional",
       workflows: "optional",
-      documents: "disabled",
+      documents: "optional",
       delivery: "optional",
     walkIn: "optional", // #98: modul je na voljo vsaki dejavnosti (AD-02)
     cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
@@ -585,7 +585,7 @@ const PROFILE_LIST: ActivityProfile[] = [
     // P2 #36: schema.org @type — del definicije profila (en vir resnice).
     schemaType: "ProfessionalService",
     capabilities: {
-      appointments: "disabled",
+      appointments: "optional",
       workOrders: "required",
       shop: "optional",
       services: "required",
@@ -593,7 +593,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       customers: "required",
       staff: "required",
       analytics: "required",
-      reviews: "disabled",
+      reviews: "optional",
       forms: "required",
       workflows: "required",
       documents: "optional",
@@ -684,11 +684,11 @@ const PROFILE_LIST: ActivityProfile[] = [
       customers: "required",
       staff: "required",
       analytics: "required",
-      reviews: "disabled",
+      reviews: "optional",
       forms: "required",
       workflows: "required",
       documents: "optional",
-      delivery: "disabled",
+      delivery: "optional",
     walkIn: "optional", // #98: modul je na voljo vsaki dejavnosti (AD-02)
     cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
@@ -765,7 +765,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       forms: "required",
       workflows: "required",
       documents: "optional",
-      delivery: "disabled",
+      delivery: "optional",
       walkIn: "optional", // #98: modul je na voljo vsaki dejavnosti (AD-02)
       cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
@@ -828,17 +828,17 @@ const PROFILE_LIST: ActivityProfile[] = [
     // P2 #36: schema.org @type — del definicije profila (en vir resnice).
     schemaType: "Store",
     capabilities: {
-      appointments: "disabled",
-      workOrders: "disabled",
+      appointments: "optional",
+      workOrders: "required", // žetev, obdelava panjev = delovna opravila (P2 #101)
       shop: "required",
-      services: "disabled",
+      services: "optional",
       inventory: "required",
       customers: "required",
-      staff: "disabled",
+      staff: "optional",
       analytics: "required",
       reviews: "optional",
       forms: "optional",
-      workflows: "disabled",
+      workflows: "optional",
       documents: "optional",
       delivery: "optional",
     walkIn: "optional", // #98: modul je na voljo vsaki dejavnosti (AD-02)
@@ -888,17 +888,17 @@ const PROFILE_LIST: ActivityProfile[] = [
     palette: "emerald",
     schemaType: "Farm",
     capabilities: {
-      appointments: "disabled",
-      workOrders: "optional",
+      appointments: "optional",
+      workOrders: "required", // poljodela, spravilo = delovna opravila (P2 #101)
       shop: "required",
-      services: "disabled",
+      services: "optional",
       inventory: "required",
       customers: "required",
       staff: "optional",
       analytics: "required",
       reviews: "optional",
       forms: "optional",
-      workflows: "disabled",
+      workflows: "optional",
       documents: "optional",
       delivery: "optional",
       walkIn: "optional",
@@ -938,7 +938,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       customers: "required",
       staff: "required",
       analytics: "required",
-      reviews: "disabled",
+      reviews: "optional",
       forms: "required",
       workflows: "required",
       documents: "required",
@@ -1040,7 +1040,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       forms: "required",
       workflows: "required",
       documents: "optional",
-      delivery: "disabled",
+      delivery: "optional",
       walkIn: "optional",
       cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
@@ -1089,7 +1089,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       forms: "required",
       workflows: "required",
       documents: "optional",
-      delivery: "disabled",
+      delivery: "optional",
       walkIn: "optional",
       cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
@@ -1160,12 +1160,55 @@ const PROFILE_LIST: ActivityProfile[] = [
       orderEn: { singular: "Work order", plural: "Work orders" },
       ctaEn: "Send an inquiry",
     }),
-    forms: [],
-    workflows: [],
+    forms: [
+      {
+        key: "construction-inquiry",
+        name: "Povpraševanje projekta",
+        description: "Podatki o gradbenem / keramičarskem delu za pripravo ponudbe.",
+        fields: [
+          { key: "work_type", label: "Vrsta del", type: "select", required: true, options: ["Polaganje keramičnih ploščic", "Tlakovanje tal", "Oblaganje sten", "Popravilo / fugiranje", "Obnova kopalnice", "Drugo"] },
+          { key: "space", label: "Prostor (kopalnica, kuhinja, zunanjost …)", type: "text", required: true },
+          { key: "area_m2", label: "Približna površina (m²)", type: "number", required: true, unit: "m²" },
+          { key: "material", label: "Izberite ploščice / material sami?", type: "select", required: false, options: ["Da, izberem sam", "Prosim za pomoč pri izbiri"] },
+          { key: "description", label: "Opis del in posebnosti", type: "textarea", required: false },
+          { key: "desired_date", label: "Želeni začetek del", type: "date", required: false },
+        ],
+      },
+      {
+        key: "construction-handover",
+        name: "Sprejem naročila del",
+        description: "Interni zapis sprejema naročila na lokaciji.",
+        fields: [
+          { key: "access_notes", label: "Dostop do lokacije", type: "text", required: false },
+          { key: "substrate", label: "Stanje podlage (beton, estrih, obstoječa keramika …)", type: "textarea", required: true },
+          { key: "demolition", label: "Potrebna rušitev / odstranitev obstoječega", type: "checkbox", required: false },
+          { key: "material_delivery", label: "Dobava materiala na lokacijo", type: "select", required: false, options: ["Stranka poskrbi", "Zagotovimo mi"] },
+        ],
+      },
+    ],
+    workflows: [
+      {
+        key: "construction-process",
+        name: "Proces delovnega naloga",
+        entity: "order",
+        stages: [
+          { key: "inquiry", name: "Povpraševanje", description: "Stranka odda povpraševanje na spletni strani." },
+          { key: "site_visit", name: "Pregled lokacije", description: "Ogled in natančen popis del." },
+          { key: "quote", name: "Ponudba", description: "Priprava in pošiljanje ponudbe." },
+          { key: "approval", name: "Potrditev", description: "Stranka potrdi obseg in ceno." },
+          { key: "scheduling", name: "Terminiranje", description: "Določitev začetka in rokov." },
+          { key: "in_progress", name: "Dela v teku", description: "Izvajanje naročenih del." },
+          { key: "handover", name: "Predaja in pregled", description: "Prevzem, kontrola kakovosti." },
+          { key: "payment", name: "Plačilo", description: "Zaključek plačila." },
+          { key: "warranty", name: "Garancija", description: "Garancijsko spremljanje." },
+          { key: "done", name: "Zaključeno", isFinal: true },
+        ],
+      },
+    ],
     dashboardWidgets: ["activeOrders", "deadlines", "pendingApprovals", "revenue", "customers"],
     website: { ctaMode: "inquiry" },
     extensions: ["documents"],
-    catalog: { seedVerticalId: "generic" },
+    catalog: { seedVerticalId: "construction" },
   },
   {
     id: "skd-g-retail",
@@ -1175,8 +1218,8 @@ const PROFILE_LIST: ActivityProfile[] = [
     palette: "coral",
     schemaType: "Store",
     capabilities: {
-      appointments: "disabled",
-      workOrders: "disabled",
+      appointments: "optional",
+      workOrders: "optional",
       shop: "required",
       services: "optional",
       inventory: "required",
@@ -1185,7 +1228,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       analytics: "required",
       reviews: "optional",
       forms: "optional",
-      workflows: "disabled",
+      workflows: "optional",
       documents: "optional",
       delivery: "optional",
       walkIn: "optional",
@@ -1422,7 +1465,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       workOrders: "optional",
       shop: "optional",
       services: "required",
-      inventory: "disabled",
+      inventory: "optional",
       customers: "required",
       staff: "required",
       analytics: "required",
@@ -1430,7 +1473,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       forms: "required",
       workflows: "required",
       documents: "required",
-      delivery: "disabled",
+      delivery: "optional",
       walkIn: "optional",
       cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
@@ -1471,7 +1514,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       workOrders: "optional",
       shop: "optional",
       services: "required",
-      inventory: "disabled",
+      inventory: "optional",
       customers: "required",
       staff: "optional",
       analytics: "required",
@@ -1479,7 +1522,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       forms: "required",
       workflows: "optional",
       documents: "required",
-      delivery: "disabled",
+      delivery: "optional",
       walkIn: "optional",
       cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
@@ -1528,7 +1571,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       forms: "optional",
       workflows: "optional",
       documents: "required",
-      delivery: "disabled",
+      delivery: "optional",
       walkIn: "optional",
       cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
@@ -1616,17 +1659,17 @@ const PROFILE_LIST: ActivityProfile[] = [
     capabilities: {
       appointments: "optional",
       workOrders: "optional",
-      shop: "disabled",
+      shop: "optional",
       services: "required",
-      inventory: "disabled",
+      inventory: "optional",
       customers: "required",
       staff: "required",
       analytics: "required",
-      reviews: "disabled",
+      reviews: "optional",
       forms: "required",
       workflows: "required",
       documents: "required",
-      delivery: "disabled",
+      delivery: "optional",
       walkIn: "optional",
       cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
@@ -1675,7 +1718,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       forms: "required",
       workflows: "optional",
       documents: "optional",
-      delivery: "disabled",
+      delivery: "optional",
       walkIn: "optional",
       cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
@@ -1860,8 +1903,8 @@ const PROFILE_LIST: ActivityProfile[] = [
     schemaType: "LocalBusiness",
     capabilities: {
       appointments: "optional",
-      workOrders: "disabled",
-      shop: "disabled",
+      workOrders: "optional",
+      shop: "optional",
       services: "required",
       inventory: "optional",
       customers: "required",
@@ -1871,7 +1914,7 @@ const PROFILE_LIST: ActivityProfile[] = [
       forms: "optional",
       workflows: "optional",
       documents: "optional",
-      delivery: "disabled",
+      delivery: "optional",
       walkIn: "optional",
       cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
@@ -1910,17 +1953,17 @@ const PROFILE_LIST: ActivityProfile[] = [
     capabilities: {
       appointments: "optional",
       workOrders: "optional",
-      shop: "disabled",
+      shop: "optional",
       services: "required",
-      inventory: "disabled",
+      inventory: "optional",
       customers: "required",
       staff: "required",
       analytics: "required",
-      reviews: "disabled",
+      reviews: "optional",
       forms: "required",
       workflows: "required",
       documents: "required",
-      delivery: "disabled",
+      delivery: "optional",
       walkIn: "optional",
       cashRegister: "optional", // WP-1: blagajna (eno jedro, capability-vidnost)
     },
@@ -1992,12 +2035,18 @@ export function listProfileOptions(): ProfileOption[] {
     label: p.label,
     description: p.description,
     palette: p.palette,
+    ...(p.catalog?.seedVerticalId ? { catalog: { seedVerticalId: p.catalog.seedVerticalId } } : {}),
   }))
 }
 
 /**
- * Whether a capability is surfaced in the UI.
- * "disabled" never renders anywhere; "required"/"optional" render.
+ * Whether a capability is enabled for the given (effective) profile.
+ * Politika "VSI MODULI ZA VSE" (2026): dejavnost sama ne izključi nobenega
+ * modula — vhod ni več nikoli "disabled" kar tako po dejavnosti. Klici jo
+ * uporabljajo z EFEKTIVNIM profilom (resolveEffectiveProfile /
+ * resolvePublicEffectiveProfile), ki že upošteva dejanska module stanja
+ * (izklopljen modul → capability "disabled"), zato tukaj surovo preverimo
+ * "disabled" — tako javne 404 strani sledijo pravemu (vklop/izklop) stanju.
  */
 export function isCapabilityEnabled(profile: ActivityProfile, key: CapabilityKey): boolean {
   return profile.capabilities[key] !== "disabled"

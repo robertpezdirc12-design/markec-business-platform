@@ -339,6 +339,9 @@ const PRESET_STAFF_IMAGE: Record<string, string> = {
   // #100-nadaljevanje: avtomehanik dobi svojo preset sliko (obstaja že od #85).
   mehanik: IMG.staffMehanik,
   beekeeping: IMG.staffCebelar,
+  // Gradbeništvo / keramičar (F43) — moški samostojni obrtnik (gradbeno
+  // podjetje): najbližji obstoječi portret obrtnika.
+  construction: IMG.staffMehanik,
 }
 
 /**
@@ -811,6 +814,58 @@ export const VERTICALS: VerticalPreset[] = [
       ]},
     ],
     siteContent: defaultSiteContent("generic"),
+  },
+
+  // --- Gradbeništvo / keramičar (skd-f-construction, F43) — storitve po m² +
+  //     materiali; kontaktni tok (povpraševanje), ne rezervacije. ---
+  {
+    id: "construction",
+    label: "Gradbeništvo in obrt",
+    description: "Polaganje ploščic, tlakovanje, obnova in gradbena dela",
+    palette: "charcoal",
+    currency: "EUR",
+    locale: "sl",
+    timezone: "Europe/Ljubljana",
+    categories: [
+      { name: "Polaganje ploščic", slug: "polaganje-ploscic", categoryType: "SERVICES", services: [
+        { name: "Polaganje keramičnih ploščic (m²)", description: "Polaganje ploščic na tla in stene — cena za m²", duration: 240, price: 35, imageUrl: IMG.workspace, isFeatured: true },
+        { name: "Polaganje velikoformata 60×60+", description: "Polaganje velikoformatskih ploščic z nivelacijami", duration: 300, price: 45, imageUrl: IMG.craft, isFeatured: true },
+        { name: "Fugiranje ploščic (m²)", description: "Fugiranje z epoksidno ali cementno fugirno maso", duration: 90, price: 8, imageUrl: IMG.workspace },
+      ]},
+      { name: "Oblaganje in tlakovanje", slug: "oblaganje-in-tlakovanje", categoryType: "SERVICES", services: [
+        { name: "Tlakovanje zunanjih površin (m²)", description: "Tlakovanje teras, dovozov in poti", duration: 300, price: 40, imageUrl: IMG.workspace, isFeatured: true },
+        { name: "Oblaganje sten s ploščicami", description: "Stenske obloge — kuhinja, kopalnica, javni prostori", duration: 240, price: 35, imageUrl: IMG.craft },
+      ]},
+      { name: "Obnove in popravila", slug: "obnove-in-popravila", categoryType: "SERVICES", services: [
+        { name: "Obnova kopalnice (cena od)", description: "Celovita obnova kopalnice po dogovoru", duration: 480, price: 2500, imageUrl: IMG.workspace },
+        { name: "Popravilo in zamenjava keramike", description: "Popravilo odstopajočih ploščic, fug, vodotesnosti", duration: 120, price: 60, imageUrl: IMG.craft, isFeatured: true },
+        { name: "Popravilo odsekanih ploščic (kom.)", description: "Zamenjava posameznih poškodovanih/odsekanih ploščic brez odstr. celega poda", duration: 90, price: 30, imageUrl: IMG.workspace },
+        { name: "Obnova zunanjih stopnic in pragov", description: "Sanacija betonskih poškodb, ponovno tlakovanje", duration: 300, price: 80, imageUrl: IMG.craft },
+      ]},
+      { name: "Estrihi in podlage", slug: "estrihi-in-podlage", categoryType: "SERVICES", services: [
+        { name: "Izdelava cementnega estriha (m²)", description: "Novi cementni estrih z armaturno mrežo — priprava na polaganje", duration: 360, price: 18, imageUrl: IMG.workspace, isFeatured: true },
+        { name: "Samonivelirni estrih (m²)", description: "Izravnava podlage z samonivelirno maso pred polaganjem", duration: 180, price: 14, imageUrl: IMG.craft },
+        { name: "Odstranitev starega estriha (m²)", description: "Razbijanje in odvoz starega estriha", duration: 300, price: 12, imageUrl: IMG.workspace },
+      ]},
+      { name: "Vodotesenje", slug: "vodotesenje", categoryType: "SERVICES", services: [
+        { name: "Vodotesenje kopalnice (m²)", description: "Hidroizolacijska membrana na tla in stene pred polaganjem", duration: 180, price: 25, imageUrl: IMG.craft, isFeatured: true },
+        { name: "Vodotesenje terase in balkona", description: "Hidroizolacija zunanjih površin s fleksibilnim premazom", duration: 240, price: 28, imageUrl: IMG.workspace },
+        { name: "Sanacija vodotesnosti tuš kabine", description: "Obnova porušene hidroizolacije v tuš kabini in okolici", duration: 150, price: 120, imageUrl: IMG.craft },
+      ]},
+      { name: "Materiali", slug: "materiali", categoryType: "PRODUCTS", services: [] },
+    ],
+    products: [
+      { name: "Lepilo za ploščice C2 (25 kg)", description: "Fleksibilno cementno lepilo za keramične obloge.", price: 12.5, stockQuantity: 200, imageUrl: "/img/presets/workspace.jpg", isFeatured: true },
+      { name: "Fugirna masa cementna (5 kg)", description: "Fugirna masa za fuge do 8 mm.", price: 6.9, stockQuantity: 150, imageUrl: "/img/presets/craft.jpg" },
+      { name: "Epoksidna fugirna masa (2 l)", description: "Vodotesna epoksidna fuga za sanitarije in industrijo.", price: 49, stockQuantity: 40, imageUrl: "/img/presets/craft.jpg" },
+      { name: "Tesnilni silikon sanitarni (300 ml)", description: "Antibakterijski silikon z zaščito proti plesni.", price: 7.5, stockQuantity: 180, imageUrl: "/img/presets/workspace.jpg" },
+      { name: "Keramične letvice 8 mm (1 m)", description: "Aluminijaste nivelacijske letvice za fuge.", price: 2.4, stockQuantity: 400, imageUrl: "/img/presets/workspace.jpg" },
+      { name: "Samonivelirna masa (25 kg)", description: "Fleksibilna izravnalna masa za pripravo podlage.", price: 28, stockQuantity: 60, imageUrl: "/img/presets/workspace.jpg" },
+      { name: "Tesnilni trak za vodotesenje (10 m)", description: "Samolepilni tesnilni trak za vogale in stike pri hidroizolaciji.", price: 9.9, stockQuantity: 120, imageUrl: "/img/presets/craft.jpg" },
+      { name: "Križci za keramiko (200 kom.)", description: "Plastični distančni križci 2 mm za enakomerne fuge.", price: 1.2, stockQuantity: 500, imageUrl: "/img/presets/craft.jpg" },
+      { name: "Hidroizolacijska membrana (5 l)", description: "Fleksibilna dvokomponentna hidroizolacija za sanitarije.", price: 65, stockQuantity: 30, imageUrl: "/img/presets/workspace.jpg" },
+    ],
+    siteContent: defaultSiteContent("construction"),
   },
 
   // --- §21 acceptance profiles: genuinely different business models ---

@@ -54,13 +54,13 @@ describe("F5.3.3 dejavnostna integracija — sekcije", () => {
 })
 
 describe("F5.3.3 dejavnostna integracija — navigacija + capability gate", () => {
-  it("šiviljstvo: capability appointments IZKLOPLJEN → /booking ni ponujen kot nav target", () => {
+  it("šiviljstvo: appointments optional → možen nav target; izklop sledi dejanskemu stanju", () => {
     const p = getProfile("seamstress")
     const appointments = isCapabilityEnabled(p, "appointments")
-    // seamstress je povpraševalski profil — nima rezervacij
-    expect(appointments).toBe(false)
+    // VSI MODULI ZA VSE: šivilja lako vklopi rezervacije (optional)
+    expect(appointments).toBe(true)
     const targets = availableNavTargets([])
-    // cloth: shop tudi ni obvezen → /shop se ponudi le z capability shop
+    // brez capabilities /booking ni ponujen
     expect(targets.find((t) => t.value === "/booking")).toBeUndefined()
   })
 

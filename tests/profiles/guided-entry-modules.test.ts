@@ -3,53 +3,54 @@ import { modulesForVertical } from "../../src/lib/profiles/modules"
 import { getProfile, listProfileOptions } from "../../src/lib/profiles/registry"
 
 // ============================================================
-// Vodeni vstop (guided entry) — "kaj je zakupil": the module list
-// shown in the wizard MUST match the capability gating that drives
-// the sidebar (§21). If these drift, the wizard promises modules
-// the workspace does not open.
+// Vodeni vstop (guided entry) — "kaj je zakupil": pod politiko
+// "VSI MODULI ZA VSE" (2026) vodič vedno prikaže VSEH 15 modulov
+// za vsako dejavnost; moduli, ki so v profilu `required`, so
+// označeni kot jedro (privzeto vklopljeni), vsi drugi kot optional
+// (preklopljivi). Wizard ne obljubi več "manjšega" nabora glede na
+// dejavnost — enak nabor, lastnik sam vklopi/izklopi (§21).
 // ============================================================
 
 describe("modulesForVertical", () => {
-  it("beauty opens with the salon core, no work orders", () => {
-    const keys = modulesForVertical("beauty").map((m) => m.key)
-    expect(keys).toContain("appointments")
-    expect(keys).toContain("shop")
-    expect(keys).toContain("services")
-    expect(keys).not.toContain("workOrders")
-    expect(keys).not.toContain("workflows")
-    expect(keys).not.toContain("documents")
-  })
-
-  it("tire-service (mehanik) opens with work orders, inventory and shop", () => {
-    const mods = modulesForVertical("tire-service")
-    const keys = mods.map((m) => m.key)
-    expect(keys).toContain("workOrders")
-    expect(keys).toContain("inventory")
-    expect(keys).toContain("shop")
-    // optional for workshops: appointments (seasonal tire changes)
-    const appointments = mods.find((m) => m.key === "appointments")
-    expect(appointments?.state).toBe("optional")
-  })
-
-  it("beekeeping has no appointments and no work orders (product business)", () => {
-    const keys = modulesForVertical("beekeeping").map((m) => m.key)
-    expect(keys).not.toContain("appointments")
-    expect(keys).not.toContain("workOrders")
-    expect(keys).toContain("shop")
-    expect(keys).toContain("inventory")
-  })
-
-  it("never lists a disabled capability — wizard and sidebar stay in sync", () => {
+  it("vsaka dejavnost vidi vseh 15 modulov (vsi moduli za vse)", () => {
     for (const option of listProfileOptions()) {
-      const profile = getProfile(option.id)
-      const listed = modulesForVertical(option.id)
-      for (const [cap, state] of Object.entries(profile.capabilities)) {
-        const isListed = listed.some((m) => m.key === cap)
-        if (state === "disabled") {
-          expect(isListed, `${option.id}: ${cap} is disabled but listed`).toBe(false)
-        } else {
-          expect(isListed, `${option.id}: ${cap} is ${state} but missing`).toBe(true)
-        }
+      const keys = modulesForVertical(option.id).map((m) => m.key)
+      expect(keys.length).toBe(15)
+    }
+  })
+
+  it("beauty: jedro = appointments/services/documents (required); workOrders optional", () => {
+    const mods = modulesForVertical("beauty")
+    const byKey = Object.fromEntries(mods.map((m) => [m.key, m.state]))
+    expect(byKey.appointments).toBe("required")
+    expect(byKey.services).toBe("required")
+    // računi so zakonsko-obvezni za salon (P2 #101).
+    expect(byKey.documents).toBe("required")
+    // workOrders ni works but je vodič še vedno prikaže (vsi moduli za vse).
+    expect(byKey.workOrders).toBe("optional")
+  })
+
+  it("tire-service: jedro = workOrders (required); appointments optional", () => {
+    const mods = modulesForVertical("tire-service")
+    const byKey = Object.fromEntries(mods.map((m) => [m.key, m.state]))
+    expect(byKey.workOrders).toBe("required")
+    expect(byKey.appointments).toBe("optional")
+    expect(byKey.inventory).toBe("required")
+  })
+
+  it("beekeeping: appointments optional; workOrders jedro (žetev/negovanje)", () => {
+    const mods = modulesForVertical("beekeeping")
+    const byKey = Object.fromEntries(mods.map((m) => [m.key, m.state]))
+    expect(byKey.appointments).toBe("optional")
+    expect(byKey.workOrders).toBe("required")
+    expect(byKey.shop).toBe("required")
+    expect(byKey.inventory).toBe("required")
+  })
+
+  it("za vsako dejavnost vsak modul nosi ne-prazen state (required ali optional)", () => {
+    for (const option of listProfileOptions()) {
+      for (const m of modulesForVertical(option.id)) {
+        expect(["required", "optional"]).toContain(m.state)
       }
     }
   })

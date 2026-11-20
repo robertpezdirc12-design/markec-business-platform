@@ -13,7 +13,7 @@
 // ============================================================
 
 import { useMemo, useState } from "react"
-import { ChevronDown, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronRight, Search } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import {
@@ -21,6 +21,18 @@ import {
   skdByCode,
   type SkdRecord,
 } from "@/lib/skd/data/skd2025"
+import { Input } from "@/components/ui/input"
+
+/** Normalizira besedilo za iskanje brez diakritik ("sivilje" najde Šiviljstvo). */
+function normalizeSkd(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[čć]/g, "c")
+    .replace(/š/g, "s")
+    .replace(/ž/g, "z")
+    .replace(/đ/g, "d")
+    .trim()
+}
 
 export interface SkdHierarchyBrowserProps {
   /** Selected subclass code (level 5), e.g. "T96.210". */
@@ -62,6 +74,14 @@ function levelLabel(l: number): string {
   }
 }
 
+/** Slovensko sklanjanje rezultatov iskanja podrazredov. */
+function skloniPodrazred(n: number): string {
+  if (n === 1) return "podrazred v"
+  if (n === 2) return "podrazreda v"
+  if (n >= 3 && n <= 4) return "podrazredi v"
+  return "podrazredov v"
+}
+
 export function SkdHierarchyBrowser({
   value,
   onSelectSubclass,
@@ -70,6 +90,8 @@ export function SkdHierarchyBrowser({
   const [open, setOpen] = useState(false)
   // Breadcrumb of expanded nodes from the section down.
   const [path, setPath] = useState<string[]>([]) // list of codes, e.g. ["T","T96","T96.2","T96.21"]
+  // Iskanje po podrazredih — ko je pravzen prikažemo ujemajoče podrazrede (raven 5).
+  const [query, setQuery] = useState("")
 
   // Track a local key to re-open on reselect.
   const selectedRec = value ? skdByCode(value) : null
@@ -79,6 +101,18 @@ export function SkdHierarchyBrowser({
     if (path.length === 0) return { record: null as unknown as SkdRecord, children: ROOTS }
     return TREE.get(path[path.length - 1])
   }, [path])
+
+  // Iskanje po celotnem SKD katalogu — samo konkretni podrazredi (raven 5),
+  // da lahko klik izbere dejavnost neposredno (brez drill-downa).
+  const results = useMemo(() => {
+    const q = normalizeSkd(query)
+    if (!q) return null
+    return SKD_RECORDS.filter((r) => r.l === 5).filter(
+      (r) =>
+        normalizeSkd(r.sl).includes(q) ||
+        r.c.toLowerCase().includes(q.toLowerCase())
+    )
+  }, [query])
 
   function drill(code: string) {
     setPath((p) => [...p, code])
@@ -106,6 +140,68 @@ export function SkdHierarchyBrowser({
 
       {open && (
         <div className="bg-background border-border/60 mt-2 max-h-96 overflow-y-auto rounded-xl border p-2 shadow-xl">
+          {/* Iskanje po podrazredih */}
+          <div className="sticky top-0 z-20 mb-2 space-y-2 bg-background">
+            <div className="relative">
+              <Search
+                aria-hidden="true"
+                className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2"
+              />
+              <Input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Iščite podrazred — npr. keramik, mehanik, čebelar…"
+                aria-label="Iskanje po SKD 2025 podrazredih"
+                maxLength={80}
+                className="pl-9"
+              />
+            </div>
+            {results !== null && (
+              <p className="text-muted-foreground px-1 text-xs">
+                {results.length === 0
+                  ? "Ni ujemajočih podrazredov."
+                  : `${results.length} ${skloniPodrazred(results.length)} katalogu SKD 2025`}
+              </p>
+            )}
+          </div>
+
+          {/* Rezultati iskanja imajo prednost pred brskalnikom */}
+          {results !== null ? (
+            <div className="space-y-0.5">
+              {results.map((r) => {
+                const isSelected = value === r.c
+                return (
+                  <button
+                    key={r.c}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      onSelectSubclass(r.c)
+                      setOpen(false)
+                      setQuery("")
+                    }}
+                    className={cn(
+                      "hover:bg-primary/5 flex min-w-0 w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors",
+                      isSelected && "bg-primary/10 font-medium"
+                    )}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block">
+                        <span className="font-mono text-xs font-semibold">{r.c}</span>{" "}
+                        <span>{r.sl}</span>
+                      </span>
+                    </span>
+                    <span className="text-muted-foreground shrink-0 text-[10px] uppercase tracking-wide">
+                      Podrazred
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
+            <>
           {/* Breadcrumb */}
           {path.length > 0 && (
             <div className="sticky top-0 z-10 mb-1 flex flex-wrap items-center gap-1 bg-background pb-2 text-xs">
@@ -196,6 +292,8 @@ export function SkdHierarchyBrowser({
             <p className="text-muted-foreground p-3 text-center text-sm">
               Izberite podrazred (raven 5) zgoraj.
             </p>
+          )}
+          </>
           )}
         </div>
       )}

@@ -1,18 +1,19 @@
 // ============================================================
 // F5.4.1 — ENOTNA POLITIKA MODULOV (avtoritativna pravila).
 //
-// Poskuša odpraviti P0 varnostno napako: module-tabela pot je lahko
-// stanje (OrganizationModuleState) NE sme preglasiti avtoritativni
-// CapabilityMatrix aktivnega profila. Tu so stroga pravila:
+// Politika "VSI MODULI ZA VSE" (platform owner, 2026):
+//   - required → jedro dejavnosti, PRIVZETO vklopljeno ob seedu, a POPUSTLJIV
+//     (lastnik ga sme izklopiti ali javno skriti);
+//   - optional → lastnik sme vklopiti/izklopiti (ACTIVE / HIDDEN / DEACTIVATED);
+//   - disabled → ni več mogoče: baseCapabilitiesOf vsako disabled capability
+//     dvigne na optional, torej je vsak modul na voljo vsaki dejavnosti.
 //
-//   required  → vselej aktivno in ZAKLENJENO  (ni DEACTIVATED, ni HIDDEN-izklopljen na javni kolicini);
-//   optional  → lastnik sme vklopiti/izklopiti (ACTIVE / HIDDEN / DEACTIVATED);
-//   disabled  → NIKOLI ni mogoče vklopiti     (moduleState ACTIVE ga ne sme odpresti).
-//
-// ModulKatalog (src/lib/modules/catalog.ts) ostaja vir opisov/odvisnosti;
-// politika tukaj je edini izračun, ki odloča, KAJ je dovoljeno in KAJ se
-// dejansko zgodi. `resolve.ts` jo uporablja za končno matriko, `setModuleState`
-// za strežniško validacijo — in enotski testi za neprekinjeno zaščito.
+// Kot posledica NIKAKRŠEN modul ni več zaklenjen ali nedovoljen — vsak je
+// preklopljiv. ModulKatalog (src/lib/modules/catalog.ts) ostaja vir
+// opisov/odvisnosti; politika tukaj je edini izračun, ki odloča, KAJ je
+// dovoljeno in KAJ se dejansko zgodi. `resolve.ts` jo uporablja za končno
+// matriko, `setModuleState` za strežniško validacijo — in enotski testi za
+// neprekinjeno zaščito.
 //
 // Client-safe: čiste funkcije, brez prisma/server-only.
 // ============================================================
@@ -21,11 +22,14 @@ import type { CapabilityState } from "@/lib/profiles/types"
 import type { ModuleState } from "./catalog"
 
 /// Kategorija, ki jo podjetnik vidi (in ki izvira iz avtoritativnih pravil).
+/// Politika "VSI MODULI ZA VSE": kategoriji `required` in `disabled` se v UI
+/// ne prikazujeta več (categoryFor nikoli ne vrne teh) — ohranjeni sta le
+/// zaradi tipa/compat. Dejansko se prikaže `recommended` oz. `available`.
 export type ModuleCategory =
-  | "required"   // obvezen — zaklenjen, vselej aktiven
-  | "recommended" // priporočen (optional kapaciteta, ki profil predlaga) — aktiven, preklopljiv
-  | "available"  // izberna kapaciteta, ki ni predpisana kot required; preklopljiv, trenutno ON ali OFF
-  | "disabled"   // nedovoljen za ta profil — nikoli vklopljen
+  | "required"   // privzeto vklopljen (jedro dejavnosti) — ohranjeno tip / compat
+  | "recommended" // privzeto aktiven / trenutno vklopljen — preklopljiv
+  | "available"  // preklopljiv, trenutno OFF
+  | "disabled"   // neuporabljen (vedno dvignjen na optional) — ohranjeno / compat
 
 export interface ModulePolicyView {
   id: string
@@ -46,29 +50,26 @@ export interface ModulePolicyView {
 }
 
 /**
- * Končno funkcionalno stanje enega modula po autoritativnih pravilih.
+ * Končno funkcionalno stanje enega modula po avtoritativnih pravilih.
  *
- * Pravilo: moduleStates lahko ZNIŽA optional (→disabled) in DVIZNE optional
- * (→aktiven), a nikoli ne sme:
- *   - deaktivirati `required` modula (zaklenjen spodaj navzgor na ACTIVE),
- *   - odpreti `disabled` modula (moduleState ACTIVE/HIDDEN ne smeta odpreti).
- * HIDDEN ohranja funkcionalno aktivacijo, le javno skrije (§5 ločitev).
+ * Politika "VSI MODULI ZA VSE" (platform owner, 2026): `disabled` ne obstaja
+ * več — vsi moduli so preklopljivi. `required` je le privzeta aktivacija ob
+ * seedu (jedro dejavnosti vklopljeno na začetku), a je POPUSTLJIV: lastnik
+ * ga sme izklopiti (DEACTIVATED) ali javno skriti (HIDDEN).
  */
 export function modulePolicyFor(
   baseCapabilityState: CapabilityState,
   moduleState?: ModuleState
 ): { effective: CapabilityState; active: boolean; hidden: boolean; modified: boolean } {
-  // required: ne glede na moduleState — lahko je ACTIVE ali HIDDEN (funkcionalno aktivno),
-  // nikoli DEACTIVATED (ki bi ga izklopil).
+  // required: privzeto aktivno; lastnik sme izklopiti (DEACTIVATED) ali skriti.
   if (baseCapabilityState === "required") {
+    if (moduleState === "DEACTIVATED") {
+      return { effective: "required", active: false, hidden: false, modified: true }
+    }
     const hidden = moduleState === "HIDDEN"
     return { effective: "required", active: true, hidden, modified: !!moduleState && moduleState !== "ACTIVE" }
   }
-  // disabled: nikoli se ne sme vklopiti — moduleState ACTIVE/HIDDEN ne smeta obrniti.
-  if (baseCapabilityState === "disabled") {
-    return { effective: "disabled", active: false, hidden: false, modified: false }
-  }
-  // optional: funkcionalna aktivacija določa veljavnost; DEACTIVATED šele izklopi.
+  // optional: funkcionalna aktivacija določa veljavnost; DEACTIVATED izklopi.
   if (moduleState === "DEACTIVATED") {
     return { effective: "disabled", active: false, hidden: false, modified: true }
   }
@@ -78,32 +79,14 @@ export function modulePolicyFor(
 
 /**
  * Ali je predlagana sprememba stanja dovoljena pod avtoritativno politiko.
- * Vrne ok, ali pa napako z razlogom (SL/EN) — setModuleState jo vme.
+ * Politika "VSI MODULI ZA VSE": required in optional sta oba POPUSTLJIVA —
+ * lastnik sme vklopiti, izklopiti ali skriti katerikoli modul.
  */
 export function isTransitionAllowed(
-  baseCapabilityState: CapabilityState,
-  requested: ModuleState
+  _baseCapabilityState: CapabilityState,
+  _requested: ModuleState
 ): { ok: true } | { ok: false; reasonSl: string; reasonEn: string } {
-  if (baseCapabilityState === "required") {
-    if (requested === "DEACTIVATED") {
-      return {
-        ok: false,
-        reasonSl: "Ta modul je obvezen za tvojo dejavnost in ga ni mogoče izklopiti.",
-        reasonEn: "This module is required for your activity and cannot be disabled.",
-      }
-    }
-    // ACTIVE ali HIDDEN sta sprejemljiva (HIDDEN = javno skrit, plošča dela).
-    return { ok: true }
-  }
-  if (baseCapabilityState === "disabled") {
-    // disabled se ne sme vklopiti; tudi ACTIVE/HIDDEN (odklepanje) je zavrnjeno.
-    return {
-      ok: false,
-      reasonSl: "Ta modul za tvojo dejavnost ni na voljo in ga ni mogoče vklopiti.",
-      reasonEn: "This module is not available for your activity and cannot be enabled.",
-    }
-  }
-  // optional: vse tri eksplicitno — lastnik izbira.
+  // required in optional: lastnik izbira prosto. Noben modul ni nikoli blokiran.
   return { ok: true }
 }
 

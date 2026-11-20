@@ -122,8 +122,11 @@ export async function completeGuidedEntry(input: GuidedEntryInput): Promise<Guid
       const existingCategories = await prisma.category.count({
         where: { organizationId: org.id },
       })
+      // SKD #118: seed from the profile's dedicated vertical preset when it
+      // differs from the profile id (e.g. skd-f-construction → construction).
+      const seedVertical = profile.catalog?.seedVerticalId ?? profile.id
       if (existingCategories === 0) {
-        await seedOrganizationCatalog(org.id, profile.id)
+        await seedOrganizationCatalog(org.id, seedVertical)
       } else {
         const hasAppointments = await prisma.appointment.count({
           where: { organizationId: org.id },
@@ -139,7 +142,7 @@ export async function completeGuidedEntry(input: GuidedEntryInput): Promise<Guid
           await prisma.service.deleteMany({ where: { organizationId: org.id } })
           await prisma.product.deleteMany({ where: { organizationId: org.id } })
           await prisma.category.deleteMany({ where: { organizationId: org.id } })
-          await seedOrganizationCatalog(org.id, profile.id)
+          await seedOrganizationCatalog(org.id, seedVertical)
         } else {
           catalogNote = "in-use"
         }

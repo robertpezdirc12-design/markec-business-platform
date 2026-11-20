@@ -67,20 +67,20 @@ describe("#55 — growthTestCopyKey follows the CTA mode", () => {
 })
 
 describe("#54 — booking settings card is capability-gated", () => {
-  it("profiles without appointments are disabled by the capability matrix", () => {
-    // beekeeping = order-only trade
-    expect(getProfile("beekeeping").capabilities.appointments).toBe("disabled")
+  it("booking is available to every profile (vsi moduli za vse); toggles decide", () => {
+    // beekeeping = order-first trade, ampak appointments je zdaj optional → možnost obstaja
+    expect(getProfile("beekeeping").capabilities.appointments).toBe("optional")
     expect(isCapabilityEnabled(getProfile("beekeeping"), "appointments")).toBe(
-      false
+      true
     )
-    // contrast: beauty keeps booking
+    // contrast: beauty keeps booking required
     expect(isCapabilityEnabled(getProfile("beauty"), "appointments")).toBe(true)
-    // owner override can only flip optional, never force a disabled module on
+    // owner override can flip optional freely (no locked module)
     const overridden = applyOverrides(
       getProfile("beekeeping"),
-      parseOverrides({ appointments: "optional" })
+      parseOverrides({ appointments: "optional", services: "optional" })
     )
-    expect(isCapabilityEnabled(overridden, "appointments")).toBe(false)
+    expect(isCapabilityEnabled(overridden, "appointments")).toBe(true)
   })
 
   it("the settings form renders the card only when appointments are enabled", () => {

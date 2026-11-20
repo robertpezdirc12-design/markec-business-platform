@@ -17,9 +17,10 @@
 // Semantika:
 //   - modul ima capabilities (string[]) v katalogu; bazno stanje
 //     modula je izpeljano iz capability matrike profila;
-//   - required/hidden → vedno ACTIVE (zaklenjeno);
-//   - disabled        → nikoli aktivno (brez vrstice);
-//   - optional        → lastnik odloči (opt-in).
+//   - required → privzeto vklopljen ob nastanku, a POPUSTLJIV: lastnik ga
+//     sme izklopiti (politika glej policy.ts);
+//   - optional → lastnik odloči (opt-in); vsi moduli so optional ali required
+//     (noben modul ni več "disabled" — dvigne se na optional, "VSI MODULI ZA VSE").
 // ============================================================
 
 import type { ModuleDef, ModuleState } from "./catalog"
@@ -28,7 +29,15 @@ import { getProfile } from "@/lib/profiles/registry"
 import { applySecondaryProfile } from "@/lib/profiles/secondary"
 import { applyOverrides, parseOverrides } from "@/lib/profiles/overrides"
 
-/** Bazna capability matrika = profil + secondary + overrides. */
+/**
+ * Bazna capability matrika = profil + secondary + overrides.
+ *
+ * Politika "VSI MODULI ZA VSE" (platform owner, 2026): noben modul ni več
+ * prepovedan za dejavnost. Vsaka `disabled` capability se dvigne na
+ * `optional`, to pa je edina preklopljiva kategorija v UI. `required`
+ * se ohrani (za seed se jedro dejavnosti samodejno vklopi), a tudi ta
+ * je v politiki POPUSTLJIV — lastnik ga lahko izklopi (glej policy.ts).
+ */
 export function baseCapabilitiesOf(org: {
   vertical: string | null
   secondaryVertical?: string | null
@@ -37,7 +46,13 @@ export function baseCapabilitiesOf(org: {
   const primary = getProfile(org.vertical)
   const withSecondary = applySecondaryProfile(primary, org.secondaryVertical ?? null)
   const withOverrides = applyOverrides(withSecondary, parseOverrides(org.profileOverrides))
-  return { ...(withOverrides.capabilities as unknown as Record<string, string>) }
+  const raw = withOverrides.capabilities as unknown as Record<string, string>
+  const base: Record<string, string> = {}
+  for (const [key, value] of Object.entries(raw)) {
+    // VSI moduli so dostopni; disabled dejavnosti se dvigne na optional.
+    base[key] = value === "disabled" ? "optional" : value
+  }
+  return base
 }
 
 /** Bazno stanje modula iz capability matrike (required > hidden > disabled > optional). */
@@ -84,8 +99,8 @@ export interface ActivationPlan {
  * shranjenih stanjih. Vrne, KAJ bi se zgodilo — ne spremeni nič.
  *
  * Pravila:
- *   - disabled modul/odvisnost → celotna aktivacija je BLOKIRANA
- *     (fail-closed; lastnik profile ne more preglasiti);
+ *   - disabled se nikoli ne pojavi (baseCapabilitiesOf dvigne na optional);
+ *     veje tu so defenzivna fail-closed zaščita, če bi kdaj pritekel disabled.
  *   - required/hidden odvisnost → že izpolnjena (ni treba vklopiti);
  *   - optional odvisnost (DEACTIVATED) → vključena v toEnable;
  *   - vrstni red toEnable: odvisnosti najprej (topološki prehod).

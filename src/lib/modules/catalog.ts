@@ -182,11 +182,11 @@ export type ModuleStateMap = Record<string, ModuleState>
  * Efektivna capability matrika (DASHBOARD): vertikalni profil + moduleStates.
  *
  * F5.4.1 (P0) — ORGANIZACIJSKO STANJE NE SME PREGLASITI AVTORITATIVNIH
- * PRAVIL AKTIVNEGA PROFILA:
- *   - `required` je vedno funkcionalno aktiven (moduleState DEACTIVATED ga ne
- *     sme izklopiti; vsilimo ACTIVE kot funcionalno).
+ * PRAVIL AKTIVNEGA PROFILA (politika "VSI MODULI ZA VSE", 2026):
+ *   - `required` je privzeto funkcionalno aktiven, a POPUSTLJIV: moduleState
+ *     DEACTIVATED ga izklopi (→ disabled), HIDDEN ohrani ploščo delujočo.
  *   - `disabled` se nikoli ne sme vklopiti (moduleState ACTIVE/HIDDEN ne sme
- *     odpreti — ostaja disabled).
+ *     odpreti — ostaja disabled). V deh predelavah dejavnosti ne nastane.
  *   - `optional` sme biti ACTIVE / HIDDEN / DEACTIVATED po izbiri lastnika.
  * To je ena politika z `modulePolicyFor` v src/lib/modules/policy.ts.
  */
@@ -201,13 +201,17 @@ export function effectiveCapabilities(
     for (const cap of mod.capabilities) {
       const base = out[cap] as CapabilityState | undefined
       if (base === "disabled") {
-        // disabled: nikoli vklopljen (moduleState ne sme odpreti).
-        out[cap] = "disabled"
+        // Politika "VSI MODULI ZA VSE" (2026): nobena dejavnost nima več
+        // prepovedanega modula — disabled iz profila se dvigne na optional,
+        // torej ga lastnik lahko vklopi (moduleState ACTIVE odpre javni vhod).
+        // DEACTIVATED explicit range izklopi.
+        out[cap] = state === "DEACTIVATED" ? "disabled" : "optional"
         continue
       }
+      // required: popustljiv (politika "VSI MODULI ZA VSE") — lastnik ga sme
+      // izklopiti (DEACTIVATED → disabled); HIDDEN ohrani ploščo delujočo.
       if (base === "required") {
-        // required: vedno aktiven (moduleState ga ne sme izklopiti).
-        out[cap] = "required"
+        out[cap] = state === "DEACTIVATED" ? "disabled" : "required"
         continue
       }
       // optional: podvržen definira modul.
@@ -223,7 +227,8 @@ export function effectiveCapabilities(
  * Pravila javne vidnosti (ne sme zamenjati funkcionalne aktivacije):
  *   - HIDDEN → javno izklopljeno (disabled), tudi za required modul (vidnost
  *     je ločena od aktivacije — §5);
- *   - DEACTIVATED → javno izklopljeno (disabled), razen required (zaklenjeno);
+ *   - DEACTIVATED → javno izklopljeno (disabled) za vse (tudi required —
+ *     popustljiv po politiki "VSI MODULI ZA VSE");
  *   - ACTIVE / brez vrstice → javno tisto, kar profil določi (required/optional);
  *   - disabled → nikoli (tudi ACTIVE ga ne odpre).
  * Dashboard uporablja `effectiveCapabilities` (kjer HIDDEN pomeni »plošča dela«).
@@ -239,7 +244,9 @@ export function effectivePublicCapabilities(
     for (const cap of mod.capabilities) {
       const base = out[cap] as CapabilityState | undefined
       if (base === "disabled") {
-        out[cap] = "disabled"
+        // Politika "VSI MODULI ZA VSE" (2026): disabled se dvigne na optional,
+        // javni vhod se odpre ob ACTIVE (čeprav HIDDEN/DEACTIVATED zapreta).
+        out[cap] = state === "HIDDEN" || state === "DEACTIVATED" ? "disabled" : "optional"
         continue
       }
       if (state === "HIDDEN") {
@@ -247,7 +254,9 @@ export function effectivePublicCapabilities(
         continue
       }
       if (state === "DEACTIVATED") {
-        out[cap] = base === "required" ? "required" : "disabled"
+        // required je popustljiv (politika "VSI MODULI ZA VSE"): izklop
+        // lastnika pomeni tudi za required javno izklopljen modul.
+        out[cap] = "disabled"
         continue
       }
       // ACTIVE: javno enako kot profil (required ali optional).

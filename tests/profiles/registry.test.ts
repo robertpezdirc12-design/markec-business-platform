@@ -113,9 +113,9 @@ describe("§21 acceptance scenario: BEAUTY STUDIO", () => {
 describe("§21 acceptance scenario: SEAMSTRESS", () => {
   const profile = getProfile("seamstress")
 
-  it("is work-order driven, not appointment driven", () => {
+  it("is work-order driven (jedro), bookings so preklopljive (vsi moduli za vse)", () => {
     expect(profile.capabilities.workOrders).toBe("required")
-    expect(profile.capabilities.appointments).toBe("disabled")
+    expect(profile.capabilities.appointments).toBe("optional")
     expect(profile.website.ctaMode).toBe("inquiry")
   })
 
@@ -171,11 +171,11 @@ describe("§21 acceptance scenario: TIRE SERVICE / VEHICLE WORKSHOP", () => {
 describe("§21 acceptance scenario: BEEKEEPING (no appointments)", () => {
   const profile = getProfile("beekeeping")
 
-  it("disables appointments, work orders, services and staff entirely", () => {
-    expect(profile.capabilities.appointments).toBe("disabled")
-    expect(profile.capabilities.workOrders).toBe("disabled")
-    expect(profile.capabilities.services).toBe("disabled")
-    expect(profile.capabilities.staff).toBe("disabled")
+  it("keeps appointments, services, staff as switchable; workOrders jedro žetve", () => {
+    expect(profile.capabilities.appointments).toBe("optional")
+    expect(profile.capabilities.workOrders).toBe("required")
+    expect(profile.capabilities.services).toBe("optional")
+    expect(profile.capabilities.staff).toBe("optional")
     expect(profile.website.ctaMode).toBe("order")
   })
 
@@ -214,9 +214,9 @@ describe("unknown / null profile resolution (§5 no silent salon fallback)", () 
 })
 
 describe("capability helpers", () => {
-  it("isCapabilityEnabled treats optional as enabled and disabled as off", () => {
+  it("isCapabilityEnabled treats optional and required as enabled", () => {
     const seamstress = getProfile("seamstress")
     expect(isCapabilityEnabled(seamstress, "workOrders")).toBe(true)
-    expect(isCapabilityEnabled(seamstress, "appointments")).toBe(false)
+    expect(isCapabilityEnabled(seamstress, "appointments")).toBe(true) // optional za vse
   })
 })

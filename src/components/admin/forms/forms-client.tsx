@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -277,6 +278,9 @@ export function FormsClient({
                                   {sub.formName}
                                   {sub.customerName ? ` · ${sub.customerName}` : ""}
                                 </DialogTitle>
+                                <DialogDescription>
+                                  Podatki, ki jih je stranka oddala prek obrazca.
+                                </DialogDescription>
                               </DialogHeader>
                               <dl className="space-y-3 text-sm">
                                 {Object.entries(sub.data).map(([k, v]) => (

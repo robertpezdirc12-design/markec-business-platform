@@ -122,13 +122,14 @@ describe("#60 — body sections derive from sectionsForProfile", () => {
     expect(page).not.toContain("hasProducts={featuredProducts.length > 0}")
   })
 
-  it("beekeeping profile + seeded services → no services section anywhere", () => {
-    // The decision layer itself: capability gate beats legacy data.
+  it("beekeeping profile + seeded services → services section shows (vsi moduli za vse)", () => {
+    // beekeeping zdaj razpolaga z optional services → modul obstaja;
+    // prikaz je data-gated (s podatki se anchor prikaže).
     const flags = sectionsForProfile(
       { services: true, shop: true, team: true, reviews: true },
       PROFILES.beekeeping
     )
-    expect(flags.services).toBe(false)
+    expect(flags.services).toBe(true)
     expect(flags.shop).toBe(true)
   })
 })

@@ -57,14 +57,15 @@ const MODULE_ORDER: CapabilityKey[] = [
 ]
 
 /**
- * Modules the owner gets for a vertical: every capability that is NOT
- * disabled — exactly the set the sidebar renders for that profile
- * ("kaj je zakupil"). Optional modules are marked so the wizard can
- * honestly say they can be switched off later (Moduli).
+ * Modules the owner gets for a vertical.
+ * Politika "VSI MODULI ZA VSE" (2026): vsak podjetnik — ne glede na dejavnost —
+ * lahko vklopi katerikoli modul. Vodič torej prikaže vseh 15; moduli, ki so v
+ * profilu `required`, so označeni kot privzeto vklopljeni (jedro dejavnosti),
+ * vendar so tudi oni popustljivi ("Moduli" jih lastnik lahko izklopi).
  */
 export function modulesForVertical(profileId: string): VerticalModule[] {
   const capabilities = getProfile(profileId).capabilities
-  return MODULE_ORDER.filter((key) => capabilities[key] !== "disabled").map((key) => ({
+  return MODULE_ORDER.map((key) => ({
     key,
     labelSl: MODULE_LABELS[key]?.sl ?? key,
     labelEn: MODULE_LABELS[key]?.en ?? key,

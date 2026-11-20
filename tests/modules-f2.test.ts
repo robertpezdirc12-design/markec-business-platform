@@ -53,12 +53,12 @@ describe("#100 8.C katalog modulov (integriteta)", () => {
   })
 })
 
-describe("#100 8.C efektivna matrika (izklop = zadnja beseda, F5.4.1 politika)", () => {
-  it("DEACTIVATED izklopi OPTIONAL capability; required ostane zaklenjen", () => {
+describe("#100 8.C efektivna matrika (izklop = zadnja beseda, politika VSI MODULI ZA VSE)", () => {
+  it("DEACTIVATED izklopi tako OPTIONAL kot REQUIRED (required je popustljiv)", () => {
     const profile = { appointments: "required", shop: "required", analytics: "optional" }
     const out = effectiveCapabilities(profile, { appointments: "DEACTIVATED" })
-    // F5.4.1: moduleState NE sme izklopiti required — appointments ostane required.
-    expect(out.appointments).toBe("required")
+    // VSI MODULI ZA VSE: required se lahko izklopi — lastnik ima zadnjo besedo.
+    expect(out.appointments).toBe("disabled")
     expect(out.shop).toBe("required")
     // optional pa se sme izklopiti.
     const out2 = effectiveCapabilities(profile, { analytics: "DEACTIVATED" })
@@ -66,11 +66,10 @@ describe("#100 8.C efektivna matrika (izklop = zadnja beseda, F5.4.1 politika)",
     expect(effectiveCapabilities(profile, {}).appointments).toBe("required")
   })
 
-  it("ACTIVE NE odpre profil 'disabled' (ni več samostojno odklepanje)", () => {
-    // F5.4.1 P0: disabled se nikoli ne sme vklopiti prek moduleState.
+  it("ACTIVE ODPRE profil 'disabled' (ni več trde blokade — vsi moduli za vse)", () => {
     const profile = { reviews: "optional", appointments: "disabled" }
     const out = effectiveCapabilities(profile, { appointments: "ACTIVE" })
-    expect(out.appointments).toBe("disabled")
+    expect(out.appointments).toBe("optional")
     expect(out.reviews).toBe("optional")
   })
 
@@ -80,7 +79,7 @@ describe("#100 8.C efektivna matrika (izklop = zadnja beseda, F5.4.1 politika)",
       appointments: "DEACTIVATED",
       delivery: "DEACTIVATED",
     })
-    expect(out.appointments).toBe("required") // zaklenjeno
+    expect(out.appointments).toBe("disabled") // required popustljiv
     expect(out.delivery).toBe("disabled")
     expect(out.shop).toBe("optional")
   })
@@ -95,14 +94,15 @@ describe("#100 8.C odvisnosti pri vklopu/izklopu", () => {
 })
 
 describe("#100 F5 HIDDEN (skrito javno, plošča dela)", () => {
-  it("HIDDEN v plošči pusti required delujočo; disabled ne postane optional", () => {
+  it("HIDDEN v plošči pusti required delujočo; disabled se dvigne na optional", () => {
     const out = effectiveCapabilities({ appointments: "required", reviews: "disabled" }, {
       appointments: "HIDDEN",
       reviews: "HIDDEN",
     })
-    // F5.4.1: required ostaja aktiven (HIDDEN je le javna vidnost), disabled se ne odklene.
+    // VSI MODULI ZA VSE: required ostaja aktiven (HIDDEN je le javna vidnost),
+    // disabled se v plošči dvigne na optional (postane preklopljiv).
     expect(out.appointments).toBe("required")
-    expect(out.reviews).toBe("disabled")
+    expect(out.reviews).toBe("optional")
   })
 
   it("HIDDEN na JAVNI strani = izklopljen (javni vhodi se zaprejo)", () => {
@@ -112,20 +112,20 @@ describe("#100 F5 HIDDEN (skrito javno, plošča dela)", () => {
     expect(pub.appointments).toBe("disabled")
   })
 
-  it("ACTIVE na javni strani NE odklene disabled (F5.4.1 P0)", () => {
+  it("ACTIVE na javni strani ODPRE disabled (politika VSI MODULI ZA VSE)", () => {
     const pub = effectivePublicCapabilities({ appointments: "disabled" }, {
       appointments: "ACTIVE",
     })
-    expect(pub.appointments).toBe("disabled")
+    expect(pub.appointments).toBe("optional")
   })
 
-  it("DEACTIVATED izklopi optional na obeh površinah; required ostane zaklenjen", () => {
+  it("DEACTIVATED izklopi optional in required na obeh površinah", () => {
     const st = { shop: "DEACTIVATED" as const }
     expect(effectiveCapabilities({ shop: "optional" }, st).shop).toBe("disabled")
     expect(effectivePublicCapabilities({ shop: "optional" }, st).shop).toBe("disabled")
-    // required + (nedovoljeno) DEACTIVATED: ostane required (zaklenjeno), a javno skrito vidno.
-    expect(effectiveCapabilities({ shop: "required" }, st).shop).toBe("required")
-    expect(effectiveCapabilities({ appointments: "required", shop: "required" }, { appointments: "DEACTIVATED" }).appointments).toBe("required")
+    // required + DEACTIVATED: popustljivo izklopljen (VSI MODULI ZA VSE).
+    expect(effectiveCapabilities({ shop: "required" }, st).shop).toBe("disabled")
+    expect(effectiveCapabilities({ appointments: "required", shop: "required" }, { appointments: "DEACTIVATED" }).appointments).toBe("disabled")
   })
 })
 

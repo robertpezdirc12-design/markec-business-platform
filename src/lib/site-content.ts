@@ -862,6 +862,43 @@ export function defaultSiteContent(vertical: string): SiteContent {
         buttonHref: "/inquiry",
       },
     },
+    // Gradbeništvo / keramičar (skd-f-construction, F43.33) — obrtno
+    // podjetje s procesom delovnega naloga in povpraševanjem projekta
+    // (ne rezervacijami). Nevtralna obrtna slika, edinstven hero.
+    construction: {
+      hero: {
+        eyebrow: "Dobrodošli",
+        title: "Natančno polaganje ploščic in gradbena obnova",
+        subtitle:
+          "Polaganje ploščic, tlakovanje in obnova prostorov po pošteni ceni. Oddajte povpraševanje projekta in odgovorimo s predračunom.",
+        primaryCta: { label: "Oddaj povpraševanje", href: "/inquiry" },
+        secondaryCta: { label: "Storitve in cene", href: "/services" },
+      },
+      about: {
+        title: "O nas",
+        paragraphs: [
+          "Vsak projekt poteka po jasnem procesu: povpraševanje, pregled lokacije, ponudba in izvedba. Vse korake spremljate prek delovnega naloga.",
+          "Skrbno izbrani materiali, čista izvedba in spoštovanje rokov — za rezultat, ki bo trajal.",
+        ],
+        stats: [],
+      },
+      features: {
+        title: "Kako poteka projekt",
+        subtitle: "Od povpraševanja do predaje",
+        items: [
+          { icon: "FileText", title: "Pregled in ponudba", description: "Ocenimo obseg, svetujemo pri materialu in pošljemo predračun." },
+          { icon: "Clock", title: "Vemo, kdaj začnemo", description: "Termin in rok sta dogovorjena pred začetkom del." },
+          { icon: "ShieldCheck", title: "Garancija izvedbe", description: "Vsako naročilo spremljamo do predaje in v garancijskem roku." },
+        ],
+      },
+      cta: {
+        title: "Oddajte povpraševanje projekta",
+        text: "Pošljite vrsto del, površino in želeni rok — odgovorimo s predračunom in terminom.",
+        buttonLabel: "Oddaj povpraševanje",
+        buttonHref: "/inquiry",
+        imageUrl: "/img/presets/craft.jpg",
+      },
+    },
     // lastnik (6. 11. 2026, korekcija #100): NEVTRALNA ≠ platformski
     // prodajni tekst. Najemnikova javna stran govori STRANKAM o NJEGOVI
     // dejavnosti — platformski pitch ("MARKEC, univerzalna platforma,

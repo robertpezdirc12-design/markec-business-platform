@@ -66,7 +66,7 @@ describe("applyOverrides — capability protection (§12)", () => {
     const overridable = ownerAdjustableCapabilities(seamstress).map((c) => c.key)
     expect(overridable).toContain("shop") // optional → owner-adjustable
     expect(overridable).not.toContain("workOrders") // required → not adjustable
-    expect(overridable).not.toContain("appointments") // disabled → not adjustable
+    expect(overridable).toContain("appointments") // optional (vsi moduli za vse) → adjustable
 
     const effective = applyOverrides(seamstress, {
       v: 1,

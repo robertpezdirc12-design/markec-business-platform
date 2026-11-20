@@ -192,4 +192,11 @@ export interface ProfileOption {
   label: string
   description: string
   palette: string
+  /**
+   * Dedicated seed vertical preset id (SKD-grouped profiles such as
+   * skd-f-construction seed a distinct catalog, e.g. "construction",
+   * because their profile id is a broad SKD group, not the concrete
+   * activity). Falls back to profile.id.
+   */
+  catalog?: { seedVerticalId?: string }
 }

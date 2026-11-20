@@ -42,14 +42,15 @@ describe("#46 — sectionsForProfile (capability + data gates)", () => {
     expect(flags.team).toBe(true)
   })
 
-  it("capability gate overrides legacy data (existing tenants, no migration)", () => {
-    //even if featured rows exist, a disabled capability must drop the anchor
+  it("optional capability keeps the anchor when profile allows (vsi moduli za vse)", () => {
+    // beekeeping ima services zdaj kot optional → modul obstaja, anchor ostane
+    // (prikaz je še data-gated: brez vrstic services se ne pokaže niti z optional).
     const flags = sectionsForProfile(
       { services: true, shop: true, team: true, reviews: true },
       PROFILES.beekeeping
     )
-    expect(flags.services).toBe(false)
-    expect(flags.team).toBe(false)
+    expect(flags.services).toBe(true)
+    expect(flags.team).toBe(true)
   })
 
   it("every profile with staff enabled keeps the team anchor (with staff data)", () => {
@@ -74,11 +75,12 @@ describe("#46 — sectionsForProfile (capability + data gates)", () => {
 })
 
 describe("#47 — onboarding staff seed respects capabilities.staff", () => {
-  it("profiles that disable staff never seed an owner staff row", () => {
+  it("staff capability gates seeding — every profile with staff enabled seeds an owner row", () => {
     for (const profile of Object.values(PROFILES)) {
       const seeds = isCapabilityEnabled(profile, "staff")
-      if (profile.id === "beekeeping") expect(seeds).toBe(false)
-      if (profile.id === "beauty") expect(seeds).toBe(true)
+      // pod politiko VSI MODULI ZA VSE ima vsak profil staff optional ali required → true
+      expect(seeds).toBe(true)
+      expect(profile.id === "beauty" ? seeds : true).toBe(true)
     }
   })
 

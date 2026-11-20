@@ -127,18 +127,10 @@ async function loadStates(orgId: string): Promise<ModuleStateMap> {
 }
 
 function policyReason(base: CapabilityState, state: ModuleState): { reasonSl?: string; reasonEn?: string } {
-  if (base === "required" && state === "DEACTIVATED") {
-    return {
-      reasonSl: "Ta modul je obvezen za tvojo dejavnost — vedno ostane vklopljen.",
-      reasonEn: "This module is required for your activity and stays enabled.",
-    }
-  }
-  if (base === "disabled") {
-    return {
-      reasonSl: "Ta modul za tvojo dejavnost ni na voljo.",
-      reasonEn: "This module is not available for your activity.",
-    }
-  }
+  // Politika "VSI MODULI ZA VSE" (2026): required in optional sta oba preklopljiva,
+  // disabled ne obstaja več. Noben modul nima več blokirnega razloga.
+  void base
+  void state
   return {}
 }
 
@@ -184,13 +176,17 @@ export async function getModuleOverview(): Promise<{
   return { modules, dependentWarnings }
 }
 
-/** Kategorija za prikaz (F5.4.1). */
+/**
+ * Kategorija za prikaz (politika "VSI MODULI ZA VSE", 2026): noben modul ni
+ * več "disabled". required moduli so "recommended" (privzeto aktivni, a
+ * preklopljivi), optional pa "available".
+ */
 function categoryFor(base: CapabilityState, active: boolean): ModuleCategory {
-  if (base === "required") return "required"
-  if (base === "disabled") return "disabled"
-  // optional: navodilo govori o "priporočeni" — v v1 označimo vse optional kot "available".
-  // Tu ohranimo možnost, da kasneje profil izrazito "recommend" ločimo od zgolj optional.
-  return active ? "recommended" : "available"
+  if (base === "required" || base === "optional") {
+    return active ? "recommended" : "available"
+  }
+  // defensive: star disabled / neznano → available (vse preklopljivo).
+  return "available"
 }
 
 export async function setModuleState(
@@ -204,7 +200,9 @@ export async function setModuleState(
     return { success: false, error: "Neznan modul." }
   }
 
-  // F5.4.1 (P0): avtoritativna politika — required/disabled preverjanja.
+  // Politika "VSI MODULI ZA VSE" (2026): vse dejavnosti smejo vklopiti/izklopiti
+  // vsak modul (required in optional sta oba popustljiva). A v vodiču je treba
+  // najprej omogočiti odvisnosti (odvisni moduli se ne vklopijo samodejno).
   const base = baseCapabilitiesOf(org)
   const baseState = (base[moduleId] ?? "optional") as CapabilityState
   const transition = isTransitionAllowed(baseState, state)
@@ -232,7 +230,7 @@ export async function setModuleState(
   // Vklop: manjkajoča odvisnost jasno povej (ne samodejno vklopi, lastnik odloči).
   if (state === "ACTIVE") {
     const missing = missingDependencies(moduleId, states).filter((m) => {
-      // prepovedane odvisnosti (disabled) se nikoli ne vklopi — samo opozori.
+      // prepovedane odvisnosti (disabled) so izkoreninjene — vse je preklopljivo.
       const depBase = (base[m.id] ?? "optional") as CapabilityState
       return depBase !== "disabled"
     })
@@ -332,12 +330,11 @@ export async function enableModuleWithDependencies(
 }
 
 // ============================================================
-// F5.4.1 §2 — SANITIZACIJA OBSTOJEČIH, ZA POLITIKO NESKLADNIH STANJ.
-// Required modul, ki je kdaj v preteklosti prejel DEACTIVATED, ali disabled
-// modul z ACTIVE/HIDDEN: ne brišemo podatkov (tabela je prikazana), le
-// popravimo DRŽENO stanje na smiselno (required → ne-expliciten/ACTIVE;
-// disabled → odstranimo prepovedan ACTIVE). Kliče se idempotentno iz
-// getModuleOverview (samo za lastnika) in ob prijavi v dashboard.
+// REKONCILIACIJA SHIRANJENIH STANJ — kompatibilna vstopna točka.
+// Politika "VSI MODULI ZA VSE" (2026): required in optional sta oba
+// popustljiva, disabled ne obstaja več (baseCapabilitiesOf ga dvigne
+// na optional), zato ni več "neskladnih" stanj za popravljati.
+// Kliče se idempotentno iz getModuleOverview (samo za lastnika).
 // ============================================================
 export async function reconcileModuleStates(): Promise<{ fixed: number }> {
   const { org } = await requireModuleManageOrg()
@@ -347,21 +344,12 @@ export async function reconcileModuleStates(): Promise<{ fixed: number }> {
     select: { id: true, moduleId: true, state: true },
   })
 
-  let fixed = 0
-  for (const row of rows) {
-    const b = (base[row.moduleId] ?? "optional") as CapabilityState
-    // required DEACTIVATED → umaknemo (privzeta ACTIVE, brez izgube).
-    // disabled ACTIVE/HIDDEN → umaknemo (podel neodprave stanja).
-    const bad =
-      (b === "required" && row.state === "DEACTIVATED") ||
-      (b === "disabled" && (row.state === "ACTIVE" || row.state === "HIDDEN"))
-    if (!bad) continue
-    await prisma.organizationModuleState.delete({ where: { id: row.id } })
-    fixed += 1
-  }
-  if (fixed > 0) {
-    revalidatePath("/dashboard/settings")
-    revalidatePath("/dashboard")
-  }
-  return { fixed }
+  // Politika "VSI MODULI ZA VSE" (2026): required in optional sta oba
+  // popustljiva, disabled ne obstaja več (baseCapabilitiesOf ga dvigne na
+  // optional). Zato ni več "neskladnih" shranjenih stanj, ki bi jih bilo
+  // treba popravljati — vsaka vrstica je veljavna. Funkcija ostane
+  // idempotentna in vrača 0 (ohranjamo jo kot kompatibilno vstopno točko).
+  void base
+  void rows
+  return { fixed: 0 }
 }

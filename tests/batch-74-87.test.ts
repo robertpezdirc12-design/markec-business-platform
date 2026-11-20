@@ -193,12 +193,13 @@ describe("P2 #75: reviews are a first-class section", () => {
     )
     expect(noData.reviews).toBe(false)
 
-    const disabledProfile = getProfile("seamstress") // reviews: "disabled"
+    const switchableProfile = getProfile("seamstress") // reviews zdaj optional (vsi moduli za vse)
     const off = sectionsForProfile(
       { services: true, shop: true, team: true, reviews: true },
-      disabledProfile
+      switchableProfile
     )
-    expect(off.reviews).toBe(false)
+    // optional capability razpolaga section; gate je DATA-based (brez vrstic = skrito)
+    expect(off.reviews).toBe(true)
   })
 
   it("'reviews' is a real SectionKey inserted after team for legacy tenants", () => {
