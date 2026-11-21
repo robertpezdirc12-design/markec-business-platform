@@ -44,15 +44,21 @@ export function requireAdmin() {
   return requireRole(["ADMIN"])
 }
 
-/** Staff-or-admin guard */
+/**
+ * @deprecated Razčlenitev Globalnega JWT-role ni org-autoriteta (F2.0 §5).
+ * Uporabite org-scoped `requirePermissionOrg(...)` ali
+ * `getEffectivePermissions(userId, org.id)` za tenant-izolacijo. To je
+ * samo hitri predfilter; ne sme biti edini varuh org-sensitive podatkov.
+ * Trenutno NI uporabljen v src/ — ohranjen zaradi združljivosti API-ja.
+ */
 export function requireStaffOrAdmin() {
   return requireRole(["ADMIN", "STAFF"])
 }
 
 /**
- * True if the current caller is an authenticated staff/admin user.
- * Used for employee-only pricing — MUST be derived server-side,
- * never trusted from client arguments.
+ * @deprecated Mrtva koda — uporabite `requireSession()`, ki nato overi
+ * svežo članstvo in org-scoped pravice (ravni JWT role je stale-ware).
+ * NIKOLI ne sme biti edina avtorizacija za tenant-scoped podatke.
  */
 export async function isEmployeeSession(): Promise<boolean> {
   const session = await auth()
