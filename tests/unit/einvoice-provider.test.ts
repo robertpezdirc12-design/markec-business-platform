@@ -17,7 +17,7 @@ import {
   buildHttpsRequestOptions,
   eSlogJointWrapper,
 } from "@/lib/einvoice/providers"
-import { __setDnsLookupForTests } from "@/lib/einvoice/endpoint-validation"
+import { __setDnsLookupForTests, assertPublicHttpsUrl } from "@/lib/einvoice/endpoint-validation"
 import { MAX_RETRIES } from "@/lib/einvoice/channel"
 import type { ChannelCfg, SubmitPayload } from "@/lib/einvoice/channel"
 import type { HttpsTransport } from "@/lib/einvoice/providers"
@@ -288,5 +288,42 @@ describe("F5.5.4.6.4 — CertHttpProvider (UJP/PEPPOL mTLS)", () => {
     expect(r.state).toBe("FAILED")
     expect(r.errors[0]).toContain("CHANNEL_NOT_READY")
     expect(fn).not.toHaveBeenCalled()
+  })
+})
+
+describe("F5.5.4.6.4 / TOČKA 7 — Host glava + IPv6 normalizacija", () => {
+  it("TOČKA 7b: Host glava vzame url.host (z vrati / IPv6 oklepaji), hostname za SNI", () => {
+    // Ne-privzeta vrata → Host mora vsebovati vrata.
+    const withPort = buildHttpsRequestOptions(
+      { ...cfg, providerEndpoint: "https://provider.example:8443/invoice" },
+      { "Content-Type": "application/xml" },
+      "198.51.100.10"
+    )
+    expect((withPort.headers as Record<string, string> | undefined)?.Host).toBe("provider.example:8443")
+    expect(withPort.hostname).toBe("provider.example")
+
+    // IPv6 literal z oglatimi oklepaji → Host ohrani oklepaje in vrata.
+    const ipv6 = buildHttpsRequestOptions(
+      { ...cfg, providerEndpoint: "https://[2001:db8::1]:8443/invoice" },
+      { "Content-Type": "application/xml" },
+      "2001:db8::1"
+    )
+    expect((ipv6.headers as Record<string, string> | undefined)?.Host).toBe("[2001:db8::1]:8443")
+    expect(ipv6.hostname).toBe("[2001:db8::1]")
+  })
+
+  it("TOČKA 7a: endpoint-validation sprejme javni IPv6 literal in zavrne loopback IPv6", () => {
+    // Javen (globally-routable) IPv6 literal — ne sme biti označen kot blokiran.
+    const ok = assertPublicHttpsUrl("https://[2606:4700:4700::1111]:8443/einvoice")
+    expect(ok.ok).toBe(true)
+    expect(ok.ok && ok.publicHost).toBe("2606:4700:4700::1111")
+    // Loopback/unique-local IPv6 (::1, fe80::, fd00::) — SSRF zavrnitev.
+    const loopback = assertPublicHttpsUrl("https://[::1]:8443/einvoice")
+    expect(loopback.ok).toBe(false)
+    const ua = assertPublicHttpsUrl("https://[fc00::1]/einvoice")
+    expect(ua.ok).toBe(false)
+    // IPv4 še vedno deluje (regresija).
+    const v4 = assertPublicHttpsUrl("https://8.8.8.8:443/einvoice")
+    expect(v4.ok).toBe(true)
   })
 })

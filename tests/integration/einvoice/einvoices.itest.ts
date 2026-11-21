@@ -486,7 +486,10 @@ describe("F5.5.4.6.4 / Faza 3.2 — dostavna zanka (poll)", () => {
     expect(row?.status).toBe("SUBMITTED")
     expect(row?.deliveryAttempts).toBe(1)
 
-    // ne zadostno: poskusi pod pragom → še vedno SUBMITTED, brez FAILURE receipt
+    // POŠTENA ROTACIJA (TOČKA 4): vsak poskus je časovno razmaknjen (nextPollAt
+    // v prihodnosti), zato simuliraj naslednji cron tick, da račun postane znova
+    // primeren — v produkciji je to preprosto naslednji tick (backoff odložen).
+    await prisma.eInvoice.update({ where: { id }, data: { nextPollAt: new Date(Date.now() - 1000) } })
     await pollPendingDeliveriesForOrg(ORGA)
     row = await prisma.eInvoice.findUnique({ where: { id } })
     expect(row?.status).toBe("SUBMITTED")
@@ -494,6 +497,7 @@ describe("F5.5.4.6.4 / Faza 3.2 — dostavna zanka (poll)", () => {
     expect(await prisma.eInvoiceReceipt.findFirst({ where: { einvoiceId: id, kind: "FAILURE" } })).toBeNull()
 
     // izčrpani poskusi (MAX_DELIVERY_ATTEMPTS) → dokončni FAILED + FAILURE receipt
+    await prisma.eInvoice.update({ where: { id }, data: { nextPollAt: new Date(Date.now() - 1000) } })
     await pollPendingDeliveriesForOrg(ORGA)
     row = await prisma.eInvoice.findUnique({ where: { id } })
     expect(row?.status).toBe("FAILED")
@@ -576,17 +580,23 @@ describe("F5.5.4.6.4 / Faza 3.2 — dostavna zanka (poll)", () => {
 })
 
 describe("F5.5.4.6.4 / Faza 3.2 — povratni webhook", () => {
-  it("neznana pošiljka → ok:false, brez učinka", async () => {
+  it("neznana pošiljka / ne-veljaven podpis → ok:false, brez učinka", async () => {
+    // TOČKA 2 — organizacija mora biti prisotna in kriptografsko potrjena.
+    // V tem bloku ORGA nima nastavljenega DIRECT kanala/skrivnosti, zato
+    // `channelCfgFor` vrne cfg brez `webhookSecret` → `verifyWebhook` je
+    // fail-closed („invalid signature") PREDEN sploh poizvedujemo po računu.
+    // S tem ne razkrijemo obstoja računa brez veljavnega podpisa.
     const res = await recordDeliveryFromWebhook({
+      organizationId: ORGA,
       channel: "direct",
       providerMessageId: "pm-neobstoječi",
       status: "DELIVERED",
       signature: "sha256=spoof",
       timestamp: new Date().toISOString(),
-      rawBody: '{"channel":"direct","providerMessageId":"pm-neobstoječi","status":"DELIVERED"}',
+      rawBody: '{"organizationId":"' + ORGA + '","channel":"direct","providerMessageId":"pm-neobstoječi","status":"DELIVERED"}',
     })
     expect(res.ok).toBe(false)
-    expect(res.error).toBe("unknown invoice")
+    expect(res.error).toBe("invalid signature")
   })
 })
 
@@ -630,9 +640,13 @@ describe("F5.5.4.6.4 / Faza 3.2 — povratni webhook (legitimni)", () => {
     return inv.id
   }
 
-  /** Sestavi veljavno, HMAC-podpisano webhook pošiljko (A3/A5). */
-  function signedWebhook(overrides: { status?: "DELIVERED" | "REJECTED"; providerMessageId?: string; sigPrefix?: string } = {}) {
+  /** Sestavi veljavno, HMAC-podpisano webhook pošiljko (A3/A5). `organizationId`
+   *  je del telesa in podpisa (TOČKA 2): uporablja se kot usmerjevalnik na
+   *  skrivnost org+kanal; veljaven HMAC s to skrivnostjo kriptografsko potrdi
+   *  pripadnost in se pred poizvedbo po računu preveri. */
+  function signedWebhook(overrides: { status?: "DELIVERED" | "REJECTED"; providerMessageId?: string; sigPrefix?: string; organizationId?: string } = {}) {
     const body = {
+      organizationId: overrides.organizationId ?? ORGA,
       channel: "direct",
       providerMessageId: overrides.providerMessageId ?? "pm-web-1",
       status: overrides.status ?? "DELIVERED",
@@ -684,5 +698,65 @@ describe("F5.5.4.6.4 / Faza 3.2 — povratni webhook (legitimni)", () => {
     const again = await recordDeliveryFromWebhook({ ...signedWebhook(), channel: "direct", status: "DELIVERED" })
     expect(again.changed).toBe(false)
     expect(await prisma.eInvoiceDeliveryEvent.count({ where: { einvoiceId: id, kind: "DELIVERED" } })).toBe(1)
+  })
+})
+
+describe("F5.5.4.6.4 / Faza 3.2 — TOČKA 2: tenant izolacija povratnega webhooka", () => {
+  it("webhook s pravilno ORGA skrivnostjo, a organizationId=ORGB v telesu → ne spremeni ORGA računa", async () => {
+    // makeSubmitted iz sosednjega describe bloka ni v tem scope-u, zato račun
+    // ORGA ustvarimo neposredno (isti vzorec kot makeSubmitted).
+    await (prisma as any).eInvoiceChannelConfig.deleteMany({ where: { organizationId: ORGA, channel: "direct" } }).catch(() => {})
+    await (prisma as any).eInvoiceChannelConfig.create({
+      data: {
+        organizationId: ORGA,
+        channel: "direct",
+        label: "Partner proxy",
+        status: "ENABLED",
+        providerEndpoint: "https://provider.example/api/submit",
+        config: {},
+        encryptedSecret: encryptSecret(JSON.stringify({ webhookSecret: WEBHOOK_SECRET })),
+      },
+    })
+    const docId = await mk("INVOICE", 40)
+    const inv = await prisma.eInvoice.create({
+      data: {
+        organizationId: ORGA,
+        documentId: docId,
+        kind: "INVOICE",
+        format: "UBL21_PEPPOL_3",
+        docCode: "RAC-TEN/2026",
+        xml: Buffer.from("<Invoice/>").toString("base64"),
+        sha256: "sha-" + Math.random().toString(36).slice(2),
+        size: 32,
+        xmlValidatedXsd: true,
+        xmlValidatedBusiness: true,
+        standardVersion: "PEPPOL-BIS-3.0.21",
+        validatorVersion: "UBL-2.1",
+        status: "SUBMITTED",
+        providerMessageId: "pm-web-1",
+        channel: "direct",
+      },
+    })
+
+    // Napadalec pozna ORGA skrivnost (to je bil njegov org kanal), a v telesu
+    // navaja ORGB + veljaven HMAC z lastno skrivnostjo. Podpisan je s skrivnostjo,
+    // ki NIKOLI ni skrivnost računa (pm-web-1 → ORGA). Podpis mora biti vezan na
+    // org+kanal računa; če bi upoštevali zgolj organizacijo iz telesa, bi lahko
+    // usmeril na račun druge org. TOČKA 2 zahteva, da se kanal izpelje iz
+    // skrivnosti (fail-closed, če se ne ujema).
+    const forgedBody = JSON.stringify({ organizationId: ORGB, channel: "direct", providerMessageId: "pm-web-1", status: "DELIVERED" })
+    const ts = new Date().toISOString()
+    const res = await recordDeliveryFromWebhook({
+      organizationId: ORGB,
+      channel: "direct",
+      providerMessageId: "pm-web-1",
+      status: "DELIVERED",
+      signature: "sha256=" + signWebhookHmac(WEBHOOK_SECRET, forgedBody, ts),
+      timestamp: ts,
+      rawBody: forgedBody,
+    })
+    expect(res.ok).toBe(false)
+    const row = await prisma.eInvoice.findUnique({ where: { id: inv.id } })
+    expect(row?.status).toBe("SUBMITTED") // ORGA račun ni spremenjen
   })
 })

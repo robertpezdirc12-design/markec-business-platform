@@ -19,6 +19,8 @@ type Row = {
   sha256: string
   createdAt: string
   validationMessages: string | null
+  // TOČKA 3 — true le za SUBMITTED z providerMessageId (spremljevalen prek polla).
+  tracked: boolean
 }
 
 /** Redakcijirano zstanje kanala (brez polnih poverilnic v klientu). */
@@ -68,6 +70,8 @@ type Labels = {
   failedSend: string
   alreadySent: string
   submittedWait: string
+  // TOČKA 3 — SUBMITTED brez providerMessageId (ne spremlja se)
+  submittedUntracked: string
   needsChannel: string
   chooseChannel: string
   noChannelConfigured: string
@@ -80,6 +84,9 @@ type Labels = {
   channelTypePeppol: string
   channelEndpoint: string
   channelEndpointHint: string
+  // TOČKA 5 — HMAC webhook skrivnost za Direct kanal
+  channelWebhookSecret: string
+  channelWebhookSecretHint: string
   channelCert: string
   channelKey: string
   channelCa: string
@@ -136,11 +143,16 @@ export function EinvoicesClient({
   labels,
   channels,
   allChannels = [],
+  canManageChannels,
 }: {
   rows: Row[]
   labels: Labels
   channels: { id: string; label: string }[]
   allChannels?: ChannelInfo[]
+  // TOČKA 6 — ali lahko uporabnik ureja kanale (einvoices.channels.manage).
+  // UI omeji kanalski setup obrazec na uporabnike s tem dovoljenjem; ostali s
+  // finances.view lahko samo vidijo (redakcijirane) kanale in pošiljajo.
+  canManageChannels: boolean
 }) {
   const [downloading, setDownloading] = useState<string | null>(null)
   const [sendingId, setSendingId] = useState<string | null>(null)
@@ -161,6 +173,8 @@ export function EinvoicesClient({
   const [chanSign, setChanSign] = useState(true)
   const [chanInsecure, setChanInsecure] = useState(false)
   const [chanBusyMsg, setChanBusyMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null)
+  // TOČKA 5 — webhookSecret za interni Direct kanal. Nikoli ne vračamo; samo vhod.
+  const [chanWebhookSecret, setChanWebhookSecret] = useState("")
 
   const labelForType = (t: string) =>
     t === "ujp"
@@ -188,6 +202,9 @@ export function EinvoicesClient({
       if (chanKey.trim()) creds.key = chanKey.trim()
       if (chanCa.trim()) creds.ca = chanCa.trim()
       if (chanPass) creds.passphrase = chanPass
+      // TOČKA 5 — webhookSecret za direct kanal; prazno pomeni "obdrži obstoječo"
+      // (pošljemo samo, če je dejansko vnešeno — server praznih tudi ne shrani).
+      if (chanType === "direct" && chanWebhookSecret.trim()) creds.webhookSecret = chanWebhookSecret.trim()
       const res = await saveEinvoiceChannel({
         channel: chanType,
         label: chanLabel.trim() || labelForType(chanType),
@@ -207,6 +224,7 @@ export function EinvoicesClient({
         setChanKey("")
         setChanCa("")
         setChanPass("")
+        setChanWebhookSecret("")
         setChanMode("raw")
         setChanSign(true)
         setChanInsecure(false)
@@ -293,12 +311,14 @@ export function EinvoicesClient({
           <h3 className="font-semibold">{labels.channelSetup}</h3>
           <p className="text-xs text-muted-foreground">{labels.channelSetupHint}</p>
         </div>
+        {canManageChannels && (
         <Button variant="outline" size="sm" onClick={() => setSetupOpen((v) => !v)}>
           {setupOpen ? labels.closeSetup : labels.channelSetup}
         </Button>
+      )}
       </div>
 
-      {setupOpen && (
+      {setupOpen && canManageChannels && (
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <div className="space-y-3">
             <div>
@@ -407,8 +427,32 @@ export function EinvoicesClient({
             </div>
           ) : (
             <div className="space-y-3">
-              <label className="text-xs font-medium">{labels.channelEndpoint}</label>
-              <p className="text-xs text-muted-foreground">{labels.channelSetupHint}</p>
+              <div>
+                <label className="text-xs font-medium">{labels.channelEndpoint}</label>
+                <input
+                  value={chanEndpoint}
+                  onChange={(e) => setChanEndpoint(e.target.value)}
+                  placeholder="https://naprimer.si/einvoice/webhook"
+                  className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+                  aria-label={labels.channelEndpoint}
+                />
+              </div>
+              {/* TOČKA 5 — webhookSecret za interni Direct kanal (HMAC podpis povratnih
+                  dogodkov). Ne vračamo ga nikoli nazaj v klient; samo indikator hasCredentials.
+                  Prazno polje ob urejanju pomeni "ohrani obstoječo skrivnost". */}
+              <div>
+                <label className="text-xs font-medium">{labels.channelWebhookSecret}</label>
+                <input
+                  type="password"
+                  value={chanWebhookSecret}
+                  onChange={(e) => setChanWebhookSecret(e.target.value)}
+                  autoComplete="new-password"
+                  placeholder="••••••••••••••••"
+                  className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+                  aria-label={labels.channelWebhookSecret}
+                />
+                <p className="mt-0.5 text-[11px] text-muted-foreground">{labels.channelWebhookSecretHint}</p>
+              </div>
             </div>
           )}
 
@@ -516,6 +560,9 @@ export function EinvoicesClient({
               const st = stages(r, labels)
               const sent = r.status === "SENT" || r.status === "DELIVERED"
   const submittedPending = r.status === "SUBMITTED"
+  // TOČKA 3 — SUBMITTED brez providerMessageId (2xx uspeh, a je ponudnik ne vrača):
+  // ne polla se, zato status ne bo več avtomatsko posodobljen.
+  const submittedUntracked = submittedPending && !r.tracked
               return (
                 <tr key={r.id} className="align-top">
                   <td className="px-3 py-2 font-mono text-xs">{r.docCode}</td>
@@ -525,6 +572,9 @@ export function EinvoicesClient({
                     <span className={`rounded px-1.5 py-0.5 text-xs ${sent ? "bg-emerald-500/15 text-emerald-600" : submittedPending ? "bg-sky-500/15 text-sky-600" : r.status === "FAILED" ? "bg-red-500/15 text-red-600" : r.status === "VALIDATED" ? "bg-emerald-500/15 text-emerald-600" : "bg-amber-500/15 text-amber-600"}`}>
                       {submittedPending ? labels.submittedWait : r.status}
                     </span>
+                    {submittedUntracked ? (
+                      <span className="block mt-1 text-[10px] text-muted-foreground">{labels.submittedUntracked}</span>
+                    ) : null}
                     {r.standardVersion ? (
                       <span className="block mt-1 text-[10px] text-muted-foreground">{r.standardVersion}</span>
                     ) : null}

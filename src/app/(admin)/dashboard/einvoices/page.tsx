@@ -1,5 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { requirePagePermission } from "@/lib/auth/guards"
+import { auth } from "@/lib/auth/auth"
+import { getSessionOrg } from "@/lib/tenant"
+import { getEffectivePermissions } from "@/lib/permissions/effective"
+import { hasPermission } from "@/lib/permissions/roles"
 import { getServerI18n } from "@/lib/i18n/server"
 import { listEinvoices, listEinvoiceChannelsRedacted } from "@/app/actions/einvoices"
 import { formatLabel } from "@/lib/einvoice/format"
@@ -15,6 +19,15 @@ export default async function EinvoicesPage() {
     listEinvoiceChannelsRedacted(),
   ])
   const d = t.einvoices
+
+  // TOČKA 6 — ali lahko uporabnik upravlja kanale (einvoices.channels.manage).
+  // Stran lahko bere vsak s finances.view; urejanje kanalov/poverilnic zahteva
+  // višje dovoljenje (enako kot ga enforce-a server akcija saveEinvoiceChannel),
+  // zato UI gating uskladimo s serverjem.
+  const session = await auth()
+  const activeOrg = await getSessionOrg()
+  const perms = session?.user ? await getEffectivePermissions(session.user.id, activeOrg?.id) : []
+  const canManageChannels = hasPermission(perms, "einvoices.channels.manage")
 
   // Za pošiljanje ponudimo SAMO kanale z nastavljeno potjo in omogočene.
   const sendableChannels = channels
@@ -42,6 +55,7 @@ export default async function EinvoicesPage() {
       </div>
 
       <EinvoicesClient
+        canManageChannels={canManageChannels}
         channels={sendableChannels}
         allChannels={allChannels}
         rows={rows.map((r) => ({
@@ -59,6 +73,7 @@ export default async function EinvoicesPage() {
           sha256: r.sha256,
           createdAt: r.createdAt,
           validationMessages: r.validationMessages ?? null,
+          tracked: r.tracked,
         }))}
         labels={{
           empty: d.empty,
@@ -95,6 +110,7 @@ export default async function EinvoicesPage() {
           failedSend: d.failedSend,
           alreadySent: d.alreadySent,
           submittedWait: d.submittedWait,
+          submittedUntracked: d.submittedUntracked,
           needsChannel: d.needsChannel,
           chooseChannel: d.chooseChannel,
           noChannelConfigured: d.noChannelConfigured,
@@ -124,6 +140,8 @@ export default async function EinvoicesPage() {
           channelTypeRequired: d.channelTypeRequired,
           channelExisting: d.channelExisting,
           channelNone: d.channelNone,
+          channelWebhookSecret: d.channelWebhookSecret,
+          channelWebhookSecretHint: d.channelWebhookSecretHint,
           closeSetup: d.closeSetup,
         }}
       />

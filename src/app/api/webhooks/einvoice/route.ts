@@ -49,21 +49,29 @@ export async function POST(req: Request): Promise<NextResponse> {
   }
 
   const b = parsed as {
+    organizationId?: unknown
     channel?: unknown
     providerMessageId?: unknown
     status?: unknown
     message?: unknown
   }
+  // TOČKA 2 — `organizationId` je le USMERJEVALNIK na skrivnost org+kanal, NE
+  // sam po sebi zaupanja vredna identifikacija. Dejanska organizacijska
+  // pripadnost je potrjena šele z veljavnim HMAC podpisom, vezanim na tisto
+  // organizacijo in kanal (glej recordDeliveryFromWebhook). Brez organizationId
+  // ne moremo izbrati prave skrivnosti → fail-closed (400).
+  const organizationId = typeof b.organizationId === "string" && b.organizationId.length > 0 ? b.organizationId : null
   const channel = typeof b.channel === "string" && b.channel.length > 0 ? b.channel : null
   const providerMessageId = typeof b.providerMessageId === "string" ? b.providerMessageId : null
   const status =
     b.status === "DELIVERED" || b.status === "REJECTED" ? (b.status as "DELIVERED" | "REJECTED") : null
 
-  if (!channel || !providerMessageId || !status) {
+  if (!organizationId || !channel || !providerMessageId || !status) {
     return NextResponse.json({ ok: false, error: "invalid payload" }, { status: 400 })
   }
 
   const res = await recordDeliveryFromWebhook({
+    organizationId,
     channel,
     providerMessageId,
     status,

@@ -242,6 +242,10 @@ export async function listEinvoices() {
     validatorVersion: r.validatorVersion,
     validationMessages: r.validationMessages,
     status: r.status,
+    // TOČKA 3 — razlikuj „odposlan in se spremlja" (providerMessageId) od
+    // „odposlan brez sledenja" (2xx uspeh brez providerMessageId → ne polla se,
+    // status ne bo več avtomatsko posodobljen).
+    tracked: r.status === "SUBMITTED" && r.providerMessageId !== null,
     createdAt: r.createdAt.toISOString(),
     events: r.events.map((e) => ({ kind: e.kind, message: e.message, createdAt: e.createdAt.toISOString() })),
   }))
@@ -330,9 +334,22 @@ export async function saveEinvoiceChannel(input: {
   const { org } = await requirePermissionOrg("einvoices.channels.manage")
 
   try {
+    // TOČKA 5 — webhookSecret (in ostale poverilnice): izpustimo vsak ključ s
+    // prazno/undefined vrednostjo. S tem ob urejanju brez ponovnega vnosa NIKOLI
+    // ne pobrišemo obstoječe skrivnosti ("no-clear-on-empty-edit") — prazno polje
+    // se obravnava kot "ohrani obstoječe". Vsem ne-praznim poverilnicam šifriramo.
+    const sanitizedCredentials: Record<string, string> = {}
+    if (input.credentials) {
+      for (const [k, v] of Object.entries(input.credentials)) {
+        if (typeof v === "string" && v.trim().length > 0) {
+          sanitizedCredentials[k] = v
+        }
+      }
+    }
+
     // Šifriraj vsako neobčutljivo poverilnico posebej v en JSON payload.
-    const secretPayload = input.credentials && Object.keys(input.credentials).length
-      ? encryptSecret(JSON.stringify(input.credentials))
+    const secretPayload = Object.keys(sanitizedCredentials).length
+      ? encryptSecret(JSON.stringify(sanitizedCredentials))
       : null
 
     const config = input.config ?? {}

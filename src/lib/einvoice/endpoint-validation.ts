@@ -131,18 +131,26 @@ export function assertPublicHttpsUrl(raw: string | null | undefined): EndpointVa
   const host = url.hostname
   if (!host) return { ok: false, error: "Endpoint nima gostitelja." }
 
+  // TOČKA 7a — IPv6 NORMALIZACIJA: `URL.hostname` za IPv6 literal vrne naslov z
+  // oglatima oklepajema (npr. `[::1]`), medtem ko `node:net` `isIP()` pričakuje
+  // GOLI naslov brez oklepajev. Če oklepajev ne odstranimo, `isIP("[::1]")`
+  // vrne `null` in literal nikoli ne gre v IPv6-vejo → bi ga prepozno obravnaval
+  // kot ime (DNS), kar omogoča SSRF mimo. Zato oklepaje odstranimo samo za
+  // IP-preverjanje; `host` (z oklepaji pri IPv6) ohranimo kot `publicHost`.
+  const ipLiteral = host.replace(/^\[|\]$/g, "")
+
   // IP-naslov zgodaj — ni DNS-rebinding vektorja pri literal IPv4/IPv6.
-  if (isIP(host) === 4) {
-    if (isBlockedV4(host)) {
+  if (isIP(ipLiteral) === 4) {
+    if (isBlockedV4(ipLiteral)) {
       return { ok: false, error: "Endpoint kaže v zasebno/notranjo mrežo — zavrnjeno (SSRF)." }
     }
-    return { ok: true, publicHost: host }
+    return { ok: true, publicHost: ipLiteral }
   }
-  if (isIP(host) === 6) {
-    if (isBlockedV6(host)) {
+  if (isIP(ipLiteral) === 6) {
+    if (isBlockedV6(ipLiteral)) {
       return { ok: false, error: "Endpoint kaže v zasebno/loopback IPv6 mrežo — zavrnjeno (SSRF)." }
     }
-    return { ok: true, publicHost: host }
+    return { ok: true, publicHost: ipLiteral }
   }
 
   // Imenski gostitelj sproži DNS-rebinding rii: localhost-oznake, zaključene

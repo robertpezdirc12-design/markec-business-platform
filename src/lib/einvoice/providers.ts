@@ -376,6 +376,12 @@ export function buildHttpsRequestOptions(
   const url = new URL(cfg.providerEndpoint)
   const cred = cfg.credentials ?? {}
   const hostname = url.hostname
+  // TOČKA 7b — HOST GLAVA: za Host uporabimo `url.host`, ki vsebuje vrata, kjer
+  // niso privzeta za protokol (npr. `provider.example:8443`, `[::1]:8443`), in
+  // ohrani IPv6 oglate oklepaje. `hostname` (brez vrat, brez oklepajev za dostavo
+  // IP) ostane zgolj za `servername`/TLS SNI — tako TLS veriga in virtualni
+  // gostitelj ob morebitnih neprivzetih vratih delujeta pravilno.
+  const hostHeader = url.host
   const opts: https.RequestOptions = {
     hostname,
     port: url.port ? Number(url.port) : url.protocol === "https:" ? 443 : undefined,
@@ -400,9 +406,10 @@ export function buildHttpsRequestOptions(
           servername: hostname,
         }
       : {}),
-    // Host glava: originalni hostname, da virtualni gostitelj dobi pravilno
-    // zahtevo tudi, ko povezujemo na preverjeni IP.
-    headers: { ...headers, Host: hostname },
+    // Host glava: `url.host` (z vrati, kjer niso privzeta, in ohranjenimi IPv6
+    // oklepaji), da virtualni gostitelj dobi pravilno zahtevo tudi pri
+    // neprivzetih vratih in na preverjeni IP.
+    headers: { ...headers, Host: hostHeader },
     // mTLS X.509 klient certifikat + private key (UJP SIGOV-CA / PEPPOL AP cert).
     // mTLS X.509 klient certifikat + private key (UJP SIGOV-CA / PEPPOL AP cert).
     ...(cred.cert ? { cert: cred.cert } : {}),

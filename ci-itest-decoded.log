@@ -1,0 +1,967 @@
+﻿2026-11-21T14:45:20.0605544Z Current runner version: '2.338.2'
+2026-11-21T14:45:20.0630543Z ##[group]Runner Image Provisioner
+2026-11-21T14:45:20.0631449Z Hosted Compute Agent
+2026-11-21T14:45:20.0632158Z Version: 20261111.635
+2026-11-21T14:45:20.0632807Z Commit: b8a594ea514ff44cadb5342986c68b1eac6e22ed
+2026-11-21T14:45:20.0633589Z Build Date: 2026-11-11T01:49:01Z
+2026-11-21T14:45:20.0634351Z Worker ID: {ea36e21f-e78f-4b5f-b6de-655a00fbc5dc}
+2026-11-21T14:45:20.0635457Z Region: westus
+2026-11-21T14:45:20.0636113Z Cloud: Azure
+2026-11-21T14:45:20.0636670Z ##[endgroup]
+2026-11-21T14:45:20.0638140Z ##[group]Operating System
+2026-11-21T14:45:20.0638942Z Ubuntu
+2026-11-21T14:45:20.0639515Z 26.04.1
+2026-11-21T14:45:20.0640077Z LTS
+2026-11-21T14:45:20.0640595Z ##[endgroup]
+2026-11-21T14:45:20.0641131Z ##[group]Runner Image
+2026-11-21T14:45:20.0641826Z Image: ubuntu-26.04
+2026-11-21T14:45:20.0642396Z Version: 20261116.202.1
+2026-11-21T14:45:20.0643694Z Included Software: https://github.com/actions/runner-images/blob/ubuntu26/20261116.202/images/ubuntu/Ubuntu2604-Readme.md
+2026-11-21T14:45:20.0645695Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20261116.202
+2026-11-21T14:45:20.0646839Z ##[endgroup]
+2026-11-21T14:45:20.0647980Z ##[group]GITHUB_TOKEN Permissions
+2026-11-21T14:45:20.0649972Z Contents: read
+2026-11-21T14:45:20.0650618Z Metadata: read
+2026-11-21T14:45:20.0651263Z ##[endgroup]
+2026-11-21T14:45:20.0653396Z Secret source: Actions
+2026-11-21T14:45:20.0654460Z Cache mode: write
+2026-11-21T14:45:20.0655405Z Prepare workflow directory
+2026-11-21T14:45:20.1109487Z Prepare all required actions
+2026-11-21T14:45:20.1157682Z Getting action download info
+2026-11-21T14:45:20.4765750Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-11-21T14:45:20.5761750Z Download action repository 'pnpm/action-setup@v4' (SHA:b906affcce14559ad1aafd4ab0e942779e9f58b1)
+2026-11-21T14:45:20.9653780Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-11-21T14:45:21.1472219Z Complete job name: Integration tests (DB)
+2026-11-21T14:45:21.2105174Z ##[group]Checking docker version
+2026-11-21T14:45:21.2118838Z ##[command]/usr/bin/docker version --format '{{.Server.APIVersion}}'
+2026-11-21T14:45:21.3130895Z '1.54'
+2026-11-21T14:45:21.3146340Z Docker daemon API version: '1.54'
+2026-11-21T14:45:21.3147132Z ##[command]/usr/bin/docker version --format '{{.Client.APIVersion}}'
+2026-11-21T14:45:21.3348458Z '1.54'
+2026-11-21T14:45:21.3366294Z Docker client API version: '1.54'
+2026-11-21T14:45:21.3372192Z ##[endgroup]
+2026-11-21T14:45:21.3375559Z ##[group]Clean up resources from previous jobs
+2026-11-21T14:45:21.3381469Z ##[command]/usr/bin/docker ps --all --quiet --no-trunc --filter "label=f6e484"
+2026-11-21T14:45:21.3550335Z ##[command]/usr/bin/docker network prune --force --filter "label=f6e484"
+2026-11-21T14:45:21.3715756Z ##[endgroup]
+2026-11-21T14:45:21.3716314Z ##[group]Create local container network
+2026-11-21T14:45:21.3726390Z ##[command]/usr/bin/docker network create --label f6e484 github_network_26cd0dbd62984d9f947088c4648790af
+2026-11-21T14:45:21.4233318Z 3acb34b6ab2eba13c756d67a6476c4cddb54bba76f08b105ab68b24b27a29241
+2026-11-21T14:45:21.4255901Z ##[endgroup]
+2026-11-21T14:45:21.4281214Z ##[group]Starting postgres service container
+2026-11-21T14:45:21.4302423Z ##[command]/usr/bin/docker pull postgres:16
+2026-11-21T14:45:22.1999401Z 16: Pulling from library/postgres
+2026-11-21T14:45:22.4342154Z a115041a3e47: Pulling fs layer
+2026-11-21T14:45:22.4344876Z 57869d2f2b40: Pulling fs layer
+2026-11-21T14:45:22.4347153Z a0a147a27498: Pulling fs layer
+2026-11-21T14:45:22.4348507Z 0bda6b874f77: Pulling fs layer
+2026-11-21T14:45:22.4350188Z 37fb86c2a767: Pulling fs layer
+2026-11-21T14:45:22.4351157Z 893773e1f215: Pulling fs layer
+2026-11-21T14:45:22.4351932Z 8c5b8924f0a2: Pulling fs layer
+2026-11-21T14:45:22.4353031Z 4fefcc83b4c3: Pulling fs layer
+2026-11-21T14:45:22.4354034Z a43692ded922: Pulling fs layer
+2026-11-21T14:45:22.4355405Z 7ae4197f54cb: Pulling fs layer
+2026-11-21T14:45:22.4357117Z a160a6fee115: Pulling fs layer
+2026-11-21T14:45:22.4358235Z a37be121ef1e: Pulling fs layer
+2026-11-21T14:45:22.4359457Z a71988767d8f: Pulling fs layer
+2026-11-21T14:45:22.6594270Z a0a147a27498: Download complete
+2026-11-21T14:45:22.6613396Z a71988767d8f: Download complete
+2026-11-21T14:45:22.6627862Z 57869d2f2b40: Download complete
+2026-11-21T14:45:22.7561090Z 893773e1f215: Download complete
+2026-11-21T14:45:22.7565739Z 4fefcc83b4c3: Download complete
+2026-11-21T14:45:22.7567751Z a115041a3e47: Download complete
+2026-11-21T14:45:22.7570255Z a43692ded922: Download complete
+2026-11-21T14:45:22.7572211Z 7ae4197f54cb: Download complete
+2026-11-21T14:45:22.7589695Z a160a6fee115: Download complete
+2026-11-21T14:45:22.7596290Z 8c5b8924f0a2: Download complete
+2026-11-21T14:45:22.7605993Z a37be121ef1e: Download complete
+2026-11-21T14:45:22.8574137Z 37fb86c2a767: Download complete
+2026-11-21T14:45:22.9555154Z 8c7e2d1cf628: Download complete
+2026-11-21T14:45:22.9569320Z 51d128040abb: Download complete
+2026-11-21T14:45:23.2553327Z 0bda6b874f77: Download complete
+2026-11-21T14:45:23.7574170Z a0a147a27498: Pull complete
+2026-11-21T14:45:23.7712804Z 37fb86c2a767: Pull complete
+2026-11-21T14:45:23.8582617Z 893773e1f215: Pull complete
+2026-11-21T14:45:23.9640906Z a43692ded922: Pull complete
+2026-11-21T14:45:24.0550642Z a71988767d8f: Pull complete
+2026-11-21T14:45:24.1579478Z 57869d2f2b40: Pull complete
+2026-11-21T14:45:24.1648857Z 8c5b8924f0a2: Pull complete
+2026-11-21T14:45:24.1667819Z a37be121ef1e: Pull complete
+2026-11-21T14:45:26.0605836Z 0bda6b874f77: Pull complete
+2026-11-21T14:45:26.1122163Z 4fefcc83b4c3: Pull complete
+2026-11-21T14:45:26.1142563Z a115041a3e47: Pull complete
+2026-11-21T14:45:26.1164225Z 7ae4197f54cb: Pull complete
+2026-11-21T14:45:26.1181677Z a160a6fee115: Pull complete
+2026-11-21T14:45:26.1184214Z Digest: sha256:3950ad7c3148ca2175ef1b6c36c9efbf78957ae8fbe8b3a5d7c35af50500382f
+2026-11-21T14:45:26.1186151Z Status: Downloaded newer image for postgres:16
+2026-11-21T14:45:26.1193857Z docker.io/library/postgres:16
+2026-11-21T14:45:26.1292296Z ##[command]/usr/bin/docker create --name 9b9a178d8a404f71a85ea8a9f192c718_postgres16_b01260 --label f6e484 --network github_network_26cd0dbd62984d9f947088c4648790af --network-alias postgres -p 5435:5432 --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5 -e "POSTGRES_USER=markec_it" -e "POSTGRES_PASSWORD=markec_it_pw" -e "POSTGRES_DB=markec_it" -e GITHUB_ACTIONS=true -e CI=true postgres:16
+2026-11-21T14:45:27.3189567Z 8b165b2a7f52d7066b894612f40714ca8c5aad3244de794035163eb93498cebb
+2026-11-21T14:45:27.3217818Z ##[command]/usr/bin/docker start 8b165b2a7f52d7066b894612f40714ca8c5aad3244de794035163eb93498cebb
+2026-11-21T14:45:27.5367849Z 8b165b2a7f52d7066b894612f40714ca8c5aad3244de794035163eb93498cebb
+2026-11-21T14:45:27.5392213Z ##[command]/usr/bin/docker ps --all --filter id=8b165b2a7f52d7066b894612f40714ca8c5aad3244de794035163eb93498cebb --filter status=running --no-trunc --format "{{.ID}} {{.Status}}"
+2026-11-21T14:45:27.5736480Z 8b165b2a7f52d7066b894612f40714ca8c5aad3244de794035163eb93498cebb Up Less than a second (health: starting)
+2026-11-21T14:45:27.5763952Z ##[command]/usr/bin/docker port 8b165b2a7f52d7066b894612f40714ca8c5aad3244de794035163eb93498cebb
+2026-11-21T14:45:27.5922752Z 5432/tcp -> 0.0.0.0:5435
+2026-11-21T14:45:27.5923484Z 5432/tcp -> [::]:5435
+2026-11-21T14:45:27.5985009Z ##[endgroup]
+2026-11-21T14:45:27.5994055Z ##[group]Waiting for all services to be ready
+2026-11-21T14:45:27.6008045Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 8b165b2a7f52d7066b894612f40714ca8c5aad3244de794035163eb93498cebb
+2026-11-21T14:45:27.6175935Z starting
+2026-11-21T14:45:27.6201224Z postgres service is starting, waiting 2 seconds before checking again.
+2026-11-21T14:45:29.6199718Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 8b165b2a7f52d7066b894612f40714ca8c5aad3244de794035163eb93498cebb
+2026-11-21T14:45:29.6346483Z starting
+2026-11-21T14:45:29.6363750Z postgres service is starting, waiting 4 seconds before checking again.
+2026-11-21T14:45:33.8820310Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 8b165b2a7f52d7066b894612f40714ca8c5aad3244de794035163eb93498cebb
+2026-11-21T14:45:33.8972325Z starting
+2026-11-21T14:45:33.8988442Z postgres service is starting, waiting 8 seconds before checking again.
+2026-11-21T14:45:42.0697745Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 8b165b2a7f52d7066b894612f40714ca8c5aad3244de794035163eb93498cebb
+2026-11-21T14:45:42.0851097Z healthy
+2026-11-21T14:45:42.0873291Z postgres service is healthy.
+2026-11-21T14:45:42.0874155Z ##[endgroup]
+2026-11-21T14:45:42.1258580Z ##[group]Run actions/checkout@v4
+2026-11-21T14:45:42.1259199Z with:
+2026-11-21T14:45:42.1259501Z   repository: robertpezdirc12-design/markec-business-platform
+2026-11-21T14:45:42.1262274Z   token: ***
+2026-11-21T14:45:42.1262633Z   ssh-strict: true
+2026-11-21T14:45:42.1262839Z   ssh-user: git
+2026-11-21T14:45:42.1263059Z   persist-credentials: true
+2026-11-21T14:45:42.1263289Z   clean: true
+2026-11-21T14:45:42.1263495Z   sparse-checkout-cone-mode: true
+2026-11-21T14:45:42.1263745Z   fetch-depth: 1
+2026-11-21T14:45:42.1263943Z   fetch-tags: false
+2026-11-21T14:45:42.1264149Z   show-progress: true
+2026-11-21T14:45:42.1264356Z   lfs: false
+2026-11-21T14:45:42.1264664Z   submodules: false
+2026-11-21T14:45:42.1264879Z   set-safe-directory: true
+2026-11-21T14:45:42.1265130Z   allow-unsafe-pr-checkout: false
+2026-11-21T14:45:42.1265612Z env:
+2026-11-21T14:45:42.1266128Z   DATABASE_URL: ***localhost:5435/markec_it?schema=public
+2026-11-21T14:45:42.1266700Z   DIRECT_URL: ***localhost:5435/markec_it?schema=public
+2026-11-21T14:45:42.1267026Z   NEXTAUTH_SECRET: test-secret-not-real
+2026-11-21T14:45:42.1267304Z   AUTH_SECRET: test-secret-not-real
+2026-11-21T14:45:42.1267594Z   NEXT_PUBLIC_APP_URL: http://localhost:3000
+2026-11-21T14:45:42.1267911Z   NEXTAUTH_URL: http://localhost:3000
+2026-11-21T14:45:42.1268164Z   CI: true
+2026-11-21T14:45:42.1268344Z ##[endgroup]
+2026-11-21T14:45:42.4006689Z Syncing repository: robertpezdirc12-design/markec-business-platform
+2026-11-21T14:45:42.4008790Z ##[group]Getting Git version info
+2026-11-21T14:45:42.4009677Z Working directory is '/home/runner/work/markec-business-platform/markec-business-platform'
+2026-11-21T14:45:42.4010839Z [command]/usr/bin/git version
+2026-11-21T14:45:42.4011278Z git version 2.56.1
+2026-11-21T14:45:42.4034018Z ##[endgroup]
+2026-11-21T14:45:42.4051277Z Temporarily overriding HOME='/home/runner/work/_temp/006ebc68-61bd-4433-925f-41360670e9b1' before making global git config changes
+2026-11-21T14:45:42.4052599Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-21T14:45:42.4058711Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/markec-business-platform/markec-business-platform
+2026-11-21T14:45:42.4130775Z Deleting the contents of '/home/runner/work/markec-business-platform/markec-business-platform'
+2026-11-21T14:45:42.4135155Z ##[group]Initializing the repository
+2026-11-21T14:45:42.4140433Z [command]/usr/bin/git init /home/runner/work/markec-business-platform/markec-business-platform
+2026-11-21T14:45:42.4258826Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-21T14:45:42.4259827Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-21T14:45:42.4260479Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-21T14:45:42.4260902Z hint: call:
+2026-11-21T14:45:42.4261103Z hint:
+2026-11-21T14:45:42.4261473Z hint: 	git config --global init.defaultBranch <name>
+2026-11-21T14:45:42.4261843Z hint:
+2026-11-21T14:45:42.4262211Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-21T14:45:42.4263007Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-21T14:45:42.4263685Z hint:
+2026-11-21T14:45:42.4263912Z hint: 	git branch -m <name>
+2026-11-21T14:45:42.4264151Z hint:
+2026-11-21T14:45:42.4264794Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-21T14:45:42.4270655Z Initialized empty Git repository in /home/runner/work/markec-business-platform/markec-business-platform/.git/
+2026-11-21T14:45:42.4285306Z [command]/usr/bin/git remote add origin https://github.com/robertpezdirc12-design/markec-business-platform
+2026-11-21T14:45:42.4344340Z ##[endgroup]
+2026-11-21T14:45:42.4345204Z ##[group]Disabling automatic garbage collection
+2026-11-21T14:45:42.4350799Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-21T14:45:42.4392449Z ##[endgroup]
+2026-11-21T14:45:42.4393541Z ##[group]Setting up auth
+2026-11-21T14:45:42.4403428Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-21T14:45:42.4447374Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-21T14:45:42.4950994Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-21T14:45:42.4987129Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-21T14:45:42.5261068Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-21T14:45:42.5298443Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-21T14:45:42.5576085Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-21T14:45:42.5619262Z ##[endgroup]
+2026-11-21T14:45:42.5619769Z ##[group]Fetching the repository
+2026-11-21T14:45:42.5631247Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +5633536a3da94c503cefa1a3a99356c8353d3e54:refs/remotes/pull/138/merge
+2026-11-21T14:45:44.3350685Z From https://github.com/robertpezdirc12-design/markec-business-platform
+2026-11-21T14:45:44.3351759Z  * [new ref]         5633536a3da94c503cefa1a3a99356c8353d3e54 -> pull/138/merge
+2026-11-21T14:45:44.3357317Z ##[endgroup]
+2026-11-21T14:45:44.3358035Z ##[group]Determining the checkout info
+2026-11-21T14:45:44.3361147Z ##[endgroup]
+2026-11-21T14:45:44.3369076Z [command]/usr/bin/git sparse-checkout disable
+2026-11-21T14:45:44.3431176Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-21T14:45:44.3461192Z ##[group]Checking out the ref
+2026-11-21T14:45:44.3465532Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/138/merge
+2026-11-21T14:45:44.5903079Z Note: switching to 'refs/remotes/pull/138/merge'.
+2026-11-21T14:45:44.5903686Z 
+2026-11-21T14:45:44.5904167Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-21T14:45:44.5905538Z changes and commit them, and you can discard any commits you make in this
+2026-11-21T14:45:44.5906599Z state without impacting any branches by switching back to a branch.
+2026-11-21T14:45:44.5907250Z 
+2026-11-21T14:45:44.5907762Z If you want to create a new branch to retain commits you create, you may
+2026-11-21T14:45:44.5908670Z do so (now or later) by using -c with the switch command. Example:
+2026-11-21T14:45:44.5909176Z 
+2026-11-21T14:45:44.5909373Z   git switch -c <new-branch-name>
+2026-11-21T14:45:44.5909742Z 
+2026-11-21T14:45:44.5909957Z Or undo this operation with:
+2026-11-21T14:45:44.5910315Z 
+2026-11-21T14:45:44.5910501Z   git switch -
+2026-11-21T14:45:44.5910842Z 
+2026-11-21T14:45:44.5911323Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-21T14:45:44.5911960Z 
+2026-11-21T14:45:44.5912713Z HEAD is now at 5633536 Merge 98980670cea4df1bab001cd44801a6afef1c688a into d8bcba6929a8cd4787f83e5850b121d03f029a35
+2026-11-21T14:45:44.5928275Z ##[endgroup]
+2026-11-21T14:45:44.5981453Z [command]/usr/bin/git log -1 --format=%H
+2026-11-21T14:45:44.6007567Z 5633536a3da94c503cefa1a3a99356c8353d3e54
+2026-11-21T14:45:44.6245285Z ##[group]Run pnpm/action-setup@v4
+2026-11-21T14:45:44.6245587Z with:
+2026-11-21T14:45:44.6245787Z   dest: ~/setup-pnpm
+2026-11-21T14:45:44.6245996Z   run_install: null
+2026-11-21T14:45:44.6246191Z   cache: false
+2026-11-21T14:45:44.6246403Z   cache_dependency_path: pnpm-lock.yaml
+2026-11-21T14:45:44.6246690Z   package_json_file: package.json
+2026-11-21T14:45:44.6246942Z   standalone: false
+2026-11-21T14:45:44.6247138Z env:
+2026-11-21T14:45:44.6247688Z   DATABASE_URL: ***localhost:5435/markec_it?schema=public
+2026-11-21T14:45:44.6248206Z   DIRECT_URL: ***localhost:5435/markec_it?schema=public
+2026-11-21T14:45:44.6248528Z   NEXTAUTH_SECRET: test-secret-not-real
+2026-11-21T14:45:44.6248814Z   AUTH_SECRET: test-secret-not-real
+2026-11-21T14:45:44.6249123Z   NEXT_PUBLIC_APP_URL: http://localhost:3000
+2026-11-21T14:45:44.6249450Z   NEXTAUTH_URL: http://localhost:3000
+2026-11-21T14:45:44.6249718Z   CI: true
+2026-11-21T14:45:44.6249898Z ##[endgroup]
+2026-11-21T14:45:44.7774153Z ##[group]Running self-installer...
+2026-11-21T14:45:45.2369512Z (node:2820) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-11-21T14:45:45.2371443Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-21T14:45:45.3589825Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-11-21T14:45:45.3693654Z Packages: +1
+2026-11-21T14:45:45.3694121Z +
+2026-11-21T14:45:45.7794376Z Progress: resolved 1, reused 0, downloaded 1, added 1, done
+2026-11-21T14:45:45.8088910Z 
+2026-11-21T14:45:45.8089249Z dependencies:
+2026-11-21T14:45:45.8089742Z + pnpm 10.34.9 (12.21.0 is available)
+2026-11-21T14:45:45.8090125Z 
+2026-11-21T14:45:45.8114667Z Done in 819ms
+2026-11-21T14:45:45.8341606Z ##[endgroup]
+2026-11-21T14:45:45.8342248Z Installation Completed!
+2026-11-21T14:45:45.8516424Z ##[group]Run actions/setup-node@v4
+2026-11-21T14:45:45.8516713Z with:
+2026-11-21T14:45:45.8516914Z   node-version: 22
+2026-11-21T14:45:45.8517120Z   cache: pnpm
+2026-11-21T14:45:45.8517322Z   always-auth: false
+2026-11-21T14:45:45.8517538Z   check-latest: false
+2026-11-21T14:45:45.8520048Z   token: ***
+2026-11-21T14:45:45.8520246Z env:
+2026-11-21T14:45:45.8520650Z   DATABASE_URL: ***localhost:5435/markec_it?schema=public
+2026-11-21T14:45:45.8521162Z   DIRECT_URL: ***localhost:5435/markec_it?schema=public
+2026-11-21T14:45:45.8521500Z   NEXTAUTH_SECRET: test-secret-not-real
+2026-11-21T14:45:45.8521779Z   AUTH_SECRET: test-secret-not-real
+2026-11-21T14:45:45.8522066Z   NEXT_PUBLIC_APP_URL: http://localhost:3000
+2026-11-21T14:45:45.8522370Z   NEXTAUTH_URL: http://localhost:3000
+2026-11-21T14:45:45.8522627Z   CI: true
+2026-11-21T14:45:45.8522887Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-21T14:45:45.8523195Z ##[endgroup]
+2026-11-21T14:45:45.9990213Z Found in cache @ /opt/hostedtoolcache/node/22.23.5/x64
+2026-11-21T14:45:45.9995888Z (node:2834) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-21T14:45:45.9997068Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-21T14:45:45.9998489Z ##[group]Environment details
+2026-11-21T14:45:46.4116863Z node: v22.23.5
+2026-11-21T14:45:46.4117252Z npm: 10.9.9
+2026-11-21T14:45:46.4117552Z yarn: 1.22.22
+2026-11-21T14:45:46.4118830Z ##[endgroup]
+2026-11-21T14:45:46.4143099Z [command]/home/runner/setup-pnpm/node_modules/.bin/pnpm store path --silent
+2026-11-21T14:45:46.8758086Z /home/runner/setup-pnpm/node_modules/.bin/store/v10
+2026-11-21T14:45:47.1455166Z Cache hit for: node-cache-Linux-x64-pnpm-5bdd2d227f7ec1e4e8c5ab72243cfd5229883bf140cb27881752042244cce2d3
+2026-11-21T14:45:47.1625641Z (node:2834) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-11-21T14:45:48.4169532Z Received 16777216 of 353715809 (4.7%), 16.0 MBs/sec
+2026-11-21T14:45:49.4180234Z Received 134217728 of 353715809 (37.9%), 64.0 MBs/sec
+2026-11-21T14:45:50.4179223Z Received 268435456 of 353715809 (75.9%), 85.3 MBs/sec
+2026-11-21T14:45:50.8796997Z Received 353715809 of 353715809 (100.0%), 97.4 MBs/sec
+2026-11-21T14:45:50.8798915Z Cache Size: ~337 MB (353715809 B)
+2026-11-21T14:45:50.8868660Z [command]/usr/bin/tar -xf /home/runner/work/_temp/723edf4b-942a-4512-b361-282815523ff3/cache.tzst -P -C /home/runner/work/markec-business-platform/markec-business-platform --use-compress-program unzstd
+2026-11-21T14:45:55.2564040Z Cache restored successfully
+2026-11-21T14:45:55.2755304Z Cache restored from key: node-cache-Linux-x64-pnpm-5bdd2d227f7ec1e4e8c5ab72243cfd5229883bf140cb27881752042244cce2d3
+2026-11-21T14:45:55.3071954Z ##[group]Run pnpm install --frozen-lockfile
+2026-11-21T14:45:55.3072392Z [36;1mpnpm install --frozen-lockfile[0m
+2026-11-21T14:45:55.3116476Z shell: /usr/bin/bash -e {0}
+2026-11-21T14:45:55.3116766Z env:
+2026-11-21T14:45:55.3117304Z   DATABASE_URL: ***localhost:5435/markec_it?schema=public
+2026-11-21T14:45:55.3117843Z   DIRECT_URL: ***localhost:5435/markec_it?schema=public
+2026-11-21T14:45:55.3118187Z   NEXTAUTH_SECRET: test-secret-not-real
+2026-11-21T14:45:55.3118484Z   AUTH_SECRET: test-secret-not-real
+2026-11-21T14:45:55.3118797Z   NEXT_PUBLIC_APP_URL: http://localhost:3000
+2026-11-21T14:45:55.3119122Z   NEXTAUTH_URL: http://localhost:3000
+2026-11-21T14:45:55.3119391Z   CI: true
+2026-11-21T14:45:55.3119640Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-21T14:45:55.3119958Z ##[endgroup]
+2026-11-21T14:45:55.8021577Z Lockfile is up to date, resolution step is skipped
+2026-11-21T14:45:55.8851365Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-11-21T14:45:56.0808201Z Packages: +1061
+2026-11-21T14:45:56.0816341Z ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-11-21T14:45:56.8855066Z Progress: resolved 1061, reused 1060, downloaded 0, added 10
+2026-11-21T14:45:57.8855548Z Progress: resolved 1061, reused 1060, downloaded 0, added 300
+2026-11-21T14:45:58.8851126Z Progress: resolved 1061, reused 1060, downloaded 0, added 959
+2026-11-21T14:45:59.2534439Z Progress: resolved 1061, reused 1060, downloaded 0, added 1061, done
+2026-11-21T14:46:00.4128306Z 
+2026-11-21T14:46:00.4128955Z dependencies:
+2026-11-21T14:46:00.4129312Z + @auth/prisma-adapter 2.11.3
+2026-11-21T14:46:00.4129656Z + @aws-sdk/client-s3 3.1169.0
+2026-11-21T14:46:00.4130025Z + @aws-sdk/s3-request-presigner 3.1169.0
+2026-11-21T14:46:00.4130387Z + @date-fns/tz 1.4.1
+2026-11-21T14:46:00.4130679Z + @hookform/resolvers 5.2.2
+2026-11-21T14:46:00.4131024Z + @neondatabase/serverless 1.2.1
+2026-11-21T14:46:00.4131362Z + @phosphor-icons/react 2.1.10
+2026-11-21T14:46:00.4131721Z + @prisma/adapter-neon 6.19.3
+2026-11-21T14:46:00.4132015Z + @prisma/client 6.19.0
+2026-11-21T14:46:00.4132328Z + @radix-ui/react-accordion 1.2.12
+2026-11-21T14:46:00.4132690Z + @radix-ui/react-alert-dialog 1.1.15
+2026-11-21T14:46:00.4133063Z + @radix-ui/react-avatar 1.1.11
+2026-11-21T14:46:00.4133389Z + @radix-ui/react-checkbox 1.3.3
+2026-11-21T14:46:00.4133717Z + @radix-ui/react-dialog 1.1.15
+2026-11-21T14:46:00.4134053Z + @radix-ui/react-dropdown-menu 2.1.16
+2026-11-21T14:46:00.4134648Z + @radix-ui/react-icons 1.3.2
+2026-11-21T14:46:00.4135122Z + @radix-ui/react-label 2.1.8
+2026-11-21T14:46:00.4135648Z + @radix-ui/react-popover 1.1.15
+2026-11-21T14:46:00.4136045Z + @radix-ui/react-scroll-area 1.2.10
+2026-11-21T14:46:00.4136388Z + @radix-ui/react-select 2.2.6
+2026-11-21T14:46:00.4136731Z + @radix-ui/react-separator 1.1.8
+2026-11-21T14:46:00.4137260Z + @radix-ui/react-slot 1.2.4
+2026-11-21T14:46:00.4137765Z + @radix-ui/react-switch 1.2.6
+2026-11-21T14:46:00.4138189Z + @radix-ui/react-tabs 1.1.13
+2026-11-21T14:46:00.4139101Z + @radix-ui/react-tooltip 1.2.8
+2026-11-21T14:46:00.4139766Z + @react-email/components 1.0.1
+2026-11-21T14:46:00.4140360Z + @stripe/stripe-js 8.4.0
+2026-11-21T14:46:00.4140823Z + @tremor/react 3.18.7
+2026-11-21T14:46:00.4141220Z + bcryptjs 3.0.3
+2026-11-21T14:46:00.4141626Z + canvas-confetti 1.9.4
+2026-11-21T14:46:00.4142148Z + class-variance-authority 0.7.1
+2026-11-21T14:46:00.4142631Z + cloudinary 2.8.0
+2026-11-21T14:46:00.4143029Z + clsx 2.1.1
+2026-11-21T14:46:00.4143362Z + date-fns 4.1.0
+2026-11-21T14:46:00.4143744Z + lucide-react 1.65.0
+2026-11-21T14:46:00.4143993Z + nanoid 5.1.16
+2026-11-21T14:46:00.4144220Z + next 16.4.6
+2026-11-21T14:46:00.4144462Z + next-auth 5.0.0-beta.32
+2026-11-21T14:46:00.4145095Z + next-themes 0.4.6
+2026-11-21T14:46:00.4145331Z + prisma 6.19.0
+2026-11-21T14:46:00.4145577Z + qrcode.react 4.2.0
+2026-11-21T14:46:00.4145798Z + react 19.2.3
+2026-11-21T14:46:00.4146027Z + react-day-picker 9.11.1
+2026-11-21T14:46:00.4146288Z + react-dom 19.2.3
+2026-11-21T14:46:00.4146795Z + react-email 5.0.4
+2026-11-21T14:46:00.4147050Z + react-hook-form 7.66.0
+2026-11-21T14:46:00.4147291Z + resend 6.4.2
+2026-11-21T14:46:00.4147491Z + sonner 2.0.7
+2026-11-21T14:46:00.4147692Z + stripe 19.3.1
+2026-11-21T14:46:00.4147917Z + tailwind-merge 3.4.0
+2026-11-21T14:46:00.4148147Z + web-push 3.6.7
+2026-11-21T14:46:00.4148353Z + zod 4.6.7
+2026-11-21T14:46:00.4148543Z + zustand 5.0.9
+2026-11-21T14:46:00.4148666Z 
+2026-11-21T14:46:00.4148763Z devDependencies:
+2026-11-21T14:46:00.4149027Z + @opennextjs/cloudflare 1.20.17
+2026-11-21T14:46:00.4149302Z + @playwright/test 1.64.1
+2026-11-21T14:46:00.4149567Z + @tailwindcss/postcss 4.1.17
+2026-11-21T14:46:00.4149829Z + @types/bcryptjs 3.0.0
+2026-11-21T14:46:00.4150104Z + @types/canvas-confetti 1.9.0
+2026-11-21T14:46:00.4150365Z + @types/node 20.19.25
+2026-11-21T14:46:00.4150605Z + @types/react 19.2.5
+2026-11-21T14:46:00.4150950Z + @types/react-dom 19.2.3
+2026-11-21T14:46:00.4151393Z + @types/web-push 3.6.4
+2026-11-21T14:46:00.4151814Z + axe-core 4.14.0
+2026-11-21T14:46:00.4152269Z + babel-plugin-react-compiler 1.0.0
+2026-11-21T14:46:00.4152767Z + dependency-cruiser 18.7.2
+2026-11-21T14:46:00.4153271Z + embedded-postgres 18.6.0-beta.19
+2026-11-21T14:46:00.4153708Z + eslint 9.39.1
+2026-11-21T14:46:00.4154095Z + eslint-config-next 16.4.6
+2026-11-21T14:46:00.4155038Z + exceljs 4.4.0
+2026-11-21T14:46:00.4155434Z + prettier 3.6.2
+2026-11-21T14:46:00.4155895Z + prettier-plugin-tailwindcss 0.7.1
+2026-11-21T14:46:00.4156374Z + tailwindcss 4.1.17
+2026-11-21T14:46:00.4156736Z + tsx 4.20.6
+2026-11-21T14:46:00.4157082Z + typescript 5.9.3
+2026-11-21T14:46:00.4157429Z + vitest 5.0.5
+2026-11-21T14:46:00.4157779Z + wrangler 4.163.0
+2026-11-21T14:46:00.4157990Z 
+2026-11-21T14:46:00.4494933Z ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+2026-11-21T14:46:00.4495738Z │                                                                              │
+2026-11-21T14:46:00.4496573Z │   Ignored build scripts: @embedded-postgres/linux-x64@18.6.0-beta.19,        │
+2026-11-21T14:46:00.4497426Z │   workerd@1.20261116.1.                                                      │
+2026-11-21T14:46:00.4498253Z │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+2026-11-21T14:46:00.4499081Z │   to run scripts.                                                            │
+2026-11-21T14:46:00.4499763Z │                                                                              │
+2026-11-21T14:46:00.4500636Z ╰──────────────────────────────────────────────────────────────────────────────╯
+2026-11-21T14:46:00.4820739Z Done in 5s using pnpm v10.34.9
+2026-11-21T14:46:00.5196740Z ##[group]Run npx prisma migrate deploy
+2026-11-21T14:46:00.5197112Z [36;1mnpx prisma migrate deploy[0m
+2026-11-21T14:46:00.5231456Z shell: /usr/bin/bash -e {0}
+2026-11-21T14:46:00.5231720Z env:
+2026-11-21T14:46:00.5232235Z   DATABASE_URL: ***localhost:5435/markec_it?schema=public
+2026-11-21T14:46:00.5232767Z   DIRECT_URL: ***localhost:5435/markec_it?schema=public
+2026-11-21T14:46:00.5233316Z   NEXTAUTH_SECRET: test-secret-not-real
+2026-11-21T14:46:00.5233625Z   AUTH_SECRET: test-secret-not-real
+2026-11-21T14:46:00.5233941Z   NEXT_PUBLIC_APP_URL: http://localhost:3000
+2026-11-21T14:46:00.5234257Z   NEXTAUTH_URL: http://localhost:3000
+2026-11-21T14:46:00.5234731Z   CI: true
+2026-11-21T14:46:00.5234994Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-21T14:46:00.5235305Z ##[endgroup]
+2026-11-21T14:46:01.9003975Z Prisma schema loaded from prisma/schema.prisma
+2026-11-21T14:46:01.9135342Z Datasource "db": PostgreSQL database "markec_it", schema "public" at "localhost:5435"
+2026-11-21T14:46:01.9722492Z 
+2026-11-21T14:46:01.9723127Z 22 migrations found in prisma/migrations
+2026-11-21T14:46:01.9723443Z 
+2026-11-21T14:46:02.0400276Z Applying migration `00000000000000_baseline`
+2026-11-21T14:46:02.3802548Z Applying migration `20261111100528_f5545_advances`
+2026-11-21T14:46:02.3922883Z Applying migration `20261111142202_einvoice`
+2026-11-21T14:46:02.4131553Z Applying migration `20261112000000_f55452_advance_alloc_audit`
+2026-11-21T14:46:02.4181398Z Applying migration `20261112010000_rate_limit`
+2026-11-21T14:46:02.4236639Z Applying migration `20261112020000_publication_history`
+2026-11-21T14:46:02.4293332Z Applying migration `20261112030000_billing_grace_fields`
+2026-11-21T14:46:02.4320993Z Applying migration `20261117113628_add_cash_register`
+2026-11-21T14:46:02.4597882Z Applying migration `20261117200000_tenant_stripe_events`
+2026-11-21T14:46:02.4656420Z Applying migration `20261118000000_sync_document_source_and_warranties`
+2026-11-21T14:46:02.4692549Z Applying migration `20261118120000_work_order_quote_deposit_payments`
+2026-11-21T14:46:02.4786474Z Applying migration `20261118140000_add_walkin_push_subscription`
+2026-11-21T14:46:02.4816734Z Applying migration `20261118140000_appointment_work_order_link`
+2026-11-21T14:46:02.4859064Z Applying migration `20261118160000_add_minimax_integration`
+2026-11-21T14:46:02.4883882Z Applying migration `20261118160000_work_order_photos`
+2026-11-21T14:46:02.4952649Z Applying migration `20261118170000_add_sms_integration`
+2026-11-21T14:46:02.4983454Z Applying migration `20261118180000_add_outgoing_webhooks`
+2026-11-21T14:46:02.5084171Z Applying migration `20261126120000_add_reception_chat`
+2026-11-21T14:46:02.5172053Z Applying migration `20261129120000_add_username`
+2026-11-21T14:46:02.5201567Z Applying migration `20261201000000_booking_ab_experiment_event`
+2026-11-21T14:46:02.5256620Z Applying migration `20261202000000_fix_booking_experiment_index_name`
+2026-11-21T14:46:02.5287909Z Applying migration `20261204000000_einvoice_provider_message_id`
+2026-11-21T14:46:02.5334315Z 
+2026-11-21T14:46:02.5334872Z The following migration(s) have been applied:
+2026-11-21T14:46:02.5335314Z 
+2026-11-21T14:46:02.5335474Z migrations/
+2026-11-21T14:46:02.5336078Z   └─ 00000000000000_baseline/
+2026-11-21T14:46:02.5336599Z     └─ migration.sql
+2026-11-21T14:46:02.5337082Z   └─ 20261111100528_f5545_advances/
+2026-11-21T14:46:02.5337631Z     └─ migration.sql
+2026-11-21T14:46:02.5338326Z   └─ 20261111142202_einvoice/
+2026-11-21T14:46:02.5338764Z     └─ migration.sql
+2026-11-21T14:46:02.5339493Z   └─ 20261112000000_f55452_advance_alloc_audit/
+2026-11-21T14:46:02.5340120Z     └─ migration.sql
+2026-11-21T14:46:02.5340634Z   └─ 20261112010000_rate_limit/
+2026-11-21T14:46:02.5341127Z     └─ migration.sql
+2026-11-21T14:46:02.5341664Z   └─ 20261112020000_publication_history/
+2026-11-21T14:46:02.5342219Z     └─ migration.sql
+2026-11-21T14:46:02.5342758Z   └─ 20261112030000_billing_grace_fields/
+2026-11-21T14:46:02.5343337Z     └─ migration.sql
+2026-11-21T14:46:02.5344296Z   └─ 20261117113628_add_cash_register/
+2026-11-21T14:46:02.5345145Z     └─ migration.sql
+2026-11-21T14:46:02.5345875Z   └─ 20261117200000_tenant_stripe_events/
+2026-11-21T14:46:02.5346787Z     └─ migration.sql
+2026-11-21T14:46:02.5347456Z   └─ 20261118000000_sync_document_source_and_warranties/
+2026-11-21T14:46:02.5348042Z     └─ migration.sql
+2026-11-21T14:46:02.5349012Z   └─ 20261118120000_work_order_quote_deposit_payments/
+2026-11-21T14:46:02.5349612Z     └─ migration.sql
+2026-11-21T14:46:02.5350094Z   └─ 20261118140000_add_walkin_push_subscription/
+2026-11-21T14:46:02.5350447Z     └─ migration.sql
+2026-11-21T14:46:02.5350789Z   └─ 20261118140000_appointment_work_order_link/
+2026-11-21T14:46:02.5351123Z     └─ migration.sql
+2026-11-21T14:46:02.5351429Z   └─ 20261118160000_add_minimax_integration/
+2026-11-21T14:46:02.5351732Z     └─ migration.sql
+2026-11-21T14:46:02.5352025Z   └─ 20261118160000_work_order_photos/
+2026-11-21T14:46:02.5352306Z     └─ migration.sql
+2026-11-21T14:46:02.5352601Z   └─ 20261118170000_add_sms_integration/
+2026-11-21T14:46:02.5352902Z     └─ migration.sql
+2026-11-21T14:46:02.5353199Z   └─ 20261118180000_add_outgoing_webhooks/
+2026-11-21T14:46:02.5353501Z     └─ migration.sql
+2026-11-21T14:46:02.5353797Z   └─ 20261126120000_add_reception_chat/
+2026-11-21T14:46:02.5354086Z     └─ migration.sql
+2026-11-21T14:46:02.5354358Z   └─ 20261129120000_add_username/
+2026-11-21T14:46:02.5355018Z     └─ migration.sql
+2026-11-21T14:46:02.5355653Z   └─ 20261201000000_booking_ab_experiment_event/
+2026-11-21T14:46:02.5356295Z     └─ migration.sql
+2026-11-21T14:46:02.5356949Z   └─ 20261202000000_fix_booking_experiment_index_name/
+2026-11-21T14:46:02.5357638Z     └─ migration.sql
+2026-11-21T14:46:02.5358272Z   └─ 20261204000000_einvoice_provider_message_id/
+2026-11-21T14:46:02.5358912Z     └─ migration.sql
+2026-11-21T14:46:02.5359302Z       
+2026-11-21T14:46:02.5359825Z All migrations have been successfully applied.
+2026-11-21T14:46:02.5965160Z ##[group]Run pnpm prisma generate
+2026-11-21T14:46:02.5965530Z [36;1mpnpm prisma generate[0m
+2026-11-21T14:46:02.5999792Z shell: /usr/bin/bash -e {0}
+2026-11-21T14:46:02.6000045Z env:
+2026-11-21T14:46:02.6000714Z   DATABASE_URL: ***localhost:5435/markec_it?schema=public
+2026-11-21T14:46:02.6001260Z   DIRECT_URL: ***localhost:5435/markec_it?schema=public
+2026-11-21T14:46:02.6001596Z   NEXTAUTH_SECRET: test-secret-not-real
+2026-11-21T14:46:02.6001912Z   AUTH_SECRET: test-secret-not-real
+2026-11-21T14:46:02.6002213Z   NEXT_PUBLIC_APP_URL: http://localhost:3000
+2026-11-21T14:46:02.6002545Z   NEXTAUTH_URL: http://localhost:3000
+2026-11-21T14:46:02.6002816Z   CI: true
+2026-11-21T14:46:02.6003066Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-21T14:46:02.6003377Z ##[endgroup]
+2026-11-21T14:46:03.7298839Z Prisma schema loaded from prisma/schema.prisma
+2026-11-21T14:46:05.3340577Z ┌─────────────────────────────────────────────────────────┐
+2026-11-21T14:46:05.3341698Z │  Update available 6.19.0 -> 8.0.0-rc.34                 │
+2026-11-21T14:46:05.3342503Z │                                                         │
+2026-11-21T14:46:05.3343238Z │  This is a major update - please follow the guide at    │
+2026-11-21T14:46:05.3344098Z │  https://pris.ly/d/major-version-upgrade                │
+2026-11-21T14:46:05.3345037Z │                                                         │
+2026-11-21T14:46:05.3345518Z │  Run the following to update                            │
+2026-11-21T14:46:05.3346050Z │    npm i --save-dev prisma@latest                       │
+2026-11-21T14:46:05.3346883Z │    npm i @prisma/client@latest                          │
+2026-11-21T14:46:05.3347739Z └─────────────────────────────────────────────────────────┘
+2026-11-21T14:46:05.3348088Z 
+2026-11-21T14:46:05.3349171Z ✔ Generated Prisma Client (v6.19.0) to ./node_modules/.pnpm/@prisma+client@6.19.0_prisma@6.19.0_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client in 631ms
+2026-11-21T14:46:05.3350174Z 
+2026-11-21T14:46:05.3350719Z Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+2026-11-21T14:46:05.3351263Z 
+2026-11-21T14:46:05.3351711Z Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+2026-11-21T14:46:05.3352167Z 
+2026-11-21T14:46:05.3932089Z ##[group]Run npx vitest run --config vitest.itest.config.ts
+2026-11-21T14:46:05.3932582Z [36;1mnpx vitest run --config vitest.itest.config.ts[0m
+2026-11-21T14:46:05.3966656Z shell: /usr/bin/bash -e {0}
+2026-11-21T14:46:05.3966961Z env:
+2026-11-21T14:46:05.3967482Z   DATABASE_URL: ***localhost:5435/markec_it?schema=public
+2026-11-21T14:46:05.3968017Z   DIRECT_URL: ***localhost:5435/markec_it?schema=public
+2026-11-21T14:46:05.3968348Z   NEXTAUTH_SECRET: test-secret-not-real
+2026-11-21T14:46:05.3968647Z   AUTH_SECRET: test-secret-not-real
+2026-11-21T14:46:05.3968949Z   NEXT_PUBLIC_APP_URL: http://localhost:3000
+2026-11-21T14:46:05.3969266Z   NEXTAUTH_URL: http://localhost:3000
+2026-11-21T14:46:05.3969526Z   CI: true
+2026-11-21T14:46:05.3969772Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-21T14:46:05.3970084Z ##[endgroup]
+2026-11-21T14:46:05.9640448Z [33m(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+2026-11-21T14:46:05.9641643Z   - ESM syntax in a file loaded as CommonJS (vitest.itest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+2026-11-21T14:46:05.9642577Z Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.[39m
+2026-11-21T14:46:06.0161216Z 
+2026-11-21T14:46:06.0165117Z [1m[30m[46m RUN [49m[39m[22m [36mv5.0.5 [39m[90m/home/runner/work/markec-business-platform/markec-business-platform[39m
+2026-11-21T14:46:06.0166051Z 
+2026-11-21T14:46:06.4530722Z Seed target: [{"db":"markec_it"}]
+2026-11-21T14:46:06.4859034Z Seeded: {"organizations":5,"users":8,"memberships":6,"customers":3,"services":2,"products":2,"customRoles":2}
+2026-11-21T14:46:06.4859675Z Shared test password: F21test!2026
+2026-11-21T14:46:06.6185414Z F5.1 seed target: [{"db":"markec_it"}]
+2026-11-21T14:46:06.7475477Z Seeded: {"organizations":2,"products":3,"services":2,"promotions":2}
+2026-11-21T14:46:10.3037363Z  [32m✓[39m tests/integration/f52/categories.itest.ts [2m([22m[2m35 tests[22m[2m)[22m[33m 1214[2mms[22m[39m
+2026-11-21T14:46:11.9200839Z [90mstderr[2m | tests/integration/f51/promotions.itest.ts[2m > [22m[2mF5.1 §4 — omejitve uporabe[2m > [22m[2mistočasno unovčenje iste kode prepusti le eno zmagovalno transakcijo
+2026-11-21T14:46:11.9203635Z [22m[39mError creating product checkout session: PromotionRedeemError: Ta promocija je že dosegla največje dovoljeno število uporab.
+2026-11-21T14:46:11.9212992Z     at redeemPromotion [90m(/home/runner/work/markec-business-platform/markec-business-platform/[39msrc/lib/promotions/redeem.ts:94:11[90m)[39m
+2026-11-21T14:46:11.9244129Z     at [90m/home/runner/work/markec-business-platform/markec-business-platform/[39msrc/app/actions/product-checkout.ts:679:11
+2026-11-21T14:46:11.9248128Z     at async Proxy._transactionWithCallback [90m(/home/runner/work/markec-business-platform/markec-business-platform/[39mnode_modules/[4m.pnpm[24m/@prisma+client@6.19.0_prisma@6.19.0_typescript@5.9.3__typescript@5.9.3/node_modules/[4m@prisma/client[24m/runtime/library.js:130:8120[90m)[39m
+2026-11-21T14:46:11.9256736Z     at Module.createProductCheckoutSession [90m(/home/runner/work/markec-business-platform/markec-business-platform/[39msrc/app/actions/product-checkout.ts:636:21[90m)[39m
+2026-11-21T14:46:11.9258630Z     at async Promise.all (index 1)
+2026-11-21T14:46:11.9262390Z     at [90m/home/runner/work/markec-business-platform/markec-business-platform/[39mtests/integration/f51/promotions.itest.ts:380:5
+2026-11-21T14:46:11.9266276Z     at async [90mfile:///home/runner/work/markec-business-platform/markec-business-platform/[39mnode_modules/[4m.pnpm[24m/vitest@5.0.5_@types+node@20.19.25_vite@8.3.5_@types+node@20.19.25_esbuild@0.28.2_jiti@2_8999f88ea23dac380da913eb1f18dce7/node_modules/[4mvitest[24m/dist/chunks/run.BPv-BBRv.js:2801:20 {
+2026-11-21T14:46:11.9269767Z   code: [32m'LIMIT_REACHED'[39m
+2026-11-21T14:46:11.9285453Z }
+2026-11-21T14:46:11.9291315Z 
+2026-11-21T14:46:12.5527644Z  [32m✓[39m tests/integration/f51/promotions.itest.ts [2m([22m[2m27 tests[22m[2m)[22m[33m 1106[2mms[22m[39m
+2026-11-21T14:46:13.2145037Z  [31m❯[39m tests/integration/f54/f551-variant-checkout.itest.ts [2m([22m[2m14 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[33m 407[2mms[22m[39m
+2026-11-21T14:46:13.2155912Z    [31m❯[39m F5.5.1 — variant prenese v naročilo [2m(4)[22m
+2026-11-21T14:46:13.2157478Z [31m     [31m×[31m izdelek Z različico → OrderItem.variantId + snapshot (name/cena)[39m[32m 51[2mms[22m[39m
+2026-11-21T14:46:13.2159519Z [31m     [31m×[31m različni ceni variant → vsaka po svoji ceni (L=20, XL=25)[39m[32m 13[2mms[22m[39m
+2026-11-21T14:46:13.2180518Z      [32m✓[39m zaloga različice — oversell (qty > variant stock) zavrnjen[32m 5[2mms[22m[39m
+2026-11-21T14:46:13.2182323Z [31m     [31m×[31m izdelek BREZ različic → OrderItem.variantId = null (backward compat)[39m[32m 6[2mms[22m[39m
+2026-11-21T14:46:13.2183675Z    [32m✓[39m F5.5.1 — org izolacija različic [2m(1)[22m
+2026-11-21T14:46:13.2185017Z      [32m✓[39m variant iz orgB ni mogoč v orgA checkout (rejected)[32m 6[2mms[22m[39m
+2026-11-21T14:46:13.2186172Z    [31m❯[39m F5.5.1 — snapshot po urejanju [2m(1)[22m
+2026-11-21T14:46:13.2187570Z [31m     [31m×[31m OrderItem snapshot (cena/naziv) ostane po spremembi izdelka[39m[32m 6[2mms[22m[39m
+2026-11-21T14:46:13.2188858Z    [32m✓[39m F5.5.1.1 — atomska konkurenčnost (zadnji kos) [2m(2)[22m
+2026-11-21T14:46:13.2190313Z      [32m✓[39m izdelek brez različic — stock 1, dve seji → točno 1 uspe, 0 zaloge, 1 StockMovement[32m 23[2mms[22m[39m
+2026-11-21T14:46:13.2192041Z      [32m✓[39m izdelek z različicami — variant stock 1, dve seji, različne košarice → točno 1 uspe[32m 17[2mms[22m[39m
+2026-11-21T14:46:13.2193383Z    [32m✓[39m F5.5.1.2 — online inventory reservation [2m(6)[22m
+2026-11-21T14:46:13.2194908Z      [32m✓[39m atomska rezervacija: zaloga 1, dve seji → samo eden dobi rezervacijo[32m 24[2mms[22m[39m
+2026-11-21T14:46:13.2196522Z      [32m✓[39m neuspešen checkout (release) sprosti rezervacijo → drugi lahko kupi[32m 16[2mms[22m[39m
+2026-11-21T14:46:13.2198185Z      [32m✓[39m uspešno plačilo pretvori rezervacijo v prodajo (stock −=, reserved −=)[32m 17[2mms[22m[39m
+2026-11-21T14:46:13.2200298Z      [32m✓[39m ponovljeni webhook (double convert) ne podvoji prodaje[32m 13[2mms[22m[39m
+2026-11-21T14:46:13.2202062Z      [32m✓[39m zamujen release ob že plačani ne sprosti (fail-closed / reserved ne gre v negativ)[32m 18[2mms[22m[39m
+2026-11-21T14:46:13.2203664Z      [32m✓[39m izolacija: variant rezerva ne vpliva na drug variant / izdelek[32m 13[2mms[22m[39m
+2026-11-21T14:46:14.6308598Z  [32m✓[39m tests/integration/f554/documents.itest.ts [2m([22m[2m20 tests[22m[2m)[22m[33m 1109[2mms[22m[39m
+2026-11-21T14:46:15.9550759Z  [32m✓[39m tests/integration/f2-3/colony-move-2c2.itest.ts [2m([22m[2m19 tests[22m[2m)[22m[33m 830[2mms[22m[39m
+2026-11-21T14:46:15.9958328Z  [32m✓[39m tests/integration/einvoice/einvoices.itest.ts [2m([22m[2m20 tests[22m[2m)[22m[33m 7534[2mms[22m[39m
+2026-11-21T14:46:15.9974031Z    [32m✓[39m F5.5.4.6.2 — e-SLOG 2.0 [2m(3)[22m
+2026-11-21T14:46:16.0009767Z      [33m[2m✓[22m[39m končni račun: veljaven XML + DDV + kupčeva identifikacija + ref[33m 1556[2mms[22m[39m
+2026-11-21T14:46:16.0027642Z    [32m✓[39m F5.5.4.6.4 — oddaja e-računa (submitEinvoice) [2m(4)[22m
+2026-11-21T14:46:16.0054939Z      [33m[2m✓[22m[39m 5xx → FAILED po retrijih[33m 3553[2mms[22m[39m
+2026-11-21T14:46:17.1896007Z  [32m✓[39m tests/integration/f54/multi-org-modules.itest.ts [2m([22m[2m16 tests[22m[2m)[22m[33m 541[2mms[22m[39m
+2026-11-21T14:46:17.6616815Z  [32m✓[39m tests/integration/stock-integrity.itest.ts [2m([22m[2m23 tests[22m[2m)[22m[33m 630[2mms[22m[39m
+2026-11-21T14:46:18.8856538Z  [32m✓[39m tests/integration/traceability.itest.ts [2m([22m[2m14 tests[22m[2m)[22m[33m 628[2mms[22m[39m
+2026-11-21T14:46:19.8908830Z  [32m✓[39m tests/integration/f554/advances-verify.itest.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 1531[2mms[22m[39m
+2026-11-21T14:46:20.2512069Z [90mstderr[2m | tests/integration/f553/customers.itest.ts[2m > [22m[2mSTAFF s custom role brez customers.manage (zavrnjen)[2m > [22m[2mne more zapisati opomb (notes prav tako gated, fail-closed)
+2026-11-21T14:46:20.2561651Z [22m[39mupdateCustomerNotesByCustomerId failed: UnauthorizedError: You do not have permission to manage customers
+2026-11-21T14:46:20.2576284Z     at requireCustomerPermission [90m(/home/runner/work/markec-business-platform/markec-business-platform/[39msrc/lib/auth/guards.ts:426:11[90m)[39m
+2026-11-21T14:46:20.2578746Z     at Module.updateCustomerNotesByCustomerId [90m(/home/runner/work/markec-business-platform/markec-business-platform/[39msrc/app/actions/customers.ts:516:21[90m)[39m
+2026-11-21T14:46:20.2581060Z     at [90m/home/runner/work/markec-business-platform/markec-business-platform/[39mtests/integration/f553/customers.itest.ts:302:17
+2026-11-21T14:46:20.2584377Z     at async [90mfile:///home/runner/work/markec-business-platform/markec-business-platform/[39mnode_modules/[4m.pnpm[24m/vitest@5.0.5_@types+node@20.19.25_vite@8.3.5_@types+node@20.19.25_esbuild@0.28.2_jiti@2_8999f88ea23dac380da913eb1f18dce7/node_modules/[4mvitest[24m/dist/chunks/run.BPv-BBRv.js:2801:20
+2026-11-21T14:46:20.2598835Z 
+2026-11-21T14:46:20.3986583Z  [31m❯[39m tests/integration/f553/customers.itest.ts [2m([22m[2m14 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 837[2mms[22m[39m
+2026-11-21T14:46:20.4005947Z    [32m✓[39m Identity resolver — pure [2m(4)[22m
+2026-11-21T14:46:20.4008661Z      [32m✓[39m email is unambiguous identity[32m 14[2mms[22m[39m
+2026-11-21T14:46:20.4025126Z      [32m✓[39m phone alone does NOT match a different name[32m 2[2mms[22m[39m
+2026-11-21T14:46:20.4026733Z      [32m✓[39m phone + same name + customer without email matches[32m 3[2mms[22m[39m
+2026-11-21T14:46:20.4028116Z      [32m✓[39m does not match different email even if phone matches[32m 2[2mms[22m[39m
+2026-11-21T14:46:20.4029455Z    [32m✓[39m Ročno dodajanje, urejanje, arhiviranje [2m(2)[22m
+2026-11-21T14:46:20.4030784Z      [32m✓[39m createCustomer + updateCustomer + listCustomers[32m 54[2mms[22m[39m
+2026-11-21T14:46:20.4032117Z      [32m✓[39m archive + unarchive (history preserved)[32m 65[2mms[22m[39m
+2026-11-21T14:46:20.4033153Z    [32m✓[39m Org izolacija + IDOR [2m(1)[22m
+2026-11-21T14:46:20.4034210Z      [32m✓[39m georg B ne vidi in ne upravlja strank A[32m 71[2mms[22m[39m
+2026-11-21T14:46:20.4035708Z    [32m✓[39m Opombe za stranke brez računa [2m(1)[22m
+2026-11-21T14:46:20.4037158Z      [32m✓[39m updateCustomerNotesByCustomerId deluje za lead (brez User)[32m 42[2mms[22m[39m
+2026-11-21T14:46:20.4038442Z    [31m❯[39m Walk-in povezava [2m(1)[22m
+2026-11-21T14:46:20.4039913Z [31m     [31m×[31m linkWalkInCustomer poveže vstop s stranko samo v isti org[39m[32m 59[2mms[22m[39m
+2026-11-21T14:46:20.4041173Z    [32m✓[39m Zgodovina + GDPR [2m(1)[22m
+2026-11-21T14:46:20.4042359Z      [32m✓[39m getCustomerDetail vključi (po pogoji) zgodovino; export/anonymize[32m 108[2mms[22m[39m
+2026-11-21T14:46:20.4043651Z    [32m✓[39m STAFF z dovoljenjem (privzeta polna vloga) [2m(1)[22m
+2026-11-21T14:46:20.4045744Z      [32m✓[39m STAFF (brez custom role) lahko ustvari, uredi in arhivira stranko[32m 93[2mms[22m[39m
+2026-11-21T14:46:20.4047174Z    [32m✓[39m STAFF s custom role brez customers.manage (zavrnjen) [2m(2)[22m
+2026-11-21T14:46:20.4048673Z      [32m✓[39m vse customer akcije vržejo Unauthorized (fail-closed)[32m 49[2mms[22m[39m
+2026-11-21T14:46:20.4050194Z      [32m✓[39m ne more zapisati opomb (notes prav tako gated, fail-closed)[32m 11[2mms[22m[39m
+2026-11-21T14:46:20.4051443Z    [32m✓[39m Ista oseba v dveh organizacijah [2m(1)[22m
+2026-11-21T14:46:20.4053096Z      [32m✓[39m org A in org B imata LOČEN Customer; sprememba v A ne spremeni B[32m 62[2mms[22m[39m
+2026-11-21T14:46:22.1902181Z  [32m✓[39m tests/integration/f2-1/org-isolation.itest.ts [2m([22m[2m33 tests[22m[2m)[22m[33m 435[2mms[22m[39m
+2026-11-21T14:46:22.9123041Z  [32m✓[39m tests/purchasing-flow.itest.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 641[2mms[22m[39m
+2026-11-21T14:46:23.9850190Z  [32m✓[39m tests/integration/f2-3/staff-multiorg.itest.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 370[2mms[22m[39m
+2026-11-21T14:46:25.3699758Z  [32m✓[39m tests/integration/f552/galleries-faq.itest.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 1178[2mms[22m[39m
+2026-11-21T14:46:25.3872009Z  [32m✓[39m tests/integration/f554/payments.itest.ts [2m([22m[2m16 tests[22m[2m)[22m[33m 1620[2mms[22m[39m
+2026-11-21T14:46:26.6192639Z  [32m✓[39m tests/integration/tire-service.itest.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 640[2mms[22m[39m
+2026-11-21T14:46:27.5177715Z  [32m✓[39m tests/work-order-costs.itest.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 377[2mms[22m[39m
+2026-11-21T14:46:27.8816664Z  [32m✓[39m tests/integration/beekeeping-final-validation.itest.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 646[2mms[22m[39m
+2026-11-21T14:46:28.8789430Z  [32m✓[39m tests/integration/f554/advances.itest.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 1312[2mms[22m[39m
+2026-11-21T14:46:29.3539654Z  [32m✓[39m tests/integration/f554/pdf-archive.itest.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 1080[2mms[22m[39m
+2026-11-21T14:46:29.6806966Z  [32m✓[39m tests/integration/f2-2/workspace-management-f221.itest.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 364[2mms[22m[39m
+2026-11-21T14:46:31.0362118Z  [32m✓[39m tests/integration/workshop-booking.itest.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 364[2mms[22m[39m
+2026-11-21T14:46:31.0946062Z  [32m✓[39m tests/integration/f131-data-integrity.itest.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 671[2mms[22m[39m
+2026-11-21T14:46:31.6951600Z  [32m✓[39m tests/integration/f2-2/workspace-management.itest.ts [2m([22m[2m16 tests[22m[2m)[22m[33m 387[2mms[22m[39m
+2026-11-21T14:46:32.8370261Z  [32m✓[39m tests/integration/f554/advances-pdf-moneyflow.itest.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 709[2mms[22m[39m
+2026-11-21T14:46:32.8397154Z    [32m✓[39m F5.5.4.5.3 Denarni tok po storniranju + PDF [2m(2)[22m
+2026-11-21T14:46:32.8426945Z      [33m[2m✓[22m[39m avans 100 → končni 250 → uporaba → doplačilo → storno → ponovna uporaba[33m 455[2mms[22m[39m
+2026-11-21T14:46:33.6427422Z  [32m✓[39m tests/work-order-labor.itest.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 253[2mms[22m[39m
+2026-11-21T14:46:34.0116917Z [90mstdout[2m | tests/integration/email-verification.itest.ts[2m > [22m[2m2D-3 — verifikacija e-pošte (token lifecycle)
+2026-11-21T14:46:34.0126785Z [22m[39misEmailServiceConfigured: [33mfalse[39m
+2026-11-21T14:46:34.0155137Z 
+2026-11-21T14:46:34.2548940Z [90mstdout[2m | tests/integration/email-verification.itest.ts[2m > [22m[2m2D-3 — verifikacija e-pošte (token lifecycle)[2m > [22m[2m1. registerUser ustvari NEVERIFICIRAN račun in vrne verificationUrl (test brez e-pošte)
+2026-11-21T14:46:34.2553858Z [22m[39mregisterUser res: {"success":true,"user":{"id":"cmwqitwxy00011q3ys6moyxec","name":"Verif Test","email":"2d3.vf.qitwr5@markec.test"},"verificationUrl":"/verify-email?token=85426da4bc88c3d8b1fa52eb6a9a0ee9c17b48fd6c82756562a705d756e7790e","emailSent":false}
+2026-11-21T14:46:34.2556939Z 
+2026-11-21T14:46:34.7969461Z  [32m✓[39m tests/integration/email-verification.itest.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 786[2mms[22m[39m
+2026-11-21T14:46:34.9786976Z  [32m✓[39m tests/integration/seamstress.itest.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 469[2mms[22m[39m
+2026-11-21T14:46:35.6883800Z  [32m✓[39m tests/integration/direct-sale.itest.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 311[2mms[22m[39m
+2026-11-21T14:46:36.7048155Z [90mstdout[2m | tests/integration/onboarding-3-vertical.itest.ts[2m > [22m[2m2D-3 — samopostrežni onboarding za tri reference[2m > [22m[2mčebelar: nova org + račun + katalog medenih izdelkov (brez storitev/rezervacij)
+2026-11-21T14:46:36.7052457Z [22m[39mbee res: {"success":true,"orgId":"cmwqitysy00001q4hioyfub4k","slug":"2d3-bee-qitycy","salonName":"2D3 bee qitycy","verificationUrl":"/verify-email?token=842cf5e36feb78d3fdaad7823447126e286c41e7d7d6335c332e7510171ee6bd","emailSent":false}
+2026-11-21T14:46:36.7054369Z 
+2026-11-21T14:46:36.8265795Z  [32m✓[39m tests/integration/f2-3/entity-reference-2c1.itest.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 311[2mms[22m[39m
+2026-11-21T14:46:37.6657556Z  [32m✓[39m tests/integration/onboarding-3-vertical.itest.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 1576[2mms[22m[39m
+2026-11-21T14:46:37.6679689Z    [32m✓[39m 2D-3 — samopostrežni onboarding za tri reference [2m(4)[22m
+2026-11-21T14:46:37.6681456Z      [33m[2m✓[22m[39m čebelar: nova org + račun + katalog medenih izdelkov (brez storitev/rezervacij)[33m 627[2mms[22m[39m
+2026-11-21T14:46:37.6683459Z      [33m[2m✓[22m[39m vulkanizer: nova org + račun + storitve + staff + workflow (appointments)[33m 445[2mms[22m[39m
+2026-11-21T14:46:37.6685488Z      [33m[2m✓[22m[39m šivilja: nova org + račun + storitve + production-order workflow + forme[33m 455[2mms[22m[39m
+2026-11-21T14:46:37.8423390Z  [32m✓[39m tests/integration/f2-3/entity-reference-2b.itest.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 386[2mms[22m[39m
+2026-11-21T14:46:38.3430056Z  [32m✓[39m tests/integration/f554/advances-moneyflow.itest.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 625[2mms[22m[39m
+2026-11-21T14:46:39.0175927Z  [32m✓[39m tests/integration/f2-3/colony-move-detail-2c3.itest.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 294[2mms[22m[39m
+2026-11-21T14:46:39.4377116Z  [32m✓[39m tests/integration/gdpr-account.itest.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 550[2mms[22m[39m
+2026-11-21T14:46:39.5072883Z  [32m✓[39m tests/integration/f554/retail-stock-reservation.itest.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 214[2mms[22m[39m
+2026-11-21T14:46:40.1028393Z  [32m✓[39m tests/integration/f11-customrole-failclosed.itest.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 377[2mms[22m[39m
+2026-11-21T14:46:40.6324988Z  [32m✓[39m tests/integration/f12-module-exposure.itest.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 161[2mms[22m[39m
+2026-11-21T14:46:41.8446649Z  [32m✓[39m tests/integration/f635/security-read-idor-modules.itest.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 237[2mms[22m[39m
+2026-11-21T14:46:42.4975155Z [90mstdout[2m | tests/integration/f2-3/f501-materialization.itest.ts[2m > [22m[2mF5.0.1 — workspace materializacija za perfilarne izjeme[2m > [22m[2mizjema S92.0 -> skd-s-culture-sport: workspace je uporaben in ne-prazen
+2026-11-21T14:46:42.4977822Z [22m[39m[F5.0.1] S92.0 -> skd-s-culture-sport: cats=1 services=2 products=0 forms=0
+2026-11-21T14:46:42.4978446Z 
+2026-11-21T14:46:42.5255320Z  [32m✓[39m tests/integration/f2-3/f501-materialization.itest.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 145[2mms[22m[39m
+2026-11-21T14:46:42.5374966Z  [32m✓[39m tests/integration/refund-order.itest.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 179[2mms[22m[39m
+2026-11-21T14:46:42.6041913Z  [32m✓[39m tests/integration/onboarding-membership.itest.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 618[2mms[22m[39m
+2026-11-21T14:46:42.6044152Z    [32m✓[39m 2D-1L: organizacija + članstvo ob novi anonimni registraciji [2m(3)[22m
+2026-11-21T14:46:42.6046381Z      [33m[2m✓[22m[39m 1. nova registracija ustvari User + Organization + OrganizationMember(ADMIN)[33m 557[2mms[22m[39m
+2026-11-21T14:46:42.9377476Z  [32m✓[39m tests/integration/f554/index-uniqueness.itest.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 145[2mms[22m[39m
+2026-11-21T14:46:43.4950341Z  [32m✓[39m tests/integration/f554/advances-stats.itest.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 213[2mms[22m[39m
+2026-11-21T14:46:43.5024823Z 
+2026-11-21T14:46:43.5026400Z [31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 5 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+2026-11-21T14:46:43.5026828Z 
+2026-11-21T14:46:43.5030616Z [41m[1m FAIL [22m[49m tests/integration/f54/f551-variant-checkout.itest.ts[2m > [22mF5.5.1 — variant prenese v naročilo[2m > [22mizdelek Z različico → OrderItem.variantId + snapshot (name/cena)
+2026-11-21T14:46:43.5037275Z [31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+2026-11-21T14:46:43.5037920Z 
+2026-11-21T14:46:43.5038170Z [32m- Expected[39m
+2026-11-21T14:46:43.5038617Z [31m+ Received[39m
+2026-11-21T14:46:43.5038831Z 
+2026-11-21T14:46:43.5039014Z [32m- true[39m
+2026-11-21T14:46:43.5039326Z [31m+ false[39m
+2026-11-21T14:46:43.5039469Z 
+2026-11-21T14:46:43.5039955Z [36m [2m❯[22m tests/integration/f54/f551-variant-checkout.itest.ts:[2m178:25[22m[39m
+2026-11-21T14:46:43.5200771Z     [90m176|[39m       contact
+2026-11-21T14:46:43.5201557Z     [90m177|[39m     )
+2026-11-21T14:46:43.5202423Z     [90m178|[39m     expect(res.success).toBe(true)
+2026-11-21T14:46:43.5203343Z     [90m   |[39m                         [31m^[39m
+2026-11-21T14:46:43.5206481Z     [90m179|[39m     const order = await prisma.order.findFirst({ where: { id: res.orde…
+2026-11-21T14:46:43.5207810Z     [90m180|[39m     expect(order?.items).toHaveLength(1)
+2026-11-21T14:46:43.5208457Z 
+2026-11-21T14:46:43.5209043Z [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯[22m[39m
+2026-11-21T14:46:43.5209583Z 
+2026-11-21T14:46:43.5211403Z [41m[1m FAIL [22m[49m tests/integration/f54/f551-variant-checkout.itest.ts[2m > [22mF5.5.1 — variant prenese v naročilo[2m > [22mrazlični ceni variant → vsaka po svoji ceni (L=20, XL=25)
+2026-11-21T14:46:43.5213453Z [31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+2026-11-21T14:46:43.5214191Z 
+2026-11-21T14:46:43.5214786Z [32m- Expected[39m
+2026-11-21T14:46:43.5215527Z [31m+ Received[39m
+2026-11-21T14:46:43.5215945Z 
+2026-11-21T14:46:43.5216302Z [32m- true[39m
+2026-11-21T14:46:43.5216927Z [31m+ false[39m
+2026-11-21T14:46:43.5217332Z 
+2026-11-21T14:46:43.5218279Z [36m [2m❯[22m tests/integration/f54/f551-variant-checkout.itest.ts:[2m198:25[22m[39m
+2026-11-21T14:46:43.5219401Z     [90m196|[39m       contact
+2026-11-21T14:46:43.5220157Z     [90m197|[39m     )
+2026-11-21T14:46:43.5221122Z     [90m198|[39m     expect(res.success).toBe(true)
+2026-11-21T14:46:43.5222118Z     [90m   |[39m                         [31m^[39m
+2026-11-21T14:46:43.5223315Z     [90m199|[39m     const order = await prisma.order.findFirst({ where: { id: res.orde…
+2026-11-21T14:46:43.5224450Z     [90m200|[39m     expect(order?.items).toHaveLength(2)
+2026-11-21T14:46:43.5227171Z 
+2026-11-21T14:46:43.5227806Z [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯[22m[39m
+2026-11-21T14:46:43.5228360Z 
+2026-11-21T14:46:43.5230305Z [41m[1m FAIL [22m[49m tests/integration/f54/f551-variant-checkout.itest.ts[2m > [22mF5.5.1 — variant prenese v naročilo[2m > [22mizdelek BREZ različic → OrderItem.variantId = null (backward compat)
+2026-11-21T14:46:43.5232490Z [31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+2026-11-21T14:46:43.5233253Z 
+2026-11-21T14:46:43.5233662Z [32m- Expected[39m
+2026-11-21T14:46:43.5234941Z [31m+ Received[39m
+2026-11-21T14:46:43.5235368Z 
+2026-11-21T14:46:43.5235733Z [32m- true[39m
+2026-11-21T14:46:43.5236318Z [31m+ false[39m
+2026-11-21T14:46:43.5236702Z 
+2026-11-21T14:46:43.5237619Z [36m [2m❯[22m tests/integration/f54/f551-variant-checkout.itest.ts:[2m220:25[22m[39m
+2026-11-21T14:46:43.5239106Z     [90m218|[39m     const contact = { name: "Stranka", email: "s@f551.test", phone: "0…
+2026-11-21T14:46:43.5240472Z     [90m219|[39m     const res = await createProductCheckoutSession([cartItem(ID.plain,…
+2026-11-21T14:46:43.5241625Z     [90m220|[39m     expect(res.success).toBe(true)
+2026-11-21T14:46:43.5242515Z     [90m   |[39m                         [31m^[39m
+2026-11-21T14:46:43.5243656Z     [90m221|[39m     const order = await prisma.order.findFirst({ where: { id: res.orde…
+2026-11-21T14:46:43.5245236Z     [90m222|[39m     expect(order?.items).toHaveLength(1)
+2026-11-21T14:46:43.5245926Z 
+2026-11-21T14:46:43.5246546Z [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯[22m[39m
+2026-11-21T14:46:43.5247120Z 
+2026-11-21T14:46:43.5248931Z [41m[1m FAIL [22m[49m tests/integration/f54/f551-variant-checkout.itest.ts[2m > [22mF5.5.1 — snapshot po urejanju[2m > [22mOrderItem snapshot (cena/naziv) ostane po spremembi izdelka
+2026-11-21T14:46:43.5251016Z [31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+2026-11-21T14:46:43.5251815Z 
+2026-11-21T14:46:43.5252251Z [32m- Expected[39m
+2026-11-21T14:46:43.5252899Z [31m+ Received[39m
+2026-11-21T14:46:43.5253311Z 
+2026-11-21T14:46:43.5253671Z [32m- true[39m
+2026-11-21T14:46:43.5254261Z [31m+ false[39m
+2026-11-21T14:46:43.5254920Z 
+2026-11-21T14:46:43.5255827Z [36m [2m❯[22m tests/integration/f54/f551-variant-checkout.itest.ts:[2m256:25[22m[39m
+2026-11-21T14:46:43.5256863Z     [90m254|[39m       contact
+2026-11-21T14:46:43.5257545Z     [90m255|[39m     )
+2026-11-21T14:46:43.5258307Z     [90m256|[39m     expect(res.success).toBe(true)
+2026-11-21T14:46:43.5259186Z     [90m   |[39m                         [31m^[39m
+2026-11-21T14:46:43.5260212Z     [90m257|[39m     const before = await prisma.orderItem.findFirst({
+2026-11-21T14:46:43.5261360Z     [90m258|[39m       where: { orderId: res.orderId, variantId: ID.vL },
+2026-11-21T14:46:43.5261994Z 
+2026-11-21T14:46:43.5262567Z [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯[22m[39m
+2026-11-21T14:46:43.5263088Z 
+2026-11-21T14:46:43.5264961Z [41m[1m FAIL [22m[49m tests/integration/f553/customers.itest.ts[2m > [22mWalk-in povezava[2m > [22mlinkWalkInCustomer poveže vstop s stranko samo v isti org
+2026-11-21T14:46:43.5266873Z [31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+2026-11-21T14:46:43.5267625Z 
+2026-11-21T14:46:43.5268006Z [32m- Expected[39m
+2026-11-21T14:46:43.5268612Z [31m+ Received[39m
+2026-11-21T14:46:43.5268989Z 
+2026-11-21T14:46:43.5269366Z [32m- true[39m
+2026-11-21T14:46:43.5270022Z [31m+ false[39m
+2026-11-21T14:46:43.5270409Z 
+2026-11-21T14:46:43.5271228Z [36m [2m❯[22m tests/integration/f553/customers.itest.ts:[2m205:26[22m[39m
+2026-11-21T14:46:43.5284314Z     [90m203|[39m     // uporabimo neposredni create z joinWalkInQueue — gost brez račun…
+2026-11-21T14:46:43.5285911Z     [90m204|[39m     const join = await joinWalkInQueue({ name: "Walk gost", phone: "04…
+2026-11-21T14:46:43.5286950Z     [90m205|[39m     expect(join.success).toBe(true)
+2026-11-21T14:46:43.5287706Z     [90m   |[39m                          [31m^[39m
+2026-11-21T14:46:43.5288694Z     [90m206|[39m     const entry = await prisma.walkInEntry.findFirst({ where: { organi…
+2026-11-21T14:46:43.5289569Z     [90m207|[39m     expect(entry).toBeTruthy()
+2026-11-21T14:46:43.5289905Z 
+2026-11-21T14:46:43.5290273Z [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯[22m[39m
+2026-11-21T14:46:43.5290596Z 
+2026-11-21T14:46:43.5290636Z 
+2026-11-21T14:46:43.5303675Z [2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m43 passed[39m[22m[90m (45)[39m
+2026-11-21T14:46:43.5308442Z [2m      Tests [22m [1m[31m5 failed[39m[22m[2m | [22m[1m[32m498 passed[39m[22m[90m (503)[39m
+2026-11-21T14:46:43.5309949Z [2m   Start at [22m 14:46:06
+2026-11-21T14:46:43.5315321Z [2m   Duration [22m 37.47s[2m (import 61%, tests 35%, transform 4%)[22m
+2026-11-21T14:46:43.5327034Z 
+2026-11-21T14:46:43.5328175Z [2m     Import [22m [33m263 modules were evaluated 591 times[39m[2m · 61.60s total, 61% of tracked time[22m
+2026-11-21T14:46:43.5330246Z [2m            [22m [2m~6.08s faster with [22m[33misolate: false[39m[2m — shared modules are evaluated once per worker instead of once per file[22m
+2026-11-21T14:46:43.5332113Z [2m            [22m [2mlearn more: https://vitest.dev/guide/improving-performance#test-isolation[22m
+2026-11-21T14:46:43.5332786Z 
+2026-11-21T14:46:43.5346901Z 
+2026-11-21T14:46:43.5370320Z ##[error]AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/integration/f54/f551-variant-checkout.itest.ts:178:25
+
+
+2026-11-21T14:46:43.5379085Z 
+2026-11-21T14:46:43.5381247Z ##[error]AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/integration/f54/f551-variant-checkout.itest.ts:198:25
+
+
+2026-11-21T14:46:43.5382429Z 
+2026-11-21T14:46:43.5384167Z ##[error]AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/integration/f54/f551-variant-checkout.itest.ts:220:25
+
+
+2026-11-21T14:46:43.5385603Z 
+2026-11-21T14:46:43.5387314Z ##[error]AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/integration/f54/f551-variant-checkout.itest.ts:256:25
+
+
+2026-11-21T14:46:43.5388362Z 
+2026-11-21T14:46:43.5389945Z ##[error]AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/integration/f553/customers.itest.ts:205:26
+
+
+2026-11-21T14:46:43.5833803Z ##[error]Process completed with exit code 1.
+2026-11-21T14:46:43.5944409Z Post job cleanup.
+2026-11-21T14:46:43.7490881Z Pruning is unnecessary.
+2026-11-21T14:46:43.7646028Z Post job cleanup.
+2026-11-21T14:46:43.8638818Z [command]/usr/bin/git version
+2026-11-21T14:46:43.8688703Z git version 2.56.1
+2026-11-21T14:46:43.8744327Z Temporarily overriding HOME='/home/runner/work/_temp/16c2ac83-440a-4230-9934-b656f314de51' before making global git config changes
+2026-11-21T14:46:43.8746181Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-21T14:46:43.8752475Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/markec-business-platform/markec-business-platform
+2026-11-21T14:46:43.8810113Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-21T14:46:43.8853267Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-21T14:46:43.9199100Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-21T14:46:43.9235226Z http.https://github.com/.extraheader
+2026-11-21T14:46:43.9249386Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-11-21T14:46:43.9336625Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-21T14:46:43.9683682Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-21T14:46:43.9720949Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-21T14:46:44.0132963Z Print service container logs: 9b9a178d8a404f71a85ea8a9f192c718_postgres16_b01260
+2026-11-21T14:46:44.0138026Z ##[command]/usr/bin/docker logs --details 8b165b2a7f52d7066b894612f40714ca8c5aad3244de794035163eb93498cebb
+2026-11-21T14:46:44.0310468Z  The files belonging to this database system will be owned by user "postgres".
+2026-11-21T14:46:44.0311415Z  This user must also own the server process.
+2026-11-21T14:46:44.0311894Z  
+2026-11-21T14:46:44.0312381Z  The database cluster will be initialized with locale "en_US.utf8".
+2026-11-21T14:46:44.0313159Z  The default database encoding has accordingly been set to "UTF8".
+2026-11-21T14:46:44.0313998Z  The default text search configuration will be set to "english".
+2026-11-21T14:46:44.0314803Z  
+2026-11-21T14:46:44.0315163Z  Data page checksums are disabled.
+2026-11-21T14:46:44.0315607Z  
+2026-11-21T14:46:44.0316115Z  fixing permissions on existing directory /var/lib/postgresql/data ... ok
+2026-11-21T14:46:44.0316946Z  creating subdirectories ... ok
+2026-11-21T14:46:44.0317476Z  selecting dynamic shared memory implementation ... posix
+2026-11-21T14:46:44.0318065Z  selecting default max_connections ... 100
+2026-11-21T14:46:44.0318566Z  selecting default shared_buffers ... 128MB
+2026-11-21T14:46:44.0319073Z  selecting default time zone ... Etc/UTC
+2026-11-21T14:46:44.0319550Z  creating configuration files ... ok
+2026-11-21T14:46:44.0320012Z  running bootstrap script ... ok
+2026-11-21T14:46:44.0320505Z  performing post-bootstrap initialization ... ok
+2026-11-21T14:46:44.0321067Z  syncing data to disk ... ok
+2026-11-21T14:46:44.0321562Z  
+2026-11-21T14:46:44.0321855Z  
+2026-11-21T14:46:44.0322234Z  Success. You can now start the database server using:
+2026-11-21T14:46:44.0322742Z  
+2026-11-21T14:46:44.0323115Z      pg_ctl -D /var/lib/postgresql/data -l logfile start
+2026-11-21T14:46:44.0323453Z  
+2026-11-21T14:46:44.0324140Z  waiting for server to start....2026-11-21 14:45:28.188 UTC [49] LOG:  starting PostgreSQL 16.16 (Debian 16.16-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-11-21T14:46:44.0325494Z  2026-11-21 14:45:28.189 UTC [49] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-11-21T14:46:44.0326158Z  2026-11-21 14:45:28.191 UTC [52] LOG:  database system was shut down at 2026-11-21 14:45:28 UTC
+2026-11-21T14:46:44.0326691Z  2026-11-21 14:45:28.195 UTC [49] LOG:  database system is ready to accept connections
+2026-11-21T14:46:44.0327089Z   done
+2026-11-21T14:46:44.0327275Z  server started
+2026-11-21T14:46:44.0327474Z  CREATE DATABASE
+2026-11-21T14:46:44.0327663Z  
+2026-11-21T14:46:44.0327836Z  
+2026-11-21T14:46:44.0328147Z  /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+2026-11-21T14:46:44.0328558Z  
+2026-11-21T14:46:44.0328875Z  2026-11-21 14:45:28.377 UTC [49] LOG:  received fast shutdown request
+2026-11-21T14:46:44.0330245Z  initdb: warning: enabling "trust" authentication for local connections
+2026-11-21T14:46:44.0330988Z  initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+2026-11-21T14:46:44.0332702Z  2026-11-21 14:45:28.497 UTC [1] LOG:  starting PostgreSQL 16.16 (Debian 16.16-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-11-21T14:46:44.0333921Z  2026-11-21 14:45:28.497 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-11-21T14:46:44.0334414Z  2026-11-21 14:45:28.497 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-11-21T14:46:44.0335168Z  2026-11-21 14:45:28.498 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-11-21T14:46:44.0335744Z  2026-11-21 14:45:28.501 UTC [65] LOG:  database system was shut down at 2026-11-21 14:45:28 UTC
+2026-11-21T14:46:44.0336271Z  2026-11-21 14:45:28.505 UTC [1] LOG:  database system is ready to accept connections
+2026-11-21T14:46:44.0336724Z  2026-11-21 14:45:37.599 UTC [76] FATAL:  role "root" does not exist
+2026-11-21T14:46:44.0337425Z  2026-11-21 14:45:47.668 UTC [84] FATAL:  role "root" does not exist
+2026-11-21T14:46:44.0337835Z  2026-11-21 14:45:57.768 UTC [92] FATAL:  role "root" does not exist
+2026-11-21T14:46:44.0338227Z  2026-11-21 14:46:07.864 UTC [106] FATAL:  role "root" does not exist
+2026-11-21T14:46:44.0338975Z  2026-11-21 14:46:09.346 UTC [110] ERROR:  duplicate key value violates unique constraint "Category_organizationId_slug_key"
+2026-11-21T14:46:44.0339719Z  2026-11-21 14:46:09.346 UTC [110] DETAIL:  Key ("organizationId", slug)=(f52-org-a-639d5ec9, maskara-x) already exists.
+2026-11-21T14:46:44.0342136Z  2026-11-21 14:46:09.346 UTC [110] STATEMENT:  INSERT INTO "public"."Category" ("id","name","slug","sortOrder","isActive","categoryType","organizationId","createdAt","updatedAt") VALUES ($1,$2,$3,$4,$5,CAST($6::text AS "public"."CategoryType"),$7,$8,$9) RETURNING "public"."Category"."id", "public"."Category"."name", "public"."Category"."slug", "public"."Category"."presetSeed", "public"."Category"."parentId", "public"."Category"."description", "public"."Category"."image", "public"."Category"."sortOrder", "public"."Category"."isActive", "public"."Category"."categoryType"::text, "public"."Category"."organizationId", "public"."Category"."createdAt", "public"."Category"."updatedAt"
+2026-11-21T14:46:44.0344408Z  2026-11-21 14:46:17.975 UTC [135] FATAL:  role "root" does not exist
+2026-11-21T14:46:44.0345286Z  2026-11-21 14:46:18.859 UTC [137] ERROR:  update or delete on table "Product" violates foreign key constraint "OrderItem_productId_fkey" on table "OrderItem"
+2026-11-21T14:46:44.0346169Z  2026-11-21 14:46:18.859 UTC [137] DETAIL:  Key (id)=(cmwqitkop000k1qr2tskh6hg8) is still referenced from table "OrderItem".
+2026-11-21T14:46:44.0346926Z  2026-11-21 14:46:18.859 UTC [137] STATEMENT:  DELETE FROM "public"."Organization" WHERE "public"."Organization"."id" IN ($1,$2)
+2026-11-21T14:46:44.0347792Z  2026-11-21 14:46:26.595 UTC [165] ERROR:  update or delete on table "Product" violates foreign key constraint "OrderItem_productId_fkey" on table "OrderItem"
+2026-11-21T14:46:44.0348648Z  2026-11-21 14:46:26.595 UTC [165] DETAIL:  Key (id)=(cmwqitqnh000s1qwrhewwcucu) is still referenced from table "OrderItem".
+2026-11-21T14:46:44.0349391Z  2026-11-21 14:46:26.595 UTC [165] STATEMENT:  DELETE FROM "public"."Organization" WHERE "public"."Organization"."id" IN ($1,$2)
+2026-11-21T14:46:44.0350263Z  2026-11-21 14:46:27.501 UTC [166] ERROR:  update or delete on table "Product" violates foreign key constraint "OrderItem_productId_fkey" on table "OrderItem"
+2026-11-21T14:46:44.0351105Z  2026-11-21 14:46:27.501 UTC [166] DETAIL:  Key (id)=(cmwqitrj200071qxoif3d8wqs) is still referenced from table "OrderItem".
+2026-11-21T14:46:44.0351847Z  2026-11-21 14:46:27.501 UTC [166] STATEMENT:  DELETE FROM "public"."Organization" WHERE "public"."Organization"."id" IN ($1,$2)
+2026-11-21T14:46:44.0352709Z  2026-11-21 14:46:27.860 UTC [168] ERROR:  update or delete on table "Product" violates foreign key constraint "OrderItem_productId_fkey" on table "OrderItem"
+2026-11-21T14:46:44.0353554Z  2026-11-21 14:46:27.860 UTC [168] DETAIL:  Key (id)=(cmwqitrlk000c1qxiusfwh7z4) is still referenced from table "OrderItem".
+2026-11-21T14:46:44.0354292Z  2026-11-21 14:46:27.860 UTC [168] STATEMENT:  DELETE FROM "public"."Organization" WHERE "public"."Organization"."id" IN ($1,$2)
+2026-11-21T14:46:44.0355097Z  2026-11-21 14:46:28.071 UTC [181] FATAL:  role "root" does not exist
+2026-11-21T14:46:44.0355699Z  2026-11-21 14:46:30.776 UTC [187] ERROR:  duplicate key value violates unique constraint "DocumentPayment_org_doc_ref_key"
+2026-11-21T14:46:44.0356563Z  2026-11-21 14:46:30.776 UTC [187] DETAIL:  Key ("organizationId", "documentId", reference)=(f131-org-a, cmwqitu90000u1q1htlbw3j50, F131-DUP) already exists.
+2026-11-21T14:46:44.0359375Z  2026-11-21 14:46:30.776 UTC [187] STATEMENT:  INSERT INTO "public"."DocumentPayment" ("id","organizationId","documentId","kind","amount","method","reference","paidAt","status","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING "public"."DocumentPayment"."id", "public"."DocumentPayment"."organizationId", "public"."DocumentPayment"."documentId", "public"."DocumentPayment"."kind", "public"."DocumentPayment"."amount", "public"."DocumentPayment"."method", "public"."DocumentPayment"."reference", "public"."DocumentPayment"."paidAt", "public"."DocumentPayment"."status", "public"."DocumentPayment"."reversalOfId", "public"."DocumentPayment"."recordedById", "public"."DocumentPayment"."createdAt"
+2026-11-21T14:46:44.0362146Z  2026-11-21 14:46:30.853 UTC [187] ERROR:  duplicate key value violates unique constraint "DocumentAdvanceAllocation_org_advance_active_key"
+2026-11-21T14:46:44.0362994Z  2026-11-21 14:46:30.853 UTC [187] DETAIL:  Key ("organizationId", "advanceId")=(f131-org-a, cmwqitub600181q1huui7o9ou) already exists.
+2026-11-21T14:46:44.0366707Z  2026-11-21 14:46:30.853 UTC [187] STATEMENT:  INSERT INTO "public"."DocumentAdvanceAllocation" ("id","organizationId","advanceId","appliedToInvoice","amount","taxBase","taxTotal","vatEnabled","createdAt","status") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING "public"."DocumentAdvanceAllocation"."id", "public"."DocumentAdvanceAllocation"."organizationId", "public"."DocumentAdvanceAllocation"."advanceId", "public"."DocumentAdvanceAllocation"."appliedToInvoice", "public"."DocumentAdvanceAllocation"."amount", "public"."DocumentAdvanceAllocation"."taxBase", "public"."DocumentAdvanceAllocation"."taxTotal", "public"."DocumentAdvanceAllocation"."vatEnabled", "public"."DocumentAdvanceAllocation"."allocatedAt", "public"."DocumentAdvanceAllocation"."createdAt", "public"."DocumentAdvanceAllocation"."status", "public"."DocumentAdvanceAllocation"."revokedAt", "public"."DocumentAdvanceAllocation"."revokedById", "public"."DocumentAdvanceAllocation"."revokeReason"
+2026-11-21T14:46:44.0370424Z  2026-11-21 14:46:31.008 UTC [190] ERROR:  update or delete on table "Service" violates foreign key constraint "AppointmentService_serviceId_fkey" on table "AppointmentService"
+2026-11-21T14:46:44.0371403Z  2026-11-21 14:46:31.008 UTC [190] DETAIL:  Key (id)=(cmwqitu95000p1q10r05unnrn) is still referenced from table "AppointmentService".
+2026-11-21T14:46:44.0372195Z  2026-11-21 14:46:31.008 UTC [190] STATEMENT:  DELETE FROM "public"."Organization" WHERE "public"."Organization"."id" IN ($1,$2)
+2026-11-21T14:46:44.0373134Z  2026-11-21 14:46:31.044 UTC [187] ERROR:  insert or update on table "DocumentAdvanceAllocation" violates foreign key constraint "DocumentAdvanceAllocation_advanceId_fkey"
+2026-11-21T14:46:44.0374051Z  2026-11-21 14:46:31.044 UTC [187] DETAIL:  Key (advanceId)=(doc-ghost-nonexistent) is not present in table "Document".
+2026-11-21T14:46:44.0377757Z  2026-11-21 14:46:31.044 UTC [187] STATEMENT:  INSERT INTO "public"."DocumentAdvanceAllocation" ("id","organizationId","advanceId","appliedToInvoice","amount","taxBase","taxTotal","vatEnabled","createdAt","status") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING "public"."DocumentAdvanceAllocation"."id", "public"."DocumentAdvanceAllocation"."organizationId", "public"."DocumentAdvanceAllocation"."advanceId", "public"."DocumentAdvanceAllocation"."appliedToInvoice", "public"."DocumentAdvanceAllocation"."amount", "public"."DocumentAdvanceAllocation"."taxBase", "public"."DocumentAdvanceAllocation"."taxTotal", "public"."DocumentAdvanceAllocation"."vatEnabled", "public"."DocumentAdvanceAllocation"."allocatedAt", "public"."DocumentAdvanceAllocation"."createdAt", "public"."DocumentAdvanceAllocation"."status", "public"."DocumentAdvanceAllocation"."revokedAt", "public"."DocumentAdvanceAllocation"."revokedById", "public"."DocumentAdvanceAllocation"."revokeReason"
+2026-11-21T14:46:44.0381427Z  2026-11-21 14:46:34.958 UTC [199] ERROR:  update or delete on table "Product" violates foreign key constraint "OrderItem_productId_fkey" on table "OrderItem"
+2026-11-21T14:46:44.0382308Z  2026-11-21 14:46:34.958 UTC [199] DETAIL:  Key (id)=(cmwqitx78000u1q2n0o9mpkhd) is still referenced from table "OrderItem".
+2026-11-21T14:46:44.0383196Z  2026-11-21 14:46:34.958 UTC [199] STATEMENT:  DELETE FROM "public"."Organization" WHERE "public"."Organization"."id" IN ($1,$2)
+2026-11-21T14:46:44.0384077Z  2026-11-21 14:46:35.664 UTC [201] ERROR:  update or delete on table "Product" violates foreign key constraint "OrderItem_productId_fkey" on table "OrderItem"
+2026-11-21T14:46:44.0385258Z  2026-11-21 14:46:35.664 UTC [201] DETAIL:  Key (id)=(cmwqitxv800061q5k7x8wgpti) is still referenced from table "OrderItem".
+2026-11-21T14:46:44.0386015Z  2026-11-21 14:46:35.664 UTC [201] STATEMENT:  DELETE FROM "public"."Organization" WHERE "public"."Organization"."id" IN ($1,$2)
+2026-11-21T14:46:44.0386607Z  2026-11-21 14:46:38.198 UTC [216] FATAL:  role "root" does not exist
+2026-11-21T14:46:44.0387197Z  2026-11-21 14:46:42.902 UTC [238] ERROR:  duplicate key value violates unique constraint "DocumentPayment_org_doc_ref_key"
+2026-11-21T14:46:44.0388004Z  2026-11-21 14:46:42.902 UTC [238] DETAIL:  Key ("organizationId", "documentId", reference)=(f55441-org-a, f55441-doc-a, REF-1) already exists.
+2026-11-21T14:46:44.0388857Z  2026-11-21 14:46:42.902 UTC [238] STATEMENT:  INSERT INTO "DocumentPayment" ("id","organizationId","documentId","kind","amount","reference")
+2026-11-21T14:46:44.0389433Z  	     VALUES ($1,$2,$3,'PAYMENT',$4,$5)
+2026-11-21T14:46:44.0389892Z  waiting for server to shut down....2026-11-21 14:45:28.377 UTC [49] LOG:  aborting any active transactions
+2026-11-21T14:46:44.0390585Z  2026-11-21 14:45:28.379 UTC [49] LOG:  background worker "logical replication launcher" (PID 55) exited with exit code 1
+2026-11-21T14:46:44.0391119Z  2026-11-21 14:45:28.380 UTC [50] LOG:  shutting down
+2026-11-21T14:46:44.0391511Z  2026-11-21 14:45:28.380 UTC [50] LOG:  checkpoint starting: shutdown immediate
+2026-11-21T14:46:44.0392626Z  2026-11-21 14:45:28.397 UTC [50] LOG:  checkpoint complete: wrote 935 buffers (5.7%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.014 s, sync=0.002 s, total=0.018 s; sync files=301, longest=0.001 s, average=0.001 s; distance=4346 kB, estimate=4346 kB; lsn=0/1943060, redo lsn=0/1943060
+2026-11-21T14:46:44.0393704Z  2026-11-21 14:45:28.404 UTC [49] LOG:  database system is shut down
+2026-11-21T14:46:44.0394035Z   done
+2026-11-21T14:46:44.0394226Z  server stopped
+2026-11-21T14:46:44.0394423Z  
+2026-11-21T14:46:44.0394933Z  PostgreSQL init process complete; ready for start up.
+2026-11-21T14:46:44.0395247Z  
+2026-11-21T14:46:44.0400272Z Stop and remove container: 9b9a178d8a404f71a85ea8a9f192c718_postgres16_b01260
+2026-11-21T14:46:44.0405034Z ##[command]/usr/bin/docker rm --force 8b165b2a7f52d7066b894612f40714ca8c5aad3244de794035163eb93498cebb
+2026-11-21T14:46:44.2305369Z 8b165b2a7f52d7066b894612f40714ca8c5aad3244de794035163eb93498cebb
+2026-11-21T14:46:44.2341008Z Remove container network: github_network_26cd0dbd62984d9f947088c4648790af
+2026-11-21T14:46:44.2345595Z ##[command]/usr/bin/docker network rm github_network_26cd0dbd62984d9f947088c4648790af
+2026-11-21T14:46:44.2998228Z github_network_26cd0dbd62984d9f947088c4648790af
+2026-11-21T14:46:44.3082975Z Cleaning up orphan processes
+2026-11-21T14:46:44.3610732Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4, pnpm/action-setup@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
