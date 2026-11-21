@@ -51,21 +51,29 @@ export async function getEffectivePermissions(
       // OrganizationMember.customRoleId is a stored FK without a Prisma
       // relation — read the org-scoped custom role by that id (source of
       // truth for a member's effective permission set in this workspace).
-      let customRolePermissions: unknown = null
+      // #1318 (P0 security, FAIL-CLOSED): tri eksplicitna stanja —
+      //  1) član BREZ customRoleId → obdrži osnovno politiko svoje vloge;
+      //  2) član z NAVELJOVNIM customRoleId v ISTI org → zgolj ta vloga;
+      //  3) član z NEVELJAVNIM customRoleId (izbrisana vloga, reference na
+      //     drugo org ali okvarjena vrednost) → NI NOBENIH dovoljenj.
+      // Prej je stanje 3 padlo skozi v `effectivePermissionKeys(null)` in
+      // ADMIN/STAFF-u dodelilo VSA dovoljenja (FAIL-OPEN). Strogo vračam []
+      // na neveljavno referenco — prehod na osnovno politiko ima SAMO član
+      // brez customRoleId.
       if (member.customRoleId) {
-        // #130 (P0 security): CustomRole je org-scoped — poiščemo ga SAMO
-        // znotraj iste organizacije, kot član. Prej je findFirst iskal
-        // samo po id (cross-tenant potencial), kar bi lahko prebralo vlogo
-        // iz druge organizacije ob poškodovani referenci.
         const customRole = await prisma.customRole.findFirst({
           where: { id: member.customRoleId, organizationId },
           select: { permissions: true },
         })
-        customRolePermissions = customRole?.permissions ?? null
+        if (!customRole) return [] // #130: izbrisana / tuja vloga → fail-closed.
+        return effectivePermissionKeys({
+          role: member.role as "ADMIN" | "STAFF" | "CLIENTE",
+          customRolePermissions: customRole.permissions,
+        })
       }
       return effectivePermissionKeys({
         role: member.role as "ADMIN" | "STAFF" | "CLIENTE",
-        customRolePermissions,
+        customRolePermissions: null,
       })
     }
     // No member row — legacy member. Verify genuine org belonging before
@@ -74,7 +82,7 @@ export async function getEffectivePermissions(
       where: { id: userId },
       select: {
         role: true,
-        customRole: { select: { permissions: true } },
+        customRole: { select: { permissions: true, organizationId: true } },
         organizationId: true,
         staffs: { select: { organizationId: true, isActive: true } },
       },
@@ -89,6 +97,17 @@ export async function getEffectivePermissions(
         (s) => s.organizationId === organizationId && s.isActive
       )
     if (!belongsToOrg) return []
+    // #1318 (P0): legacy fallback uporablja `User.customRole` SAMO, če vloga
+    // pripada PREVERJANI organizaciji. Tridijal logika:
+    //  1) NI custom role → obdrži osnovno politiko svoje globalne vloge;
+    //  2) custom role JE v tej org → zgolj njene pravice;
+    //  3) custom role pripada DRUGI org ali je izbrisana → [] (fail-closed),
+    //     NIKOLI skok na polna pravicam osnovne vloge (FAIL-OPEN vdolb).
+    // Prejšnja verzija je stanje 3 podeljevala osnovne pravice — za ADMIN/STAFF
+    // vse. Zdaj je tuja/izbrisana vloga strogo brez dovoljenj.
+    if (user.customRole && user.customRole.organizationId !== organizationId) {
+      return [] // foreign or missing custom role in a verified legacy member → no permissions.
+    }
     return effectivePermissionKeys({
       role: user.role,
       customRolePermissions: user.customRole?.permissions ?? null,

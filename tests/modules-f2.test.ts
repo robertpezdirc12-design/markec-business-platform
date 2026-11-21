@@ -70,7 +70,9 @@ describe("#100 8.C efektivna matrika (izklop = zadnja beseda, politika VSI MODUL
     const profile = { reviews: "optional", appointments: "disabled" }
     const out = effectiveCapabilities(profile, { appointments: "ACTIVE" })
     expect(out.appointments).toBe("optional")
-    expect(out.reviews).toBe("optional")
+    // reviews nima vrstice → po #1318 P2 #5 manjkajoča optional vrstica =
+    // DEACTIVATED (usklajeno z getModuleOverview); tu pade na disabled.
+    expect(out.reviews).toBe("disabled")
   })
 
   it("več izklopk hkrati ne moti ostalih modulov", () => {
@@ -81,7 +83,8 @@ describe("#100 8.C efektivna matrika (izklop = zadnja beseda, politika VSI MODUL
     })
     expect(out.appointments).toBe("disabled") // required popustljiv
     expect(out.delivery).toBe("disabled")
-    expect(out.shop).toBe("optional")
+    // shop nima vrstice (optional) → DEACTIVATED fallback, kot getModuleOverview.
+    expect(out.shop).toBe("disabled")
   })
 })
 
