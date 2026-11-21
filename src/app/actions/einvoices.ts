@@ -481,7 +481,16 @@ export async function submitEinvoice(einvoiceId: string, channel: string): Promi
     state === "DELIVERED" ? "DELIVERY_ACK" : state === "REJECTED" ? "REJECTION" : state === "SUBMITTED" ? "SUBMITTED" : "FAILURE"
 
   await prisma.$transaction(async (tx) => {
-    await tx.eInvoice.update({ where: { id: row.id }, data: { status: state } })
+    // Faza 3.2 — shranimo providerMessageId na vrstici za poznejše stanjsko
+    // preverjanje (poll dostave), ne le v receipt-u. Shranimo tudi kanal oddaje.
+    await tx.eInvoice.update({
+      where: { id: row.id },
+      data: {
+        status: state,
+        channel,
+        ...(result.providerMessageId ? { providerMessageId: result.providerMessageId } : {}),
+      },
+    })
     await tx.eInvoiceDeliveryEvent.create({
       data: {
         organizationId: org.id,
@@ -515,4 +524,23 @@ export async function submitEinvoice(einvoiceId: string, channel: string): Promi
     return { ok: false, error: result.errors.join("; ") || "Pošiljanje ni uspelo." }
   }
   return { ok: true, state }
+}
+
+/**
+ * FAZA 3.2 — ročno sprožena dostavna zanka: preveri vse SUBMITTED e-račune pri
+ * ponudniku in jih prevede v DELIVERED / REJECTED / FAILED. Namenjeno skrbniku
+ * (cron se lahko pokliče prek te akcije z omejitvijo). Idempotentno — ponovni
+ * klic ne podvoji prehodov.
+ */
+export async function pollEinvoiceDeliveries(): Promise<{
+  ok: boolean
+  polled: number
+  transitioned: number
+  error?: string
+}> {
+  const { org } = await requirePermissionOrg("finances.documents.manage")
+  const { pollPendingDeliveries: run } = await import("@/lib/einvoice/delivery")
+  const res = await run(50)
+  revalidatePath("/dashboard/einvoices")
+  return { ok: true, polled: res.polled, transitioned: res.transitioned }
 }

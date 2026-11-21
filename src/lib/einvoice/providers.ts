@@ -217,6 +217,11 @@ export class DirectHttpProvider implements EInvoiceProvider {
     _cfg: ChannelCfg,
     providerMessageId: string
   ): Promise<DeliveryStatus> {
+    // Faza 3.2 — test/integracijski override stanja dostave za deterministično
+    // preverjanje dostavne zanke brez prave ponudnikove povezave.
+    if (directStatusOverride) {
+      return (await directStatusOverride(providerMessageId)) as DeliveryStatus
+    }
     return {
       state: "SUBMITTED",
       providerStatus: providerMessageId ? "pending" : "unmapped",
@@ -300,6 +305,21 @@ export type HttpsTransport = (
 let directTransportOverride: HttpsTransport | null = null
 export function __setDirectTransportForTests(t: HttpsTransport | null): void {
   directTransportOverride = t
+}
+
+// Faza 3.2 — testni override stanja dostave za Direct kanal (deterministična
+// dostavna zanka; brez prave ponudnikove povezave).
+export type DirectStatusResolver = (
+  providerMessageId: string
+) => Promise<{
+  state: "SUBMITTED" | "DELIVERED" | "REJECTED" | "FAILED"
+  providerStatus: string
+  timestamp: string
+  message: string | null
+}>
+let directStatusOverride: DirectStatusResolver | null = null
+export function __setDirectStatusForTests(r: DirectStatusResolver | null): void {
+  directStatusOverride = r
 }
 function pickDirectTransport(instance: { _directTransport: HttpsTransport }): HttpsTransport {
   // Kadar je v testu podan override, ima prednost (ITest) — sicer per-instance
