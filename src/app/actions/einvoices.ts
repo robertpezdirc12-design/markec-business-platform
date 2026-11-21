@@ -527,10 +527,12 @@ export async function submitEinvoice(einvoiceId: string, channel: string): Promi
 }
 
 /**
- * FAZA 3.2 — ročno sprožena dostavna zanka: preveri vse SUBMITTED e-račune pri
- * ponudniku in jih prevede v DELIVERED / REJECTED / FAILED. Namenjeno skrbniku
- * (cron se lahko pokliče prek te akcije z omejitvijo). Idempotentno — ponovni
- * klic ne podvoji prehodov.
+ * FAZA 3.2 (varnost) — ročno sprožena dostavna zanka za TRENUTNO organizacijo.
+ *
+ * Uporabniška (org) površina sme poganjati polling SAMO svoje organizacije
+ * (A7): preveri pravico v trenutni org, nato skliče `pollPendingDeliveriesForOrg`
+ * z `org.id`. Nikoli ne kliče globalnega pollerja (ta je rezerviran za sistemski
+ * cron na `/api/cron/tick`). Idempotentno — ponovni klic ne podvoji prehodov.
  */
 export async function pollEinvoiceDeliveries(): Promise<{
   ok: boolean
@@ -539,8 +541,8 @@ export async function pollEinvoiceDeliveries(): Promise<{
   error?: string
 }> {
   const { org } = await requirePermissionOrg("finances.documents.manage")
-  const { pollPendingDeliveries: run } = await import("@/lib/einvoice/delivery")
-  const res = await run(50)
+  const { pollPendingDeliveriesForOrg: run } = await import("@/lib/einvoice/delivery")
+  const res = await run(org.id, 50)
   revalidatePath("/dashboard/einvoices")
   return { ok: true, polled: res.polled, transitioned: res.transitioned }
 }

@@ -7,6 +7,7 @@ import { withJobRun } from "@/lib/jobs/job-run"
 import { purgeExpiredRateLimits } from "@/lib/rate-limit"
 import { enforceBillingGrace } from "@/lib/jobs/enforce-billing-grace"
 import { retryPendingDeliveries } from "@/lib/webhooks/outgoing"
+import { pollPendingDeliveries } from "@/lib/einvoice/delivery"
 
 export const dynamic = "force-dynamic"
 
@@ -36,7 +37,7 @@ export async function GET(req: Request) {
   }
 
   // Vsak job je neodvisen: neuspeh opomnikov ne sme ustaviti čiščenja.
-  const [reminders, expiry, marketing, digest, rateLimitPurge, billingGrace, webhookRetries] = await Promise.all([
+  const [reminders, expiry, marketing, digest, rateLimitPurge, billingGrace, webhookRetries, einvoiceDeliveryPoll] = await Promise.all([
     withJobRun("send-due-reminders", sendDueReminders),
     withJobRun("expire-stale-pending", expireStalePending),
     withJobRun("send-marketing-emails", sendMarketingEmails),
@@ -58,10 +59,26 @@ export async function GET(req: Request) {
         detail: result,
       }
     }),
+    // F5.5.4.6.4 / Faza 3.2 (A9): sistemko globalno pollanje dostave e-računov.
+    // To je edina površina, ki sme poganjati globalni poller (Bearer CRON_SECRET);
+    // org uporabnik poganja samo svojo organizacijo prek pollEinvoiceDeliveries.
+    withJobRun("einvoice-delivery-poll", async () => {
+      const result = await pollPendingDeliveries()
+      return { sent: result.transitioned, failed: 0, detail: result }
+    }),
   ])
 
   return NextResponse.json({
     ok: true,
-    results: { reminders, expiry, marketing, digest, rateLimitPurge, billingGrace, webhookRetries },
+    results: {
+      reminders,
+      expiry,
+      marketing,
+      digest,
+      rateLimitPurge,
+      billingGrace,
+      webhookRetries,
+      einvoiceDeliveryPoll,
+    },
   })
 }

@@ -2785,6 +2785,12 @@ model EInvoice {
   // idempotence). Ena pošiljka = en providerMessageId.
   providerMessageId       String?
   channel                 String? // "direct" | "ujp" | "peppol" — kanal oddaje za dostavno zanko
+  // Faza 3.2 (varnost) — število zaporednih neuspešnih poskusov polinga dostave
+  // za to pošiljko in čas zadnjega poskusa. Začasne omrežne napake NE smejo
+  // takoj pomeniti dokončnega FAILED; po `MAX_DELIVERY_ATTEMPTS` vrstica preide
+  // v FAILED, sicer ostane SUBMITTED za naslednji cron-tek.
+  deliveryAttempts        Int       @default(0)
+  lastDeliveryAttemptAt   DateTime?
   generatedById           String?
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
@@ -2795,6 +2801,12 @@ model EInvoice {
   receipts     EInvoiceReceipt[]
 
   @@unique([organizationId, documentId, format, kind])
+  // A6 — nedvoumna povezava pošiljke na (kanal, providerMessageId). V Postgresu
+  // edinstveni indeks obravnava NULL-e kot različne, zato več vrstic še brez
+  // providerMessageId ni v sporu; vsak ne-NULL par (channel, providerMessageId)
+  // pa je provable enoličen → povratni webhook nikoli ne more dvoumno zadeti
+  // dveh organizacij.
+  @@unique([channel, providerMessageId])
   @@index([organizationId])
   @@index([documentId])
 }

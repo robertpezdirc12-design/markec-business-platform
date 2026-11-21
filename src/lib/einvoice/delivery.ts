@@ -5,12 +5,22 @@
 // dostavljen. Ta modul preverja stanje dostave (poll) pri ponudniku in:
 //   • SUBMITTED → DELIVERED  (tehnično potrjeno dostavljeno prejemniku)
 //   • SUBMITTED → REJECTED   (vsebinsko zavrnjeno)
-//   • SUBMITTED → FAILED     (tehnična napaka po izteku poskusov)
+//   • SUBMITTED → FAILED     (tehnična napaka, ko je ŠT. POSKUSOV IZČRPANA)
 // in ob tem zapiše neizbrisljiv `EInvoiceDeliveryEvent` + `EInvoiceReceipt`.
 //
-// Multi-tenant: vsaka operacija se izvede v kontekstu `organizationId`, nikoli
-// globalno. `providerMessageId` je nosilec identifikacije pošiljke pri ponudniku;
-// `channel` (nastavljen ob oddaji) usmerja statusni provider brez dvoumnosti.
+// Multi-tenant (varnost):
+//   • Polling NI nikoli globalen iz uporabniške akcije. Org uporabnik lahko
+//     sproži samo polling svoje organizacije (`pollPendingDeliveriesForOrg`).
+//     Sistemko globalno opravilo (`/api/cron/tick`) kliče `pollPendingDeliveries`
+//     prek stroge cron-secret avtorizacije — nikoli prek org surface.
+//   • Povratni webhook se veže na (channel, providerMessageId) prek enoličnega
+//     indeksa `@@unique([channel, providerMessageId])`, zato nikoli ne more
+//     dvoumno zadeti organizacije (A6).
+//   • Podpis webhooka se preverja NAD DEJANSKIMI bajti prejetega telesa
+//     (`rawBody`), ne nad ponovno sestavljenim `JSON.stringify` (A5).
+//   • Začasna omrežna napaka NIKOLI ne pomeni takojšnjega FAILED: zankamo
+//     števec `deliveryAttempts`, omejimo poskuse in šele po izčrpanih poskusih
+//     prevedemo v FAILED (A10).
 // ============================================================
 
 import { prisma } from "@/lib/prisma"
@@ -20,6 +30,9 @@ import type { ChannelCfg } from "@/lib/einvoice/channel"
 
 /** Število prevzemov pollinga na klic (defenzivni cap — ne zavrti vse naenkrat). */
 export const DELIVERY_POLL_BATCH = 50
+
+/** Največje število zaporednih polingov dostave, preden začasna napaka postane FAILED. */
+export const MAX_DELIVERY_ATTEMPTS = 3
 
 /** Vrstice, ki jih zankamo berem iz DB. */
 type PendingInvoice = {
@@ -43,42 +56,57 @@ export async function channelCfgFor(orgId: string, channel: string): Promise<Cha
   }
 }
 
-/** Poišče organizacijo, ki ima ta eInvoice preko providerMessageId. */
+/**
+ * Najde e-račun POVEZAN na (channel, providerMessageId). Zahvaljujoč enoličnemu
+ * indeksu `@@unique([channel, providerMessageId])` je povezava na organizacijo
+ * nedvoumna: dva različna organizacijska niza ne moreta deliti istega
+ * (channel, providerMessageId) para. Vrne kanal, da `verifyWebhook` preveri
+ * podpis z istim kanalom, ki je definiral oddajo.
+ */
 async function findInvoiceByProviderMessageId(
+  channel: string,
   providerMessageId: string
-): Promise<(PendingInvoice & { channel: string }) | null> {
+): Promise<PendingInvoice | null> {
   const found = await prisma.eInvoice.findFirst({
-    where: { providerMessageId },
+    where: { channel, providerMessageId },
     select: { id: true, organizationId: true, status: true, providerMessageId: true, channel: true },
   })
   if (!found?.channel || !found.providerMessageId) return null
-  return found as PendingInvoice & { channel: string }
+  return found as PendingInvoice
 }
 
 /**
  * FAZA 3.2 — sprejme povratni webhook ponudnika (DELIVERED / REJECTED) in
- * deterministično prevede e-račun. Najprej preveri podpis (`verifyWebhook`),
- * potem v transakciji preveri, da stanje še ni terminalno. Vrača
- * `{ ok: boolean, changed: boolean, status?: string, error?: string }`.
+ * deterministično prevede e-račun.
  *
- * Varnost: `signature` se preverja z providerjevo verifikacijo — Direkt zahteva
- * idempotency ključ v headerju, certifikatni kanali pa podpis. Če se verifikacija
- * ne ujema, je vstop zavrnjen (ok:false, status 400/401), brez učinka na podatke.
+ * Varnost:
+ *   • `rawBody` so DEJANSKO prejeti bajti telesa (Buffer), kot prihajajo iz
+ *     HTTP veje; podpis se preverja nad njimi, ne nad ponovnim `JSON.stringify` (A5).
+ *   • `channel` mora biti del vhoda, da se pošiljka nedvomno veže na
+ *     (channel, providerMessageId) in preverja podpis s pravim kanalom (A6).
+ *   • `signature` + `timestamp` → `verifyWebhook` (HMAC za Direct, reject za
+ *     cert, ker certificirano preverjanje ni implementirano). Brez veljavnega
+ *     podpisa → ok:false BREZ učinka na podatke (fail-closed).
  */
 export async function recordDeliveryFromWebhook(input: {
+  channel: string
   providerMessageId: string
   status: "DELIVERED" | "REJECTED"
   signature: string | null
+  timestamp: string | null
+  rawBody: string | Buffer
 }): Promise<{ ok: boolean; changed: boolean; error?: string }> {
-  const { providerMessageId, status, signature } = input
+  const { channel, providerMessageId, status, signature, timestamp, rawBody } = input
   if (!providerMessageId) return { ok: false, changed: false, error: "missing providerMessageId" }
+  if (!channel) return { ok: false, changed: false, error: "missing channel" }
 
-  const inv = await findInvoiceByProviderMessageId(providerMessageId)
-  if (!inv?.channel) return { ok: false, changed: false, error: "unknown invoice" }
+  const inv = await findInvoiceByProviderMessageId(channel, providerMessageId)
+  if (!inv) return { ok: false, changed: false, error: "unknown invoice" }
 
   const provider = buildProvider(inv.channel)
   const cfg = await channelCfgFor(inv.organizationId, inv.channel)
-  const valid = provider.verifyWebhook(inv.organizationId, cfg, signature, JSON.stringify(input))
+  // A5 — preverjamo NAD SUROVIMI bajti telesa; nikoli nad re-serializacijo.
+  const valid = provider.verifyWebhook(inv.organizationId, cfg, signature, timestamp, rawBody)
   if (!valid) return { ok: false, changed: false, error: "invalid signature" }
 
   const ok = await prisma.$transaction(async (tx) => {
@@ -128,49 +156,73 @@ function statusMessage(
 }
 
 /**
- * FAZA 3.2 — preveri vse SUBMITTED e-račune (z znanim providerMessageId in
- * `channel`) pri ponudniku in jih prevede v DELIVERED / REJECTED / FAILED.
- * Idempotentno: termiнana stanja in sočasni webhook preprečijo dvojno prevajanje.
+ * Skupna logika polla za en seznam e-računov. `organizationId` (če podan) zoža
+ * scenarij na ENO organizacijo — uporabniška akcija nikoli ne sme pollati drugih.
  *
- * Vrača število prevedenih in skupno preverjenih.
+ * A10 — začasna omrežna napaka (throw / ne-terminalno stanje): NIKOLI takojšnji
+ * FAILED. Namesto tega povečamo `deliveryAttempts` in nastavimo
+ * `lastDeliveryAttemptAt`; šele ko je število zaporednih neuspehov >=
+ * `MAX_DELIVERY_ATTEMPTS`, vrstico prevedemo v FAILED. SUBMITTED / ne-terminalno
+ * lastnost ne šteje kot poskus (običajen "še čaka", ne napaka).
+ *
+ * Statusi se spreminjajo SAMO na podlagi preverjenega dokaza ponudnika:
+ * provider.status() mora vrniti DELIVERED/REJECTED/FAILED; vse ostalo ostane
+ * SUBMITTED. Noben ponudnik ne sme lažno vrniti DELIVERED.
  */
-export async function pollPendingDeliveries(
-  limit: number = DELIVERY_POLL_BATCH
+async function pollInvoices(
+  pending: PendingInvoice[],
+  // A7: `organizationId` zoži scenarij iz uporabniške akcije.
+  organizationIdFilter?: string
 ): Promise<{ polled: number; transitioned: number }> {
-  const rows = await prisma.eInvoice.findMany({
-    where: { status: "SUBMITTED", providerMessageId: { not: null }, channel: { not: null } },
-    take: limit,
-    select: { id: true, organizationId: true, status: true, providerMessageId: true, channel: true },
-  })
-  const pending = rows.filter(
-    (r): r is PendingInvoice => r.channel !== null && r.providerMessageId !== null
-  )
-
   let polled = 0
   let transitioned = 0
 
   for (const inv of pending) {
+    if (organizationIdFilter && inv.organizationId !== organizationIdFilter) {
+      // Defenzivno preskoči vrstico druge org, če bi filter kdaj zatajil.
+      // (indeks + where `organizationId` preprečita, da bi se sploh pojavila.)
+      continue
+    }
     const providerMessageId = inv.providerMessageId as string
     const channel = inv.channel as string
     const provider = buildProvider(channel)
     const cfg = await channelCfgFor(inv.organizationId, channel)
 
     let next: "SUBMITTED" | "DELIVERED" | "REJECTED" | "FAILED" = "SUBMITTED"
+    let transientError = false
     try {
       const s = await provider.status(inv.organizationId, cfg, providerMessageId)
       if (s.state === "DELIVERED" || s.state === "REJECTED" || s.state === "FAILED") {
-        next = s.state
+        next = s.state // preverjen dokaz ponudnika
       } else if (s.state === "SUBMITTED") {
-        next = "SUBMITTED" // še čaka — ostane SUBMITTED za naslednji poll
+        next = "SUBMITTED" // še čaka — a "pending" tudi ni napaka; 0 poskusov
       } else {
-        next = "FAILED" // CANCELLED / drugo → tehnična okvara
+        transientError = true // CANCELLED / neznano → začasno, ni dokončnega dokaza
       }
     } catch {
-      next = "FAILED"
+      transientError = true // začasna omrežna napaka / nedosegljivost ponudnika
     }
     polled += 1
 
-    if (next === "SUBMITTED") continue // brez spremembe, še ni zaključeno
+    if (next === "SUBMITTED" && !transientError) continue // ni spremembe, še čaka
+
+    // A10 — upravljanje začasnih napak z omejenim številom poskusov.
+    if (transientError && next === "SUBMITTED") {
+      const attemptAfter = await prisma.eInvoice.update({
+        where: { id: inv.id },
+        data: {
+          deliveryAttempts: { increment: 1 },
+          lastDeliveryAttemptAt: new Date(),
+        },
+        select: { deliveryAttempts: true },
+      }).catch(() => null)
+      if (!attemptAfter) continue
+      if (attemptAfter.deliveryAttempts < MAX_DELIVERY_ATTEMPTS) {
+        // Še ni izčrpanih poskusov → ostane SUBMITTED za naslednji cron-tek.
+        continue
+      }
+      next = "FAILED" // izčrpani poskusi → dokončni tehnični neuspeh
+    }
 
     const ok = await prisma.$transaction(async (tx) => {
       // Idempotentnost: preberemo trenutno stanje v transakciji — če ga je
@@ -178,16 +230,21 @@ export async function pollPendingDeliveries(
       const cur = await tx.eInvoice.findUnique({ where: { id: inv.id }, select: { status: true } })
       if (!cur || cur.status !== "SUBMITTED") return false
 
+      // Po uspešnem prehodu ponastavi števec poskusov (clean slate).
+      await tx.eInvoice.update({
+        where: { id: inv.id },
+        data: { status: next, deliveryAttempts: 0 },
+      })
       const kind = next === "DELIVERED" ? "DELIVERED" : next === "REJECTED" ? "REJECTED" : "FAILED"
+      const terminalState: "DELIVERED" | "REJECTED" | "FAILED" =
+        kind === "DELIVERED" ? "DELIVERED" : kind === "REJECTED" ? "REJECTED" : "FAILED"
       const receiptKind =
         next === "DELIVERED" ? "DELIVERY_ACK" : next === "REJECTED" ? "REJECTION" : "FAILURE"
-
-      await tx.eInvoice.update({ where: { id: inv.id }, data: { status: next } })
       await tx.eInvoiceDeliveryEvent.create({
-        data: { organizationId: inv.organizationId, einvoiceId: inv.id, kind, message: statusMessage(next, channel, providerMessageId), actorUserId: null },
+        data: { organizationId: inv.organizationId, einvoiceId: inv.id, kind, message: statusMessage(terminalState, channel, providerMessageId), actorUserId: null },
       })
       await tx.eInvoiceReceipt.create({
-        data: { organizationId: inv.organizationId, einvoiceId: inv.id, kind: receiptKind, status: next, message: statusMessage(next, channel, providerMessageId) },
+        data: { organizationId: inv.organizationId, einvoiceId: inv.id, kind: receiptKind, status: terminalState, message: statusMessage(terminalState, channel, providerMessageId) },
       })
       return true
     })
@@ -195,4 +252,44 @@ export async function pollPendingDeliveries(
   }
 
   return { polled, transitioned }
+}
+
+async function findPending(limit: number, organizationId?: string): Promise<PendingInvoice[]> {
+  const rows = await prisma.eInvoice.findMany({
+    where: {
+      status: "SUBMITTED",
+      providerMessageId: { not: null },
+      channel: { not: null },
+      ...(organizationId ? { organizationId } : {}),
+    },
+    take: limit,
+    orderBy: { updatedAt: "asc" },
+    select: { id: true, organizationId: true, status: true, providerMessageId: true, channel: true },
+  })
+  return rows.filter(
+    (r): r is PendingInvoice => r.channel !== null && r.providerMessageId !== null
+  )
+}
+
+/**
+ * SISTEMSKO globalno opravilo (cron) — polla SUBMITTED e-račune VSEH organizacij.
+ * Poklicano IZKLJUČNO iz `/api/cron/tick` (Bearer CRON_SECRET) ali
+ * `pollPendingDeliveriesSystem`. NIKOLI iz org uporabniške akcije.
+ */
+export async function pollPendingDeliveries(
+  limit: number = DELIVERY_POLL_BATCH
+): Promise<{ polled: number; transitioned: number }> {
+  return pollInvoices(await findPending(limit))
+}
+
+/**
+ * A7 — polla SUBMITTED e-račune SAMO ene organizacije. Org uporabnik (skrbnik /
+ * finančnik) to pokliče z lastnim `organizationId`; filter zoži poizvedbo in
+ * vrstice drugih organizacij so defenzivno preskočene.
+ */
+export async function pollPendingDeliveriesForOrg(
+  organizationId: string,
+  limit: number = DELIVERY_POLL_BATCH
+): Promise<{ polled: number; transitioned: number }> {
+  return pollInvoices(await findPending(limit, organizationId), organizationId)
 }

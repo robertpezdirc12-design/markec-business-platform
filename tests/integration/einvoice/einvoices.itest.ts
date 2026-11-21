@@ -28,7 +28,14 @@ vi.mock("@/lib/tenant-proof", () => ({ ORG_PROOF_HEADER: "x-org-slug-proof", ver
 
 import { __setDnsLookupForTests } from "@/lib/einvoice/endpoint-validation"
 import { __setDirectTransportForTests, __setDirectStatusForTests } from "@/lib/einvoice/providers"
-import { pollPendingDeliveries, recordDeliveryFromWebhook } from "@/lib/einvoice/delivery"
+import {
+  pollPendingDeliveries,
+  pollPendingDeliveriesForOrg,
+  recordDeliveryFromWebhook,
+  MAX_DELIVERY_ATTEMPTS,
+} from "@/lib/einvoice/delivery"
+import { signWebhookHmac } from "@/lib/einvoice/webhook-hmac"
+import { encryptSecret } from "@/lib/einvoice/secrets"
 import { prisma } from "@/lib/prisma"
 import {
   createDocument,
@@ -50,6 +57,9 @@ const ORGB = "einv-org-b"
 const ADMA = "einv-admin-a"
 const ADMB = "einv-admin-b"
 const CUST = "einv-cust"
+
+// F5.5.4.6.4 / Faza 3.2 (varnost) — kanalna skrivnost za HMAC podpis webhooka.
+const WEBHOOK_SECRET = "phase32-test-webhook-secret"
 
 async function clean() {
   for (const t of ["eInvoiceReceipt", "eInvoiceDeliveryEvent", "eInvoice", "eInvoiceChannelConfig", "eInvoiceSettings"] as const) {
@@ -422,7 +432,7 @@ describe("F5.5.4.6.4 / Faza 3.2 — dostavna zanka (poll)", () => {
       message: null,
     }))
 
-    const res = await pollPendingDeliveries()
+    const res = await pollPendingDeliveriesForOrg(ORGA)
     expect(res.polled).toBeGreaterThanOrEqual(1)
     expect(res.transitioned).toBe(1)
 
@@ -443,9 +453,9 @@ describe("F5.5.4.6.4 / Faza 3.2 — dostavna zanka (poll)", () => {
       timestamp: new Date().toISOString(),
       message: null,
     }))
-    await pollPendingDeliveries()
+    await pollPendingDeliveriesForOrg(ORGA)
     const first = await prisma.eInvoiceDeliveryEvent.count({ where: { einvoiceId: id, kind: "DELIVERED" } })
-    await pollPendingDeliveries()
+    await pollPendingDeliveriesForOrg(ORGA)
     const second = await prisma.eInvoiceDeliveryEvent.count({ where: { einvoiceId: id, kind: "DELIVERED" } })
     expect(first).toBe(1)
     expect(second).toBe(1)
@@ -459,32 +469,129 @@ describe("F5.5.4.6.4 / Faza 3.2 — dostavna zanka (poll)", () => {
       timestamp: new Date().toISOString(),
       message: "NAJ-SPEC ref error",
     }))
-    await pollPendingDeliveries()
+    await pollPendingDeliveriesForOrg(ORGA)
     const row = await prisma.eInvoice.findUnique({ where: { id } })
     expect(row?.status).toBe("REJECTED")
     expect(await prisma.eInvoiceReceipt.findFirst({ where: { einvoiceId: id, kind: "REJECTION" } })).toBeTruthy()
   })
 
-  it("provider status napaka → FAILED (tehnična okvara polla)", async () => {
+  it("A10: začasna napaka polla → ostane SUBMITTED; šele po izčrpanih poskusih FAILED", async () => {
     const id = await makeSubmitted()
     __setDirectStatusForTests(async () => {
-      throw new Error("timeout")
+      throw new Error("network timeout")
     })
-    await pollPendingDeliveries()
-    const row = await prisma.eInvoice.findUnique({ where: { id } })
+    // prvi začasni neuspeh: poveča deliveryAttempts, ostane SUBMITTED
+    await pollPendingDeliveriesForOrg(ORGA)
+    let row = await prisma.eInvoice.findUnique({ where: { id } })
+    expect(row?.status).toBe("SUBMITTED")
+    expect(row?.deliveryAttempts).toBe(1)
+
+    // ne zadostno: poskusi pod pragom → še vedno SUBMITTED, brez FAILURE receipt
+    await pollPendingDeliveriesForOrg(ORGA)
+    row = await prisma.eInvoice.findUnique({ where: { id } })
+    expect(row?.status).toBe("SUBMITTED")
+    expect(row?.deliveryAttempts).toBe(2)
+    expect(await prisma.eInvoiceReceipt.findFirst({ where: { einvoiceId: id, kind: "FAILURE" } })).toBeNull()
+
+    // izčrpani poskusi (MAX_DELIVERY_ATTEMPTS) → dokončni FAILED + FAILURE receipt
+    await pollPendingDeliveriesForOrg(ORGA)
+    row = await prisma.eInvoice.findUnique({ where: { id } })
     expect(row?.status).toBe("FAILED")
     expect(await prisma.eInvoiceReceipt.findFirst({ where: { einvoiceId: id, kind: "FAILURE" } })).toBeTruthy()
+  })
+
+  it("A7: sistemski globalni poller (cron) prevede SUBMITTED → DELIVERED", async () => {
+    const id = await makeSubmitted()
+    __setDirectStatusForTests(async () => ({
+      state: "DELIVERED",
+      providerStatus: "delivered",
+      timestamp: new Date().toISOString(),
+      message: null,
+    }))
+    const res = await pollPendingDeliveries()
+    expect(res.transitioned).toBeGreaterThanOrEqual(1)
+    expect((await prisma.eInvoice.findUnique({ where: { id } }))?.status).toBe("DELIVERED")
+  })
+
+  it("A7: org polling ORGA ne sme prevesti pošiljke druge organizacije (ORGB)", async () => {
+    // ORGA pošiljka → DELIVERED
+    const idA = await makeSubmitted()
+    // ORGB pošiljka → z lastnim kanalom (v ORGB) in status override DELIVERED.
+    await (prisma as any).eInvoiceChannelConfig.deleteMany({ where: { organizationId: ORGB, channel: "direct" } }).catch(() => {})
+    await (prisma as any).eInvoiceChannelConfig.create({
+      data: {
+        organizationId: ORGB,
+        channel: "direct",
+        label: "Partner proxy",
+        status: "ENABLED",
+        providerEndpoint: "https://provider.example/api/submit",
+        config: {},
+        encryptedSecret: "",
+      },
+    })
+    // Dokument ustvarimo pod ORGA (mk uporablja trenutno ORGA sejo) — naslednje
+    // seje `beforeEach` obrišejo ORGA dokumente, zato ORGB Invoice spodaj na koncu
+    // testa IZRECNO obrišemo, da ne blokira FK-ja za ORGA dokumente.
+    const docB = await mk("INVOICE", 51)
+    const idB = (await prisma.eInvoice.create({
+      data: {
+        organizationId: ORGB,
+        documentId: docB,
+        kind: "INVOICE",
+        format: "UBL21_PEPPOL_3",
+        docCode: "RAC-B/2026",
+        xml: Buffer.from("<Invoice/>").toString("base64"),
+        sha256: "sha-" + Math.random().toString(36).slice(2),
+        size: 32,
+        xmlValidatedXsd: true,
+        xmlValidatedBusiness: true,
+        standardVersion: "PEPPOL-BIS-3.0.21",
+        validatorVersion: "UBL-2.1",
+        status: "SUBMITTED",
+        providerMessageId: "pm-orgb-isolated",
+        channel: "direct",
+      },
+    })).id
+    __setDirectStatusForTests(async () => ({
+      state: "DELIVERED",
+      providerStatus: "delivered",
+      timestamp: new Date().toISOString(),
+      message: null,
+    }))
+
+    // solo polling org A: ORGA napreduje, ORGB ostane SUBMITTED
+    const res = await pollPendingDeliveriesForOrg(ORGA)
+    expect((await prisma.eInvoice.findUnique({ where: { id: idA } }))?.status).toBe("DELIVERED")
+    expect((await prisma.eInvoice.findUnique({ where: { id: idB } }))?.status).toBe("SUBMITTED")
+    expect(res.transitioned).toBeGreaterThanOrEqual(1)
+
+    // Pospravi ORGB pošiljko + njen ORGA dokument, da naslednja `beforeEach`
+    // (ki čisti ORGA e-račune in dokumente) ne zadane FK (EInvoice → document)
+    // prek tega čez-org referenčnega para.
+    await prisma.eInvoiceReceipt.deleteMany({ where: { einvoiceId: idB } })
+    await prisma.eInvoiceDeliveryEvent.deleteMany({ where: { einvoiceId: idB } })
+    await prisma.eInvoice.delete({ where: { id: idB } })
+    await prisma.document.delete({ where: { id: docB } }).catch(() => {})
   })
 })
 
 describe("F5.5.4.6.4 / Faza 3.2 — povratni webhook", () => {
   it("neznana pošiljka → ok:false, brez učinka", async () => {
-    const res = await recordDeliveryFromWebhook({ providerMessageId: "pm-neobstoječi", status: "DELIVERED", signature: "spoof" })
+    const res = await recordDeliveryFromWebhook({
+      channel: "direct",
+      providerMessageId: "pm-neobstoječi",
+      status: "DELIVERED",
+      signature: "sha256=spoof",
+      timestamp: new Date().toISOString(),
+      rawBody: '{"channel":"direct","providerMessageId":"pm-neobstoječi","status":"DELIVERED"}',
+    })
     expect(res.ok).toBe(false)
+    expect(res.error).toBe("unknown invoice")
   })
 })
 
 describe("F5.5.4.6.4 / Faza 3.2 — povratni webhook (legitimni)", () => {
+  /** Ustvari SUBMITTED e-račun na kanalu 'direct' s kanalno skrivnostjo. */
   async function makeSubmitted(): Promise<string> {
     await (prisma as any).eInvoiceChannelConfig.deleteMany({ where: { organizationId: ORGA, channel: "direct" } }).catch(() => {})
     await (prisma as any).eInvoiceChannelConfig.create({
@@ -495,7 +602,9 @@ describe("F5.5.4.6.4 / Faza 3.2 — povratni webhook (legitimni)", () => {
         status: "ENABLED",
         providerEndpoint: "https://provider.example/api/submit",
         config: {},
-        encryptedSecret: "",
+        // A3 — webhook skrivnost kanala, shranjena ŠIFRIRANO (AES-256-GCM)
+        // prek `encryptSecret` modula `einvoice/secrets` kot JSON-vrednost.
+        encryptedSecret: encryptSecret(JSON.stringify({ webhookSecret: WEBHOOK_SECRET })),
       },
     })
     const docId = await mk("INVOICE", 40)
@@ -521,9 +630,23 @@ describe("F5.5.4.6.4 / Faza 3.2 — povratni webhook (legitimni)", () => {
     return inv.id
   }
 
-  it("legitimni webhook (Direct verifyWebhook=true) → DELIVERED", async () => {
+  /** Sestavi veljavno, HMAC-podpisano webhook pošiljko (A3/A5). */
+  function signedWebhook(overrides: { status?: "DELIVERED" | "REJECTED"; providerMessageId?: string; sigPrefix?: string } = {}) {
+    const body = {
+      channel: "direct",
+      providerMessageId: overrides.providerMessageId ?? "pm-web-1",
+      status: overrides.status ?? "DELIVERED",
+    }
+    const rawBody = JSON.stringify(body)
+    const timestamp = new Date().toISOString()
+    const signature = (overrides.sigPrefix ?? "sha256=") + signWebhookHmac(WEBHOOK_SECRET, rawBody, timestamp)
+    return { ...body, rawBody, timestamp, signature }
+  }
+
+  it("legitimni webhook (veljaven HMAC) → DELIVERED", async () => {
     const id = await makeSubmitted()
-    const res = await recordDeliveryFromWebhook({ providerMessageId: "pm-web-1", status: "DELIVERED", signature: "direct-key" })
+    const w = signedWebhook()
+    const res = await recordDeliveryFromWebhook({ ...w, channel: "direct", status: "DELIVERED" })
     expect(res.ok).toBe(true)
     expect(res.changed).toBe(true)
     const row = await prisma.eInvoice.findUnique({ where: { id } })
@@ -531,10 +654,34 @@ describe("F5.5.4.6.4 / Faza 3.2 — povratni webhook (legitimni)", () => {
     expect(await prisma.eInvoiceDeliveryEvent.findFirst({ where: { einvoiceId: id, kind: "DELIVERED" } })).toBeTruthy()
   })
 
+  it("webhook s ponarejenim podpisom → zavrnjen, brez učinka (fail-closed)", async () => {
+    const id = await makeSubmitted()
+    const w = signedWebhook({ sigPrefix: "sha256=" })
+    const forged = { ...w, signature: "sha256=" + "0".repeat(64) }
+    const res = await recordDeliveryFromWebhook(forged)
+    expect(res.ok).toBe(false)
+    expect(res.error).toBe("invalid signature")
+    const row = await prisma.eInvoice.findUnique({ where: { id } })
+    expect(row?.status).toBe("SUBMITTED") // ni spremenjeno
+  })
+
+  it("webhook z neveljavnim časom (timestamp predaleč nazaj) → zavrnjen", async () => {
+    await makeSubmitted()
+    const w = signedWebhook()
+    const stale = { ...w, timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString() }
+    // ponovno podpišemo z istim (starim) timestampom — podpis je "veljaven",
+    // a paket zavrnemo zaradi replay zaščite
+    stale.signature = "sha256=" + signWebhookHmac(WEBHOOK_SECRET, stale.rawBody, stale.timestamp)
+    const res = await recordDeliveryFromWebhook(stale)
+    expect(res.ok).toBe(false)
+    expect(res.error).toBe("invalid signature")
+  })
+
   it("že zaključen e-račun → changed:false (idempotentno)", async () => {
     const id = await makeSubmitted()
-    await recordDeliveryFromWebhook({ providerMessageId: "pm-web-1", status: "DELIVERED", signature: "direct-key" })
-    const again = await recordDeliveryFromWebhook({ providerMessageId: "pm-web-1", status: "DELIVERED", signature: "direct-key" })
+    const w = signedWebhook()
+    await recordDeliveryFromWebhook({ ...w, channel: "direct", status: "DELIVERED" })
+    const again = await recordDeliveryFromWebhook({ ...signedWebhook(), channel: "direct", status: "DELIVERED" })
     expect(again.changed).toBe(false)
     expect(await prisma.eInvoiceDeliveryEvent.count({ where: { einvoiceId: id, kind: "DELIVERED" } })).toBe(1)
   })

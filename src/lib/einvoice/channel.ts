@@ -52,7 +52,13 @@ export interface EInvoiceProvider {
   status(orgId: string, channelCfg: ChannelCfg, providerMessageId: string): Promise<DeliveryStatus>
 
   /** Preveri podpis/webhook pošiljatelja; vrne true le za legit – zaščita pred podtujitvijo. */
-  verifyWebhook(orgId: string, channelCfg: ChannelCfg, signatureHeader: string | null, rawBody: string | Buffer): boolean
+  verifyWebhook(
+    orgId: string,
+    channelCfg: ChannelCfg,
+    signatureHeader: string | null,
+    timestampHeader: string | null,
+    rawBody: string | Buffer
+  ): boolean
 }
 
 /** Neobčutljiva konfiguracija kanala (kar je dovoljeno shraniti v DB). */

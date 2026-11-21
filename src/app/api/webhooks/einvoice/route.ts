@@ -1,52 +1,81 @@
 import { NextResponse } from "next/server"
 import { recordDeliveryFromWebhook } from "@/lib/einvoice/delivery"
+import { SIGNATURE_HEADER, TIMESTAMP_HEADER } from "@/lib/einvoice/webhook-hmac"
 
 export const runtime = "nodejs"
 
 /**
- * FAZA 3.2 — povratni webhook ponudnika e-pošiljke.
+ * FAZA 3.2 (varnost) — povratni webhook ponudnika e-pošiljke.
  *
  * Ponudnik javi telematsko dostavo (DELIVERED) ali vsebinsko zavrnitev
- * (REJECTED). Podpis preveri `provider.verifyWebhook` (certifikatni kanal =
- * realen podpis; Direct = idempotency-key v headerju). Vsak nezaupljiv klic
- * vrne 4xx brez učinka na podatke.
+ * (REJECTED). Podpis preveri `provider.verifyWebhook`:
+ *   • Direct kanal — HMAC-SHA256 s kanalno skrivnostjo, nad SUROVIMI bajti
+ *     telesa (`x-einvoice-signature`), s časovno omejitvijo
+ *     (`x-einvoice-timestamp`) in zaščito pred ponovitvijo.
+ *   • Certifikatni kanal (UJP/PEPPOL) — trenutno zavrnjen (fail-closed), dokler
+ *     dokumentirano podpisno preverjanje ni implementirano.
+ * Vsak nezaupljiv klic vrne 4xx BREZ učinka na podatke.
  *
- * Body: `{ providerMessageId: string, status: "DELIVERED" | "REJECTED", message?: string }`
- * Header: `x-einvoice-signature` (obvezen) — za Direct kanal mora biti prisoten
- * (ne nujno kriptografsko močan), kar prepreči naključne botne pozive.
+ * Ključno: `rawBody` so DEJANSKO prejeti bajti (Buffer), ne ponovno
+ * sestavljen `JSON.stringify(input)`. To preprečuje vsakršno neskladje med
+ * podpisanim in razčlenjenim telesom (A5).
+ *
+ * Body: `{ channel: string, providerMessageId: string, status: "DELIVERED" | "REJECTED", message?: string }`
+ * Headers: `x-einvoice-signature` (obvezen), `x-einvoice-timestamp` (obvezen, ISO-8601)
  */
 export async function POST(req: Request): Promise<NextResponse> {
-  const signature = req.headers.get("x-einvoice-signature")
-  if (!signature) {
-    return NextResponse.json({ ok: false, error: "missing signature header" }, { status: 400 })
+  const signature = req.headers.get(SIGNATURE_HEADER)
+  const timestamp = req.headers.get(TIMESTAMP_HEADER)
+  if (!signature || !timestamp) {
+    return NextResponse.json(
+      { ok: false, error: "missing signature or timestamp header" },
+      { status: 400 }
+    )
   }
 
-  let body: unknown
+  // A5 — preberi surove bajte telesa, da lahko podpis preverimo nad njimi.
+  let rawBody: Buffer
   try {
-    body = await req.json()
+    rawBody = Buffer.from(await req.arrayBuffer())
+  } catch {
+    return NextResponse.json({ ok: false, error: "unreadable body" }, { status: 400 })
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(rawBody.toString("utf8"))
   } catch {
     return NextResponse.json({ ok: false, error: "invalid json" }, { status: 400 })
   }
 
-  const b = body as { providerMessageId?: unknown; status?: unknown; message?: unknown }
+  const b = parsed as {
+    channel?: unknown
+    providerMessageId?: unknown
+    status?: unknown
+    message?: unknown
+  }
+  const channel = typeof b.channel === "string" && b.channel.length > 0 ? b.channel : null
   const providerMessageId = typeof b.providerMessageId === "string" ? b.providerMessageId : null
   const status =
     b.status === "DELIVERED" || b.status === "REJECTED" ? (b.status as "DELIVERED" | "REJECTED") : null
 
-  if (!providerMessageId || !status) {
+  if (!channel || !providerMessageId || !status) {
     return NextResponse.json({ ok: false, error: "invalid payload" }, { status: 400 })
   }
 
   const res = await recordDeliveryFromWebhook({
+    channel,
     providerMessageId,
     status,
     signature,
+    timestamp,
+    rawBody,
   })
 
   if (!res.ok) {
-    const statusCode = res.error === "invalid signature" ? 401 : 400
+    const statusCode = res.error === "invalid signature" ? 401 : res.error === "unknown invoice" ? 404 : 400
     return NextResponse.json({ ok: false, error: res.error }, { status: statusCode })
   }
 
-  return NextResponse.json({ ok: true, changed: res.changed, status })
+  return NextResponse.json({ ok: true, changed: res.changed, channel, status })
 }

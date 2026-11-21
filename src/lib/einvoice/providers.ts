@@ -43,6 +43,7 @@ import {
 } from "./channel"
 import { xmlDsigSign } from "./xmldsig"
 import { buildAs4Multipart } from "./as4"
+import { verifyWebhookHmac } from "./webhook-hmac"
 import { assertPublicHttpsUrl, resolveAndVerifyEndpoint } from "./endpoint-validation"
 
 /** Vedno anajdi trenutni globalni fetch (testabilno; brez enkratne zamrznitve). */
@@ -231,13 +232,25 @@ export class DirectHttpProvider implements EInvoiceProvider {
   }
 
   verifyWebhook(
-    _orgId: string,
-    _cfg: ChannelCfg,
-    _signatureHeader: string | null,
-    _rawBody: string | Buffer
+    orgId: string,
+    cfg: ChannelCfg,
+    signatureHeader: string | null,
+    timestampHeader: string | null,
+    rawBody: string | Buffer
   ): boolean {
-    // Direct kanal nima trdnih podpisov; tránost opremo na idempotency-key.
-    return true
+    // A3 — Interni Direct kanal uporablja HMAC-SHA256 podpis s skrivnostjo na
+    // ravni kanala (ChannelCfg.credentials.webhookSecret), nad SUROVIM telesom,
+    // s časovno omejitvijo in zaščito pred ponovitvijo. Brez skrivnosti ali ob
+    // neuspešni verifikaciji → zavrnjeno (fail-closed).
+    if (cfg.organizationId !== orgId) return false
+
+    const secret = cfg.credentials?.webhookSecret ?? null
+    if (!secret) {
+      // Kanal nima konfiguriranega webhook ključa → zavrni; nikoli ne vračaj `true`
+      // le zato, ker je header prisoten.
+      return false
+    }
+    return verifyWebhookHmac(secret, signatureHeader, timestampHeader, rawBody)
   }
 }
 
@@ -284,6 +297,7 @@ export class UnconfiguredProvider implements EInvoiceProvider {
     _orgId: string,
     _cfg: ChannelCfg,
     _signatureHeader: string | null,
+    _timestampHeader: string | null,
     _rawBody: string | Buffer
   ): boolean {
     return false
@@ -591,12 +605,17 @@ export class CertHttpProvider implements EInvoiceProvider {
     _orgId: string,
     _cfg: ChannelCfg,
     _signatureHeader: string | null,
+    _timestampHeader: string | null,
     _rawBody: string | Buffer
   ): boolean {
-    // UJP/PEPPOL dostavni API-ji pošiljajo povratne ACE/receipt diplome prek
-    // ločenih webhook/polling — intnost tukaj opremo na Idempotency-Key (kot
-    // Direct) in Trusted proxy konfiguracijo.
-    return true
+    // A4 — Certifikatni kanal (UJP/PEPPOL) trenutno NIMA implementiranega
+    // dokumentiranega podpisnega protokola za povratne webhooke. Ker lahko
+    // preverjamo samo verodostojen podpis, vsak webhook zavrnemo (fail-closed).
+    // Ko bo uradni Podpis/ACE-dokazilo implementiran, se to nadomesti z realno
+    // verifikacijo; status za certifikatni kanal ostaja izključno prek varnega
+    // statusnega polla (SUBMITTED, dokler ni trdnega dokaza). Nikoli `true` zgolj
+    // zaradi prisotnosti headerja.
+    return false
   }
 }
 
