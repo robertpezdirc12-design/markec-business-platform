@@ -155,6 +155,23 @@ spremembe so označene z ✅.
   `tests/unit/seed-failsafe.test.ts`. Preostalo iz #110 (brisanje ghost
   Vercel projekta, prenos domene, revokacija obeh objavljenih tokenov,
   higiena Neon DB) so ročni lastniški koraki na zunanjih platformah.
+
+## GitHub Issues (#127 epic) — rešeno iz kode
+- ✅ **#130 (P0 security) — CustomRole org-scoped lookup**: v
+  `src/lib/permissions/effective.ts` je bil `prisma.customRole.findFirst`
+  samo po `id` (cross-tenant potencial). Dodan `organizationId` v `where`.
+  Obstoječi CRUD (`custom-roles.ts`) je že bil org-scoped. Ostali del obsega
+  (Prisma relacija/FK za `OrganizationMember.customRoleId`) zahteva DB
+  migracijo — ledeno-pb ne narejena. Zajeto v
+  `tests/security/org-scoped-permissions-f0.test.ts`.
+- ✅ **#129 (P0 DB) — Prisma migration drift BookingExperimentEvent**: ime
+  indeksa je bilo >63 bytes (Prisma limit) — nedestruktivno preimenovano v
+  kratko eksplicitno ime `BookingExperimentEvent_variant_kind_date_idx` (map)
+  prek nove migracije `20261202000000_fix_booking_experiment_index_name`.
+  Zajeto v `tests/unit/booking-experiment-index-drift.test.ts`.
+- #128 (7 failing DB integration testov), #131 (tenant audit), #132
+  (onboarding), #133 (renderer postavitve), #134 (poglobiti pilote) — ostajajo
+  odprti (večji obsegi, nekatere DB integracijske).
 - ✅ **Performance-as-UX / bundle audit** regresija:
   `tests/unit/performance-bundle-audit.test.ts` — potrdi da težke
   (react-hook-form+zod+date-fns) kot `ReviewForm` na landing ostajajo

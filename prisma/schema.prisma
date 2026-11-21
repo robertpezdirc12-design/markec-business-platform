@@ -3202,6 +3202,6 @@ model BookingExperimentEvent {
   appointmentId String?
   createdAt DateTime @default(now())
 
-  @@index([organizationId, variant, kind, createdAt])
-  @@index([organizationId, sessionKey])
+  @@index([organizationId, variant, kind, createdAt], map: "BookingExperimentEvent_variant_kind_date_idx")
+  @@index([organizationId, sessionKey], map: "BookingExperimentEvent_organizationId_sessionKey_idx")
 }

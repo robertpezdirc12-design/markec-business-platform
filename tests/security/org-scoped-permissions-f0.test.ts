@@ -56,11 +56,14 @@ describe("F0 — getEffectivePermissions je org-scoped (strukturna jamstva)", ()
     expect(eff).toContain("role: member.role")
   })
 
-  it("org-scoped custom role bere iz OrganizationMember.customRoleId (ne global User.customRole)", () => {
+  it("org-scoped custom role bere iz OrganizationMember.customRoleId in je OMEJEN na lastno organizacijo (#130)", () => {
     const eff = read("src/lib/permissions/effective.ts")
     expect(eff).toContain("customRoleId: true")
     expect(eff).toContain("prisma.customRole.findFirst")
-    expect(eff).toContain("where: { id: member.customRoleId }")
+    // #130 (P0): lookup mora biti org-scoped (+ organizationId), da prepreči
+    // cross-tenant branje CustomRole iz druge organizacije ob poškodovani referenci.
+    expect(eff).toContain("where: { id: member.customRoleId, organizationId }")
+    expect(eff).not.toContain('where: { id: member.customRoleId },')
   })
 
   it("legacy member (brez OrganizationMember) dobi pravice SAMO če je dejansko vezan na org", () => {

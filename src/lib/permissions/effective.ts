@@ -53,8 +53,12 @@ export async function getEffectivePermissions(
       // truth for a member's effective permission set in this workspace).
       let customRolePermissions: unknown = null
       if (member.customRoleId) {
+        // #130 (P0 security): CustomRole je org-scoped — poiščemo ga SAMO
+        // znotraj iste organizacije, kot član. Prej je findFirst iskal
+        // samo po id (cross-tenant potencial), kar bi lahko prebralo vlogo
+        // iz druge organizacije ob poškodovani referenci.
         const customRole = await prisma.customRole.findFirst({
-          where: { id: member.customRoleId },
+          where: { id: member.customRoleId, organizationId },
           select: { permissions: true },
         })
         customRolePermissions = customRole?.permissions ?? null
