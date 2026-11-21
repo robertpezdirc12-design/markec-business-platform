@@ -29,6 +29,7 @@
 // ============================================================
 
 import https from "node:https"
+import { isIP } from "node:net"
 import { URL } from "node:url"
 
 import {
@@ -47,7 +48,8 @@ import { assertPublicHttpsUrl, resolveAndVerifyEndpoint } from "./endpoint-valid
 /** Vedno anajdi trenutni globalni fetch (testabilno; brez enkratne zamrznitve). */
 function getGlobalFetch(): typeof fetch {
   const f = (globalThis as { fetch?: typeof fetch }).fetch
-  return f ?? (async () => new Response(null, { status: 501 } as ResponseInit))
+  const fallback: typeof fetch = async () => new Response(null, { status: 501 } as ResponseInit)
+  return f ?? fallback
 }
 
 function sleep(ms: number): Promise<void> {
@@ -65,6 +67,13 @@ export class DirectHttpProvider implements EInvoiceProvider {
   readonly kind = "SAAS_PARTNER" as const
   readonly label = "Neposredna HTTP pot"
   readonly testMode: boolean
+
+  /**
+   * Injektabilni httptransport za Direct. Privzeto `nodeHttpsTransport`.
+   * Testi injektirajo mock (namesto da bi kazali na pravo omrežje) — uporaba
+   * preverjenega IP-ja poteka VEDNO skozi ta transport, zato je deterministična.
+   */
+  _directTransport: HttpsTransport = nodeHttpsTransport
 
   constructor(testMode = false) {
     this.testMode = testMode
@@ -114,27 +123,62 @@ export class DirectHttpProvider implements EInvoiceProvider {
     let lastStatus = 0
     let lastText = ""
 
+    // P1 DNS-rebinding: če je DNS preveril resoliran javni IP, povežemo TCP
+    // NEPOSREDNO na ta IP (nikoli ponovna razrešitev hostname-ja). Hostname
+    // ohranimo za TLS SNI in HTTP `Host`. Če `dnsCheck.ip` ni na voljo
+    // (ne-razrešljivo ime kot `.example` → testni/mock transport), uporabimo
+    // injektabilni global fetch, ki ga enote Mockajo.
+    const sendDirect = async () => {
+      const headers = {
+        "Content-Type": "application/xml; charset=utf-8",
+        Accept: "application/json, application/xml",
+        "Idempotency-Key": payload.einvoiceId,
+        "X-EInvoice-Sha256": payload.xmlSha256,
+        "X-EInvoice-Org": orgId,
+        "X-EInvoice-Api-Key": cfg.credentials?.apiKey ?? "",
+      }
+      if (dnsCheck.ip) {
+        // Produkcijska pot: pingnjen IP prek node:https z lookup override →
+        // SNI/Host ostaneta originalni hostname. `redirect: manual` ustreza
+        // temu, da node:https ne sledi 3xx samodejno.
+        const opts = buildHttpsRequestOptions(cfg, headers, dnsCheck.ip)
+        const r = await pickDirectTransport(this)(opts, payload.xml)
+        return {
+          status: r.status,
+          text: r.body.slice(0, 500),
+          header: (name: string) => {
+            const v = r.headers?.[name.toLowerCase()]
+            if (Array.isArray(v)) return v.join(", ")
+            return v ?? null
+          },
+        }
+      }
+      // Testna/mock pot: `.example` in injektabilni global fetch brez mreže.
+      if (!cfg.providerEndpoint) {
+        throw new Error("CHANNEL_NOT_READY: providerEndpoint ni nastavljen.")
+      }
+      const res = await getGlobalFetch()(cfg.providerEndpoint, {
+        method: "POST",
+        redirect: "manual", // #1318: ne sledi 3xx na morebiti notranji naslov
+        headers,
+        body: payload.xml,
+      })
+      return {
+        status: res.status,
+        text: await safeText(res),
+        header: (name: string) => res.headers.get(name) ?? null,
+      }
+    }
+
     // Retry do MAX_RETRIES za začasne (5xx) napake; 4xx ne retryarno.
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const res = await getGlobalFetch()(cfg.providerEndpoint, {
-          method: "POST",
-          redirect: "manual", // #1318: ne sledi 3xx na morebiti notranji naslov
-          headers: {
-            "Content-Type": "application/xml; charset=utf-8",
-            Accept: "application/json, application/xml",
-            "Idempotency-Key": payload.einvoiceId,
-            "X-EInvoice-Sha256": payload.xmlSha256,
-            "X-EInvoice-Org": orgId,
-            "X-EInvoice-Api-Key": cfg.credentials?.apiKey ?? "",
-          },
-          body: payload.xml,
-        })
+        const res = await sendDirect()
         lastStatus = res.status
-        lastText = (await safeText(res)).slice(0, 500)
+        lastText = res.text.slice(0, 500)
 
         if (res.status >= 200 && res.status < 300) {
-          const providerId = res.headers.get("x-provider-message-id") ?? null
+          const providerId = res.header("x-provider-message-id")
           return {
             accepted: true,
             providerMessageId: providerId,
@@ -250,6 +294,19 @@ export type HttpsTransport = (
   xml: string
 ) => Promise<{ status: number; headers: Record<string, string | string[] | undefined>; body: string }>
 
+// Testni injekcijski transport za DirectHttpProvider. Uporablja ga submitEinvoice
+// (ki provider zgradi prek buildProvider brez instance-reference), kadar npr.
+// integracijski test pošilja na `.example` naslov skozi mock DNS → pinned IP.
+let directTransportOverride: HttpsTransport | null = null
+export function __setDirectTransportForTests(t: HttpsTransport | null): void {
+  directTransportOverride = t
+}
+function pickDirectTransport(instance: { _directTransport: HttpsTransport }): HttpsTransport {
+  // Kadar je v testu podan override, ima prednost (ITest) — sicer per-instance
+  // (enotni testi), nato privzeti nodeHttpsTransport.
+  return directTransportOverride ?? instance._directTransport
+}
+
 /** Implementation na osnovi `node:https` (podpira klientov X.509 certifikat). */
 export function nodeHttpsTransport(opts: https.RequestOptions, xml: string): Promise<{
   status: number
@@ -276,16 +333,43 @@ export function nodeHttpsTransport(opts: https.RequestOptions, xml: string): Pro
  * brez omrežja. Cert/ključ/CA prihajajo iz `ChannelCfg.credentials` (občutljivo,
  * nastavi ključ v action) — tukaj se nikoli ne shranjuje čistih v DB.
  */
-export function buildHttpsRequestOptions(cfg: ChannelCfg, headers: Record<string, string>): https.RequestOptions {
+export function buildHttpsRequestOptions(
+  cfg: ChannelCfg,
+  headers: Record<string, string>,
+  pinnedIp?: string | null
+): https.RequestOptions {
   if (!cfg.providerEndpoint) throw new Error("CHANNEL_NOT_READY: providerEndpoint ni nastavljen.")
   const url = new URL(cfg.providerEndpoint)
   const cred = cfg.credentials ?? {}
-  return {
-    hostname: url.hostname,
+  const hostname = url.hostname
+  const opts: https.RequestOptions = {
+    hostname,
     port: url.port ? Number(url.port) : url.protocol === "https:" ? 443 : undefined,
     path: `${url.pathname}${url.search}`,
     method: "POST",
-    headers,
+    // #1318 (P1 DNS-rebinding): ko imamo DNS preverjen IP (resolveAndVerifyEndpoint),
+    // povežemo TCP NEPOSREDNO na ta IP — nikoli ne razrešimo hostname-ja še
+    // enkrat (kar bi omogočilo rebinding). Hostname OHRANIMO za TLS SNI
+    // (`servername`) in HTTP `Host` glavo, da TLS veriga in virtualno hostanje
+    // delujeta. Kadar `pinnedIp` ni na voljo (ne-reseljivo ime, mock test), se
+    // uporabi običajno razreševanje — v produkciji je to le izjema (glej
+    // resolveAndVerifyEndpoint).
+    ...(pinnedIp
+      ? {
+          lookup: (
+            _host: string,
+            _lookupOpts: unknown,
+            cb: (err: NodeJS.ErrnoException | null, address: string, family: number) => void
+          ) => cb(null, pinnedIp, isIP(pinnedIp) === 6 ? 6 : 4),
+          // TLS SNI = originalni hostname (ne preverjeni IP), za pravilno
+          // predstavitev certifikata končne točke.
+          servername: hostname,
+        }
+      : {}),
+    // Host glava: originalni hostname, da virtualni gostitelj dobi pravilno
+    // zahtevo tudi, ko povezujemo na preverjeni IP.
+    headers: { ...headers, Host: hostname },
+    // mTLS X.509 klient certifikat + private key (UJP SIGOV-CA / PEPPOL AP cert).
     // mTLS X.509 klient certifikat + private key (UJP SIGOV-CA / PEPPOL AP cert).
     ...(cred.cert ? { cert: cred.cert } : {}),
     ...(cred.key ? { key: cred.key } : {}),
@@ -299,6 +383,7 @@ export function buildHttpsRequestOptions(cfg: ChannelCfg, headers: Record<string
     rejectUnauthorized: true,
     timeout: 20_000,
   } as https.RequestOptions & { timeout?: number }
+  return opts
 }
 
 /**
@@ -421,7 +506,7 @@ export class CertHttpProvider implements EInvoiceProvider {
       if (!v.ok) return { accepted: false, providerMessageId: null, state: "FAILED", technicalOnly: false, errors: [`SSRF: ${v.error}`] }
       const dns = await resolveAndVerifyEndpoint(v.publicHost)
       if (!dns.ok) return { accepted: false, providerMessageId: null, state: "FAILED", technicalOnly: false, errors: [`SSRF: ${dns.error}`] }
-      opts = buildHttpsRequestOptions(cfg, this.headersFor(cfg, payload, contentType))
+      opts = buildHttpsRequestOptions(cfg, this.headersFor(cfg, payload, contentType), dns.ip)
     } catch (e) {
       return {
         accepted: false,

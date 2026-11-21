@@ -26,6 +26,8 @@ vi.mock("next/cache", () => ({ revalidatePath: () => undefined, revalidateTag: (
 vi.mock("next/headers", () => ({ headers: async () => new Headers({}) }))
 vi.mock("@/lib/tenant-proof", () => ({ ORG_PROOF_HEADER: "x-org-slug-proof", verifyOrgSlug: async () => true }))
 
+import { __setDnsLookupForTests } from "@/lib/einvoice/endpoint-validation"
+import { __setDirectTransportForTests } from "@/lib/einvoice/providers"
 import { prisma } from "@/lib/prisma"
 import {
   createDocument,
@@ -106,9 +108,15 @@ beforeEach(async () => {
   await prisma.documentPayment.deleteMany({ where: { organizationId: ORGA } })
   await prisma.document.deleteMany({ where: { organizationId: ORGA } })
   await prisma.documentSequence.deleteMany({ where: { organizationId: ORGA } })
+  // P1:#1318 — fail-closed DNS blokira ne-rassolve `.example` naslova; v testu
+  // injiciramo mock DNS → javni IP + mock transport, da Direct pošlje deterministično.
+  __setDnsLookupForTests(async () => [{ address: "93.184.216.34", family: 4 }])
+  __setDirectTransportForTests(async () => ({ status: 202, headers: {}, body: "accepted" }))
 })
 
 afterAll(async () => {
+  __setDnsLookupForTests(null)
+  __setDirectTransportForTests(null)
   await clean()
   await prisma.$disconnect()
 })

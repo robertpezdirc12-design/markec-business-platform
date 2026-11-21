@@ -39,7 +39,16 @@ export type IntegrityIssue = {
 export async function auditOrganizationIntegrity(
   organizationId: string
 ): Promise<IntegrityIssue[]> {
+  return (await auditWithTruncation(organizationId)).issues
+}
+
+/** Skupna notranja izvedba — nizi, + ali je bila katera posamezna poizvedba
+ *  skrajšana na svoj LIMIT 50 (to je pravi `truncated` signal, ne seštevek). */
+async function auditWithTruncation(
+  organizationId: string
+): Promise<{ issues: IntegrityIssue[]; truncated: boolean }> {
   const issues: IntegrityIssue[] = []
+  let truncated = false
 
   // ---- 1. DocumentPayment.organizationId === organizationId dokumenta ----
   // Napačno vezano plačilo je znak cross-tenant alokacije ali napačnega
@@ -53,6 +62,7 @@ export async function auditOrganizationIntegrity(
     WHERE d."organizationId" = ${organizationId}
       AND p."organizationId" <> d."organizationId"
     LIMIT 50`
+  if (paymentOrgMismatch.length === 50) truncated = true
   for (const row of paymentOrgMismatch) {
     issues.push({
       kind: "payment-org-mismatch",
@@ -88,6 +98,7 @@ export async function auditOrganizationIntegrity(
            OR a."organizationId" <> adv."organizationId"
            OR a."organizationId" <> inv."organizationId")
     LIMIT 50`
+  if (advanceOrgMismatch.length === 50) truncated = true
   for (const row of advanceOrgMismatch) {
     if (!row.hasAdvance) {
       issues.push({
@@ -125,6 +136,7 @@ export async function auditOrganizationIntegrity(
     GROUP BY p."documentId", p."reference"
     HAVING COUNT(*) > 1
     LIMIT 50`
+  if (dupPaymentRefRows.length === 50) truncated = true
   for (const row of dupPaymentRefRows) {
     issues.push({
       kind: "duplicate-cleared-payment-reference",
@@ -150,6 +162,7 @@ export async function auditOrganizationIntegrity(
     GROUP BY "advanceId"
     HAVING COUNT(*) > 1
     LIMIT 50`
+  if (dupActiveAllocRows.length === 50) truncated = true
   for (const row of dupActiveAllocRows) {
     issues.push({
       kind: "multiple-active-advance-allocation",
@@ -158,25 +171,29 @@ export async function auditOrganizationIntegrity(
     })
   }
 
-  // ---- 4b. Vsota aktivnih alokacij predujma vs. razpoložljivi znesek ----
-  // Če vsota ACTIVE alokacij predujma presega njegov znesek, je bila
-  // porabljena večja vrednost, kot je predujem sploh imel (dvojna poraba).
-  // (F5.5.4.5.2 — predujem = kuponi/vavčer do višine svojega zneska.)
+  // ---- 4b. Vsota aktivnih alokacij predujma vs. DEJANSKO PREJETA sredstva ----
+  // Če vsota ACTIVE alokacij predujma presega znesek DEJANSKO PREJETIH
+  // sredstev (paidAmount — vsota CLEARED plačil), je bila porabljena večja
+  // vrednost, kot je predujem sploh imel (dvojna poraba). Primerjava z nominalnim
+  // `total` bi spregledala delno plačan predujem: total=100, plačano=60,
+  // alocirano=80 -> nad-poraba 20, ki je `total` ne ujame (80<100).
+  // (F5.5.4.5.2 — predujem = kuponi/vavčer do višine DEJANSKO prejetega.)
   const overallNonZeroAlloc = await prisma.$queryRaw<
-    { advanceId: string; allocSum: number | null; advTotal: number | null }[]
+    { advanceId: string; allocSum: number | null; advPaid: number | null }[]
   >`
-    SELECT a."advanceId", SUM(a."amount")::double precision AS "allocSum", adv."total"::double precision AS "advTotal"
+    SELECT a."advanceId", SUM(a."amount")::double precision AS "allocSum", adv."paidAmount"::double precision AS "advPaid"
     FROM "DocumentAdvanceAllocation" a
     LEFT JOIN "Document" adv ON adv."id" = a."advanceId"
     WHERE a."organizationId" = ${organizationId} AND a."status" = 'ACTIVE'
-    GROUP BY a."advanceId", adv."total"
-    HAVING SUM(a."amount") > COALESCE(adv."total", 0)
+    GROUP BY a."advanceId", adv."paidAmount"
+    HAVING SUM(a."amount") > COALESCE(adv."paidAmount", 0)
     LIMIT 50`
+  if (overallNonZeroAlloc.length === 50) truncated = true
   for (const row of overallNonZeroAlloc) {
     issues.push({
       kind: "advance-over-allocated",
       recordId: row.advanceId,
-      detailSl: `Predujem ${row.advanceId}: aktivne alokacije (${row.allocSum}) presegajo znesek predujma (${row.advTotal}).`,
+      detailSl: `Predujem ${row.advanceId}: aktivne alokacije (${row.allocSum}) presegajo dejansko prejeta sredstva (${row.advPaid}).`,
     })
   }
 
@@ -189,18 +206,17 @@ export async function auditOrganizationIntegrity(
   // da FK otroka brez nadrejenega zavrne (glej f131-data-integrity.itest.ts).
   // Nikjer ne predstavljamo nemogočega preverjanja kot delujoče zaščite.
 
-  return issues
+  return { issues, truncated }
 }
 
 /**
- * Read-only inventura s podatki o popolnosti rezultata (ali je bil
- * skrajšan z LIMIT 50 in koliko je bilo vseh zadetkov). Za operativno rabo.
+ * Read-only inventura s podatki o popolnosti rezultata (ali je bila katera
+ * posamezna poizvedba skrajšana na svoj LIMIT 50). Za operativno rabo.
  */
 export async function auditOrganizationIntegrityWithMeta(
   organizationId: string
 ): Promise<{ issues: IntegrityIssue[]; truncated: boolean }> {
-  const issues = await auditOrganizationIntegrity(organizationId)
-  return { issues, truncated: issues.length >= 450 } // konzervativno: blizu limita
+  return auditWithTruncation(organizationId)
 }
 
 /**

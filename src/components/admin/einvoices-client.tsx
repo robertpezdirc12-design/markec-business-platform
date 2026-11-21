@@ -562,7 +562,7 @@ export function EinvoicesClient({
                     {sent ? (
                       <span className="text-xs text-emerald-600">{labels.sentState}</span>
                     ) : (
-                      <Button size="sm" disabled={sendingId === r.id || channels.length === 0} onClick={() => doSend(r)}>
+                      <Button size="sm" disabled={sendingId === r.id || channels.length === 0 || submittedPending || sent} onClick={() => doSend(r)}>
                         {sendingId === r.id ? labels.sending : labels.send}
                       </Button>
                     )}

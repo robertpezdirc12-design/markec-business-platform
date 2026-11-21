@@ -199,13 +199,13 @@ export async function setModuleState(
 
   const rows = await loadStates(org.id)
   const states: ModuleStateMap = { ...rows }
-  const previous = states[moduleId] ?? "ACTIVE"
+  const previous = states[moduleId] ?? "DEACTIVATED"
 
   // Izklop: moduli odvisni od tega ostanejo — opozorilo (ni tihe kaskade).
   let warnings: string[] = []
   if (state === "DEACTIVATED") {
     const dependents = dependentsOf(moduleId).filter(
-      (d) => (states[d.id] ?? "ACTIVE") === "ACTIVE"
+      (d) => (states[d.id] ?? "DEACTIVATED") === "ACTIVE"
     )
     if (dependents.length > 0) {
       warnings = dependents.map(
@@ -290,7 +290,7 @@ export async function enableModuleWithDependencies(
 
   const actorEmail = session.user.email ?? "unknown"
   const enabled: string[] = []
-  const pending = plan.toEnable.map((m) => ({ m, previous: rows[m.id] ?? "ACTIVE" as ModuleState }))
+  const pending = plan.toEnable.map((m) => ({ m, previous: rows[m.id] ?? "DEACTIVATED" as ModuleState }))
     .filter(({ previous }) => previous !== "ACTIVE") // že aktivni preskoči
 
   // #1318 atomsko: aktivacija modulov + zgodovina sprememb v eni transakciji,

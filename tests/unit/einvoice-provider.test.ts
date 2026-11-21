@@ -17,9 +17,13 @@ import {
   buildHttpsRequestOptions,
   eSlogJointWrapper,
 } from "@/lib/einvoice/providers"
+import { __setDnsLookupForTests } from "@/lib/einvoice/endpoint-validation"
 import { MAX_RETRIES } from "@/lib/einvoice/channel"
 import type { ChannelCfg, SubmitPayload } from "@/lib/einvoice/channel"
 import type { HttpsTransport } from "@/lib/einvoice/providers"
+
+/** Testni mock transport — viden tip za _directTransport (HttpsTransport). */
+type TransportMock = HttpsTransport
 
 const ORG = "org-1"
 const cfg: ChannelCfg = {
@@ -44,13 +48,38 @@ function mockFetch(status: number, headers?: Record<string, string>) {
   vi.stubGlobal("fetch", vi.fn(async () => new Response("ok", { status, headers }) as Response))
 }
 
-beforeEach(() => vi.restoreAllMocks())
-afterEach(() => vi.unstubAllGlobals())
+// F5 / #1318: testne `.example` domene razrešimo prek MOCK DNS na javni IP
+// (ne na pravi resolver — a DNBI fail-closed v produkciji), tako da gre
+// pošiljanje skozi pinned transport, ne na pravo omrežje.
+const PUBLIC_TEST_IP = "93.184.216.34"
+function mockDns() {
+  __setDnsLookupForTests(async (host) => [{ address: PUBLIC_TEST_IP, family: 4 }])
+}
+
+beforeEach(() => {
+  vi.restoreAllMocks()
+  mockDns()
+})
+afterEach(() => {
+  vi.unstubAllGlobals()
+  __setDnsLookupForTests(null)
+})
 
 describe("F5.5.4.6.4 — DirectHttpProvider", () => {
+  // P1:#1318 — DNS pinning: povezava uporabi preverjeni IP (ne ponovno
+  // razreši hostname). Testi pošiljajo skozi injektabilni `_directTransport`.
+  function mockDirectTransport(status: number, headers?: Record<string, string>) {
+    return vi.fn<TransportMock>(async () => ({
+      status,
+      body: "",
+      headers: headers ?? {},
+    }))
+  }
+
   it("2xx → accepted, SUBMITTED, s providerMessageId iz glave", async () => {
-    mockFetch(201, { "x-provider-message-id": "msg-42" })
+    const tr = mockDirectTransport(201, { "x-provider-message-id": "msg-42" })
     const p = new DirectHttpProvider()
+    p._directTransport = tr
     const r = await p.submit(ORG, cfg, payload)
     expect(r.accepted).toBe(true)
     expect(r.state).toBe("SUBMITTED")
@@ -58,58 +87,70 @@ describe("F5.5.4.6.4 — DirectHttpProvider", () => {
     expect(r.errors).toEqual([])
   })
 
-  it("pošlje XML kot POST na providerEndpoint z idempotency in integritetnimi glavami", async () => {
-    const fn = vi.fn<typeof fetch>(async () => new Response("ok", { status: 200 }))
-    vi.stubGlobal("fetch", fn)
+  it("P1: pošlje NEPOSREDNO na preverjeni IP z lookup override; hostname za SNI & Host", async () => {
+    const tr = mockDirectTransport(200)
     const p = new DirectHttpProvider()
-    await p.submit(ORG, cfg, payload)
-    expect(fn).toHaveBeenCalledTimes(1)
-    const [url, init] = fn.mock.calls[0]
-    const reqInit = (init ?? {}) as RequestInit
-    expect(url).toBe(cfg.providerEndpoint)
-    expect(reqInit.method).toBe("POST")
-    expect((reqInit.headers as Record<string, string>)["Idempotency-Key"]).toBe("e-inv-1")
-    expect((reqInit.headers as Record<string, string>)["X-EInvoice-Sha256"]).toBe(payload.xmlSha256)
-    expect(reqInit.body).toBe("<Invoice/>")
+    p._directTransport = tr
+    const r = await p.submit(ORG, cfg, payload)
+    expect(r.state).toBe("SUBMITTED")
+    const [opts, body] = tr.mock.calls[0]
+    // lookup override → preverjeni javni IP (iz mock DNS), nikoli ponovna razrešitev.
+    expect(typeof opts.lookup).toBe("function")
+    const cb = opts.lookup as (
+      h: string,
+      o: unknown,
+      done: (e: null, a: string, f: number) => void
+    ) => void
+    let pinnedIp = ""
+    cb("ignored.example", {}, (_, a) => (pinnedIp = a))
+    expect(pinnedIp).toBe(PUBLIC_TEST_IP)
+    expect(opts.servername).toBe("provider.example")
+    const h = (opts.headers ?? {}) as Record<string, string>
+    expect(h["Host"]).toBe("provider.example")
+    expect(h["Idempotency-Key"]).toBe(payload.einvoiceId)
+    expect(h["X-EInvoice-Sha256"]).toBe(payload.xmlSha256)
+    expect(body).toBe(payload.xml)
+    expect(opts.hostname).toBe("provider.example")
   })
 
   it("5xx → poskusi retry do MAX_RETRIES, nazadnje FAILED", async () => {
-    const fn = vi.fn(async () => new Response("boom", { status: 503 }))
-    vi.stubGlobal("fetch", fn)
+    const tr = vi.fn<TransportMock>(async () => ({ status: 503, body: "boom", headers: {} }))
     const p = new DirectHttpProvider()
+    p._directTransport = tr
     const r = await p.submit(ORG, cfg, payload)
     expect(r.accepted).toBe(false)
     expect(r.state).toBe("FAILED")
-    // 3 poskusi: 1 + (MAX_RETRIES-1) retry
-    expect(fn).toHaveBeenCalledTimes(MAX_RETRIES)
+    expect(tr).toHaveBeenCalledTimes(MAX_RETRIES)
     expect(r.errors.length).toBeGreaterThan(0)
   })
 
   it("4xx → brez retryja, takoj FAILED", async () => {
-    const fn = vi.fn(async () => new Response("bad request", { status: 400 }))
-    vi.stubGlobal("fetch", fn)
+    const tr = vi.fn<TransportMock>(async () => ({ status: 400, body: "bad request", headers: {} }))
     const p = new DirectHttpProvider()
+    p._directTransport = tr
     const r = await p.submit(ORG, cfg, payload)
     expect(r.state).toBe("FAILED")
-    expect(fn).toHaveBeenCalledTimes(1)
+    expect(tr).toHaveBeenCalledTimes(1)
   })
 
   it("prevara mreže → FAILED (retry vključeno)", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("ECONNRESET") }))
+    const fn = vi.fn<TransportMock>(async () => { throw new Error("ECONNRESET") })
     const p = new DirectHttpProvider()
+    p._directTransport = fn
     const r = await p.submit(ORG, cfg, payload)
     expect(r.state).toBe("FAILED")
     expect(r.accepted).toBe(false)
+    expect(fn).toHaveBeenCalledTimes(MAX_RETRIES)
   })
 
   it("brez providerEndpoint → FAILED, brez omrežnega klica", async () => {
-    const fn = vi.fn()
-    vi.stubGlobal("fetch", fn)
+    const tr = mockDirectTransport(200)
     const p = new DirectHttpProvider()
+    p._directTransport = tr
     const r = await p.submit(ORG, { ...cfg, providerEndpoint: null as unknown as string }, payload)
     expect(r.state).toBe("FAILED")
     expect(r.errors[0]).toContain("CHANNEL_NOT_READY")
-    expect(fn).not.toHaveBeenCalled()
+    expect(tr).not.toHaveBeenCalled()
   })
 })
 

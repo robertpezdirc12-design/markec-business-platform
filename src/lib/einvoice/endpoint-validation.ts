@@ -57,6 +57,17 @@ function isBlockedV4(ip: string): boolean {
 
 function v6ToBigInt(ip: string): bigint {
   if (ip.includes("%")) ip = ip.split("%")[0] // odvrzi scope-id (fe80::1%eth0)
+  // Normaliziraj IPv4-embedded IPv6 (npr. v4-mapped `::ffff:127.0.0.1` ali
+  // embedded `::127.0.0.1`) — username IPv4 literal zadnje polje pretvori v
+  // heks par, da `split(":")` in BigInt ne crash-ata. To je NORMALIZACIJA za
+  // ugotovitev P2 #2: IPv4-mapped IPv6 mora biti primerljiv kot enaka IPv4.
+  const m = ip.match(/^(.*:)(\d+\.\d+\.\d+\.\d+)$/)
+  if (m) {
+    const v4 = m[2].split(".").map((o) => Number(o))
+    const hex = ((v4[0] << 8) | v4[1]).toString(16).padStart(4, "0")
+    const hex2 = ((v4[2] << 8) | v4[3]).toString(16).padStart(4, "0")
+    ip = m[1] + hex + ":" + hex2
+  }
   const fields = ip.split("::")
   let left = fields[0] ? fields[0].split(":") : []
   const right = fields[1] ? fields[1].split(":") : []
@@ -67,8 +78,27 @@ function v6ToBigInt(ip: string): bigint {
   return BigInt("0x" + hex)
 }
 
+/** Izlušči IPv4 iz IPv4-mapped / 6to4 IPv6 naslova (če obstaja). */
+function v6EmbeddedV4(ip: string): string | null {
+  if (isIP(ip) !== 6) return null
+  // v4-mapped ::ffff:a.b.c.d  (RFC 6052/4291)
+  let m = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i)
+  if (m) return m[1]
+  // 6to4 2002:xxxx:xxxx::/32 → a.b.c.d v drugih dveh heks parih
+  m = ip.match(/^2002:([0-9a-f]{1,4}):([0-9a-f]{1,4}):/i)
+  if (m) {
+    const [a, b] = m.slice(1, 3).map((h) => parseInt(h, 16))
+    return `${(a >> 8) & 0xff}.${a & 0xff}.${(b >> 8) & 0xff}.${b & 0xff}`
+  }
+  return null
+}
+
 function isBlockedV6(ip: string): boolean {
   if (isIP(ip) !== 6) return false
+  // Normaliziran IPv4-mapped / 6to4 — ovrednoti VSE IPv4 pravila (loopback,
+  // zasebni, link-local, CGNAT, metadata), ne samo eksplicitne v6 razpone.
+  const v4 = v6EmbeddedV4(ip)
+  if (v4 && isBlockedV4(v4)) return true
   const n = v6ToBigInt(ip)
   return BLOCKED_V6.some(
     (r) => n >= v6ToBigInt(r.start) && n <= v6ToBigInt(r.end)
@@ -142,23 +172,55 @@ export function assertPublicHttpsUrl(raw: string | null | undefined): EndpointVa
  * To pokrije DNS-rebinding (ime se med shranjevanjem in pošiljanjem spremeni),
  * ki ga validacija ob shranjevanju ne more ujeti. Vrne prečiščen hostname ali
  * napako — klic ne sme iti naprej, če kateri koli razrešeni IP pade v blokirano.
+ *
+ * FAIL-CLOSED DNS: kakršnakoli napaka ali odsotnost razrešitve v produkciji je
+ * obravnavana kot zavrnitev (ok:false) — nikoli ne nadaljevanje brez preverjenega
+ * IP-ja. Za testne ne-reseljive TLD (npr. `.example`) se DNS injicira prek
+ * `__setDnsLookupForTests` (mock lookup → javni IP) in pošiljanje gre skozi mock
+ * transport, ne prek pravega resolverja (dolgooumno DODANO GLEJ #1318).
  */
+export type DnsLookup = (
+  host: string
+) => Promise<{ address: string; family: number }[]>
+
+/** Injektabilni DNS resolver — privzeto realni `node:dns/promises.lookup`. */
+let dnsLookupImpl: DnsLookup | null = null
+export function __setDnsLookupForTests(impl: DnsLookup | null): void {
+  dnsLookupImpl = impl
+}
+async function lookupAll(host: string): Promise<string[]> {
+  if (dnsLookupImpl) {
+    const r = await dnsLookupImpl(host)
+    return r.map((x) => x.address)
+  }
+  const dns = await import("node:dns/promises")
+  return (await dns.lookup(host, { all: true, verbatim: true, family: 0 })).map(
+    (r) => r.address
+  )
+}
+
 export async function resolveAndVerifyEndpoint(
   host: string
 ): Promise<{ ok: true; ip: string | null } | { ok: false; error: string }> {
-  const dns = await import("node:dns/promises")
   let records: string[]
   try {
-    records = (await dns.lookup(host, { all: true, verbatim: true, family: 0 })).map((r) => r.address)
-    // ne apliciraj system resolver na IPv6 literal — vse vrnjene je treba blokirati
-  } catch {
-    // Ne-razrešljivo ime (npr. ENOTFOUND) ne more biti SSRF-vektorja, ker nima
-    // nobenega IP-ja. Še vedno preprečimo, da bi funkcionalen endpoint bil
-    // konfiguriran; tu pa se ne vrača napaka, ampak se pošiljanje pusti naprej
-    // (transport bo vrnil mrežno napako, kar je pravilno za domofon test TLD).
-    return { ok: true, ip: null }
+    records = await lookupAll(host)
+  } catch (err) {
+    // FAIL-CLOSED: DNS napaka (ENOTFOUND, resolver down, timeout…) NE pomeni
+    // "ni SSRF tveganja" — pomeni "ne moremo preveriti", kar v produkciji
+    // prepreči pošiljanje. Testni `.example` TLD mora injicirati mock lookup
+    // (glej __setDnsLookupForTests), ne napake.
+    return {
+      ok: false,
+      error: `DNS ni razrešil naslova (fail-closed): ${err instanceof Error ? err.message : String(err)}`,
+    }
   }
-  if (!records.length) return { ok: true, ip: null }
+  if (!records.length) {
+    return {
+      ok: false,
+      error: "DNS ni vrnil nobene A/AAAA vrstice (fail-closed) — ni preverjenega IP-ja.",
+    }
+  }
   for (const ip of records) {
     if (isIP(ip) === 4 && isBlockedV4(ip)) {
       return { ok: false, error: `DNS razrešuje v zasebno IPv4 mrežo (${ip}) — zavrnjeno (SSRF).` }
@@ -167,5 +229,5 @@ export async function resolveAndVerifyEndpoint(
       return { ok: false, error: `DNS razrešuje v notranjo IPv6 mrežo (${ip}) — zavrnjeno (SSRF).` }
     }
   }
-  return { ok: true, ip: records.length ? records[0] : null }
+  return { ok: true, ip: records[0] }
 }

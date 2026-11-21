@@ -98,18 +98,19 @@ export async function getEffectivePermissions(
       )
     if (!belongsToOrg) return []
     // #1318 (P0): legacy fallback uporablja `User.customRole` SAMO, če vloga
-    // pripada PREVERJANI organizaciji. Referenca na CustomRole iz druge org
-    // ali izbrisana vloga → brez dovoljenj (fail-closed), nikoli skok na
-    // polna pravicam osnovne vloge.
-    if (!user.customRole || user.customRole.organizationId !== organizationId) {
-      return effectivePermissionKeys({
-        role: user.role,
-        customRolePermissions: null,
-      })
+    // pripada PREVERJANI organizaciji. Tridijal logika:
+    //  1) NI custom role → obdrži osnovno politiko svoje globalne vloge;
+    //  2) custom role JE v tej org → zgolj njene pravice;
+    //  3) custom role pripada DRUGI org ali je izbrisana → [] (fail-closed),
+    //     NIKOLI skok na polna pravicam osnovne vloge (FAIL-OPEN vdolb).
+    // Prejšnja verzija je stanje 3 podeljevala osnovne pravice — za ADMIN/STAFF
+    // vse. Zdaj je tuja/izbrisana vloga strogo brez dovoljenj.
+    if (user.customRole && user.customRole.organizationId !== organizationId) {
+      return [] // foreign or missing custom role in a verified legacy member → no permissions.
     }
     return effectivePermissionKeys({
       role: user.role,
-      customRolePermissions: user.customRole.permissions,
+      customRolePermissions: user.customRole?.permissions ?? null,
     })
   }
 
