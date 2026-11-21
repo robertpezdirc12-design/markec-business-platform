@@ -94,7 +94,11 @@ export function EditReviewDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+        <form
+          onSubmit={handleSubmit(handleFormSubmit)}
+          aria-busy={isPending}
+          className="space-y-6"
+        >
           {/* Rating Stars */}
           <div className="space-y-2">
             <Label className="text-base font-semibold">Ocena</Label>
@@ -129,7 +133,7 @@ export function EditReviewDialog({
               </p>
             )}
             {errors.rating && (
-              <p className="text-sm text-destructive">{errors.rating.message}</p>
+                            <p role="alert" className="text-sm text-destructive">{errors.rating.message}</p>
             )}
           </div>
 
@@ -151,7 +155,7 @@ export function EditReviewDialog({
               {comment?.length || 0}/1000 znakov (najmanj 10)
             </p>
             {errors.comment && (
-              <p className="text-sm text-destructive">{errors.comment.message}</p>
+                            <p role="alert" className="text-sm text-destructive">{errors.comment.message}</p>
             )}
           </div>
 
@@ -170,6 +174,9 @@ export function EditReviewDialog({
               )}
               Shrani spremembe
             </Button>
+            <p role="status" className="sr-only" aria-live="polite">
+              {isPending ? "Shranjujem oceno…" : ""}
+            </p>
           </DialogFooter>
         </form>
       </DialogContent>

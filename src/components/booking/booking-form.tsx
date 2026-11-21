@@ -27,6 +27,7 @@ import {
   type BookingResource,
 } from "@/app/actions/appointments"
 import { ServiceStep } from "./steps/service-step"
+import { focusFirstFormError } from "@/lib/form-focus"
 import { toast } from "sonner"
 import { useI18n } from "@/lib/i18n/context"
 import { checkPromotionCode } from "@/app/actions/checkout-promo"
@@ -59,19 +60,6 @@ import { BookingFormProps, BookingFormValues } from "@/lib/interfaces"
 // NN/g "error recovery": po neuspelem submitu premaknemo fokus na prvo
 // polje z napako (`aria-invalid="true"`), da uporabnik s tipkovnico in
 // bralnikom ekrana takoj ve, kje mora popraviti (WCAG 2.4.3 / 3.3.1).
-function focusFirstFormError() {
-  // nežen requestAnimationFrame, da se aria-invalid slike z errorjem odrenderajo
-  requestAnimationFrame(() => {
-    const first = document.querySelector<HTMLElement>(
-      '[aria-invalid="true"], [data-error="true"]'
-    )
-    if (first) {
-      first.focus({ preventScroll: false })
-      first.scrollIntoView({ block: "center", behavior: "smooth" })
-    }
-  })
-}
-
 export function BookingForm(props: BookingFormProps) {
   const {
     salonConfig,

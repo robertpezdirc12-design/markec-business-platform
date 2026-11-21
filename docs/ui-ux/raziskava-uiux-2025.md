@@ -130,6 +130,14 @@ spremembe so označene z ✅.
   naslov "Plačilo uspešno!" ima `role="status"` + `aria-live="polite"`, da
   bralnik potrditev napove ob pristanku (client page). Vključeno v
   `tests/unit/customer-portal-ux.test.ts`.
+- ✅ **Reviews domena — AT-status pri oddaji/spremembi ocene** (WCAG
+  4.1.3, NN/g "status visibility"): `review-form` in `edit-review-dialog`
+  imata napake z `role="alert"` in form `aria-busy={isPending}`; uspeh v
+  review-form ima `role="status"`; edit-dialog med async oddajo napove
+  "Shranjujem oceno…" preko stalne sr-only `role="status"` regije. Hkrati
+  `focusFirstFormError` je izločen v skupni `lib/form-focus.ts` (DRY —
+  uporabljata ga booking in reviews). Zajeto v
+  `tests/unit/review-form-ux.test.ts`.
 - ✅ **Performance-as-UX / bundle audit** regresija:
   `tests/unit/performance-bundle-audit.test.ts` — potrdi da težke
   (react-hook-form+zod+date-fns) kot `ReviewForm` na landing ostajajo

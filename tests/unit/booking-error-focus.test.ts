@@ -13,13 +13,17 @@ const read = (p: string) =>
   readFileSync(join(ROOT, p), "utf8").replace(/\r\n/g, "\n")
 
 describe("booking — fokus na prvo polje z napako ob submitu", () => {
-  it("BookingForm ima focusFirstFormError helper", () => {
+  it("BookingForm uporablja focusFirstFormError iz skupnega liba (DRY)", () => {
+    const lib = read("src/lib/form-focus.ts")
+    expect(lib).toContain("export function focusFirstFormError()")
+    expect(lib).toContain("querySelector<HTMLElement>(")
+    expect(lib).toContain('[aria-invalid="true"]')
+    expect(lib).toContain("first.focus({ preventScroll: false })")
+    expect(lib).toContain("first.scrollIntoView")
     const b = read("src/components/booking/booking-form.tsx")
-    expect(b).toContain("function focusFirstFormError()")
-    expect(b).toContain("querySelector<HTMLElement>(")
-    expect(b).toContain('[aria-invalid="true"]')
-    expect(b).toContain("first.focus({ preventScroll: false })")
-    expect(b).toContain("first.scrollIntoView")
+    expect(b).toContain('import { focusFirstFormError } from "@/lib/form-focus"')
+    // lokalna definicija je bila odstranjena iz komponente
+    expect(b.split("function focusFirstFormError").length).toBeLessThan(2)
   })
 
   it("helper se pokliče ob validacijskih napakah (staff + schema)", () => {

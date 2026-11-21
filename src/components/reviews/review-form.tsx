@@ -67,7 +67,11 @@ export function ReviewForm({ serviceId, serviceName }: ReviewFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form
+    onSubmit={handleSubmit(onSubmit)}
+    aria-busy={isPending}
+    className="space-y-6"
+  >
       <div>
         <Label className="text-base font-semibold">
           Ocenite svojo izkušnjo pri {serviceName}
@@ -103,7 +107,7 @@ export function ReviewForm({ serviceId, serviceName }: ReviewFormProps) {
           </p>
         )}
         {errors.rating && (
-          <p className="mt-1 text-sm text-destructive">{errors.rating.message}</p>
+          <p role="alert" className="mt-1 text-sm text-destructive">{errors.rating.message}</p>
         )}
       </div>
 
@@ -123,18 +127,18 @@ export function ReviewForm({ serviceId, serviceName }: ReviewFormProps) {
           {comment?.length || 0}/1000 znakov (najmanj 10)
         </p>
         {errors.comment && (
-          <p className="mt-1 text-sm text-destructive">{errors.comment.message}</p>
+          <p role="alert" className="mt-1 text-sm text-destructive">{errors.comment.message}</p>
         )}
       </div>
 
       {error && (
-        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+        <div role="alert" className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="rounded-md bg-success/10 p-3 text-sm text-success">
+        <div role="status" className="rounded-md bg-success/10 p-3 text-sm text-success">
           Hvala za vašo oceno! Uspešno je bila oddana.
         </div>
       )}
