@@ -34,6 +34,26 @@ async function serviceUpsert(args: {
 async function main() {
   console.log('🌱 Seeding database...')
 
+  // #110/#105 fail-safe: če seed teče v produkcijskem okolju (prod/preview,
+  // npr. Vercel), NIKOLI ne sme znova vstaviti šibkih javnih gesel
+  // (admin123/staff123/cliente123). Zahtevamo eksplicitna gesla iz env —
+  // sicer se seed takoj prekine, pred kakršnim koli DB zapisom.
+  const prodLike = process.env.NODE_ENV === 'production' || process.env.VERCEL || process.env.VERCEL_ENV
+  if (prodLike) {
+    const missing = [
+      ['SEED_ADMIN_PASSWORD', process.env.SEED_ADMIN_PASSWORD],
+      ['SEED_STAFF_PASSWORD', process.env.SEED_STAFF_PASSWORD],
+      ['SEED_CLIENTE_PASSWORD', process.env.SEED_CLIENTE_PASSWORD],
+    ].filter(([, v]) => !v).map(([k]) => k)
+    if (missing.length > 0) {
+      throw new Error(
+        'SEED_FAILSAFE: db:seed na produkciji zahteva eksplicitna gesla. ' +
+          `Manjkajo: ${missing.join(', ')}. Nastavi jih v Vercel env ali NE poganjaj seed-a na produkciji. ` +
+          '(preprečeno: nočemo znova ustvariti šibkih javnih gesel)'
+      )
+    }
+  }
+
   // ============================================
   // 1. DEMO ORGANIZATION (tenant)
   // ============================================

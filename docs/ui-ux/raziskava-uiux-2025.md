@@ -144,6 +144,17 @@ spremembe so označene z ✅.
   menu in vrne fokus na toggle. Demo-tour ima stalno sr-only `role="status"`
   regijo, ki pri avtopredvajanju natekor "Korak X od N · naslov" (4.1.3).
   Zajeto v `tests/unit/navigation-at.test.ts`.
+
+## Varnost / Infra (#110) — iz kode odpravljivo
+- ✅ **Seed fail-safe** (`prisma/seed.ts`): če `db:seed` teče v produkcijskem
+  okolju (`NODE_ENV === "production"` ali `VERCEL*`), se **prekine pred
+  kakršnim koli DB zapisom**, če manjkajo `SEED_ADMIN_PASSWORD` /
+  `SEED_STAFF_PASSWORD` / `SEED_CLIENTE_PASSWORD` — prepreči ponovno
+  vstavitev šibkih javnih gesel (admin123/staff123/cliente123). Javne
+  defaults ostanejo samo za lokalni razvoj. Zajeto v
+  `tests/unit/seed-failsafe.test.ts`. Preostalo iz #110 (brisanje ghost
+  Vercel projekta, prenos domene, revokacija obeh objavljenih tokenov,
+  higiena Neon DB) so ročni lastniški koraki na zunanjih platformah.
 - ✅ **Performance-as-UX / bundle audit** regresija:
   `tests/unit/performance-bundle-audit.test.ts` — potrdi da težke
   (react-hook-form+zod+date-fns) kot `ReviewForm` na landing ostajajo
