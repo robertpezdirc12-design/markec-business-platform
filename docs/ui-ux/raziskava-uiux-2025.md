@@ -126,6 +126,10 @@ spremembe so označene z ✅.
   s spinnerji. Opazka: celoten customer portal je še hardcoded-SL (ni i18n)
   — RSC metadata in komponente; loceno naslednji refactor. Zajeto v
   `tests/unit/customer-portal-ux.test.ts`.
+- ✅ **Checkout-succes AT-napoved** (Baymard post-payment, WCAG 4.1.3):
+  naslov "Plačilo uspešno!" ima `role="status"` + `aria-live="polite"`, da
+  bralnik potrditev napove ob pristanku (client page). Vključeno v
+  `tests/unit/customer-portal-ux.test.ts`.
 - ✅ **Performance-as-UX / bundle audit** regresija:
   `tests/unit/performance-bundle-audit.test.ts` — potrdi da težke
   (react-hook-form+zod+date-fns) kot `ReviewForm` na landing ostajajo

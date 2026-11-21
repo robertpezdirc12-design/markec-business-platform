@@ -47,9 +47,12 @@ export default function CheckoutSuccessPage() {
               className="text-success-text"
             />
           </div>
-          <CardTitle className="text-2xl">
-            {pick(locale, "Plačilo uspešno!", "Payment successful!")}
-          </CardTitle>
+          <CardTitle className="text-2xl"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        {pick(locale, "Plačilo uspešno!", "Payment successful!")}
+                      </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">

@@ -30,4 +30,12 @@ describe("customer portal — AT-status pri async akcijah", () => {
     expect((c.match(/disabled=\{isPending\}/g) || []).length).toBeGreaterThanOrEqual(3)
     expect(c).toContain('<SpinnerGapIcon\n                      size={18}')
   })
+
+  it("checkout success heading ima role=status, da bralnik napove potrditev ob pristanku", () => {
+    const s = read("src/app/(customer)/checkout/success/page.tsx")
+    expect(s).toContain('<CardTitle className="text-2xl"')
+    expect(s).toContain('role="status"')
+    expect(s).toContain('aria-live="polite"')
+    expect(s).toContain('pick(locale, "Plačilo uspešno!", "Payment successful!")')
+  })
 })
