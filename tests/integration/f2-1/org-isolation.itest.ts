@@ -262,7 +262,11 @@ describe("F2.1 §3 — preklop A→B→A in zavrnitev tujih/neaktivnih", () => {
     expect(
       (await prisma.user.findUniqueOrThrow({ where: { id: ID.admin } })).organizationId
     ).toBe(ID.orgB)
-    expect(state.updates).toEqual([{ user: { organizationId: ID.orgB } }])
+    // Koda usklajuje sejo (JWT) z organizationId IN role (glej
+    // switchActiveOrganization v organization-switch.ts) — test dopusti
+    // dodatne ključe (toMatchObject), ne zahteva natančnega z; glej #100 8.A.
+    expect(state.updates).toHaveLength(1)
+    expect(state.updates[0]).toMatchObject({ user: { organizationId: ID.orgB } })
 
     loginAs(ID.admin, "ADMIN", ID.orgB)
     const toA = await switchActiveOrganization(ID.orgA)

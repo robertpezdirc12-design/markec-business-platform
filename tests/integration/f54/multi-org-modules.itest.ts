@@ -217,21 +217,26 @@ afterAll(async () => {
 // §2 RAZLIČNI MODULI po org + izolacija + ponoven preklop
 // ------------------------------------------------------------
 describe("F5.4.2 §2 — različni moduli in org izolacija", () => {
-  it("frizer zahteva appointments/services; avtoservis workOrders/services (drugačna matrika)", async () => {
-    // Politika prikaže drugačne required module za frizer vs mehanik.
-    loginAs(ID.admin, "ADMIN", ID.orgA)
+  it("frizer ima appointments jedro, avtoservis workOrders jedro (diskriminativna matrixa)", async () => {
+    // Avtoritativna odločitev (2026): "VSI MODULI ZA VSE". Popustljivost
+    // profile matrixa ostaja: frizer ima appointments kot privzeti core
+    // (baseState required), avtoservis workOrders (baseState required).
+    // Prikaz category je recommended/available (glej categoryFor), odvisno od
+    // aktivacije — zato asertivnost testira baseState (avtoritativna matrika),
+    // ne zgolj prikazne etikete.
+    loginAs(ID.admin, "ADMIN", ID.orgA) // frizer
     const a = await getModuleOverview()
     const apptA = a.modules.find((m) => m.id === "appointments")
     const woA = a.modules.find((m) => m.id === "workOrders")
-    expect(apptA?.category).toBe("required") // frizer: termin obvezen
-    expect(woA?.category).toBe("disabled") // frizer: delovna naročila niso
+    expect(apptA?.baseState).toBe("required") // frizer: termin jedro
+    expect(woA?.baseState).toBe("optional") // frizer: delovna naročila niso jedro
 
-    loginAs(ID.admin, "ADMIN", ID.orgB)
+    loginAs(ID.admin, "ADMIN", ID.orgB) // avtoservis
     const b = await getModuleOverview()
     const apptB = b.modules.find((m) => m.id === "appointments")
     const woB = b.modules.find((m) => m.id === "workOrders")
-    expect(apptB?.category).not.toBe("required") // avtoservis: termin izbiren/ne
-    expect(woB?.category).toBe("required") // avtoservis: delovna naročila jedro
+    expect(woB?.baseState).toBe("required") // avtoservis: delovna naročila jedro
+    expect(apptB?.baseState).toBe("optional") // avtoservis: termin ni jedro
   })
 
   it("vklop modula v A ne spremeni stanja v B (izolacija)", async () => {
@@ -307,23 +312,30 @@ describe("F5.4.2 §3 — varnostna matrika", () => {
     expect(await moduleStateOf(ID.orgB, "reviews")).toBe(bBefore)
   })
 
-  it("required module NI mogoče izklopiti (neposredni klic akcije)", async () => {
-    loginAs(ID.admin, "ADMIN", ID.orgA) // frizer: appointments required
+  it("required module je POPUSTLJIV — lastnik sme izklopiti (politika VSI MODULI ZA VSE)", async () => {
+    // Politika (2026): required je privzeto aktivno JEDRO, a lastnik ga sme
+    // izklopiti (DEACTIVATED) — glej modulePolicyFor in isTransitionAllowed v
+    // src/lib/modules/policy.ts. To ni nepremagljiva blokada, temveč privzeta
+    // aktivacija. (Stara politika "required nepremagljiv" je bila umaknjena.)
+    loginAs(ID.admin, "ADMIN", ID.orgA) // frizer: appointments required-core
     const res = await setModuleState("appointments", "DEACTIVATED")
-    expect(res.success).toBe(false)
-    expect(res.allowed).toBe(false)
-    // in ni shranjeno kot DEACTIVATED
+    expect(res.success).toBe(true)
+    expect(res.allowed).toBe(true)
+    // shranjeno kot DEACTIVATED
     const row = await prisma.organizationModuleState.findUnique({
       where: { organizationId_moduleId: { organizationId: ID.orgA, moduleId: "appointments" } },
     })
-    expect(row).toBeNull()
+    expect(row).not.toBeNull()
+    expect(row?.state).toBe("DEACTIVATED")
   })
 
-  it("disabled module NI mogoče vklopiti (neposredni klic akcije)", async () => {
-    loginAs(ID.admin, "ADMIN", ID.orgA) // frizer: documents disabled
+  it("optional module sme lastnik vklopiti; to ne vpliva na drugo org (izolacija)", async () => {
+    // Politika (2026): "disabled" v novi politiki NE obstaja — vsi moduli so
+    // preklopljivi. documents so za frizerja optional → smejo se vklopiti.
+    loginAs(ID.admin, "ADMIN", ID.orgA)
     const res = await setModuleState("documents", "ACTIVE")
-    expect(res.success).toBe(false)
-    expect(res.allowed).toBe(false)
+    expect(res.success).toBe(true)
+    expect(res.allowed).toBe(true)
   })
 
   it("manipulacija organizationId (tudi fiktivna) ne omogoči spremembe tujega org B", async () => {
@@ -347,24 +359,32 @@ describe("F5.4.2 §3 — varnostna matrika", () => {
 // §4 LEGACY neskladna stanja — varno razrešujejo brez brisanja podatkov
 // ------------------------------------------------------------
 describe("F5.4.2 §4 — legacy razrešitev", () => {
-  it("required shranjen kot DEACTIVATED → getModuleOverview/reconcile ga vrne na aktivno", async () => {
-    // Simuliraj legacy: frizer appointments DEACTIVATED (nedovoljeno).
+  it("legacy DEACTIVATED required → veljaven (politika VSI MODULI ZA VSE), reconcile idempotenten", async () => {
+    // Politika (2026): required je POPUSTLJIV — DEACTIVATED je veljavno
+    // lastniško stanje, ne "neskladno". reconcile jih ne brusi več (fixed 0),
+    // glej reconcileModuleStates v modules.ts. Overview pokaže modul kot
+    // available/recommended in funkcionalno NEaktivnega.
     await setModuleRow(ID.orgA, "appointments", "DEACTIVATED")
     loginAs(ID.admin, "ADMIN", ID.orgA)
     const { fixed } = await reconcileModuleStates()
-    expect(fixed).toBeGreaterThanOrEqual(1)
-    // Prikaz v overview NI disabled — required je zaklenjen.
+    expect(fixed).toBe(0)
     const ov = await getModuleOverview()
-    expect(ov.modules.find((m) => m.id === "appointments")?.category).toBe("required")
+    const appt = ov.modules.find((m) => m.id === "appointments")
+    expect(["recommended", "available"]).toContain(appt?.category)
+    expect(appt?.active).toBe(false) // lastnik je izklopil → funkcionalno off
   })
 
-  it("disabled shranjen kot ACTIVE → razrešen na disabled (ni odprt)", async () => {
-    await setModuleRow(ID.orgA, "documents", "ACTIVE") // documents disabled za frizer
+  it("disabled legacy → v novi politiki ni 'disabled'; ACTIVE ostane (veljavno)", async () => {
+    // Stara kategorija "disabled" je bila umaknjena (ni modula OSD disabled).
+    // ACTIVE stanje je veljavno; reconcile vrn 0; overview pokaže recommended.
+    await setModuleRow(ID.orgA, "documents", "ACTIVE")
     loginAs(ID.admin, "ADMIN", ID.orgA)
     const { fixed } = await reconcileModuleStates()
-    expect(fixed).toBeGreaterThanOrEqual(1)
+    expect(fixed).toBe(0)
     const ov = await getModuleOverview()
-    expect(ov.modules.find((m) => m.id === "documents")?.category).toBe("disabled")
+    const doc = ov.modules.find((m) => m.id === "documents")
+    expect(["recommended", "available"]).toContain(doc?.category)
+    expect(doc?.active).toBe(true)
   })
 
   it("HIDDEN pri obveznem modulu ostane funkcionalno aktiven, javno skrit", async () => {
@@ -372,7 +392,8 @@ describe("F5.4.2 §4 — legacy razrešitev", () => {
     loginAs(ID.admin, "ADMIN", ID.orgA)
     const ov = await getModuleOverview()
     const appt = ov.modules.find((m) => m.id === "appointments")
-    expect(appt?.category).toBe("required") // funkcionalno aktivno
+    expect(["recommended", "available"]).toContain(appt?.category)
+    expect(appt?.active).toBe(true) // funkcionalno aktivno
     expect(appt?.hidden).toBe(true) // javno skrito
   })
 
