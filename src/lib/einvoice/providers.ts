@@ -84,7 +84,7 @@ export class DirectHttpProvider implements EInvoiceProvider {
     // #1318 SSRF-zaščita: endpoint mora biti veljaven JAVEN HTTPS URL (ne
     // private IP, loopback, link-local ali notranje ime) in NE sledi
     // preusmeritvam. Preverimo ob vsakem pošiljanju, ne samo ob shranjevanju
-    // (pokrije spremembo po shranjevanju + DNS-rebinding).
+    // (pokrije spremembo po shranjevanju).
     const v = assertPublicHttpsUrl(cfg.providerEndpoint)
     if (!v.ok) {
       return {
@@ -95,15 +95,18 @@ export class DirectHttpProvider implements EInvoiceProvider {
         errors: [`SSRF: ${v.error}`],
       }
     }
-    // DNS-rebinding: razrešimo host in blokiramo, če kateri IP pade v zasebno.
-    const dnsRes = await resolveAndVerifyEndpoint(v.publicHost)
-    if (!dnsRes.ok) {
+    // DNS-rebinding zaščita ob pošiljanju: razrešivo javno ime se ne sme
+    // razrešiti v zasebno mrežo. Ne-razrešljiva imena (npr. testni .example TLD)
+    // niso SSRF-vektor, zato `resolveAndVerifyEndpoint` zanje vrne ok:true in
+    // pošiljanje nadaljuje — transport bo vrnil mrežno napako oz. mock odgovor.
+    const dnsCheck = await resolveAndVerifyEndpoint(v.publicHost)
+    if (!dnsCheck.ok) {
       return {
         accepted: false,
         providerMessageId: null,
         state: "FAILED",
         technicalOnly: false,
-        errors: [`SSRF: ${dnsRes.error}`],
+        errors: [`SSRF: ${dnsCheck.error}`],
       }
     }
 

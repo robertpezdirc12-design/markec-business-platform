@@ -256,7 +256,7 @@ describe("F5.5.4.6.4 — oddaja e-računa (submitEinvoice)", () => {
         channel: "direct",
         label: "Partner proxy",
         status: "ENABLED",
-        providerEndpoint: "https://partner.local/api/submit",
+        providerEndpoint: "https://provider.example/api/submit",
         config: {},
         encryptedSecret: "",
       },

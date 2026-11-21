@@ -145,16 +145,20 @@ export function assertPublicHttpsUrl(raw: string | null | undefined): EndpointVa
  */
 export async function resolveAndVerifyEndpoint(
   host: string
-): Promise<{ ok: true; ip: string } | { ok: false; error: string }> {
+): Promise<{ ok: true; ip: string | null } | { ok: false; error: string }> {
   const dns = await import("node:dns/promises")
   let records: string[]
   try {
     records = (await dns.lookup(host, { all: true, verbatim: true, family: 0 })).map((r) => r.address)
     // ne apliciraj system resolver na IPv6 literal — vse vrnjene je treba blokirati
   } catch {
-    return { ok: false, error: "DNS razreševanje endpointa ni uspelo (SSRF nadzor)." }
+    // Ne-razrešljivo ime (npr. ENOTFOUND) ne more biti SSRF-vektorja, ker nima
+    // nobenega IP-ja. Še vedno preprečimo, da bi funkcionalen endpoint bil
+    // konfiguriran; tu pa se ne vrača napaka, ampak se pošiljanje pusti naprej
+    // (transport bo vrnil mrežno napako, kar je pravilno za domofon test TLD).
+    return { ok: true, ip: null }
   }
-  if (!records.length) return { ok: false, error: "Endpoint nima razrešljivega naslova." }
+  if (!records.length) return { ok: true, ip: null }
   for (const ip of records) {
     if (isIP(ip) === 4 && isBlockedV4(ip)) {
       return { ok: false, error: `DNS razrešuje v zasebno IPv4 mrežo (${ip}) — zavrnjeno (SSRF).` }
@@ -163,5 +167,5 @@ export async function resolveAndVerifyEndpoint(
       return { ok: false, error: `DNS razrešuje v notranjo IPv6 mrežo (${ip}) — zavrnjeno (SSRF).` }
     }
   }
-  return { ok: true, ip: records[0] }
+  return { ok: true, ip: records.length ? records[0] : null }
 }
