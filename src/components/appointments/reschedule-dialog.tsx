@@ -151,6 +151,11 @@ export function RescheduleDialog({
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
+          {/* AT status med async prestavitvijo (NN/g / WCAG 4.1.3) —
+              live regija stalno v DOM, da bralnik napove napredek. */}
+          <p role="status" className="sr-only" aria-live="polite">
+            {isPending ? "Prestavljam termin…" : ""}
+          </p>
           <Button
             type="button"
             variant="outline"

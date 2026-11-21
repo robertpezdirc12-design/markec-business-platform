@@ -119,6 +119,13 @@ spremembe so označene z ✅.
   jo izpusti) — `aria-disabled` + `aria-label`/"`Ni na zalogi: {ime}`" +
   `aria-pressed` za izbrano; onClick guard prepreči izbor, vizual ostaja
   striečen. Zajeto v `tests/unit/cart-ux.test.ts`.
+- ✅ **Customer portal (my-appointments) — AT-status pri async akcijah**
+  (NN/g "status visibility", WCAG 4.1.3): reschedule dialog v podrobnic
+  napove "Prestavljam termin…" preko stalne sr-only `role="status"` regije;
+  plačaj/prestavi/odpovi gumbi so `disabled` med `isPending` (no double-action)
+  s spinnerji. Opazka: celoten customer portal je še hardcoded-SL (ni i18n)
+  — RSC metadata in komponente; loceno naslednji refactor. Zajeto v
+  `tests/unit/customer-portal-ux.test.ts`.
 - ✅ **Performance-as-UX / bundle audit** regresija:
   `tests/unit/performance-bundle-audit.test.ts` — potrdi da težke
   (react-hook-form+zod+date-fns) kot `ReviewForm` na landing ostajajo
