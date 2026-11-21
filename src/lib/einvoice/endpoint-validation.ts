@@ -59,11 +59,11 @@ function v6ToBigInt(ip: string): bigint {
   if (ip.includes("%")) ip = ip.split("%")[0] // odvrzi scope-id (fe80::1%eth0)
   const fields = ip.split("::")
   let left = fields[0] ? fields[0].split(":") : []
-  let right = fields[1] ? fields[1].split(":") : []
+  const right = fields[1] ? fields[1].split(":") : []
   const missing = 8 - left.length - right.length
   if (missing > 0) left = left.concat(new Array(missing).fill("0"))
   const all = left.concat(right)
-  let hex = all.map((h) => h.padStart(4, "0")).join("")
+  const hex = all.map((h) => h.padStart(4, "0")).join("")
   return BigInt("0x" + hex)
 }
 
