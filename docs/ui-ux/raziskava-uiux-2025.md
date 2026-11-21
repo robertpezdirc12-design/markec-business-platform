@@ -138,6 +138,12 @@ spremembe so označene z ✅.
   `focusFirstFormError` je izločen v skupni `lib/form-focus.ts` (DRY —
   uporabljata ga booking in reviews). Zajeto v
   `tests/unit/review-form-ux.test.ts`.
+- ✅ **Mobilni menu (public-navbar) — AT stanje + Escape** (WCAG 4.1.2,
+  2.1.2, NN/g keyboard nav): toggle ima `aria-expanded={mobileMenuOpen}` +
+  `aria-controls="mobile-nav"` (nav dobi `id="mobile-nav"`); Escape zapre
+  menu in vrne fokus na toggle. Demo-tour ima stalno sr-only `role="status"`
+  regijo, ki pri avtopredvajanju natekor "Korak X od N · naslov" (4.1.3).
+  Zajeto v `tests/unit/navigation-at.test.ts`.
 - ✅ **Performance-as-UX / bundle audit** regresija:
   `tests/unit/performance-bundle-audit.test.ts` — potrdi da težke
   (react-hook-form+zod+date-fns) kot `ReviewForm` na landing ostajajo

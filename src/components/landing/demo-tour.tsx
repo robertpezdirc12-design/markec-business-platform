@@ -231,6 +231,13 @@ export function DemoTour({ open, onOpenChange, vertical, accent, stepsRaw }: Dem
         <DialogPrimitive.Content className="bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] fixed top-[50%] left-[50%] z-50 flex max-h-[88vh] w-full max-w-6xl translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden border-0 bg-black/95 text-white sm:rounded-2xl">
         <DialogTitle className="sr-only">{current?.title}</DialogTitle>
         <DialogDescription className="sr-only">{current?.description}</DialogDescription>
+        {/* AT: stalna živa regija — ob napredovanju/avtopredvajanju bralnik
+            napove trenutni korak (WCAG 4.1.3). Pravo časovno prostor vrednot. */}
+        <p role="status" aria-live="polite" className="sr-only">
+          {current
+            ? `Korak ${index + 1} od ${count}: ${current.title}`
+            : ""}
+        </p>
 
         {/* Top bar */}
         <div className="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-3">

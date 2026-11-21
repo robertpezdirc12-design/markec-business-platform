@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
@@ -65,6 +65,21 @@ export function PublicNavbar({ org, cta, availableSections, walkInEnabled, nav, 
   const showCart = shopEnabled ?? availableSections?.shop ?? true
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const mobileMenuToggleRef = useRef<HTMLButtonElement>(null)
+
+  // Standard overlay-uz: Escape zapre mobilni menu, fokus se vrne na toggle
+  // (AT/WCAG 2.1.2 + NN/g keyboard nav).
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMobileMenuOpen(false)
+        mobileMenuToggleRef.current?.focus()
+      }
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [mobileMenuOpen])
   const { data: session, status } = useSession()
   const { activeSection } = useNavigationStore()
   const { t } = useI18n()
@@ -265,9 +280,12 @@ export function PublicNavbar({ org, cta, availableSections, walkInEnabled, nav, 
           <ThemeToggle />
           {showCart && <NavCartButton />}
           <button
+            ref={mobileMenuToggleRef}
             className="text-foreground/70 hover:text-primary-text transition-colors p-2 -mr-2"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label={t.public.toggleMenu}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-nav"
           >
             {mobileMenuOpen ? (
               <CloseIcon size={24} weight="bold" />
@@ -280,7 +298,10 @@ export function PublicNavbar({ org, cta, availableSections, walkInEnabled, nav, 
 
       {/* Mobile Navigation Menu — P1 #30: viden DO lg */}
       {mobileMenuOpen && (
-        <div className="border-t border-border/50 bg-card/95 backdrop-blur-md lg:hidden">
+        <div
+          id="mobile-nav"
+          className="border-t border-border/50 bg-card/95 backdrop-blur-md lg:hidden"
+        >
           <nav className="container mx-auto flex flex-col gap-1 px-4 py-4 sm:py-6">
             {/* Navigation Links */}
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-col sm:gap-1">
