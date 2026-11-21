@@ -27,7 +27,8 @@ vi.mock("next/headers", () => ({ headers: async () => new Headers({}) }))
 vi.mock("@/lib/tenant-proof", () => ({ ORG_PROOF_HEADER: "x-org-slug-proof", verifyOrgSlug: async () => true }))
 
 import { __setDnsLookupForTests } from "@/lib/einvoice/endpoint-validation"
-import { __setDirectTransportForTests } from "@/lib/einvoice/providers"
+import { __setDirectTransportForTests, __setDirectStatusForTests } from "@/lib/einvoice/providers"
+import { pollPendingDeliveries, recordDeliveryFromWebhook } from "@/lib/einvoice/delivery"
 import { prisma } from "@/lib/prisma"
 import {
   createDocument,
@@ -112,11 +113,13 @@ beforeEach(async () => {
   // injiciramo mock DNS → javni IP + mock transport, da Direct pošlje deterministično.
   __setDnsLookupForTests(async () => [{ address: "93.184.216.34", family: 4 }])
   __setDirectTransportForTests(async () => ({ status: 202, headers: {}, body: "accepted" }))
+  __setDirectStatusForTests(null)
 })
 
 afterAll(async () => {
   __setDnsLookupForTests(null)
   __setDirectTransportForTests(null)
+  __setDirectStatusForTests(null)
   await clean()
   await prisma.$disconnect()
 })
@@ -306,8 +309,10 @@ describe("F5.5.4.6.4 — oddaja e-računa (submitEinvoice)", () => {
   })
 
   it("idempotenca: ponovni submit istega e-računa ne pošlje znova", async () => {
-    const spy = vi.fn(async () => new Response("ok", { status: 200 }))
-    vi.stubGlobal("fetch", spy)
+    // P1/#1318: Direct pošilja prek injektabilnega _directTransport (z mock DNS),
+    // zato štejemo transportne klice, ne fetch.
+    const spy = vi.fn(async () => ({ status: 202, headers: { "x-provider-message-id": "idem-1" }, body: "ok" }))
+    __setDirectTransportForTests(spy as any)
     const inv = await mk("INVOICE", 60)
     const gen = await generateEinvoice(inv, "ESLOG_2" as EInvoiceFormat)
     await seedDirectChannel()
@@ -351,14 +356,186 @@ describe("F5.5.4.6.4 — oddaja e-računa (submitEinvoice)", () => {
   })
 
   it("5xx → FAILED po retrijih", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("server error", { status: 500 })))
+    // P1/#1318: Direct pošilja prek injektabilnega _directTransport, ne fetch.
+    const spy = vi.fn(async () => ({ status: 500, headers: {}, body: "server error" }))
+    __setDirectTransportForTests(spy as any)
     await seedDirectChannel()
     const inv = await mk("INVOICE", 30)
     const gen = await generateEinvoice(inv, "UBL21_PEPPOL_3" as EInvoiceFormat)
     const res = await submitEinvoice(gen.id!, "direct")
     expect(res.ok).toBe(false)
     expect(res.error).toContain("HTTP 500")
+    expect(spy).toHaveBeenCalledTimes(3) // 1 + retryja
     const row = await prisma.eInvoice.findUnique({ where: { id: gen.id! } })
     expect(row!.status).toBe("FAILED")
+  })
+})
+
+describe("F5.5.4.6.4 / Faza 3.2 — dostavna zanka (poll)", () => {
+  async function seedChannel(): Promise<void> {
+    await (prisma as any).eInvoiceChannelConfig.deleteMany({ where: { organizationId: ORGA, channel: "direct" } }).catch(() => {})
+    await (prisma as any).eInvoiceChannelConfig.create({
+      data: {
+        organizationId: ORGA,
+        channel: "direct",
+        label: "Partner proxy",
+        status: "ENABLED",
+        providerEndpoint: "https://provider.example/api/submit",
+        config: {},
+        encryptedSecret: "",
+      },
+    })
+  }
+
+  /** Ustvari SUBMITTED e-račun z znanim providerMessageId + channel=direct (neposredno v bazi). */
+  async function makeSubmitted(): Promise<string> {
+    await seedChannel()
+    const docId = await mk("INVOICE", 50)
+    const inv = await prisma.eInvoice.create({
+      data: {
+        organizationId: ORGA,
+        documentId: docId,
+        kind: "INVOICE",
+        format: "UBL21_PEPPOL_3",
+        docCode: "RAC-DELIV/2026",
+        xml: Buffer.from("<Invoice/>").toString("base64"),
+        sha256: "sha-" + Math.random().toString(36).slice(2),
+        size: 32,
+        xmlValidatedXsd: true,
+        xmlValidatedBusiness: true,
+        standardVersion: "PEPPOL-BIS-3.0.21",
+        validatorVersion: "UBL-2.1",
+        status: "SUBMITTED",
+        providerMessageId: "pm-deliv-1",
+        channel: "direct",
+      },
+    })
+    return inv.id
+  }
+
+  it("SUBMITTED → DELIVERED z EInvoiceDeliveryEvent + DELIVERY_ACK receipt", async () => {
+    const id = await makeSubmitted()
+    __setDirectStatusForTests(async () => ({
+      state: "DELIVERED",
+      providerStatus: "delivered",
+      timestamp: new Date().toISOString(),
+      message: null,
+    }))
+
+    const res = await pollPendingDeliveries()
+    expect(res.polled).toBeGreaterThanOrEqual(1)
+    expect(res.transitioned).toBe(1)
+
+    const row = await prisma.eInvoice.findUnique({ where: { id } })
+    expect(row?.status).toBe("DELIVERED")
+
+    const ev = await prisma.eInvoiceDeliveryEvent.findFirst({ where: { einvoiceId: id, kind: "DELIVERED" } })
+    expect(ev).toBeTruthy()
+    const rcpt = await prisma.eInvoiceReceipt.findFirst({ where: { einvoiceId: id, kind: "DELIVERY_ACK" } })
+    expect(rcpt?.status).toBe("DELIVERED")
+  })
+
+  it("idempotentno: ponovni poll terminalnega stanja ne podvoji evidence", async () => {
+    const id = await makeSubmitted()
+    __setDirectStatusForTests(async () => ({
+      state: "DELIVERED",
+      providerStatus: "delivered",
+      timestamp: new Date().toISOString(),
+      message: null,
+    }))
+    await pollPendingDeliveries()
+    const first = await prisma.eInvoiceDeliveryEvent.count({ where: { einvoiceId: id, kind: "DELIVERED" } })
+    await pollPendingDeliveries()
+    const second = await prisma.eInvoiceDeliveryEvent.count({ where: { einvoiceId: id, kind: "DELIVERED" } })
+    expect(first).toBe(1)
+    expect(second).toBe(1)
+  })
+
+  it("SUBMITTED → REJECTED (vsebinska zavrnitev ponudnika)", async () => {
+    const id = await makeSubmitted()
+    __setDirectStatusForTests(async () => ({
+      state: "REJECTED",
+      providerStatus: "rejected",
+      timestamp: new Date().toISOString(),
+      message: "NAJ-SPEC ref error",
+    }))
+    await pollPendingDeliveries()
+    const row = await prisma.eInvoice.findUnique({ where: { id } })
+    expect(row?.status).toBe("REJECTED")
+    expect(await prisma.eInvoiceReceipt.findFirst({ where: { einvoiceId: id, kind: "REJECTION" } })).toBeTruthy()
+  })
+
+  it("provider status napaka → FAILED (tehnična okvara polla)", async () => {
+    const id = await makeSubmitted()
+    __setDirectStatusForTests(async () => {
+      throw new Error("timeout")
+    })
+    await pollPendingDeliveries()
+    const row = await prisma.eInvoice.findUnique({ where: { id } })
+    expect(row?.status).toBe("FAILED")
+    expect(await prisma.eInvoiceReceipt.findFirst({ where: { einvoiceId: id, kind: "FAILURE" } })).toBeTruthy()
+  })
+})
+
+describe("F5.5.4.6.4 / Faza 3.2 — povratni webhook", () => {
+  it("neznana pošiljka → ok:false, brez učinka", async () => {
+    const res = await recordDeliveryFromWebhook({ providerMessageId: "pm-neobstoječi", status: "DELIVERED", signature: "spoof" })
+    expect(res.ok).toBe(false)
+  })
+})
+
+describe("F5.5.4.6.4 / Faza 3.2 — povratni webhook (legitimni)", () => {
+  async function makeSubmitted(): Promise<string> {
+    await (prisma as any).eInvoiceChannelConfig.deleteMany({ where: { organizationId: ORGA, channel: "direct" } }).catch(() => {})
+    await (prisma as any).eInvoiceChannelConfig.create({
+      data: {
+        organizationId: ORGA,
+        channel: "direct",
+        label: "Partner proxy",
+        status: "ENABLED",
+        providerEndpoint: "https://provider.example/api/submit",
+        config: {},
+        encryptedSecret: "",
+      },
+    })
+    const docId = await mk("INVOICE", 40)
+    const inv = await prisma.eInvoice.create({
+      data: {
+        organizationId: ORGA,
+        documentId: docId,
+        kind: "INVOICE",
+        format: "UBL21_PEPPOL_3",
+        docCode: "RAC-WEB/2026",
+        xml: Buffer.from("<Invoice/>").toString("base64"),
+        sha256: "sha-" + Math.random().toString(36).slice(2),
+        size: 32,
+        xmlValidatedXsd: true,
+        xmlValidatedBusiness: true,
+        standardVersion: "PEPPOL-BIS-3.0.21",
+        validatorVersion: "UBL-2.1",
+        status: "SUBMITTED",
+        providerMessageId: "pm-web-1",
+        channel: "direct",
+      },
+    })
+    return inv.id
+  }
+
+  it("legitimni webhook (Direct verifyWebhook=true) → DELIVERED", async () => {
+    const id = await makeSubmitted()
+    const res = await recordDeliveryFromWebhook({ providerMessageId: "pm-web-1", status: "DELIVERED", signature: "direct-key" })
+    expect(res.ok).toBe(true)
+    expect(res.changed).toBe(true)
+    const row = await prisma.eInvoice.findUnique({ where: { id } })
+    expect(row?.status).toBe("DELIVERED")
+    expect(await prisma.eInvoiceDeliveryEvent.findFirst({ where: { einvoiceId: id, kind: "DELIVERED" } })).toBeTruthy()
+  })
+
+  it("že zaključen e-račun → changed:false (idempotentno)", async () => {
+    const id = await makeSubmitted()
+    await recordDeliveryFromWebhook({ providerMessageId: "pm-web-1", status: "DELIVERED", signature: "direct-key" })
+    const again = await recordDeliveryFromWebhook({ providerMessageId: "pm-web-1", status: "DELIVERED", signature: "direct-key" })
+    expect(again.changed).toBe(false)
+    expect(await prisma.eInvoiceDeliveryEvent.count({ where: { einvoiceId: id, kind: "DELIVERED" } })).toBe(1)
   })
 })

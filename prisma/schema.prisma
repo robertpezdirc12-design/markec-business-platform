@@ -2779,7 +2779,12 @@ model EInvoice {
   validatorVersion        String   @default("") // npr. "UBL-2.1", "UJP-eSlog", "TC434"
   xsdApplied              Boolean  @default(false) // res samo, ée je tekel pravi uradni XSD engine
   peppolSchematronApplied Boolean  @default(false)
-  status                  String   @default("VALIDATED") // PREPARED | VALIDATED | SENT | ... (pošiljanje pozneje)
+  status                  String   @default("VALIDATED") // PREPARED | VALIDATED | SENT | SUBMITTED | DELIVERED | REJECTED | FAILED
+  // F5.5.4.6.4 / Faza 3.2 — ID tehničnega sprejema ponudnika; shranjen za
+  // poznejše stanjsko preverjanje (poll dolgotrajne dostave brez neprave
+  // idempotence). Ena pošiljka = en providerMessageId.
+  providerMessageId       String?
+  channel                 String? // "direct" | "ujp" | "peppol" — kanal oddaje za dostavno zanko
   generatedById           String?
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
