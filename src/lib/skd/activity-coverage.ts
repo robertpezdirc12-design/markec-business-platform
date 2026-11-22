@@ -39,6 +39,7 @@ import {
   type SkdMappingSource,
 } from "@/lib/skd/profiles"
 import { SKD_RECORDS } from "@/lib/skd/data/skd2025"
+import { CAPABILITY_KEYS } from "@/lib/profiles/extensions"
 
 export type CoverageLevel =
   | "specialized-validated" // A
@@ -77,23 +78,99 @@ export interface DeclaredConfiguration {
  */
 export const CAPABILITY_EVIDENCE: Record<
   string,
-  { module: string; evidence: string }
+  {
+    module: string
+    /** Testi, ki ZARES poganjajo navedeni strežniški modul/akcijo (odprti in preverjeni). */
+    evidence: string
+    /**
+     * Pošten obseg dokaza:
+     *  - "universal" = platformni engine/modul, ki deluje za VSE dejavnosti neodvisno
+     *    od ničelnosti nekega profila;
+     *  - "context-limited" = modul obstaja, a citirani test poganja le knjižnični
+     *    del / določeno podpot (ne celotna univerzalna dobava); ali pa dokaz velja
+     *    le ob prisotnosti profilnih predlog. Pri teh zmožnostih `required` NIKAKOR
+     *    ne sme biti samodejno "pokrita" zgolj iz imena datoteke (glej opombo).
+     */
+    scope: "universal" | "context-limited"
+    /** Razlog omejitve — kaj točno test NE dokaže. */
+    caveat: string
+  }
 > = {
-  // Jedro z dobavljeno strežniško akcijo + testom.
-  appointments: { module: "src/app/actions/appointments.ts", evidence: "tests/booking-integrity-93.test.ts" },
-  workOrders: { module: "src/app/actions/work-orders.ts", evidence: "tests/work-order-costs.itest.ts" },
-  shop: { module: "src/app/actions/cart.ts+orders.ts+product-checkout.ts", evidence: "tests/integration/f54/f551-variant-checkout.itest.ts" },
-  services: { module: "src/app/actions/services.ts", evidence: "tests/unit/services-list-ux.test.ts" },
-  inventory: { module: "src/app/actions/inventory.ts", evidence: "tests/integration/stock-integrity.itest.ts" },
-  customers: { module: "src/app/actions/customers.ts", evidence: "tests/integration/onboarding-3-vertical.itest.ts" },
-  staff: { module: "src/app/actions/staff.ts", evidence: "tests/integration/onboarding-membership.itest.ts" },
-  analytics: { module: "src/app/actions/dashboard.ts+analytics.ts", evidence: "tests/analytics-e42.test.ts" },
-  forms: { module: "src/app/actions/forms.ts (skupni engine)", evidence: "tests/integration/f2-3/f501-materialization.itest.ts" },
-  workflows: { module: "engine prek forms.ts/work-orders.ts", evidence: "tests/integration/f2-3/f501-materialization.itest.ts" },
+  // Jedro z dobavljeno strežniško akcijo + testom, ki to akcijo zares poganja.
+  appointments: {
+    module: "src/app/actions/appointments.ts",
+    evidence: "tests/integration/f2-3/staff-multiorg.itest.ts + tests/booking-integrity-93.test.ts",
+    scope: "context-limited",
+    caveat: "booking-integrity-93 in staff-multiorg poganjata updateAppointmentStatus/knjižno rezervacijo; polni appointment lifecycle za VSE profile ni profilno-materializiran (brez materializeProfileAssets).",
+  },
+  workOrders: {
+    module: "src/app/actions/work-order-costs.ts",
+    evidence: "tests/work-order-costs.itest.ts",
+    scope: "context-limited",
+    caveat: "citirana evidence poganja le izračun stroškov (calculateWorkOrderCosts); sam work-order-vodenje ni zajeto v tej evidencivi — obstaja kot modul, a njegova univerzalna dobava za vse profile ni testno izkazana.",
+  },
+  shop: {
+    module: "src/app/actions/cart.ts + orders.ts + product-checkout.ts",
+    evidence: "tests/integration/f54/f551-variant-checkout.itest.ts",
+    scope: "universal",
+    caveat: "f551 poganja cart + product-checkout (orders.ts v njem ni klican) — targeting trgovinski tok.",
+  },
+  services: {
+    module: "src/app/actions/services.ts",
+    evidence: "tests/unit/services-list-ux.test.ts",
+    scope: "context-limited",
+    caveat: "citiran test preverja le UX izris seznama storitev; strežniškega modula services.ts NE poganja (ni servisne akcije pod testom). Dobava je del kataloga storitev, a ne 'universal' v smislu celotne strežniške dobave.",
+  },
+  inventory: {
+    module: "src/app/actions/inventory.ts",
+    evidence: "tests/integration/stock-integrity.itest.ts",
+    scope: "universal",
+    caveat: "stock-integrity poganja inventurno logiko prek dejanskih akcij.",
+  },
+  customers: {
+    module: "src/app/actions/customers.ts",
+    evidence: "tests/integration/f553/customers.itest.ts + tests/integration/tire-service.itest.ts",
+    scope: "context-limited",
+    caveat: "f553/tire-service kličeta createCustomer; customers module je realen, a profilna materializacija ni univerzalno dokazana.",
+  },
+  staff: {
+    module: "src/app/actions/staff.ts",
+    evidence: "tests/integration/f2-3/staff-multiorg.itest.ts",
+    scope: "context-limited",
+    caveat: "staff-multiorg poganja članstvo/osebje prek akcij staff.ts; klik profile-specifika ni profilno-materializiran.",
+  },
+  analytics: {
+    module: "src/app/actions/dashboard.ts + analytics.ts",
+    evidence: "tests/analytics-e42.test.ts",
+    scope: "context-limited",
+    caveat: "analytics-e42 poganja le čisto funkcijo enquiryChangeDisplay (src/lib/analytics/trends); strežniških akcij getKPIData/getRevenueChartData iz dashboard.ts/analytics.ts noben test NE poganja.",
+  },
+  forms: {
+    module: "src/app/actions/forms.ts (skupni engine)",
+    evidence: "tests/integration/f2-3/f501-materialization.itest.ts",
+    scope: "context-limited",
+    caveat: "f501 preverja materializacijo predlog/profilno preslikavo (SKD_PROFILE_EXCEPTIONS), ne akcije forms.ts same; formulacijska dobava potrebuje profilne predloge — prazne predloge = ni dobave.",
+  },
+  workflows: {
+    module: "engine prek forms.ts / work-orders.ts",
+    evidence: "tests/integration/f2-3/f501-materialization.itest.ts",
+    scope: "context-limited",
+    caveat: "workflow dobava velja LE ob materializiranih workflow-predlogah profila; zmožnost `required` brez predloge je iskrena vrzel (no-template).",
+  },
   // Dokumentacija + e-računi: dobavljeno (P2 #101, Phase 4+).
-  documents: { module: "src/app/actions/documents.ts+einvoices.ts+quotes.ts", evidence: "tests/integration/f554/documents.itest.ts + tests/unit/einvoice-*.test.ts" },
+  documents: {
+    module: "src/app/actions/documents.ts + einvoices.ts + quotes.ts",
+    evidence: "tests/integration/f554/documents.itest.ts + tests/unit/einvoice-*.test.ts",
+    scope: "context-limited",
+    caveat: "documents.ts je poganjan v f554; einvoices.ts/quotes.ts citirajo le unit-teste, ne strežniške akcije — celotna dokumentna dobava ni enotno profilno dokazana.",
+  },
   // Blagajna (WP-1): dobavljeno v jedru za VSE dejavnosti.
-  cashRegister: { module: "src/app/actions/cash-register.ts+direct-sale.ts", evidence: "tests/cash-register-core.test.ts + tests/integration/direct-sale.itest.ts" },
+  cashRegister: {
+    module: "src/app/actions/cash-register.ts + direct-sale.ts",
+    evidence: "tests/integration/direct-sale.itest.ts",
+    scope: "context-limited",
+    caveat: "direct-sale poganja direct-sale.ts; cash-register-core.test.ts preverja le src/lib/cash-register/core (ne strežniške akcije cash-register.ts), ki tako ni testno poganjana.",
+  },
 }
 /** Zmožnosti, ki NISO dobavljene kot univerzalni jedrni modul. */
 const NON_UNIVERSAL_CAPABILITIES = new Set<string>(["delivery"])
@@ -258,13 +335,14 @@ export function declaredConfiguration(profile: ActivityProfile): DeclaredConfigu
   const workflows = (profile.workflows ?? []).length
   const extensions = (profile.extensions ?? []).length
   const cap = (profile.capabilities ?? {}) as unknown as Record<string, string | undefined>
-  const ALL_CAPS = [
-    "appointments", "workOrders", "shop", "services", "inventory",
-    "customers", "staff", "analytics", "reviews", "forms", "workflows",
-    "documents", "delivery", "cashRegister",
-  ] as const
+  /**
+   * Enotni, sinhrni vir VSEH capability ključev — `CAPABILITY_KEYS` (15 ključev)
+   * iz `@/lib/profiles/extensions`, ki ga sync-lock test (extensions-e21.test.ts)
+   * zaklene na dejanski `CapabilityMatrix` tip. Tako nov capability ključ ne more
+   * tiho izostati iz deklaracije.
+   */
   const capabilities: Record<string, string> = {}
-  for (const k of ALL_CAPS) capabilities[k] = cap[k] ?? "optional"
+  for (const k of CAPABILITY_KEYS) capabilities[k] = cap[k] ?? "optional"
   return {
     forms,
     workflows,
@@ -456,8 +534,10 @@ export interface CoverageSummary {
     businessFitVerifiedCount: number
     /** Podrazredov, katerih profil označi zmožnost required brez dokaza (D delno). */
     requiredMissingCount: number
-    /** Skupaj deklariranih KONFIGURACIJSKIH ELEMENTOV (forme+procesi+razširitve) po vseh profilih. */
-    declaredConfigElementCount: number
+    /** Skupaj deklariranih KONFIGURACIJSKIH ELEMENTOV (forme+procesi+razširitve) — unique po profilih. */
+    uniqueDeclaredConfigElementCount: number
+    /** Skupaj deklariranih KONFIGURACIJSKIH ELEMENTOV (forme+procesi+razširitve) — weighted po SKD-vrsticah. */
+    weightedDeclaredConfigElementCount: number
     /** Neocenjenih dejavnosti (brez dokazane fit ali dokumentirane podlage). */
     unassessedCount: number
   }
@@ -612,7 +692,9 @@ export function coverageSummary(): CoverageSummary {
   let runtimeProvenCount = 0
   let businessFitVerifiedCount = 0
   let requiredMissingCount = 0
-  let declaredConfigElementCount = 0
+  let weightedDeclaredConfigElementCount = 0
+  const uniqueProfiles = new Set<string>()
+  let uniqueDeclaredConfigElementCount = 0
 
   for (const r of rows) {
     const t = tally(runRowClass(r))
@@ -629,7 +711,13 @@ export function coverageSummary(): CoverageSummary {
       businessFitVerifiedCount++
     }
     if (requiredCapabilitiesMissing(getProfile(r.profileId))) requiredMissingCount++
-    declaredConfigElementCount += r.declared.totalConfigElements
+    // Uteženo: vsaka SKD vrstica, ki uporablja profil, prišteje njegove elemente.
+    weightedDeclaredConfigElementCount += r.declared.totalConfigElements
+    // Unikatno: vsak profil šteje samo enkrat, ne glede na število vrstic.
+    if (!uniqueProfiles.has(r.profileId)) {
+      uniqueProfiles.add(r.profileId)
+      uniqueDeclaredConfigElementCount += r.declared.totalConfigElements
+    }
   }
 
   return {
@@ -646,7 +734,8 @@ export function coverageSummary(): CoverageSummary {
       runtimeProvenCount,
       businessFitVerifiedCount,
       requiredMissingCount,
-      declaredConfigElementCount,
+      uniqueDeclaredConfigElementCount,
+      weightedDeclaredConfigElementCount,
       unassessedCount: overall.notAssessed,
     },
   }

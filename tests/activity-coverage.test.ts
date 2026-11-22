@@ -30,6 +30,7 @@ import {
   missingRequiredCapabilities,
   CAPABILITY_EVIDENCE,
 } from "@/lib/skd/activity-coverage"
+import { CAPABILITY_KEYS } from "@/lib/profiles/extensions"
 import type { CapabilityKey } from "@/lib/profiles/types"
 
 /** Tipkani dostop do CapabilityMatrix (brez `any`). */
@@ -380,6 +381,26 @@ describe("§5b — capability metodologija: 13 ključev, vsak z lastnim dokazilo
     }
   })
 
+  it("extension SAM po sebi ne spremeni katerih zmožnosti manjka (razširitve NISO runtime-dokaz)", () => {
+    const base = getProfile("skd-salon")
+    for (const extCount of [0, 1, 3]) {
+      const extensions = Array.from({ length: extCount }, (_, i) => `ext-${i}`)
+      const p = {
+        ...base,
+        capabilities: { ...base.capabilities },
+        forms: [],
+        workflows: [],
+        extensions,
+      } as unknown as ReturnType<typeof getProfile>
+      for (const c of CAPS) setCap(p.capabilities as unknown as Record<string, CapState>, c, "required")
+      // Brez razširitev in z njimi: manjkajoči ključi morajo biti POVSEM enaki —
+      // razširitev predloge ne nadomesti in ne pokrije workOrders/shop/etc.
+      const without = missingRequiredCapabilities({ ...p, extensions: [] } as unknown as ReturnType<typeof getProfile>).map((m) => m.key)
+      const withExt = missingRequiredCapabilities(p).map((m) => m.key)
+      expect(withExt, `extensions ${extCount}: rezultat mora biti identičen`).toEqual(without)
+    }
+  })
+
   it("optional nikoli ne ustvari vrzeli", () => {
     for (const key of CAPS) {
       const base = getProfile("skd-salon")
@@ -420,24 +441,24 @@ describe("§5b — capability metodologija: 13 ključev, vsak z lastnim dokazilo
     }
   })
 
-  it("D v sekciji H je posledica MANJKAJOČEGA delivery IN workflowa (ne enega ali drugega) — ključi so izkazani neodvisno", () => {
+  it("D v sekciji H: vsaka vrsta se neposredno oceni as 'partial' + 'assessed' (ne le posredno po profilu)", () => {
     // Vse sekcije H vrstice so razvrščene na isti profil skd-h-transport.
     const hRows = activityCoverage().filter((r) => r.code.startsWith("H"))
     expect(hRows.length).toBeGreaterThan(0)
-    const profilesInH = new Set(hRows.map((r) => r.profileId))
-    // vsak H profil mora dejansko biti razvrščen D (delno), da ima smisla diagnosticirati
-    for (const pid of profilesInH) {
-      const profile = getProfile(pid)
-      const missing = missingRequiredCapabilities(profile).map((m) => m.key)
-      // Metodologija: delivery je neuniverzalna zahtevana zmožnost → vrzel, IN workflows
-      // (forms) sta zahtevani a brez predlog → vrzel. Ne pripisujemo vzroka, ki ga
-      // test ne dokaže: vedno izpišemo točne ključe iz registerja.
-      const cap = profile.capabilities as unknown as Record<string, string>
-      expect(cap.delivery).toBe("required")
-      expect(missing).toContain("delivery")
-      expect(missing).toContain("workflows")
-      // ključi D ne smejo ostati skriti v enem številu
+    for (const row of hRows) {
+      // NEPOSREDNO na vrsti, ne prek profila: nivo in status ocene.
+      expect(row.coverageLevel, `${row.code}: H vrsta mora biti explicitno D/partial`).toBe("partial")
+      expect(row.assessmentStatus, `${row.code}: H vrsta mora biti 'assessed'`).toBe("assessed")
     }
+    // Diagnoza vzroka iz registerja (ne trdo): delivery + workflows sta zahtevani,
+    // a neuniverzalna/brez predloge → dejanski ključi vrzeli.
+    const pid = hRows[0].profileId
+    const profile = getProfile(pid)
+    const missing = missingRequiredCapabilities(profile).map((m) => m.key)
+    const cap = profile.capabilities as unknown as Record<string, string>
+    expect(cap.delivery).toBe("required")
+    expect(missing).toContain("delivery")
+    expect(missing).toContain("workflows")
   })
 
   it("register oznacit DA in nedokazano: CAPABILITY_EVIDENCE ima 12 dobavljenih modulov, delivery edini neuniverzalen", () => {
@@ -447,6 +468,88 @@ describe("§5b — capability metodologija: 13 ključev, vsak z lastnim dokazilo
   })
 })
 
+describe("§5c — declaredConfiguration pokriva VSE CapabilityMatrix ključe", () => {
+  it("vsak ključ iz CAPABILITY_KEYS (=CapabilityMatrix) se pojavi v deklaraciji z dejansko zastavico", () => {
+    // Konkretni profili: frizer (workflows optional/required?), baza jedro salon
+    const profilesToCheck = ["skd-salon", "frizer", "mehanik", "skd-h-transport"]
+    for (const pid of profilesToCheck) {
+      const p = getProfile(pid)
+      const dc = declaredConfiguration(p)
+      expect(Object.keys(dc.capabilities)).toHaveLength(CAPABILITY_KEYS.length)
+      for (const key of CAPABILITY_KEYS) {
+        // vsak ključ je prisoten in ima veljavno stanje
+        expect(dc.capabilities[key], `${pid} manjka deklaracije za ${key}`).toMatch(
+          /^(required|optional|disabled)$/
+        )
+        // deklaracija = cast zastavice iz profila (brez preglasitve)
+        const raw = (p.capabilities ?? {}) as unknown as Record<string, string | undefined>
+        const expected = raw[key] ?? "optional"
+        expect(dc.capabilities[key]).toBe(expected)
+      }
+    }
+  })
+
+  it("walkIn in cashRegister sta vključena v deklaracijo (nista tiho izpuščena)", () => {
+    const p = getProfile("skd-salon")
+    const dc = declaredConfiguration(p)
+    // oba ključa sta del enotne seznama in prisotna v izhodu
+    expect(dc.capabilities).toHaveProperty("walkIn")
+    expect(dc.capabilities).toHaveProperty("cashRegister")
+    expect(CAPABILITY_KEYS).toContain("walkIn")
+    expect(CAPABILITY_KEYS).toContain("cashRegister")
+  })
+
+  it("required/optional/disabled se prenesejo neokrnjeno (vrednost pride iz registra)", () => {
+    // skd-h-transport deklarira delivery required (ne-univerzalna), walkIn optional
+    const p = getProfile("skd-h-transport")
+    const dc = declaredConfiguration(p)
+    const raw = p.capabilities as unknown as Record<string, string | undefined>
+    for (const key of CAPABILITY_KEYS) {
+      expect(dc.capabilities[key]).toBe(raw[key] ?? "optional")
+    }
+  })
+
+  it("CAPABILITY_KEYS je sinhrn s CapabilityMatrix — nov ključ ne more tiho izostati", () => {
+    // Eksplicitna tipna formulacija: tuple CAPABILITY_KEYS je `satisfies readonly
+    // CapabilityKey[]` (extensions.ts) in sync-lock z `CapabilityMatrix` (test
+    // extensions-e21.test.ts in compare the keys). Tu preverimo, da deklaracija
+    // izpeljuje IZKLJUČNO iz tega enotnega seznama — noben dodatni, njihovo
+    // število je natanko CAPABILITY_KEYS.length na vsakem dejanskem profilu.
+    const expected = [...CAPABILITY_KEYS].sort()
+    for (const pid of ["skd-salon", "frizer", "mehanik", "skd-h-transport", "tattoo-studio"]) {
+      const dc = declaredConfiguration(getProfile(pid))
+      const keys = Object.keys(dc.capabilities).sort()
+      // Vsi ključi iz enotnega seznama morajo biti prisotni v deklaraciji.
+      expect(keys).toEqual(expected)
+    }
+  })
+})
+
+describe("§5d — metriki deklariranih konfiguracijskih elementov: unikatno vs uteženo", () => {
+  it("uteženo > unikatno, kadar isti profil pokriva več vrstic; obe izračunani iz dejanskih profilov", () => {
+    const s = coverageSummary()
+    const m = s.metrics
+
+    // uteženo = vsota po vseh 678 vrsticah
+    const rows = activityCoverage()
+    const expectedWeighted = rows.reduce((a, r) => a + r.declared.totalConfigElements, 0)
+    expect(m.weightedDeclaredConfigElementCount).toBe(expectedWeighted)
+
+    // unikatno = vsota po navidezno edinstvenih profilskih id-jih
+    const perProfile = new Map<string, number>()
+    for (const r of rows) {
+      perProfile.set(r.profileId, r.declared.totalConfigElements)
+    }
+    const expectedUnique = [...perProfile.values()].reduce((a, b) => a + b, 0)
+    expect(m.uniqueDeclaredConfigElementCount).toBe(expectedUnique)
+
+    // ker isti profil (npr. generic ali skd-salon) pokriva veliko vrstic,
+    // je uteženo tipično strogo večje od unikatnega
+    expect(m.weightedDeclaredConfigElementCount).toBeGreaterThanOrEqual(m.uniqueDeclaredConfigElementCount)
+    // in obe sta pozitivni
+    expect(m.uniqueDeclaredConfigElementCount).toBeGreaterThan(0)
+  })
+})
 describe("§6 — dokumentacija je izpeljana (brez ročnih popravkov)", () => {
   it("generirani dokument (COMPLETE-COVERAGE) vsebuje vseh 22 sekcij z uradnimi nazivi in pravilne vsote", () => {
     const doc = readFileSync(resolve(__dirname, "../docs/SKD-2025-COMPLETE-COVERAGE.md"), "utf8")
@@ -454,10 +557,21 @@ describe("§6 — dokumentacija je izpeljana (brez ročnih popravkov)", () => {
     // vsak oddelek, uradno ime in vsota se ujema z registerjem
     for (const sec of SKD_SECTIONS) {
       const dd = s.bySection[sec.code]
-      expect(doc).toContain(`| ${sec.code} | ${sec.name} |`)
+      // CELOTNA vrstica sekcije: koda | naziv | total | A | B | C | D | E | ni-ocenjeno.
       if (dd) {
-        // vrstica v dokumentu mora pokazati total (to je niz, ki ga ne smemo podvajati ročno)
-        expect(doc).toContain(`| ${dd.total} |`)
+        const levelRow =
+          `| ${sec.code} | ${sec.name} | ${dd.total} | ${dd.byLevel.specializedValidated} | ` +
+          `${dd.byLevel.validatedArchetype} | ${dd.byLevel.validatedBase} | ${dd.byLevel.partial} | ` +
+          `${dd.byLevel.uncovered} | ${dd.byLevel.notAssessed} |`
+        expect(doc, `${sec.code}: celotna vrstica sekcije z vsemi nivoji`).toContain(levelRow)
+        // Pošten pregled: tudi total, razčlenjen iz same vrstice, se ujema (noben
+        // napačno preslikan / "prisiljen" par koda+naziv+total).
+        const rowMatch = doc.match(new RegExp(`^\\| ${sec.code} \\| ${sec.name} \\| (\\d+) \\|`, "m"))
+        expect(rowMatch, `${sec.code}: tabela vsebuje vrstico s kodo+nazivom`).toBeTruthy()
+        expect(Number(rowMatch![1]), `${sec.code}: razčlenjen total == dd.total`).toBe(dd.total)
+      } else {
+        // sekcija ni zastopana v registerju → ne sme se pojaviti niti enkrat s totalom
+        expect(doc.match(new RegExp(`^\\|\\s*${sec.code}\\s*\\|`, "m")), `${sec.code}: ne sme biti izmišljena vrstica`).toBeNull()
       }
     }
     // uradno ime mora biti iz kataloga, ne iz prejšnje ročne tabele

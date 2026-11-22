@@ -22,7 +22,7 @@
 
 import { getProfile } from "@/lib/profiles/registry"
 import type { ActivityProfile } from "@/lib/profiles/types"
-import { SKD_RECORDS } from "@/lib/skd/data/skd2025"
+import { isSkdCatalogCode } from "@/lib/skd/data/skd-codes"
 
 // ------------------------------------------------------------
 // 1. Sekcija A–V -> profil (najboljša privzeta raven).
@@ -153,19 +153,18 @@ export interface ResolvedSkdProfile {
   profileId: string
 }
 
-/** Vsi uradni SKD zapisi (ravni 1–5), za veljavnostno preverbo po katalogu. */
-const CATALOG_CODES: ReadonlySet<string> = new Set(
-  SKD_RECORDS.map((r) => r.c.toUpperCase())
-)
-
+/** Ali je šifra DEJANSKO uradna koda v katalogu SKD 2025 (katerakoli raven 1–5). */
 /**
- * Ali je šifra DEJANSKO uradna koda v katalogu SKD 2025 (katerakoli raven 1–5).
+ * O(1) veljavnostna preverba po katalogu — uporablja lahki `skd-codes` modul
+ * (samo 1725 kod, brez imen), NE pa celotne `skd2025.ts` datoteke (~268 KB z
+ * uradnimi slovenskimi/angleškimi imeni). Tako client-safe `profiles.ts` ne
+ * potegne celotnega kataloga v začetni brskalniški bundle.
  * NE zadošča oblikovna ustreznost (npr. "T99.999" je videzno pravilna, a NI v
  * katalogu). Poštenost: neobstoječa koda ne sme tiho dobiti sekcijskega profila
  * in biti predstavljena kot veljavna dejavnost.
  */
 export function isValidSkdCode(code: string): boolean {
-  return CATALOG_CODES.has(code.trim().toUpperCase())
+  return isSkdCatalogCode(code.trim().toUpperCase())
 }
 
 /**
@@ -179,7 +178,7 @@ export type SkdCodeValidity = "valid" | "unknown" | "empty"
 export function skdCodeValidity(code: string): SkdCodeValidity {
   const c = code.trim()
   if (c.length === 0) return "empty"
-  return CATALOG_CODES.has(c.toUpperCase()) ? "valid" : "unknown"
+  return isSkdCatalogCode(c.toUpperCase()) ? "valid" : "unknown"
 }
 
 /**
@@ -195,7 +194,7 @@ export function resolveSkdProfileInfo(code: string): ResolvedSkdProfile {
   // (npr. "C14.999" ali "T99.999") se nikoli ne sme razrešiti na realen profil
   // prek ujemanja predpone (DIVISION_PROFILE["C14"]) — vedno pade na
   // generic-fallback.
-  if (!CATALOG_CODES.has(c)) {
+  if (!isSkdCatalogCode(c)) {
     const profile = getProfile("generic")
     return { profile, profileId: profile.id, source: "generic-fallback", division: null }
   }
@@ -235,7 +234,7 @@ export function resolveSkdProfileInfo(code: string): ResolvedSkdProfile {
  */
 export function isSkdException(code: string): boolean {
   const c = code.trim().toUpperCase()
-  if (!CATALOG_CODES.has(c)) return false
+  if (!isSkdCatalogCode(c)) return false
   return SKD_PROFILE_EXCEPTIONS.some(
     (e) => e.code === c || c.startsWith(e.code)
   )
