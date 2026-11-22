@@ -24,7 +24,8 @@ const REPAIRS = [
   ["Â«", "«"],
   ["ÄŚ", "Č"],
   ["ÄŤ", "č"],
-  ["Ĺ ", "Š"], // capital S with caron (followed by non-breaking/space)
+  ["Ĺ\u00A0", "Š"], // Ĺ + U+00A0 (non-breaking space) — the actual byte pattern in the doc
+  ["Ĺ ", "Š"], // capital S with caron (followed by ordinary space)
   ["Ĺˇ", "š"],
   ["Ĺ˝", "Ž"],
   ["Ĺľ", "ž"],
@@ -45,9 +46,14 @@ text = text.replace(
 writeFileSync(file, text, "utf8")
 console.log(`Repaired ${file}`)
 
-// Verify: no mojibake signatures left, BOM gone, key phrases correct.
-const leftovers = [...text.matchAll(/â€|Ä[\u010dŚŤ\u010c]|Ĺ[\u0139ˇľ\u017d\u017d]|^\uFEFF/g)]
-console.log("leftover mojibake tokens:", leftovers.length)
+// Verify: no mojibake signatures left, BOM gone, no stray U+00A0, key phrases correct.
+const leftovers = [
+  ...text.matchAll(/â€|Ä[\u010dŚŤ\u010c]|Ĺ[\u0139ˇľ\u017d\u017d]|\u00A0|^\uFEFF/g),
+]
+if (leftovers.length > 0) {
+  console.error("FAIL: mojibake/nbsp/BOM still present:", leftovers.length, JSON.stringify(leftovers[0][0]))
+  process.exitCode = 1
+}
 for (const phrase of ["Poslovni arhetipi", "že razvrščenih", "opiše možne", "označeno"]) {
   if (!text.includes(phrase)) console.log("WARN missing phrase:", phrase)
 }

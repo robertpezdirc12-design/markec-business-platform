@@ -172,14 +172,17 @@ describe("§3 — metodologija: A/B/C/D/E in not-assessed so pošteni", () => {
     }
   })
 
-  it("D (partial) = zahtevane zmožnosti brez predlog ali izjema", () => {
+  it("D (partial) = vsaj ena zahtevana zmožnost ni dostavljena (no-template ali not-delivered) ali izjema", () => {
     for (const row of activityCoverage()) {
       if (row.coverageLevel !== "partial") continue
       if (row.exception) continue
-      const decl = declaredConfiguration(getProfile(row.profileId))
-      const reqWf = decl.capabilities.workflows === "required" && decl.workflows === 0
-      const reqF = decl.capabilities.forms === "required" && decl.forms === 0
-      expect(reqWf || reqF).toBe(true)
+      // D nastane iz (a) forms/workflows brez predlog, ALI (b) required
+      // zmožnosti, ki NI univerzalno dokazana (services/analytics/appointments/
+      // cashRegister — context-limited → not-delivered).
+      const missing = missingRequiredCapabilities(getProfile(row.profileId))
+      const hasGap = missing.some((m) => m.reason === "no-template") ||
+        missing.some((m) => m.reason === "not-delivered")
+      expect(hasGap, `${row.code}: partial mora imeti vsaj eno nedostavljeno required zmožnost`).toBe(true)
     }
   })
 
@@ -227,8 +230,14 @@ describe("§4 — deklaracija ≠ runtime", () => {
     // ni enaka runtime.
     for (const row of activityCoverage()) {
       if (row.declared.extensions > 0 && row.runtimeEvidence === null) {
-        // To JE pošteno stanje: deklarirana razširitev, a brez dokaza runtime.
-        expect(true).toBe(true)
+        // Pošteno stanje: deklarirana razširitev, a brez dokaza runtime.
+        // Razširitev SAMA NE sme dviči stopnje v A/B/C (validated) — brez
+        // runtimeEvidence se vrsta ne more šteti kot specializirano/arhetip/
+        // baza potrjena. To je realna, izvedljiva asercija (namesto gladke
+        // `expect(true)`).
+        expect(row.coverageLevel).not.toBe("specializedValidated")
+        expect(row.coverageLevel).not.toBe("validatedArchetype")
+        expect(row.coverageLevel).not.toBe("validatedBase")
       }
     }
   })
@@ -279,8 +288,9 @@ describe("§5 — gap analiza, pravilni capability flagi", () => {
     expect(dRows.length + notAssessed.length).toBeLessThanOrEqual(678)
   })
 
-  it("gap analiza: agregat 347 + 33 = 380 (deklaracija required brez runtime) + 2 izjemi = 382 D", () => {
-    // To izhaja iz GC-2 metodologije; številke so izpeljane iz registerja.
+  it("gap analiza: 347 workflows + 33 forme = 380 template-vrzeli + 2 izjemi; D-partial je nadmnožica teh (še context-limited caps)", () => {
+    // Template-vrzeli (deklarirano required, a 0 predlog) so realna dejstva:
+    // izračunana iz profila, NEODVISNO od classifier scope-ja.
     let wfRequiredNoTemplate = 0
     let formsOnlyRequiredNoTemplate = 0
     let exceptions = 0
@@ -300,7 +310,15 @@ describe("§5 — gap analiza, pravilni capability flagi", () => {
     expect(formsOnlyRequiredNoTemplate).toBe(33)
     expect(wfRequiredNoTemplate + formsOnlyRequiredNoTemplate).toBe(380)
     expect(exceptions).toBe(2)
-    expect(wfRequiredNoTemplate + formsOnlyRequiredNoTemplate + exceptions).toBe(coverageSummary().byLevel.partial)
+    // D-partial je SEDAJ nadmnožica: poleg template-vrzeli in izjem šteje še
+    // profile, ki so partial ZARADI context-limited required zmožnosti
+    // (services/analytics/appointments/cashRegister) — tudi ko imajo predloge.
+    // Zato ne enačimo 382 s skupnim partial, ampak preverimo strukturno
+    // konsistenco: vsaka partial vrstica je takšna v registerju.
+    const partialRows = activityCoverage().filter((r) => r.coverageLevel === "partial").length
+    expect(partialRows).toBe(coverageSummary().byLevel.partial)
+    // Template-izpeljan del je stroga podmnožica vseh partial vrstic.
+    expect(wfRequiredNoTemplate + formsOnlyRequiredNoTemplate).toBeLessThanOrEqual(partialRows)
   })
 
   it("seštevek po profilih = 678", () => {
@@ -322,10 +340,16 @@ describe("§5b — capability metodologija: 13 ključev, vsak z lastnim dokazilo
     "documents", "delivery", "cashRegister",
   ]
 
-  // Jedro, ki ga dobavlja platforma (strežniška akcija + test): zahtevano NI vrzel.
+  // Jedro, ki ga platforma DOKAZANO dobavlja (strežniška akcija poganjana end-to-end): zahtevano NI vrzel.
+  // (scope=universal po CAPABILITY_EVIDENCE)
   const PLATFORM_CAPS = [
-    "appointments", "workOrders", "shop", "services", "inventory",
-    "customers", "staff", "analytics", "documents", "cashRegister",
+    "workOrders", "shop", "inventory", "customers", "staff", "documents",
+  ]
+
+  // Zmožnost, ki JE v registerju, a samo context-limited (strežniška akcija NI
+  // poganjana end-to-end): zahtevana MORA biti vrzel.
+  const CONTEXT_LIMITED = [
+    "appointments", "services", "analytics", "cashRegister",
   ]
 
   // Zmožnost, ki NIMA univerzalnega modula: zahtevana je vedno vrzel.
@@ -341,7 +365,7 @@ describe("§5b — capability metodologija: 13 ključev, vsak z lastnim dokazilo
     }
   })
 
-  it("required platform-zmožnost (NPR cashRegister/documents/inventory/analytics) NI vrzel — ne glede na predloge", () => {
+  it("required UNIVERSAL platform-zmožnost NI vrzel (scope=universal, akcija poganjana end-to-end)", () => {
     for (const key of PLATFORM_CAPS) {
       const base = getProfile("skd-salon")
       const p = {
@@ -351,11 +375,29 @@ describe("§5b — capability metodologija: 13 ključev, vsak z lastnim dokazilo
         workflows: [],
         extensions: [],
       } as unknown as ReturnType<typeof getProfile>
-      // vse required, izjema testiranega ključa
       for (const c of CAPS) setCap(p.capabilities as unknown as Record<string, CapState>, c, "required")
       const missing = missingRequiredCapabilities(p)
       const keys = missing.map((m) => m.key)
-      expect(keys, `${key} ne sme biti manjkajoč (platforma dobavlja modul)`).not.toContain(key)
+      expect(keys, `${key} (scope=universal) ne sme biti manjkajoč`).not.toContain(key)
+      // ključ mora biti res scope=universal (sicer bi ta test bil lažen)
+      expect(CAPABILITY_EVIDENCE[key].scope).toBe("universal")
+    }
+  })
+
+  it("required CONTEXT-LIMITED zmožnost MORA biti vrzel (scope != universal, akcija NI poganjana end-to-end)", () => {
+    for (const key of CONTEXT_LIMITED) {
+      const base = getProfile("skd-salon")
+      const p = {
+        ...base,
+        capabilities: { ...base.capabilities },
+        forms: [],
+        workflows: [],
+        extensions: [],
+      } as unknown as ReturnType<typeof getProfile>
+      for (const c of CAPS) setCap(p.capabilities as unknown as Record<string, CapState>, c, "required")
+      const missing = missingRequiredCapabilities(p)
+      const keys = missing.map((m) => m.key)
+      expect(keys, `${key} (scope=context-limited) MORA biti manjkajoč — ne sme šteti kot univerzalna dobava`).toContain(key)
     }
   })
 
@@ -461,10 +503,21 @@ describe("§5b — capability metodologija: 13 ključev, vsak z lastnim dokazilo
     expect(missing).toContain("workflows")
   })
 
-  it("register oznacit DA in nedokazano: CAPABILITY_EVIDENCE ima 12 dobavljenih modulov, delivery edini neuniverzalen", () => {
-    const delivered = Object.keys(CAPABILITY_EVIDENCE).filter((k) => k !== NON_UNIVERSAL)
-    expect(delivered.length).toBe(12)
+  it("register loči univerzalno dobavo (scope=universal) od context-limited — context-limited NE šteje kot dobava", () => {
+    // Prava univerzalna dobava po scope-honouring pravilu = ključi s scope=universal.
+    const universal = Object.entries(CAPABILITY_EVIDENCE)
+      .filter(([, ev]) => ev.scope === "universal")
+      .map(([k]) => k)
+      .sort()
+    const expectedUniversal = PLATFORM_CAPS.slice().sort()
+    expect(universal).toEqual(expectedUniversal)
+    // delivery nima nobenega dokazila v registerju.
     expect(CAPABILITY_EVIDENCE[NON_UNIVERSAL]).toBeUndefined()
+    // vsak context-limited ključ je v registerju, a z jasnim scope=context-limited.
+    for (const key of CONTEXT_LIMITED) {
+      expect(CAPABILITY_EVIDENCE[key], `${key} je v registerju`).toBeTruthy()
+      expect(CAPABILITY_EVIDENCE[key].scope).not.toBe("universal")
+    }
   })
 })
 
@@ -721,8 +774,17 @@ describe("§8 — A/B zahtevata profil-specifičen sprejet runtime dokaz", () =>
   it("preverjene zmožnosti se štejejo po VSEH zahtevanih (ne le forms/workflows)", () => {
     // skd-c-manufacturing: workflows/forms required + 0 predlog → vrzel (D)
     expect(requiredCapabilitiesMissing(getProfile("skd-c-manufacturing"))).toBe(true)
-    // skd-f-construction ima 2 forma + 1 workflow → ni requiredMissing
-    expect(requiredCapabilitiesMissing(getProfile("skd-f-construction"))).toBe(false)
+    // skd-f-construction ima 2 forma + 1 workflow → NI template-vrzeli; a ker
+    // zahteva še context-limited zmožnosti (services, analytics), ki jih noben
+    // test ne poganja end-to-end, je kljub temu requiredMissing → D.
+    const f = getProfile("skd-f-construction")
+    expect((f.forms ?? []).length).toBeGreaterThan(0)
+    expect((f.workflows ?? []).length).toBeGreaterThan(0)
+    const missingF = missingRequiredCapabilities(f)
+    expect(missingF.some((m) => m.reason === "no-template")).toBe(false)
+    expect(missingF.some((m) => m.key === "services"), "services je context-limited → vrzel").toBe(true)
+    expect(missingF.some((m) => m.key === "analytics"), "analytics je context-limited → vrzel").toBe(true)
+    expect(requiredCapabilitiesMissing(f)).toBe(true)
   })
 
   it("seštevek nivojev, metrik in preslikav je usklajen (678)", () => {

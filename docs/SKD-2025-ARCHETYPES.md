@@ -14,7 +14,7 @@
 > označeno kot »segment-groups« ali »needs-specialist-review« — NE dobiva izmišljenega arhetipa.
 >
 > **Uradni nazivi sekcij** prihajajo iz `src/lib/skd/catalog.ts` → `SKD_SECTIONS`
-> (22 sekcij A–V), enako kot v registerju. Ĺ tevila podrazredov so izračunana iz kataloga,
+> (22 sekcij A–V), enako kot v registerju. Števila podrazredov so izračunana iz kataloga,
 > ne ročno.
 >
 > **Usklajenost z registerjem (po reviziji PR #142):** v register `/docs/SKD-2025-COMPLETE-COVERAGE.md`
@@ -103,7 +103,7 @@ PREDLOG za prihodnjo implementacijo; za F43 instalacije bi se dodala kosovnica (
 | G47 maloprodaja | 38 | `trade-retail` | NEW-DECL (POS, zaloga, serije; `cashRegister`, `inventory`) |
 | G47.30 + G47.81–83 (gorivo, motorna vozila) — danes `trade-retail` | (del G47) | `trade-retail-special` | NEW-DECL |
 
-86 podrazredov → 2 arhetipa.
+86 podrazredov → 3 arhetipa.
 
 ### Sekcija H — transport (30) → `archetype: transport-passenger | transport-freight | logistics`
 `skd-h-transport` nič runtime.

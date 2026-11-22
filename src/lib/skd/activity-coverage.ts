@@ -31,7 +31,7 @@
  * imajo dokazan runtime in so zajete v `RuntimeEvidence`.
  */
 
-import type { ActivityProfile } from "@/lib/profiles/types"
+import type { ActivityProfile, CapabilityKey } from "@/lib/profiles/types"
 import { getProfile } from "@/lib/profiles/registry"
 import {
   resolveSkdProfileInfo,
@@ -101,19 +101,19 @@ export const CAPABILITY_EVIDENCE: Record<
     module: "src/app/actions/appointments.ts",
     evidence: "tests/integration/f2-3/staff-multiorg.itest.ts + tests/booking-integrity-93.test.ts",
     scope: "context-limited",
-    caveat: "booking-integrity-93 in staff-multiorg poganjata updateAppointmentStatus/knjižno rezervacijo; polni appointment lifecycle za VSE profile ni profilno-materializiran (brez materializeProfileAssets).",
+    caveat: "Nobena test datoteka NE kliče createAppointment/rescheduleAppointment (glavni termini akciji): booking-integrity-93 in ostali citirani testi le preverjajo izvorno kodo (src.slice) ali poganjajo stranske akcije (updateAppointmentStatus/recordAppointmentTip/getServicesForBooking). Polno naročanje termina ni testno poganjano → context-limited.",
   },
   workOrders: {
-    module: "src/app/actions/work-order-costs.ts",
-    evidence: "tests/work-order-costs.itest.ts",
-    scope: "context-limited",
-    caveat: "citirana evidence poganja le izračun stroškov (calculateWorkOrderCosts); sam work-order-vodenje ni zajeto v tej evidencivi — obstaja kot modul, a njegova univerzalna dobava za vse profile ni testno izkazana.",
+    module: "src/app/actions/work-orders.ts + work-order-costs.ts",
+    evidence: "tests/integration/tire-service.itest.ts + tests/integration/seamstress.itest.ts + tests/work-order-costs.itest.ts",
+    scope: "universal",
+    caveat: "tire-service.itest poganja createWorkOrder (pravi engine work-orders.ts); seamstress.itest poganja advanceWorkOrder; work-order-costs.itest poganja izračun stroškov. Delovnonaloški tok je pokrit end-to-end.",
   },
   shop: {
     module: "src/app/actions/cart.ts + orders.ts + product-checkout.ts",
-    evidence: "tests/integration/f54/f551-variant-checkout.itest.ts",
+    evidence: "tests/integration/f54/f551-variant-checkout.itest.ts + tests/integration/refund-order.itest.ts + tests/integration/f51/promotions.itest.ts",
     scope: "universal",
-    caveat: "f551 poganja cart + product-checkout (orders.ts v njem ni klican) — targeting trgovinski tok.",
+    caveat: "f551 poganja createProductCheckoutSession (product-checkout.ts) + validateCartStock (cart.ts); refund-order.itest poganja refundOrder (orders.ts); promotions.itest poganja createProductCheckoutSession. Vsi trije moduli trgovinskega toka so pokriti end-to-end.",
   },
   services: {
     module: "src/app/actions/services.ts",
@@ -130,14 +130,14 @@ export const CAPABILITY_EVIDENCE: Record<
   customers: {
     module: "src/app/actions/customers.ts",
     evidence: "tests/integration/f553/customers.itest.ts + tests/integration/tire-service.itest.ts",
-    scope: "context-limited",
-    caveat: "f553/tire-service kličeta createCustomer; customers module je realen, a profilna materializacija ni univerzalno dokazana.",
+    scope: "universal",
+    caveat: "customers.itest poganja createCustomer/updateCustomer/archiveCustomer/listCustomers/getCustomerDetail/exportCustomer/anonymize na pravi DB; tire-service.itest poganja createCustomer. Univerzalni jedrni modul, dokazan end-to-end.",
   },
   staff: {
     module: "src/app/actions/staff.ts",
     evidence: "tests/integration/f2-3/staff-multiorg.itest.ts",
-    scope: "context-limited",
-    caveat: "staff-multiorg poganja članstvo/osebje prek akcij staff.ts; klik profile-specifika ni profilno-materializiran.",
+    scope: "universal",
+    caveat: "staff-multiorg poganja staff.ts akcije (članstvo/osebje/urniki) end-to-end prek dveh org na pravi DB; univerzalni jedrni modul.",
   },
   analytics: {
     module: "src/app/actions/dashboard.ts + analytics.ts",
@@ -157,12 +157,12 @@ export const CAPABILITY_EVIDENCE: Record<
     scope: "context-limited",
     caveat: "workflow dobava velja LE ob materializiranih workflow-predlogah profila; zmožnost `required` brez predloge je iskrena vrzel (no-template).",
   },
-  // Dokumentacija + e-računi: dobavljeno (P2 #101, Phase 4+).
+  // Dokumentacija + e-računi: jedrni modul, dogazan end-to-end (documents.ts + einvoices.ts). Quotes ni pokrit.
   documents: {
     module: "src/app/actions/documents.ts + einvoices.ts + quotes.ts",
-    evidence: "tests/integration/f554/documents.itest.ts + tests/unit/einvoice-*.test.ts",
-    scope: "context-limited",
-    caveat: "documents.ts je poganjan v f554; einvoices.ts/quotes.ts citirajo le unit-teste, ne strežniške akcije — celotna dokumentna dobava ni enotno profilno dokazana.",
+    evidence: "tests/integration/f554/documents.itest.ts + tests/integration/einvoice/einvoices.itest.ts",
+    scope: "universal",
+    caveat: "documents.itest poganja documents.ts (getDocumentDetail/getDocumentsOverview/listDocumentCustomers) na pravi DB; einvoices.itest poganja einvoices.ts (submitEinvoice/listEinvoices/downloadEinvoice). Jedrni dokumentni+računski tok univerzalen; posamični quotes.ts ni pokrit z izvajalnim testom.",
   },
   // Blagajna (WP-1): dobavljeno v jedru za VSE dejavnosti.
   cashRegister: {
@@ -175,9 +175,17 @@ export const CAPABILITY_EVIDENCE: Record<
 /** Zmožnosti, ki NISO dobavljene kot univerzalni jedrni modul. */
 const NON_UNIVERSAL_CAPABILITIES = new Set<string>(["delivery"])
 
-/** Ali je zmožnost dokazano dobavljena v jedru platforme? */
+/** Ali je zmožnost dokazano dobavljena kot univerzalni jedrni modul? */
 function isPlatformDeliveredCapability(key: string): boolean {
-  return key in CAPABILITY_EVIDENCE && !NON_UNIVERSAL_CAPABILITIES.has(key)
+  const ev = CAPABILITY_EVIDENCE[key as CapabilityKey]
+  if (!ev || NON_UNIVERSAL_CAPABILITIES.has(key)) return false
+  // Honest scope: le `universal` dokaz (strežniške akcije poganjane end-to-end
+  // v pravem testu na pravi DB) sme zadostiti `required`. `context-limited`
+  // (le sub-path/čista funkcija ali source-read test) NI univerzalna dobava in
+  // zato `required` zveze ne sme postati `not-delivered` gap. forms/workflows
+  // obravnava pred tem template-materializacija (no-template) — ta funkcija se
+  // zanje NE pokliče.
+  return ev.scope === "universal"
 }
 
 /**
@@ -394,12 +402,12 @@ export function missingRequiredCapabilities(profile: ActivityProfile): Array<{ k
   for (const key of ASSESSED_CAPABILITIES) {
     if (cap[key] !== "required") continue
     // forms / workflows: zahtevani, a brez nobene predloge → vrzel (deklaracija brez vsebine).
-    if (key === "forms" && (profile.forms ?? []).length === 0) {
-      missing.push({ key, reason: "no-template" })
-      continue
-    }
-    if (key === "workflows" && (profile.workflows ?? []).length === 0) {
-      missing.push({ key, reason: "no-template" })
+    if (key === "forms" || key === "workflows") {
+      const templateCount = key === "forms" ? (profile.forms ?? []).length : (profile.workflows ?? []).length
+      if (templateCount === 0) missing.push({ key, reason: "no-template" })
+      // z vsaj eno predlogo je zmožnost POKRITA (template-materializacija) —
+      // forms/workflows se zato NIKOLI ne ocenjujejo po isPlatformDeliveredCapability
+      // (njihov scope=context-limited nikakor ne sme postati vrzel, če predloga obstaja).
       continue
     }
     // Ostale zahtevane zmožnosti: pokrite ravno tedaj, ko jih jedro res dobavlja.

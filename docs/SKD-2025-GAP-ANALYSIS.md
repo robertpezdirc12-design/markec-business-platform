@@ -107,9 +107,13 @@ vendar to ni dokaz, da prav konfiguracija tega profila pokriva prav ta podrazred
 - `TerminologySet` pokriva jedro (appointment/order/service/product/customer/bookingCta) — ne
   pokriva pa terminov za **workflow stopnje, proxy evidence, javne CTA po korakih**.
 - Proizvodnja in trgovina **NISTA terminološko prazni**: `skd-c-manufacturing` (tovarna / Delovni
-  nalog / „Oddaj povpraševanje“) in `skd-g-retail` imata lastno profilno terminologijo. Prava vrzel
-  je **procesna**: oba deklarirata zahtevane workflowe/form-e, a BREZ materializiranih predlog,
-  zato terminologija sicer obstaja, dejanskega procesnega runtime-ja (predloge) pa ni.
+  nalog / „Oddaj povpraševanje“) in `skd-g-retail` imata lastno profilno terminologijo. Procesna
+  vrzel pa ni enaka za oba:
+  - `skd-c-manufacturing` deklarira **workflowe/form-e kot required, a z 0 materializiranih
+    predlog** → prava zahtevana-template vrzel (D).
+  - `skd-g-retail` deklarira **workflowe/form-e kot optional** → NI zahtevane-template vrzeli;
+    ostaja `not-assessed`, ker ni dokazanega profilnoposebnega pokritja (business fit), in tudi ni
+    v makro procesne vrzeli, ki bi terjala nov univerzalni proces.
 
 ## 4. Največje priložnosti (kjer je 1 arhetip = mnogo dejavnosti)
 

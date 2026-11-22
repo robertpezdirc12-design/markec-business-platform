@@ -1,6 +1,6 @@
 # SKD 2025 — REGISTER POKRITOSTI DEJAVNOSTI
 
-**Generirano:** 2026-11-22T15:14:30.127Z — iz registerja `src/lib/skd/activity-coverage.ts`.
+**Generirano:** 2026-11-22T17:05:10.970Z — iz registerja `src/lib/skd/activity-coverage.ts`.
 **Vir:** SKD 2025 (SURS KLASJE) V1 (SURS KLASJE). **Podrazredov:** 678.
 
 > **Verodostojni vir:** ta dokument je *generiran* in se ne ureja ročno.
@@ -14,11 +14,11 @@
 | Specializirana in preverjena | A | 0 |
 | Preverjena prek podrazredno-specifičnega arhetipa | B | 0 |
 | Preverjena osnovna konfiguracija | C | 0 |
-| Nepopolna | D | 382 |
+| Nepopolna | D | 678 |
 | Nepokrita | E | 0 |
-| Ni ocenjeno | — | 296 |
+| Ni ocenjeno | — | 0 |
 
-**Ocenjeno:** 382 · **Ni ocenjeno (not-assessed):** 296 · **Skupaj:** 678
+**Ocenjeno:** 678 · **Ni ocenjeno (not-assessed):** 0 · **Skupaj:** 678
 
 ## Preslikava (viri preslikave)
 
@@ -33,27 +33,27 @@
 
 | Sekcija | Naziv | Skupaj | A | B | C | D | E | Ni ocenjeno |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
-| A | Kmetijstvo in lov, gozdarstvo, ribištvo | 39 | 0 | 0 | 0 | 0 | 0 | 39 |
+| A | Kmetijstvo in lov, gozdarstvo, ribištvo | 39 | 0 | 0 | 0 | 39 | 0 | 0 |
 | B | Rudarstvo | 15 | 0 | 0 | 0 | 15 | 0 | 0 |
-| C | Predelovalne dejavnosti | 233 | 0 | 0 | 0 | 227 | 0 | 6 |
+| C | Predelovalne dejavnosti | 233 | 0 | 0 | 0 | 233 | 0 | 0 |
 | D | Oskrba z električno energijo, plinom, paro in hladnim zrakom | 12 | 0 | 0 | 0 | 12 | 0 | 0 |
 | E | Oskrba z vodo, ravnanje z odplakami in odpadki, saniranje okolja | 11 | 0 | 0 | 0 | 11 | 0 | 0 |
-| F | Gradbeništvo | 27 | 0 | 0 | 0 | 0 | 0 | 27 |
-| G | Trgovina | 86 | 0 | 0 | 0 | 0 | 0 | 86 |
+| F | Gradbeništvo | 27 | 0 | 0 | 0 | 27 | 0 | 0 |
+| G | Trgovina | 86 | 0 | 0 | 0 | 86 | 0 | 0 |
 | H | Prevoz in skladiščenje | 30 | 0 | 0 | 0 | 30 | 0 | 0 |
-| I | Nastanitvene in gostinske dejavnosti | 18 | 0 | 0 | 0 | 0 | 0 | 18 |
+| I | Nastanitvene in gostinske dejavnosti | 18 | 0 | 0 | 0 | 18 | 0 | 0 |
 | J | Založništvo, radiodifuzija ter produkcija in distribucija vsebin | 15 | 0 | 0 | 0 | 15 | 0 | 0 |
-| K | Dejavnosti v zvezi s telekomunikacijami, računalniškim programiranjem, svetovanjem, računalniško infrastrukturo in drugimi informacijskimi storitvami | 9 | 0 | 0 | 0 | 0 | 0 | 9 |
+| K | Dejavnosti v zvezi s telekomunikacijami, računalniškim programiranjem, svetovanjem, računalniško infrastrukturo in drugimi informacijskimi storitvami | 9 | 0 | 0 | 0 | 9 | 0 | 0 |
 | L | Finančne in zavarovalniške dejavnosti | 20 | 0 | 0 | 0 | 20 | 0 | 0 |
 | M | Poslovanje z nepremičninami | 5 | 0 | 0 | 0 | 5 | 0 | 0 |
-| N | Strokovne, znanstvene in tehnične dejavnosti | 27 | 0 | 0 | 0 | 0 | 0 | 27 |
-| O | Druge raznovrstne poslovne dejavnosti | 34 | 0 | 0 | 0 | 0 | 0 | 34 |
+| N | Strokovne, znanstvene in tehnične dejavnosti | 27 | 0 | 0 | 0 | 27 | 0 | 0 |
+| O | Druge raznovrstne poslovne dejavnosti | 34 | 0 | 0 | 0 | 34 | 0 | 0 |
 | P | Dejavnost javne uprave in obrambe, dejavnost obvezne socialne varnosti | 9 | 0 | 0 | 0 | 9 | 0 | 0 |
 | Q | Izobraževanje | 13 | 0 | 0 | 0 | 13 | 0 | 0 |
 | R | Zdravstvo in socialno varstvo | 22 | 0 | 0 | 0 | 22 | 0 | 0 |
-| S | Kulturne, športne in rekreacijske dejavnosti | 23 | 0 | 0 | 0 | 2 | 0 | 21 |
-| T | Druge dejavnosti | 26 | 0 | 0 | 0 | 0 | 0 | 26 |
-| U | Dejavnost gospodinjstev z zaposlenim hišnim osebjem ter proizvodnja za lastno rabo | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
+| S | Kulturne, športne in rekreacijske dejavnosti | 23 | 0 | 0 | 0 | 23 | 0 | 0 |
+| T | Druge dejavnosti | 26 | 0 | 0 | 0 | 26 | 0 | 0 |
+| U | Dejavnost gospodinjstev z zaposlenim hišnim osebjem ter proizvodnja za lastno rabo | 3 | 0 | 0 | 0 | 3 | 0 | 0 |
 | V | Dejavnost eksteritorialnih organizacij in teles | 1 | 0 | 0 | 0 | 1 | 0 | 0 |
 
 **Skupaj (po sekcijah):** 678
@@ -95,45 +95,45 @@
 
 | SKD | Slovensko | Sek | Oddelek | Profil | Vir preslikave | Oznaka | Forme | Procesi | Razširitve | Runtime eviden. | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| A01.110 | Pridelovanje žit (razen riža), stročnic in oljnic | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.120 | Pridelovanje riža | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.130 | Pridelovanje zelenjadnic in melon, korenovk in gomoljnic | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.140 | Pridelovanje sladkornega trsa | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.150 | Pridelovanje tobaka | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.160 | Pridelovanje rastlin za vlakna | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.190 | Pridelovanje cvetja in drugih enoletnih rastlin | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.210 | Vinogradništvo | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.220 | Gojenje tropskega in subtropskega sadja | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.230 | Gojenje citrusov | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.240 | Gojenje pečkatega in koščičastega sadja | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.250 | Gojenje drugih sadnih dreves in grmovnic | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.260 | Pridelovanje oljnih sadežev | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.270 | Gojenje rastlin za izdelavo napitkov | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.280 | Gojenje začimbnih, aromatskih in zdravilnih rastlin | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.290 | Gojenje drugih trajnih nasadov | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.300 | Razmnoževanje rastlin | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.410 | Prireja mleka | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.420 | Druga govedoreja | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.430 | Konjereja | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.440 | Reja kamel | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.450 | Reja drobnice | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.460 | Prašičereja | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.470 | Reja perutnine | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.480 | Reja drugih živali | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.500 | Mešano kmetijstvo | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.610 | Storitve za rastlinsko pridelavo | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.620 | Storitve za živinorejo, razen veterinarskih | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.630 | Priprava pridelkov in obdelava semen | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A01.700 | Lovstvo | A | A01 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A02.100 | Gojenje gozdov in druge gozdarske dejavnosti | A | A02 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A02.200 | Sečnja | A | A02 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A02.300 | Nabiranje gozdnih dobrin, razen lesa | A | A02 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A02.400 | Storitve za gozdarstvo | A | A02 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A03.110 | Morsko ribištvo | A | A03 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A03.120 | Sladkovodno ribištvo | A | A03 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A03.210 | Morska akvakultura | A | A03 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A03.220 | Sladkovodna akvakultura | A | A03 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
-| A03.300 | Storitve za ribištvo in akvakulturo | A | A03 | skd-a-agriculture | section-default | **NA** | 0 | 0 | 0 | da | not-assessed |
+| A01.110 | Pridelovanje žit (razen riža), stročnic in oljnic | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.120 | Pridelovanje riža | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.130 | Pridelovanje zelenjadnic in melon, korenovk in gomoljnic | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.140 | Pridelovanje sladkornega trsa | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.150 | Pridelovanje tobaka | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.160 | Pridelovanje rastlin za vlakna | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.190 | Pridelovanje cvetja in drugih enoletnih rastlin | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.210 | Vinogradništvo | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.220 | Gojenje tropskega in subtropskega sadja | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.230 | Gojenje citrusov | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.240 | Gojenje pečkatega in koščičastega sadja | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.250 | Gojenje drugih sadnih dreves in grmovnic | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.260 | Pridelovanje oljnih sadežev | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.270 | Gojenje rastlin za izdelavo napitkov | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.280 | Gojenje začimbnih, aromatskih in zdravilnih rastlin | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.290 | Gojenje drugih trajnih nasadov | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.300 | Razmnoževanje rastlin | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.410 | Prireja mleka | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.420 | Druga govedoreja | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.430 | Konjereja | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.440 | Reja kamel | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.450 | Reja drobnice | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.460 | Prašičereja | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.470 | Reja perutnine | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.480 | Reja drugih živali | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.500 | Mešano kmetijstvo | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.610 | Storitve za rastlinsko pridelavo | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.620 | Storitve za živinorejo, razen veterinarskih | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.630 | Priprava pridelkov in obdelava semen | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A01.700 | Lovstvo | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A02.100 | Gojenje gozdov in druge gozdarske dejavnosti | A | A02 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A02.200 | Sečnja | A | A02 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A02.300 | Nabiranje gozdnih dobrin, razen lesa | A | A02 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A02.400 | Storitve za gozdarstvo | A | A02 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A03.110 | Morsko ribištvo | A | A03 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A03.120 | Sladkovodno ribištvo | A | A03 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A03.210 | Morska akvakultura | A | A03 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A03.220 | Sladkovodna akvakultura | A | A03 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
+| A03.300 | Storitve za ribištvo in akvakulturo | A | A03 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed |
 | B05.100 | Pridobivanje črnega premoga | B | B05 | skd-b-mining | section-default | **D** | 0 | 0 | 1 | — | assessed |
 | B05.200 | Pridobivanje rjavega premoga in lignita | B | B05 | skd-b-mining | section-default | **D** | 0 | 0 | 1 | — | assessed |
 | B06.100 | Pridobivanje surove nafte | B | B06 | skd-b-mining | section-default | **D** | 0 | 0 | 1 | — | assessed |
@@ -192,12 +192,12 @@
 | C13.950 | Proizvodnja netkanih tekstilij in izdelkov | C | C13 | skd-c-manufacturing | section-default | **D** | 0 | 0 | 0 | — | assessed |
 | C13.960 | Proizvodnja tehničnega in industrijskega tekstila | C | C13 | skd-c-manufacturing | section-default | **D** | 0 | 0 | 0 | — | assessed |
 | C13.990 | Proizvodnja tekstilij, d. n. | C | C13 | skd-c-manufacturing | section-default | **D** | 0 | 0 | 0 | — | assessed |
-| C14.100 | Proizvodnja pletenih in kvačkanih oblačil | C | C14 | apparel | division-override | **NA** | 2 | 1 | 3 | da | not-assessed |
-| C14.210 | Proizvodnja vrhnjih oblačil | C | C14 | apparel | division-override | **NA** | 2 | 1 | 3 | da | not-assessed |
-| C14.220 | Proizvodnja spodnjega perila | C | C14 | apparel | division-override | **NA** | 2 | 1 | 3 | da | not-assessed |
-| C14.230 | Proizvodnja delovnih oblačil | C | C14 | apparel | division-override | **NA** | 2 | 1 | 3 | da | not-assessed |
-| C14.240 | Proizvodnja usnjenih in krznenih oblačil | C | C14 | apparel | division-override | **NA** | 2 | 1 | 3 | da | not-assessed |
-| C14.290 | Proizvodnja drugih oblačil, pokrival in dodatkov, d. n. | C | C14 | apparel | division-override | **NA** | 2 | 1 | 3 | da | not-assessed |
+| C14.100 | Proizvodnja pletenih in kvačkanih oblačil | C | C14 | apparel | division-override | **D** | 2 | 1 | 3 | da | assessed |
+| C14.210 | Proizvodnja vrhnjih oblačil | C | C14 | apparel | division-override | **D** | 2 | 1 | 3 | da | assessed |
+| C14.220 | Proizvodnja spodnjega perila | C | C14 | apparel | division-override | **D** | 2 | 1 | 3 | da | assessed |
+| C14.230 | Proizvodnja delovnih oblačil | C | C14 | apparel | division-override | **D** | 2 | 1 | 3 | da | assessed |
+| C14.240 | Proizvodnja usnjenih in krznenih oblačil | C | C14 | apparel | division-override | **D** | 2 | 1 | 3 | da | assessed |
+| C14.290 | Proizvodnja drugih oblačil, pokrival in dodatkov, d. n. | C | C14 | apparel | division-override | **D** | 2 | 1 | 3 | da | assessed |
 | C15.110 | Strojenje in dodelava usnja in krzna | C | C15 | skd-c-manufacturing | section-default | **D** | 0 | 0 | 0 | — | assessed |
 | C15.120 | Proizvodnja potovalne galanterije in sedlarskih izdelkov iz katerega koli materiala | C | C15 | skd-c-manufacturing | section-default | **D** | 0 | 0 | 0 | — | assessed |
 | C15.200 | Proizvodnja obutve | C | C15 | skd-c-manufacturing | section-default | **D** | 0 | 0 | 0 | — | assessed |
@@ -405,119 +405,119 @@
 | E38.320 | Odlaganje ali trajno skladiščenje odpadkov | E | E38 | skd-e-water-waste | section-default | **D** | 0 | 0 | 0 | — | assessed |
 | E38.330 | Drugo odstranjevanje odpadkov | E | E38 | skd-e-water-waste | section-default | **D** | 0 | 0 | 0 | — | assessed |
 | E39.000 | Saniranje okolja in drugo ravnanje z odpadki | E | E39 | skd-e-water-waste | section-default | **D** | 0 | 0 | 0 | — | assessed |
-| F41.000 | Gradnja stanovanjskih in nestanovanjskih stavb | F | F41 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F42.110 | Gradnja cest in avtocest | F | F42 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F42.120 | Gradnja železnic in podzemnih železnic | F | F42 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F42.130 | Gradnja mostov in predorov | F | F42 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F42.210 | Gradnja objektov oskrbne infrastrukture za tekočine | F | F42 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F42.220 | Gradnja objektov oskrbne infrastrukture za elektriko in telekomunikacije | F | F42 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F42.910 | Gradnja vodnih objektov | F | F42 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F42.990 | Gradnja drugih objektov nizke gradnje, d. n. | F | F42 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.110 | Rušenje objektov | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.120 | Zemeljska pripravljalna dela | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.130 | Testno vrtanje in sondiranje | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.210 | Elektroinštalacije | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.220 | Vodovodne, grelne in hladilne inštalacije | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.230 | Namestitev izolacije | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.240 | Druge inštalacije pri gradnjah | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.310 | Fasaderska in štukaterska dela | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.320 | Vgrajevanje stavbnega pohištva | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.330 | Oblaganje tal in sten | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.341 | Steklarska dela | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.342 | Pleskarska dela | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.350 | Druga zaključna gradbena dela | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.410 | Postavljanje ostrešij in krovska dela | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.420 | Druga specializirana gradbena dela pri gradnji stavb | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.500 | Specializirana gradbena dela pri gradnji inženirskih objektov | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.600 | Posredniške dejavnosti za specializirane gradbene storitve | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.910 | Zidarstvo | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| F43.990 | Druga specializirana gradbena dela, d. n. | F | F43 | skd-f-construction | section-default | **NA** | 2 | 1 | 1 | da | not-assessed |
-| G46.110 | Posredništvo pri prodaji na debelo kmetijskih surovin, živih živali, tekstilnih surovin, polizdelkov | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.120 | Posredništvo pri prodaji na debelo goriv, rud, kovin, tehničnih kemikalij | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.130 | Posredništvo pri prodaji na debelo lesa in gradbenega materiala | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.140 | Posredništvo pri prodaji na debelo strojev, industrijske opreme, ladij, letal | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.150 | Posredništvo pri prodaji na debelo pohištva, predmetov in naprav za gospodinjstvo in železnine | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.160 | Posredništvo pri prodaji na debelo tekstila, oblačil, krzna, obutve, usnjenih izdelkov | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.170 | Posredništvo pri prodaji na debelo živil, pijač, tobačnih izdelkov | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.180 | Posredništvo pri prodaji na debelo drugih specializiranih izdelkov | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.190 | Posredništvo pri nespecializirani prodaji na debelo | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.210 | Trgovina na debelo z žiti, tobakom, semeni in krmo | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.220 | Trgovina na debelo s cvetjem in rastlinami | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.230 | Trgovina na debelo z živimi živalmi | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.240 | Trgovina na debelo s kožami, usnjem | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.310 | Trgovina na debelo s sadjem in zelenjavo | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.320 | Trgovina na debelo z mesom, mesnimi izdelki, ribami in ribjimi izdelki | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.330 | Trgovina na debelo z mlekom, mlečnimi izdelki, jajci, jedilnimi olji in maščobami | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.340 | Trgovina na debelo s pijačami | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.350 | Trgovina na debelo s tobačnimi izdelki | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.360 | Trgovina na debelo s sladkorjem, čokolado, sladkornimi izdelki | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.370 | Trgovina na debelo s kavo, čajem, kakavom, začimbami | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.380 | Trgovina na debelo z drugimi živili | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.390 | Nespecializirana trgovina na debelo z živili, pijačami, tobačnimi izdelki | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.410 | Trgovina na debelo s tekstilom | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.420 | Trgovina na debelo z oblačili in obutvijo | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.430 | Trgovina na debelo z električnimi gospodinjskimi napravami | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.440 | Trgovina na debelo s porcelanom, steklenino, čistili | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.450 | Trgovina na debelo s parfumi in kozmetiko | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.460 | Trgovina na debelo s farmacevtskimi in medicinskimi izdelki | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.470 | Trgovina na debelo s pohištvom, preprogami in svetili za dom, pisarne in trgovine | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.480 | Trgovina na debelo z urami in nakitom | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.490 | Trgovina na debelo z drugimi izdelki široke porabe | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.500 | Trgovina na debelo z napravami za informacijsko-komunikacijsko tehnologijo | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.610 | Trgovina na debelo s kmetijskimi stroji, priključki, opremo | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.620 | Trgovina na debelo z obdelovalnimi stroji | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.630 | Trgovina na debelo z rudarskimi in gradbenimi stroji | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.640 | Trgovina na debelo z drugimi napravami in opremo | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.710 | Trgovina na debelo z motornimi vozili | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.720 | Trgovina na debelo z deli in opremo za motorna vozila | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.730 | Trgovina na debelo z motornimi kolesi ter deli in opremo zanje | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.810 | Trgovina na debelo s trdimi, tekočimi in plinastimi gorivi ter povezanimi proizvodi | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.820 | Trgovina na debelo s kovinami in rudami | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.830 | Trgovina na debelo z lesom, gradbenim materialom in sanitarno opremo | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.840 | Trgovina na debelo s kovinskimi proizvodi, inštalacijskim materialom, napravami za ogrevanje | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.850 | Trgovina na debelo s kemičnimi izdelki | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.860 | Trgovina na debelo z drugimi polizdelki | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.870 | Trgovina na debelo z ostanki in odpadki | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.890 | Druga specializirana trgovina na debelo, d. n. | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G46.900 | Nespecializirana trgovina na debelo | G | G46 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.110 | Nespecializirana trgovina na drobno, predvsem z živili, pijačami ali tobačnimi izdelki | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.120 | Druga nespecializirana trgovina na drobno | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.210 | Trgovina na drobno s sadjem in zelenjavo | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.220 | Trgovina na drobno z mesom in mesnimi izdelki | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.230 | Trgovina na drobno z ribami, raki, mehkužci | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.240 | Trgovina na drobno s kruhom, pecivom in slaščicami | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.250 | Trgovina na drobno s pijačami | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.260 | Trgovina na drobno s tobačnimi izdelki | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.270 | Trgovina na drobno z drugimi živili | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.301 | Trgovina na drobno z lastnimi motornimi gorivi | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.302 | Posredništvo pri prodaji motornih goriv na drobno | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.400 | Trgovina na drobno z računalniškimi in komunikacijskimi napravami | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.510 | Trgovina na drobno s tekstilom | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.520 | Trgovina na drobno s kovinskimi izdelki, gradbenim materialom, barvami in steklom | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.530 | Trgovina na drobno s preprogami, talnimi in stenskimi oblogami | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.540 | Trgovina na drobno z električnimi gospodinjskimi napravami | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.550 | Trgovina na drobno s pohištvom, svetili, namizno posodo in drugimi izdelki za gospodinjstvo | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.610 | Trgovina na drobno s knjigami | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.621 | Trgovina na drobno s časopisi in revijami | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.622 | Trgovina na drobno s papirjem in pisalnimi potrebščinami | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.630 | Trgovina na drobno s športno opremo | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.640 | Trgovina na drobno z igrami in igračami | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.690 | Trgovina na drobno z izdelki za kulturo, šport in zabavo, d. n. | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.710 | Trgovina na drobno z oblačili | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.720 | Trgovina na drobno z obutvijo in usnjenimi izdelki | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.730 | Trgovina na drobno s farmacevtskimi izdelki | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.740 | Trgovina na drobno z medicinskimi in ortopedskimi izdelki | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.750 | Trgovina na drobno s kozmetičnimi in toaletnimi izdelki | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.761 | Trgovina na drobno v cvetličarnah | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.762 | Trgovina na drobno z vrtnarsko opremo in hišnimi živalmi | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.770 | Trgovina na drobno z urami in nakitom | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.780 | Trgovina na drobno z drugim novim blagom | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.790 | Trgovina na drobno z rabljenim blagom | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.810 | Trgovina na drobno z motornimi vozili | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.820 | Trgovina na drobno z rezervnimi deli in opremo za motorna vozila | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.830 | Trgovina na drobno z motornimi kolesi ter deli in opremo zanje | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.910 | Posredniške dejavnosti za nespecializirano prodajo na drobno | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| G47.920 | Posredniške dejavnosti za specializirano prodajo na drobno | G | G47 | skd-g-retail | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
+| F41.000 | Gradnja stanovanjskih in nestanovanjskih stavb | F | F41 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F42.110 | Gradnja cest in avtocest | F | F42 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F42.120 | Gradnja železnic in podzemnih železnic | F | F42 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F42.130 | Gradnja mostov in predorov | F | F42 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F42.210 | Gradnja objektov oskrbne infrastrukture za tekočine | F | F42 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F42.220 | Gradnja objektov oskrbne infrastrukture za elektriko in telekomunikacije | F | F42 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F42.910 | Gradnja vodnih objektov | F | F42 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F42.990 | Gradnja drugih objektov nizke gradnje, d. n. | F | F42 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.110 | Rušenje objektov | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.120 | Zemeljska pripravljalna dela | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.130 | Testno vrtanje in sondiranje | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.210 | Elektroinštalacije | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.220 | Vodovodne, grelne in hladilne inštalacije | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.230 | Namestitev izolacije | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.240 | Druge inštalacije pri gradnjah | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.310 | Fasaderska in štukaterska dela | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.320 | Vgrajevanje stavbnega pohištva | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.330 | Oblaganje tal in sten | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.341 | Steklarska dela | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.342 | Pleskarska dela | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.350 | Druga zaključna gradbena dela | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.410 | Postavljanje ostrešij in krovska dela | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.420 | Druga specializirana gradbena dela pri gradnji stavb | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.500 | Specializirana gradbena dela pri gradnji inženirskih objektov | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.600 | Posredniške dejavnosti za specializirane gradbene storitve | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.910 | Zidarstvo | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| F43.990 | Druga specializirana gradbena dela, d. n. | F | F43 | skd-f-construction | section-default | **D** | 2 | 1 | 1 | da | assessed |
+| G46.110 | Posredništvo pri prodaji na debelo kmetijskih surovin, živih živali, tekstilnih surovin, polizdelkov | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.120 | Posredništvo pri prodaji na debelo goriv, rud, kovin, tehničnih kemikalij | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.130 | Posredništvo pri prodaji na debelo lesa in gradbenega materiala | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.140 | Posredništvo pri prodaji na debelo strojev, industrijske opreme, ladij, letal | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.150 | Posredništvo pri prodaji na debelo pohištva, predmetov in naprav za gospodinjstvo in železnine | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.160 | Posredništvo pri prodaji na debelo tekstila, oblačil, krzna, obutve, usnjenih izdelkov | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.170 | Posredništvo pri prodaji na debelo živil, pijač, tobačnih izdelkov | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.180 | Posredništvo pri prodaji na debelo drugih specializiranih izdelkov | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.190 | Posredništvo pri nespecializirani prodaji na debelo | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.210 | Trgovina na debelo z žiti, tobakom, semeni in krmo | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.220 | Trgovina na debelo s cvetjem in rastlinami | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.230 | Trgovina na debelo z živimi živalmi | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.240 | Trgovina na debelo s kožami, usnjem | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.310 | Trgovina na debelo s sadjem in zelenjavo | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.320 | Trgovina na debelo z mesom, mesnimi izdelki, ribami in ribjimi izdelki | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.330 | Trgovina na debelo z mlekom, mlečnimi izdelki, jajci, jedilnimi olji in maščobami | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.340 | Trgovina na debelo s pijačami | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.350 | Trgovina na debelo s tobačnimi izdelki | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.360 | Trgovina na debelo s sladkorjem, čokolado, sladkornimi izdelki | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.370 | Trgovina na debelo s kavo, čajem, kakavom, začimbami | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.380 | Trgovina na debelo z drugimi živili | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.390 | Nespecializirana trgovina na debelo z živili, pijačami, tobačnimi izdelki | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.410 | Trgovina na debelo s tekstilom | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.420 | Trgovina na debelo z oblačili in obutvijo | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.430 | Trgovina na debelo z električnimi gospodinjskimi napravami | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.440 | Trgovina na debelo s porcelanom, steklenino, čistili | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.450 | Trgovina na debelo s parfumi in kozmetiko | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.460 | Trgovina na debelo s farmacevtskimi in medicinskimi izdelki | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.470 | Trgovina na debelo s pohištvom, preprogami in svetili za dom, pisarne in trgovine | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.480 | Trgovina na debelo z urami in nakitom | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.490 | Trgovina na debelo z drugimi izdelki široke porabe | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.500 | Trgovina na debelo z napravami za informacijsko-komunikacijsko tehnologijo | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.610 | Trgovina na debelo s kmetijskimi stroji, priključki, opremo | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.620 | Trgovina na debelo z obdelovalnimi stroji | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.630 | Trgovina na debelo z rudarskimi in gradbenimi stroji | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.640 | Trgovina na debelo z drugimi napravami in opremo | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.710 | Trgovina na debelo z motornimi vozili | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.720 | Trgovina na debelo z deli in opremo za motorna vozila | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.730 | Trgovina na debelo z motornimi kolesi ter deli in opremo zanje | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.810 | Trgovina na debelo s trdimi, tekočimi in plinastimi gorivi ter povezanimi proizvodi | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.820 | Trgovina na debelo s kovinami in rudami | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.830 | Trgovina na debelo z lesom, gradbenim materialom in sanitarno opremo | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.840 | Trgovina na debelo s kovinskimi proizvodi, inštalacijskim materialom, napravami za ogrevanje | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.850 | Trgovina na debelo s kemičnimi izdelki | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.860 | Trgovina na debelo z drugimi polizdelki | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.870 | Trgovina na debelo z ostanki in odpadki | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.890 | Druga specializirana trgovina na debelo, d. n. | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G46.900 | Nespecializirana trgovina na debelo | G | G46 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.110 | Nespecializirana trgovina na drobno, predvsem z živili, pijačami ali tobačnimi izdelki | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.120 | Druga nespecializirana trgovina na drobno | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.210 | Trgovina na drobno s sadjem in zelenjavo | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.220 | Trgovina na drobno z mesom in mesnimi izdelki | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.230 | Trgovina na drobno z ribami, raki, mehkužci | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.240 | Trgovina na drobno s kruhom, pecivom in slaščicami | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.250 | Trgovina na drobno s pijačami | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.260 | Trgovina na drobno s tobačnimi izdelki | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.270 | Trgovina na drobno z drugimi živili | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.301 | Trgovina na drobno z lastnimi motornimi gorivi | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.302 | Posredništvo pri prodaji motornih goriv na drobno | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.400 | Trgovina na drobno z računalniškimi in komunikacijskimi napravami | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.510 | Trgovina na drobno s tekstilom | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.520 | Trgovina na drobno s kovinskimi izdelki, gradbenim materialom, barvami in steklom | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.530 | Trgovina na drobno s preprogami, talnimi in stenskimi oblogami | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.540 | Trgovina na drobno z električnimi gospodinjskimi napravami | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.550 | Trgovina na drobno s pohištvom, svetili, namizno posodo in drugimi izdelki za gospodinjstvo | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.610 | Trgovina na drobno s knjigami | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.621 | Trgovina na drobno s časopisi in revijami | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.622 | Trgovina na drobno s papirjem in pisalnimi potrebščinami | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.630 | Trgovina na drobno s športno opremo | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.640 | Trgovina na drobno z igrami in igračami | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.690 | Trgovina na drobno z izdelki za kulturo, šport in zabavo, d. n. | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.710 | Trgovina na drobno z oblačili | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.720 | Trgovina na drobno z obutvijo in usnjenimi izdelki | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.730 | Trgovina na drobno s farmacevtskimi izdelki | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.740 | Trgovina na drobno z medicinskimi in ortopedskimi izdelki | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.750 | Trgovina na drobno s kozmetičnimi in toaletnimi izdelki | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.761 | Trgovina na drobno v cvetličarnah | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.762 | Trgovina na drobno z vrtnarsko opremo in hišnimi živalmi | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.770 | Trgovina na drobno z urami in nakitom | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.780 | Trgovina na drobno z drugim novim blagom | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.790 | Trgovina na drobno z rabljenim blagom | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.810 | Trgovina na drobno z motornimi vozili | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.820 | Trgovina na drobno z rezervnimi deli in opremo za motorna vozila | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.830 | Trgovina na drobno z motornimi kolesi ter deli in opremo zanje | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.910 | Posredniške dejavnosti za nespecializirano prodajo na drobno | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| G47.920 | Posredniške dejavnosti za specializirano prodajo na drobno | G | G47 | skd-g-retail | section-default | **D** | 0 | 0 | 0 | — | assessed |
 | H49.110 | Težek železniški potniški prevoz | H | H49 | skd-h-transport | section-default | **D** | 0 | 0 | 0 | — | assessed |
 | H49.120 | Drug železniški potniški prevoz | H | H49 | skd-h-transport | section-default | **D** | 0 | 0 | 0 | — | assessed |
 | H49.200 | Železniški tovorni prevoz | H | H49 | skd-h-transport | section-default | **D** | 0 | 0 | 0 | — | assessed |
@@ -548,24 +548,24 @@
 | H53.100 | Izvajanje univerzalne poštne storitve | H | H53 | skd-h-transport | section-default | **D** | 0 | 0 | 0 | — | assessed |
 | H53.200 | Druga poštna in kurirska dejavnost | H | H53 | skd-h-transport | section-default | **D** | 0 | 0 | 0 | — | assessed |
 | H53.300 | Posredniške storitve za poštno in kurirsko dejavnost | H | H53 | skd-h-transport | section-default | **D** | 0 | 0 | 0 | — | assessed |
-| I55.100 | Dejavnost hotelov in podobnih nastanitvenih obratov | I | I55 | skd-i-hospitality | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| I55.201 | Počitniški domovi in letovišča | I | I55 | skd-i-hospitality | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| I55.202 | Turistične kmetije s sobami | I | I55 | skd-i-hospitality | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| I55.203 | Oddajanje zasebnih sob gostom | I | I55 | skd-i-hospitality | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| I55.204 | Planinski domovi in mladinska prenočišča | I | I55 | skd-i-hospitality | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| I55.209 | Druge nastanitve za krajši čas | I | I55 | skd-i-hospitality | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| I55.300 | Dejavnost avtokampov | I | I55 | skd-i-hospitality | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| I55.400 | Posredniške nastanitvene storitve | I | I55 | skd-i-hospitality | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| I55.900 | Druge nastanitvene dejavnosti | I | I55 | skd-i-hospitality | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| I56.111 | Gostilne in restavracije | I | I56 | skd-i-hospitality | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| I56.112 | Okrepčevalnice in podobni obrati | I | I56 | skd-i-hospitality | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| I56.113 | Slaščičarne in kavarne | I | I56 | skd-i-hospitality | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| I56.114 | Turistične kmetije brez sob | I | I56 | skd-i-hospitality | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| I56.120 | Mobilna strežba hrane | I | I56 | skd-i-hospitality | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| I56.210 | Priložnostna priprava in dostava hrane | I | I56 | skd-i-hospitality | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| I56.220 | Pogodbena priprava in dostava hrane ter druga oskrba s hrano | I | I56 | skd-i-hospitality | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| I56.300 | Strežba pijač | I | I56 | skd-i-hospitality | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| I56.400 | Posredniške storitve za dejavnosti strežbe hrane in pijač | I | I56 | skd-i-hospitality | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
+| I55.100 | Dejavnost hotelov in podobnih nastanitvenih obratov | I | I55 | skd-i-hospitality | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| I55.201 | Počitniški domovi in letovišča | I | I55 | skd-i-hospitality | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| I55.202 | Turistične kmetije s sobami | I | I55 | skd-i-hospitality | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| I55.203 | Oddajanje zasebnih sob gostom | I | I55 | skd-i-hospitality | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| I55.204 | Planinski domovi in mladinska prenočišča | I | I55 | skd-i-hospitality | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| I55.209 | Druge nastanitve za krajši čas | I | I55 | skd-i-hospitality | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| I55.300 | Dejavnost avtokampov | I | I55 | skd-i-hospitality | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| I55.400 | Posredniške nastanitvene storitve | I | I55 | skd-i-hospitality | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| I55.900 | Druge nastanitvene dejavnosti | I | I55 | skd-i-hospitality | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| I56.111 | Gostilne in restavracije | I | I56 | skd-i-hospitality | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| I56.112 | Okrepčevalnice in podobni obrati | I | I56 | skd-i-hospitality | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| I56.113 | Slaščičarne in kavarne | I | I56 | skd-i-hospitality | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| I56.114 | Turistične kmetije brez sob | I | I56 | skd-i-hospitality | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| I56.120 | Mobilna strežba hrane | I | I56 | skd-i-hospitality | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| I56.210 | Priložnostna priprava in dostava hrane | I | I56 | skd-i-hospitality | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| I56.220 | Pogodbena priprava in dostava hrane ter druga oskrba s hrano | I | I56 | skd-i-hospitality | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| I56.300 | Strežba pijač | I | I56 | skd-i-hospitality | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| I56.400 | Posredniške storitve za dejavnosti strežbe hrane in pijač | I | I56 | skd-i-hospitality | section-default | **D** | 0 | 0 | 0 | — | assessed |
 | J58.110 | Izdajanje knjig | J | J58 | skd-j-media | section-default | **D** | 0 | 0 | 1 | — | assessed |
 | J58.120 | Izdajanje časopisov | J | J58 | skd-j-media | section-default | **D** | 0 | 0 | 1 | — | assessed |
 | J58.130 | Izdajanje revij in druge periodike | J | J58 | skd-j-media | section-default | **D** | 0 | 0 | 1 | — | assessed |
@@ -581,15 +581,15 @@
 | J60.200 | Televizijska dejavnost in distribucija videoposnetkov | J | J60 | skd-j-media | section-default | **D** | 0 | 0 | 1 | — | assessed |
 | J60.310 | Dejavnost tiskovnih agencij | J | J60 | skd-j-media | section-default | **D** | 0 | 0 | 1 | — | assessed |
 | J60.390 | Druge dejavnosti distribucije vsebin | J | J60 | skd-j-media | section-default | **D** | 0 | 0 | 1 | — | assessed |
-| K61.100 | Telekomunikacijske dejavnosti po vodih, brezžične in satelitske telekomunikacijske dejavnosti | K | K61 | skd-k-digital | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| K61.200 | Preprodaja telekomunikacijskih storitev in posredniške storitve v zvezi s telekomunikacijami | K | K61 | skd-k-digital | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| K61.900 | Druge telekomunikacijske dejavnosti | K | K61 | skd-k-digital | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| K62.100 | Računalniško programiranje | K | K62 | skd-k-digital | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| K62.200 | Svetovanje o računalniških napravah in programih ter upravljanje računalniških naprav in sistemov | K | K62 | skd-k-digital | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| K62.900 | Druge z informacijsko tehnologijo in računalniškimi storitvami povezane dejavnosti | K | K62 | skd-k-digital | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| K63.100 | Dejavnosti v zvezi z računalniško infrastrukturo, obdelavo podatkov in gostovanjem ter povezane dejavnosti | K | K63 | skd-k-digital | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| K63.910 | Dejavnosti spletnih iskalnikov | K | K63 | skd-k-digital | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| K63.920 | Druge informacijske dejavnosti | K | K63 | skd-k-digital | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
+| K61.100 | Telekomunikacijske dejavnosti po vodih, brezžične in satelitske telekomunikacijske dejavnosti | K | K61 | skd-k-digital | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| K61.200 | Preprodaja telekomunikacijskih storitev in posredniške storitve v zvezi s telekomunikacijami | K | K61 | skd-k-digital | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| K61.900 | Druge telekomunikacijske dejavnosti | K | K61 | skd-k-digital | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| K62.100 | Računalniško programiranje | K | K62 | skd-k-digital | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| K62.200 | Svetovanje o računalniških napravah in programih ter upravljanje računalniških naprav in sistemov | K | K62 | skd-k-digital | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| K62.900 | Druge z informacijsko tehnologijo in računalniškimi storitvami povezane dejavnosti | K | K62 | skd-k-digital | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| K63.100 | Dejavnosti v zvezi z računalniško infrastrukturo, obdelavo podatkov in gostovanjem ter povezane dejavnosti | K | K63 | skd-k-digital | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| K63.910 | Dejavnosti spletnih iskalnikov | K | K63 | skd-k-digital | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| K63.920 | Druge informacijske dejavnosti | K | K63 | skd-k-digital | section-default | **D** | 0 | 0 | 0 | — | assessed |
 | L64.110 | Centralno bančništvo | L | L64 | skd-l-finance | section-default | **D** | 0 | 0 | 1 | — | assessed |
 | L64.190 | Drugo denarno posredništvo | L | L64 | skd-l-finance | section-default | **D** | 0 | 0 | 1 | — | assessed |
 | L64.210 | Dejavnost holdingov | L | L64 | skd-l-finance | section-default | **D** | 0 | 0 | 1 | — | assessed |
@@ -615,67 +615,67 @@
 | M68.200 | Oddajanje in obratovanje lastnih ali najetih nepremičnin | M | M68 | skd-m-real-estate | section-default | **D** | 0 | 0 | 1 | — | assessed |
 | M68.310 | Posredniške storitve za poslovanje z nepremičninami | M | M68 | skd-m-real-estate | section-default | **D** | 0 | 0 | 1 | — | assessed |
 | M68.320 | Drugo poslovanje z nepremičninami za plačilo ali po pogodbi | M | M68 | skd-m-real-estate | section-default | **D** | 0 | 0 | 1 | — | assessed |
-| N69.101 | Odvetništvo | N | N69 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N69.102 | Notariat | N | N69 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N69.103 | Izvršitelji, arbitri in sodni izvedenci | N | N69 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N69.109 | Druge pravne dejavnosti | N | N69 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N69.200 | Računovodske, knjigovodske in revizijske dejavnosti, davčno svetovanje | N | N69 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N70.100 | Dejavnost uprav podjetij | N | N70 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N70.200 | Drugo podjetniško in poslovno svetovanje | N | N70 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N71.111 | Arhitekturno projektiranje | N | N71 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N71.112 | Krajinsko arhitekturno, urbanistično in drugo projektiranje | N | N71 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N71.121 | Geofizikalne meritve, geodetska dejavnost | N | N71 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N71.129 | Druge inženirske dejavnosti in tehnično svetovanje | N | N71 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N71.200 | Tehnično preizkušanje in analiziranje | N | N71 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N72.100 | Raziskovalna in razvojna dejavnost na področju naravoslovja in tehnologije | N | N72 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N72.200 | Raziskovalna in razvojna dejavnost na področju družboslovja in humanistike | N | N72 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N73.110 | Dejavnost oglaševalskih agencij | N | N73 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N73.120 | Posredovanje oglaševalskega prostora | N | N73 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N73.200 | Raziskovanje trga in javnega mnenja | N | N73 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N73.300 | Dejavnost stikov z javnostjo | N | N73 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N74.110 | Oblikovanje industrijskih izdelkov in modno oblikovanje | N | N74 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N74.120 | Grafično oblikovanje in vizualno komuniciranje | N | N74 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N74.130 | Notranje oblikovanje | N | N74 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N74.140 | Drugo specializirano oblikovanje | N | N74 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N74.200 | Fotografska dejavnost | N | N74 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N74.300 | Prevajanje in tolmačenje | N | N74 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N74.910 | Storitve patentnega posredništva in trženja | N | N74 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N74.990 | Vse druge strokovne, znanstvene in tehnične dejavnosti, d. n. | N | N74 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| N75.000 | Veterinarstvo | N | N75 | skd-n-professional | section-default | **NA** | 0 | 0 | 1 | — | not-assessed |
-| O77.110 | Dajanje lahkih motornih vozil v najem in zakup | O | O77 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O77.120 | Dajanje tovornjakov v najem in zakup | O | O77 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O77.210 | Dajanje športne opreme v najem in zakup | O | O77 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O77.220 | Dajanje drugih izdelkov za široko rabo v najem in zakup | O | O77 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O77.310 | Dajanje kmetijskih strojev in opreme v najem in zakup | O | O77 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O77.320 | Dajanje gradbenih strojev in opreme v najem in zakup | O | O77 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O77.330 | Dajanje pisarniške opreme in računalniških naprav v najem in zakup | O | O77 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O77.340 | Dajanje vodnih plovil v najem in zakup | O | O77 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O77.350 | Dajanje zračnih plovil v najem in zakup | O | O77 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O77.390 | Dajanje drugih strojev, naprav in opredmetenih sredstev, d. n., v najem in zakup | O | O77 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O77.400 | Dajanje pravic uporabe intelektualne lastnine v zakup, razen avtorsko zaščitenih del | O | O77 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O77.510 | Posredništvo pri dajanju avtomobilov, avtodomov in prikolic v najem in zakup | O | O77 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O77.520 | Posredništvo pri dajanju drugih opredmetenih sredstev in nefinančnih neopredmetenih sredstev v najem in zakup | O | O77 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O78.100 | Dejavnost pri iskanju zaposlitve | O | O78 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O78.200 | Posredovanje začasne delovne sile in druga oskrba s človeškimi viri | O | O78 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O79.110 | Dejavnost potovalnih agencij | O | O79 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O79.120 | Dejavnost organizatorjev potovanj | O | O79 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O79.900 | Druge storitve rezervacij in druge s potovanji povezane dejavnosti | O | O79 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O80.011 | Detektivske dejavnosti | O | O80 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O80.012 | Zasebno varovanje | O | O80 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O80.019 | Druge preiskovalne dejavnosti | O | O80 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O80.090 | Varovanje, d. n. | O | O80 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O81.100 | Vzdrževanje objektov in hišniška dejavnost | O | O81 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O81.210 | Splošno čiščenje stavb | O | O81 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O81.220 | Drugo čiščenje stavb, industrijskih naprav in opreme | O | O81 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O81.230 | Drugo čiščenje | O | O81 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O81.300 | Urejanje in vzdrževanje zelenih površin in okolice | O | O81 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O82.100 | Pisarniške dejavnosti | O | O82 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O82.200 | Dejavnosti klicnih centrov | O | O82 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O82.300 | Organiziranje razstav, sejmov, srečanj | O | O82 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O82.400 | Posredniške storitve za spremljajoče poslovne storitvene dejavnosti, d. n. | O | O82 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O82.910 | Izterjava in ocenjevanje kreditne sposobnosti | O | O82 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O82.920 | Pakiranje | O | O82 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| O82.990 | Druge spremljajoče poslovne storitvene dejavnosti, d. n. | O | O82 | skd-o-other-business | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
+| N69.101 | Odvetništvo | N | N69 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N69.102 | Notariat | N | N69 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N69.103 | Izvršitelji, arbitri in sodni izvedenci | N | N69 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N69.109 | Druge pravne dejavnosti | N | N69 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N69.200 | Računovodske, knjigovodske in revizijske dejavnosti, davčno svetovanje | N | N69 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N70.100 | Dejavnost uprav podjetij | N | N70 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N70.200 | Drugo podjetniško in poslovno svetovanje | N | N70 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N71.111 | Arhitekturno projektiranje | N | N71 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N71.112 | Krajinsko arhitekturno, urbanistično in drugo projektiranje | N | N71 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N71.121 | Geofizikalne meritve, geodetska dejavnost | N | N71 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N71.129 | Druge inženirske dejavnosti in tehnično svetovanje | N | N71 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N71.200 | Tehnično preizkušanje in analiziranje | N | N71 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N72.100 | Raziskovalna in razvojna dejavnost na področju naravoslovja in tehnologije | N | N72 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N72.200 | Raziskovalna in razvojna dejavnost na področju družboslovja in humanistike | N | N72 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N73.110 | Dejavnost oglaševalskih agencij | N | N73 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N73.120 | Posredovanje oglaševalskega prostora | N | N73 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N73.200 | Raziskovanje trga in javnega mnenja | N | N73 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N73.300 | Dejavnost stikov z javnostjo | N | N73 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N74.110 | Oblikovanje industrijskih izdelkov in modno oblikovanje | N | N74 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N74.120 | Grafično oblikovanje in vizualno komuniciranje | N | N74 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N74.130 | Notranje oblikovanje | N | N74 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N74.140 | Drugo specializirano oblikovanje | N | N74 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N74.200 | Fotografska dejavnost | N | N74 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N74.300 | Prevajanje in tolmačenje | N | N74 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N74.910 | Storitve patentnega posredništva in trženja | N | N74 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N74.990 | Vse druge strokovne, znanstvene in tehnične dejavnosti, d. n. | N | N74 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| N75.000 | Veterinarstvo | N | N75 | skd-n-professional | section-default | **D** | 0 | 0 | 1 | — | assessed |
+| O77.110 | Dajanje lahkih motornih vozil v najem in zakup | O | O77 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O77.120 | Dajanje tovornjakov v najem in zakup | O | O77 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O77.210 | Dajanje športne opreme v najem in zakup | O | O77 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O77.220 | Dajanje drugih izdelkov za široko rabo v najem in zakup | O | O77 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O77.310 | Dajanje kmetijskih strojev in opreme v najem in zakup | O | O77 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O77.320 | Dajanje gradbenih strojev in opreme v najem in zakup | O | O77 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O77.330 | Dajanje pisarniške opreme in računalniških naprav v najem in zakup | O | O77 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O77.340 | Dajanje vodnih plovil v najem in zakup | O | O77 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O77.350 | Dajanje zračnih plovil v najem in zakup | O | O77 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O77.390 | Dajanje drugih strojev, naprav in opredmetenih sredstev, d. n., v najem in zakup | O | O77 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O77.400 | Dajanje pravic uporabe intelektualne lastnine v zakup, razen avtorsko zaščitenih del | O | O77 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O77.510 | Posredništvo pri dajanju avtomobilov, avtodomov in prikolic v najem in zakup | O | O77 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O77.520 | Posredništvo pri dajanju drugih opredmetenih sredstev in nefinančnih neopredmetenih sredstev v najem in zakup | O | O77 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O78.100 | Dejavnost pri iskanju zaposlitve | O | O78 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O78.200 | Posredovanje začasne delovne sile in druga oskrba s človeškimi viri | O | O78 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O79.110 | Dejavnost potovalnih agencij | O | O79 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O79.120 | Dejavnost organizatorjev potovanj | O | O79 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O79.900 | Druge storitve rezervacij in druge s potovanji povezane dejavnosti | O | O79 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O80.011 | Detektivske dejavnosti | O | O80 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O80.012 | Zasebno varovanje | O | O80 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O80.019 | Druge preiskovalne dejavnosti | O | O80 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O80.090 | Varovanje, d. n. | O | O80 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O81.100 | Vzdrževanje objektov in hišniška dejavnost | O | O81 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O81.210 | Splošno čiščenje stavb | O | O81 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O81.220 | Drugo čiščenje stavb, industrijskih naprav in opreme | O | O81 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O81.230 | Drugo čiščenje | O | O81 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O81.300 | Urejanje in vzdrževanje zelenih površin in okolice | O | O81 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O82.100 | Pisarniške dejavnosti | O | O82 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O82.200 | Dejavnosti klicnih centrov | O | O82 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O82.300 | Organiziranje razstav, sejmov, srečanj | O | O82 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O82.400 | Posredniške storitve za spremljajoče poslovne storitvene dejavnosti, d. n. | O | O82 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O82.910 | Izterjava in ocenjevanje kreditne sposobnosti | O | O82 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O82.920 | Pakiranje | O | O82 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| O82.990 | Druge spremljajoče poslovne storitvene dejavnosti, d. n. | O | O82 | skd-o-other-business | section-default | **D** | 0 | 0 | 0 | — | assessed |
 | P84.110 | Splošna dejavnost javne uprave | P | P84 | skd-p-public-admin | section-default | **D** | 0 | 0 | 1 | — | assessed |
 | P84.120 | Urejanje zdravstva, izobraževanja, kulturnih in drugih socialnih storitev | P | P84 | skd-p-public-admin | section-default | **D** | 0 | 0 | 1 | — | assessed |
 | P84.130 | Urejanje gospodarskih področij za učinkovitejše poslovanje | P | P84 | skd-p-public-admin | section-default | **D** | 0 | 0 | 1 | — | assessed |
@@ -720,58 +720,58 @@
 | R88.910 | Dnevno varstvo otrok | R | R88 | skd-r-health | section-default | **D** | 0 | 0 | 1 | — | assessed |
 | R88.991 | Dejavnost humanitarnih in dobrodelnih organizacij | R | R88 | skd-r-health | section-default | **D** | 0 | 0 | 1 | — | assessed |
 | R88.999 | Drugo drugje nerazvrščeno socialno varstvo brez nastanitve | R | R88 | skd-r-health | section-default | **D** | 0 | 0 | 1 | — | assessed |
-| S90.111 | Literarno ustvarjanje | S | S90 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S90.112 | Komponiranje glasbe | S | S90 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S90.120 | Vizualna umetnost | S | S90 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S90.130 | Drugo umetniško ustvarjanje | S | S90 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S90.200 | Uprizoritvene umetnosti | S | S90 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S90.310 | Obratovanje objektov za kulturne prireditve | S | S90 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S90.390 | Druge pomožne dejavnosti za umetniško ustvarjanje in uprizoritvene umetnosti | S | S90 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S91.110 | Dejavnost knjižnic | S | S91 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S91.120 | Dejavnost arhivov | S | S91 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S91.210 | Dejavnost muzejev in dejavnosti v zvezi z zbirkami | S | S91 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S91.220 | Dejavnosti v zvezi z zgodovinskimi znamenitostmi in spomeniki | S | S91 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S91.300 | Konservatorstvo, restavriranje in druge pomožne dejavnosti za ohranjanje kulturne dediščine | S | S91 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S91.410 | Dejavnost botaničnih in živalskih vrtov | S | S91 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S91.420 | Varstvo naravnih vrednot | S | S91 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
+| S90.111 | Literarno ustvarjanje | S | S90 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S90.112 | Komponiranje glasbe | S | S90 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S90.120 | Vizualna umetnost | S | S90 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S90.130 | Drugo umetniško ustvarjanje | S | S90 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S90.200 | Uprizoritvene umetnosti | S | S90 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S90.310 | Obratovanje objektov za kulturne prireditve | S | S90 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S90.390 | Druge pomožne dejavnosti za umetniško ustvarjanje in uprizoritvene umetnosti | S | S90 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S91.110 | Dejavnost knjižnic | S | S91 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S91.120 | Dejavnost arhivov | S | S91 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S91.210 | Dejavnost muzejev in dejavnosti v zvezi z zbirkami | S | S91 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S91.220 | Dejavnosti v zvezi z zgodovinskimi znamenitostmi in spomeniki | S | S91 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S91.300 | Konservatorstvo, restavriranje in druge pomožne dejavnosti za ohranjanje kulturne dediščine | S | S91 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S91.410 | Dejavnost botaničnih in živalskih vrtov | S | S91 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S91.420 | Varstvo naravnih vrednot | S | S91 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
 | S92.001 | Dejavnost igralnic | S | S92 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
 | S92.002 | Prirejanje iger na srečo, razen v igralnicah | S | S92 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
-| S93.110 | Obratovanje športnih objektov | S | S93 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S93.120 | Dejavnost športnih klubov | S | S93 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S93.130 | Dejavnost fitnes centrov | S | S93 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S93.190 | Športne dejavnosti, d. n. | S | S93 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S93.210 | Dejavnosti zabaviščnih parkov | S | S93 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S93.291 | Dejavnost marin | S | S93 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| S93.299 | Drugje nerazvrščene dejavnosti za prosti čas | S | S93 | skd-s-culture-sport | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T94.110 | Dejavnost poslovnih in delodajalskih združenj | T | T94 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T94.120 | Dejavnost strokovnih združenj | T | T94 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T94.200 | Dejavnost sindikatov | T | T94 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T94.910 | Dejavnost verskih organizacij | T | T94 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T94.920 | Dejavnost političnih organizacij | T | T94 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T94.991 | Dejavnost invalidskih organizacij | T | T94 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T94.999 | Dejavnost drugje nerazvrščenih članskih organizacij | T | T94 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T95.100 | Popravila in vzdrževanje računalnikov in komunikacijskih naprav | T | T95 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T95.210 | Popravila in vzdrževanje elektronskih naprav za široko rabo | T | T95 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T95.220 | Popravila in vzdrževanje gospodinjskih naprav ter opreme za dom in vrt | T | T95 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T95.230 | Popravila in vzdrževanje obutve in usnjene galanterije | T | T95 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T95.240 | Popravila in vzdrževanje pohištva | T | T95 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T95.250 | Popravila in vzdrževanje ur in nakita | T | T95 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T95.290 | Popravila in vzdrževanje izdelkov za široko rabo, d. n. | T | T95 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T95.310 | Popravila in vzdrževanje motornih vozil | T | T95 | mehanik | subclass-override | **NA** | 1 | 1 | 2 | da | not-assessed |
-| T95.320 | Popravila in vzdrževanje motornih koles | T | T95 | mehanik | subclass-override | **NA** | 1 | 1 | 2 | da | not-assessed |
-| T95.400 | Posredništvo pri popravilu in vzdrževanju računalnikov, izdelkov za široko rabo, motornih vozil in motornih koles | T | T95 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T96.100 | Dejavnost pralnic in kemičnih čistilnic | T | T96 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T96.210 | Frizerska in brivska dejavnost | T | T96 | frizer | subclass-override | **NA** | 1 | 0 | 1 | da | not-assessed |
-| T96.220 | Kozmetična in pedikerska dejavnost | T | T96 | beauty | subclass-override | **NA** | 0 | 0 | 1 | da | not-assessed |
-| T96.230 | Zdraviliška dejavnost, savne in parne kopeli | T | T96 | massage | subclass-override | **NA** | 1 | 0 | 1 | da | not-assessed |
-| T96.300 | Pogrebna dejavnost | T | T96 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T96.400 | Posredniške dejavnosti za osebne storitve | T | T96 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T96.910 | Osebne storitve na domu | T | T96 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| T96.991 | Tetoviranje in pirsing | T | T96 | tattoo-studio | subclass-override | **NA** | 2 | 0 | 1 | da | not-assessed |
-| T96.999 | Druge drugje nerazvrščene osebne storitve | T | T96 | skd-t-other | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| U97.000 | Dejavnost gospodinjstev z zaposlenim hišnim osebjem | U | U97 | skd-u-households | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| U98.100 | Raznovrstna proizvodnja dobrin v gospodinjstvih za lastno rabo | U | U98 | skd-u-households | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
-| U98.200 | Raznovrstna proizvodnja storitev v gospodinjstvih za lastno rabo | U | U98 | skd-u-households | section-default | **NA** | 0 | 0 | 0 | — | not-assessed |
+| S93.110 | Obratovanje športnih objektov | S | S93 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S93.120 | Dejavnost športnih klubov | S | S93 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S93.130 | Dejavnost fitnes centrov | S | S93 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S93.190 | Športne dejavnosti, d. n. | S | S93 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S93.210 | Dejavnosti zabaviščnih parkov | S | S93 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S93.291 | Dejavnost marin | S | S93 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| S93.299 | Drugje nerazvrščene dejavnosti za prosti čas | S | S93 | skd-s-culture-sport | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T94.110 | Dejavnost poslovnih in delodajalskih združenj | T | T94 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T94.120 | Dejavnost strokovnih združenj | T | T94 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T94.200 | Dejavnost sindikatov | T | T94 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T94.910 | Dejavnost verskih organizacij | T | T94 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T94.920 | Dejavnost političnih organizacij | T | T94 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T94.991 | Dejavnost invalidskih organizacij | T | T94 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T94.999 | Dejavnost drugje nerazvrščenih članskih organizacij | T | T94 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T95.100 | Popravila in vzdrževanje računalnikov in komunikacijskih naprav | T | T95 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T95.210 | Popravila in vzdrževanje elektronskih naprav za široko rabo | T | T95 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T95.220 | Popravila in vzdrževanje gospodinjskih naprav ter opreme za dom in vrt | T | T95 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T95.230 | Popravila in vzdrževanje obutve in usnjene galanterije | T | T95 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T95.240 | Popravila in vzdrževanje pohištva | T | T95 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T95.250 | Popravila in vzdrževanje ur in nakita | T | T95 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T95.290 | Popravila in vzdrževanje izdelkov za široko rabo, d. n. | T | T95 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T95.310 | Popravila in vzdrževanje motornih vozil | T | T95 | mehanik | subclass-override | **D** | 1 | 1 | 2 | da | assessed |
+| T95.320 | Popravila in vzdrževanje motornih koles | T | T95 | mehanik | subclass-override | **D** | 1 | 1 | 2 | da | assessed |
+| T95.400 | Posredništvo pri popravilu in vzdrževanju računalnikov, izdelkov za široko rabo, motornih vozil in motornih koles | T | T95 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T96.100 | Dejavnost pralnic in kemičnih čistilnic | T | T96 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T96.210 | Frizerska in brivska dejavnost | T | T96 | frizer | subclass-override | **D** | 1 | 0 | 1 | da | assessed |
+| T96.220 | Kozmetična in pedikerska dejavnost | T | T96 | beauty | subclass-override | **D** | 0 | 0 | 1 | da | assessed |
+| T96.230 | Zdraviliška dejavnost, savne in parne kopeli | T | T96 | massage | subclass-override | **D** | 1 | 0 | 1 | da | assessed |
+| T96.300 | Pogrebna dejavnost | T | T96 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T96.400 | Posredniške dejavnosti za osebne storitve | T | T96 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T96.910 | Osebne storitve na domu | T | T96 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| T96.991 | Tetoviranje in pirsing | T | T96 | tattoo-studio | subclass-override | **D** | 2 | 0 | 1 | da | assessed |
+| T96.999 | Druge drugje nerazvrščene osebne storitve | T | T96 | skd-t-other | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| U97.000 | Dejavnost gospodinjstev z zaposlenim hišnim osebjem | U | U97 | skd-u-households | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| U98.100 | Raznovrstna proizvodnja dobrin v gospodinjstvih za lastno rabo | U | U98 | skd-u-households | section-default | **D** | 0 | 0 | 0 | — | assessed |
+| U98.200 | Raznovrstna proizvodnja storitev v gospodinjstvih za lastno rabo | U | U98 | skd-u-households | section-default | **D** | 0 | 0 | 0 | — | assessed |
 | V99.000 | Dejavnost eksteritorialnih organizacij in teles | V | V99 | skd-v-international | section-default | **D** | 0 | 0 | 1 | — | assessed |
 
 ---
