@@ -1,60 +1,83 @@
-// TEMPORARY generator for docs/SKD-2025-COMPLETE-COVERAGE.md
-// Run: npx tsx scripts/f51-generate-coverage-doc.mjs
-// Single source of truth = src/lib/skd/activity-coverage.ts (which itself
-// derives from skd2025.ts + profiles.ts + registry.ts). This script only
-// formats; it never edits source data.
-import { activityCoverage, coverageSummary, type ProfileRuntime } from "../src/lib/skd/activity-coverage"
+// GENERATOR for docs/SKD-2025-COMPLETE-COVERAGE.md
+//
+// Edini ukaz, ki je dejansko preizkušen in velja:
+//   pnpm exec tsx scripts/f51-generate-coverage-doc.ts
+//
+// Vir resnice = src/lib/skd/activity-coverage.ts (ki sam izhaja iz
+// skd2025.ts + profiles.ts + registry.ts). Ta skript samo oblikuje;
+// NIKOLI ne ureja izvornih podatkov in ne vsebuje ročnih številk.
+import {
+  activityCoverage,
+  coverageSummary,
+} from "../src/lib/skd/activity-coverage"
+import { SKD_SECTIONS } from "../src/lib/skd/catalog"
 import { writeFileSync } from "node:fs"
 
 const rows = activityCoverage()
 const s = coverageSummary()
 
+// Uradni nazivi sekcij IZ ISTEGA vira kot preostala aplikacija
+// (catalog.ts → SKD_SECTIONS), ne iz ročne tabele v tej skripti.
+const sectionNames: Record<string, string> = {}
+for (const sec of SKD_SECTIONS) sectionNames[sec.code] = sec.name
+
 const LV = {
-  "specialized-validated": { code: "A", label: "Specializirana in preverjena" },
-  "validated-archetype": { code: "B", label: "Preverjena prek poslovnega arhetipa" },
-  "validated-base": { code: "C", label: "Preverjena osnovna konfiguracija" },
-  partial: { code: "D", label: "Nepopolna" },
-  uncovered: { code: "E", label: "Nepokrita" },
+  A: "Specializirana in preverjena",
+  B: "Preverjena prek podrazredno-specifičnega arhetipa",
+  C: "Preverjena osnovna konfiguracija",
+  D: "Nepopolna",
+  E: "Nepokrita",
+  NA: "Ni ocenjeno",
 }
 
-const sectionNames: Record<string, string> = {
-  A: "Kmetijstvo, lov, gozdarstvo, ribištvo", B: "Rudarstvo", C: "Predelovalne dejavnosti",
-  D: "Oskrba z elektriko, plinom, paro", E: "Oskrba z vodo, ravnanje z odpadki",
-  F: "Gradbeništvo", G: "Trgovina, vzdrževanje", H: "Promet in skladiščenje",
-  I: "Gostinstvo", J: "Informacijske in komunikacijske dejavnosti", K: "Finančne in zavarovalniške",
-  L: "Poslovanje z nepremičninami", M: "Strokovne, znanstvene in tehnične", N: "Druge poslovne",
-  O: "Dejavnosti javne uprave", P: "Izobraževanje", Q: "Zdravstvo in socialno varstvo",
-  R: "Kulturne, razvedrilne in rekreacijske", S: "Druge dejavnosti", T: "Dejavnosti gospodinjstev",
-  U: "Dejavnosti organizacij", V: "Dejavnosti ekstrateritorialnih organizacij",
+const COV = {
+  "specialized-validated": "A",
+  "validated-archetype": "B",
+  "validated-base": "C",
+  partial: "D",
+  uncovered: "E",
 }
-const sectionLetter = { A: true, B: true, C: true, D: true, E: true, F: true, G: true, H: true, I: true, J: true, K: true, L: true, M: true, N: true, O: true, P: true, Q: true, R: true, S: true, T: true, U: true, V: true }
 
-const out = []
-out.push("# SKD 2025 — POPOLNA POKRITOST DEJAVNOSTI (V1)")
+const out: string[] = []
+out.push("# SKD 2025 — REGISTER POKRITOSTI DEJAVNOSTI")
 out.push("")
 out.push(`**Generirano:** ${new Date().toISOString()} — iz registerja \`src/lib/skd/activity-coverage.ts\`.`)
 out.push(`**Vir:** ${s.classification} ${s.version} (SURS KLASJE). **Podrazredov:** ${s.total}.`)
 out.push("")
-out.push("> **Verodostojni vir:** ta dokument je *generiran* iz `agent_coverage` registerja in se ne ureja ročno.")
-out.push("> Vsaka vrstica izhaja iz aktualnega resolverja (`src/lib/skd/profiles.ts`) in profilov (`src/lib/profiles/registry.ts`).")
+out.push("> **Verodostojni vir:** ta dokument je *generiran* in se ne ureja ročno.")
+out.push("> Vsaka vrstica izhaja iz resolverja (`src/lib/skd/profiles.ts`) in profilov (`src/lib/profiles/registry.ts`).")
+out.push("> Nazivi sekcij prihajajo iz `src/lib/skd/catalog.ts` → `SKD_SECTIONS`.")
 out.push("")
 out.push("## Pregled pokritosti")
 out.push("")
 out.push("| Nivo | Oznaka | Št. dejavnosti |")
 out.push("|---|---|---|")
-out.push(`| Specializirana in preverjena | A | ${s.byLevel["specialized-validated"]} |`)
-out.push(`| Preverjena prek poslovnega arhetipa | B | ${s.byLevel["validated-archetype"]} |`)
-out.push(`| Preverjena osnovna konfiguracija | C | ${s.byLevel["validated-base"]} |`)
-out.push(`| Nepopolna | D | ${s.byLevel.partial} |`)
-out.push(`| Nepokrita | E | ${s.byLevel.uncovered} |`)
+out.push(`| ${LV.A} | A | ${s.byLevel.specializedValidated} |`)
+out.push(`| ${LV.B} | B | ${s.byLevel.validatedArchetype} |`)
+out.push(`| ${LV.C} | C | ${s.byLevel.validatedBase} |`)
+out.push(`| ${LV.D} | D | ${s.byLevel.partial} |`)
+out.push(`| ${LV.E} | E | ${s.byLevel.uncovered} |`)
+out.push(`| ${LV.NA} | — | ${s.byLevel.notAssessed} |`)
+out.push("")
+out.push(`**Ocenjeno:** ${s.assessed} · **Ni ocenjeno (not-assessed):** ${s.notAssessed} · **Skupaj:** ${s.total}`)
+out.push("")
+out.push("## Preslikava (viri preslikave)")
+out.push("")
+out.push("| Vir | Št. podrazredov |")
+out.push("|---|---:|")
+for (const [k, n] of Object.entries(s.byMapping)) out.push(`| \`${k}\` | ${n} |`)
 out.push("")
 out.push("## Po SKD-sekcijah (A–V)")
 out.push("")
-out.push("| Sekcija | Naziv | Skupaj | A | B | C | D | E |")
-out.push("|---|---|---:|---:|---:|---:|---:|---:|")
-for (const [letter, data] of Object.entries(s.bySection)) {
-  out.push(`| ${letter} | ${sectionNames[letter] ?? ""} | ${data.total} | ${data.byLevel["specialized-validated"] ?? 0} | ${data.byLevel["validated-archetype"] ?? 0} | ${data.byLevel["validated-base"] ?? 0} | ${data.byLevel.partial ?? 0} | ${data.byLevel.uncovered ?? 0} |`)
+out.push("| Sekcija | Naziv | Skupaj | A | B | C | D | E | Ni ocenjeno |")
+out.push("|---|---|---:|---:|---:|---:|---:|---:|---:|")
+for (const sec of SKD_SECTIONS) {
+  const d = s.bySection[sec.code]
+  if (!d) continue
+  out.push(`| ${sec.code} | ${sec.name} | ${d.total} | ${d.byLevel.specializedValidated} | ${d.byLevel.validatedArchetype} | ${d.byLevel.validatedBase} | ${d.byLevel.partial} | ${d.byLevel.uncovered} | ${d.byLevel.notAssessed} |`)
 }
+out.push("")
+out.push(`**Skupaj (po sekcijah):** ${SKD_SECTIONS.reduce((acc, sec) => acc + (s.bySection[sec.code]?.total ?? 0), 0)}`)
 out.push("")
 out.push("## Po profilu (efektivna preslikava)")
 out.push("")
@@ -66,25 +89,27 @@ for (const [pid, n] of Object.entries(s.byProfile).sort((a, b) => b[1] - a[1])) 
 out.push("")
 out.push("## Celoten register (678 podrazredov)")
 out.push("")
-out.push("| SKD | Slovensko | Angleško | Sek | Oddelek | Profil | Nivo | Forme | Procesi | Razšir. |")
-out.push("|---|---|---|---|---|---|---:|---:|---:|---:|")
+out.push("| SKD | Slovensko | Sek | Oddelek | Profil | Vir preslikave | Oznaka | Forme | Procesi | Razširitve | Runtime eviden. | Status |")
+out.push("|---|---|---|---|---|---|---|---|---|---|---|---|")
 for (const r of rows) {
-  const lv = LV[r.coverageLevel]
-  const rt: ProfileRuntime = r.runtime ?? { forms: 0, workflows: 0, extensions: 0, dashboardWidgets: 0 }
-  out.push(`| ${r.code} | ${r.sl} | ${r.en} | ${r.section} | ${r.division} | ${r.profileId} | **${lv.code}** | ${rt.forms ?? 0} | ${rt.workflows ?? 0} | ${rt.extensions ?? 0} |`)
+  const code: string = r.coverageLevel ? (COV[r.coverageLevel] ?? "NA") : "NA"
+  out.push(`| ${r.code} | ${r.sl} | ${r.section} | ${r.division} | ${r.profileId} | ${r.mappingSource} | **${code}** | ${r.declared.forms} | ${r.declared.workflows} | ${r.declared.extensions} | ${r.runtimeEvidence ? "da" : "—"} | ${r.assessmentStatus} |`)
 }
 out.push("")
 out.push("---")
 out.push("")
-out.push("## Metodologija")
+out.push("## Metodologija (pošteno, brez izmišljanja dokazil)")
 out.push("")
-out.push("- **A (specializirana):** podrazred ima eksplicitno ročno preslikavo (SUBCLASS_PROFILE/DIVISION_PROFILE) na profil z dejanskim runtime (≥1 forma + ≥1 workflow ali razširitev).")
-out.push("- **B (arhetip):** podrazred se razreši na profil, ki ima realne procese/form, a ni ročno dodeljen po podrazredih (npr. skd-f-construction).")
-out.push("- **C (osnovna):** podrazred se razreši na sekcijski profiltod a profil nima posebnih form/procesov (danes: 638 dejavnosti).")
-out.push("- **D (nepopolna):** evidentirana izjema/krožna vrzel (npr. S92 igre na srečo).")
-out.push("- **E (nepokrita):** okvara resolverja — pri ACTUAL nemu stanju 0.")
+out.push("- **A (specializirana):** izrecna preslikava podrazreda/oddelka (subclass-override/division-override) na profil z DOKAZANIM, PROFIL-SPECIFIČNIM runtime-evidence (strežniške akcije + test, ki poganja prav ta profil skozi materializacijo). Dokaz iz DRUGEGA profila (npr. `seamstress` → `apparel`) NI zadosten.")
+out.push("- **B (arhetip):** podrazredna, koda-po-kodi preslikava na profil, katerega poslovno jedro res služi prav ta podrazred. NIKAKRŠNA samodejna promocija celotne sekcije za obstoj obrazca (ovaleno v PR #142).")
+  out.push("- **C (osnovna konfiguracija):** dokumentirano, da osnovna konfiguracija zadostuje (npr. `workOrders: required` krije splošno izvedbo). NIKOLI samodejno za `forms==0`.")
+  out.push("- **D (nepopolna):** preslikava obstaja, a zahtevana zmožnost (iz nabora `appointments, workOrders, shop, services, inventory, customers, staff, analytics, forms, workflows, documents, delivery, cashRegister`) ni dokazana (npr. forms/workflows `required` s 0 predlog, ali `documents/delivery/cashRegister` zahtevan zunaj univerzalnega jedra), ali je zapisana izjema (npr. S92).")
+  out.push("- **E (nepokrita):** resolver je padel na generični fallback (neobstoječa ali oblikovno-varljiva koda ni predstavljena kot veljavna).")
+  out.push("- **Not assessed (ni ocenjeno):** preslikava obstaja (sekcijski privzetek), a le z runtime-evidence iz DRUGEGA profila ali brez profil-specifičnega dokaza, da prav ta podrazred res pokriva; cele sekcija (npr. gradbeništvo) se NE dvigne na nivo samo zato, ker en obrazec obstaja. To NI nivo — to je odkrito »preveri«.")
 out.push("")
-out.push("> **Stanje D in E nista sprejemljiv končni cilj.** Stanje C je dovoljeno samo z dokumentirano poslovno")
-out.push("> utemeljitvijo (vsak tak podrazred ima v registerju `runtime` = nič, kar je samo meritev — ne odobritev).")
+out.push("> **Deklaracija ≠ runtime.** Stolpci Forme/Procesi/Razširitve prikazujejo **deklarirano konfiguracijo** (`declaredConfiguration`),")
+out.push("> ne delujočega procesa. \`extensions\` se NUJNO obravnavajo kot deklaracija (niso materializirane — var. `materialize.ts`).")
+out.push("> Stolpec **Runtime eviden.** je \`da\` le, kadar register nosi reference na strežniške akcije + test datoteke.")
+out.push("")
 writeFileSync("docs/SKD-2025-COMPLETE-COVERAGE.md", out.join("\n"), "utf8")
 console.log(`Wrote docs/SKD-2025-COMPLETE-COVERAGE.md (${rows.length} rows)`)
