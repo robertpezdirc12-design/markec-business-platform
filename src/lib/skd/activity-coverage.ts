@@ -106,8 +106,8 @@ export const CAPABILITY_EVIDENCE: Record<
   workOrders: {
     module: "src/app/actions/work-orders.ts + work-order-costs.ts",
     evidence: "tests/integration/tire-service.itest.ts + tests/integration/seamstress.itest.ts + tests/work-order-costs.itest.ts",
-    scope: "universal",
-    caveat: "tire-service.itest poganja createWorkOrder (pravi engine work-orders.ts); seamstress.itest poganja advanceWorkOrder; work-order-costs.itest poganja izračun stroškov. Delovnonaloški tok je pokrit end-to-end.",
+    scope: "context-limited",
+    caveat: "Ravno ti testi poganjajo work-order tok LE na profilih, ki že imajo materializirano workflow-predlogo (tire-service, seamstress — testi sami seedajo workflow). createWorkOrder na profilu BREZ workflow predloge vrne NO_WORKFLOW, zato delovnonaloški tok NI univerzalno dobavljen: `required` workOrders je pokrit le, kadar profil definira >= 1 workflow predlogo (kot pri `workflows`), sicer je iskrena vrzel (pošteno spodaj po template-count).",
   },
   shop: {
     module: "src/app/actions/cart.ts + orders.ts + product-checkout.ts",
@@ -157,12 +157,12 @@ export const CAPABILITY_EVIDENCE: Record<
     scope: "context-limited",
     caveat: "workflow dobava velja LE ob materializiranih workflow-predlogah profila; zmožnost `required` brez predloge je iskrena vrzel (no-template).",
   },
-  // Dokumentacija + e-računi: jedrni modul, dogazan end-to-end (documents.ts + einvoices.ts). Quotes ni pokrit.
+  // Dokumentacija + e-računi: jedrni modul, dogazan end-to-end (documents.ts + einvoices.ts). Quotes NI del univerzalne trditve.
   documents: {
-    module: "src/app/actions/documents.ts + einvoices.ts + quotes.ts",
+    module: "src/app/actions/documents.ts + einvoices.ts",
     evidence: "tests/integration/f554/documents.itest.ts + tests/integration/einvoice/einvoices.itest.ts",
     scope: "universal",
-    caveat: "documents.itest poganja documents.ts (getDocumentDetail/getDocumentsOverview/listDocumentCustomers) na pravi DB; einvoices.itest poganja einvoices.ts (submitEinvoice/listEinvoices/downloadEinvoice). Jedrni dokumentni+računski tok univerzalen; posamični quotes.ts ni pokrit z izvajalnim testom.",
+    caveat: "documents.itest poganja documents.ts (getDocumentDetail/getDocumentsOverview/listDocumentCustomers) na pravi DB; einvoices.itest poganja einvoices.ts (submitEinvoice/listEinvoices/downloadEinvoice). Jedrni dokumentni+računski tok univerzalen. quotes.ts NIMA izvajalnega testa in NI del te univerzalne trditve — je podsloj dokumentne zmoznosti, ki se tukaj NE šteje kot dobavljen.",
   },
   // Blagajna (WP-1): dobavljeno v jedru za VSE dejavnosti.
   cashRegister: {
@@ -401,13 +401,20 @@ export function missingRequiredCapabilities(profile: ActivityProfile): Array<{ k
   const missing: Array<{ key: string; reason: "not-delivered" | "no-template" }> = []
   for (const key of ASSESSED_CAPABILITIES) {
     if (cap[key] !== "required") continue
-    // forms / workflows: zahtevani, a brez nobene predloge → vrzel (deklaracija brez vsebine).
-    if (key === "forms" || key === "workflows") {
+    // forms / workflows / workOrders: dobava je ODVISNA od predlog profila.
+    // - forms: brez obrazca → vrzel.
+    // - workflows: brez predloge → vrzel.
+    // - workOrders: createWorkOrder na profilu BREZ workflow predloge vrne
+    //   NO_WORKFLOW (engine work-orders.ts je realen, a zažešeni tok pride iz
+    //   profila). Zato je required-workOrders pokrit LE, kadar profil definira
+    //   >= 1 workflow predlogo — sicer iskrena vrzel `not-delivered`.
+    if (key === "forms" || key === "workflows" || key === "workOrders") {
       const templateCount = key === "forms" ? (profile.forms ?? []).length : (profile.workflows ?? []).length
-      if (templateCount === 0) missing.push({ key, reason: "no-template" })
+      if (templateCount === 0) missing.push({ key, reason: key === "forms" ? "no-template" : "not-delivered" })
       // z vsaj eno predlogo je zmožnost POKRITA (template-materializacija) —
-      // forms/workflows se zato NIKOLI ne ocenjujejo po isPlatformDeliveredCapability
-      // (njihov scope=context-limited nikakor ne sme postati vrzel, če predloga obstaja).
+      // forms/workflows/workOrders se zato NIKOLI ne ocenjujejo po
+      // isPlatformDeliveredCapability (njihov scope=context-limited nikakor ne
+      // sme postati vrzel, če predloga obstaja).
       continue
     }
     // Ostale zahtevane zmožnosti: pokrite ravno tedaj, ko jih jedro res dobavlja.

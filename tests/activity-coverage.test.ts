@@ -317,8 +317,10 @@ describe("§5 — gap analiza, pravilni capability flagi", () => {
     // konsistenco: vsaka partial vrstica je takšna v registerju.
     const partialRows = activityCoverage().filter((r) => r.coverageLevel === "partial").length
     expect(partialRows).toBe(coverageSummary().byLevel.partial)
-    // Template-izpeljan del je stroga podmnožica vseh partial vrstic.
-    expect(wfRequiredNoTemplate + formsOnlyRequiredNoTemplate).toBeLessThanOrEqual(partialRows)
+    // Template-izpeljan del je stroga podmnožica vseh partial vrstic
+    // (vsaka vrzel iz manjkajočih predlog je partial, a niso VSE partial vrstice
+    // iz predlog — tudi required-analytics/services jih delajo).
+    expect(wfRequiredNoTemplate + formsOnlyRequiredNoTemplate).toBeLessThan(partialRows)
   })
 
   it("seštevek po profilih = 678", () => {
@@ -343,7 +345,7 @@ describe("§5b — capability metodologija: 13 ključev, vsak z lastnim dokazilo
   // Jedro, ki ga platforma DOKAZANO dobavlja (strežniška akcija poganjana end-to-end): zahtevano NI vrzel.
   // (scope=universal po CAPABILITY_EVIDENCE)
   const PLATFORM_CAPS = [
-    "workOrders", "shop", "inventory", "customers", "staff", "documents",
+    "shop", "inventory", "customers", "staff", "documents",
   ]
 
   // Zmožnost, ki JE v registerju, a samo context-limited (strežniška akcija NI
@@ -355,12 +357,16 @@ describe("§5b — capability metodologija: 13 ključev, vsak z lastnim dokazilo
   // Zmožnost, ki NIMA univerzalnega modula: zahtevana je vedno vrzel.
   const NON_UNIVERSAL = "delivery"
 
-  it("vsaka od 13 zahtevanih zmožnosti je ali dobavljena-v-jedru ali (forms/workflows) odvisna od predlog", () => {
+  // Zmožnosti, katerih dobava je ODVISNA od profilnih predlog (ne od scope-ja):
+  // brez predloge = iskrena vrzel, z >= 1 predlogo = pokrito.
+  const TEMPLATE_GATED = ["forms", "workflows", "workOrders"]
+
+  it("vsaka od 13 zahtevanih zmožnosti je ali dobavljena-v-jedru ali (forms/workflows/workOrders) odvisna od predlog", () => {
     for (const key of CAPS) {
-      expect(Boolean(CAPABILITY_EVIDENCE[key]) || key === NON_UNIVERSAL || key === "forms" || key === "workflows",
+      expect(Boolean(CAPABILITY_EVIDENCE[key]) || key === NON_UNIVERSAL || key === "forms" || key === "workflows" || key === "workOrders",
         `${key} je ali v jedru, ali delivery, ali odvisna od predlog`).toBe(true)
       if (key === NON_UNIVERSAL) continue
-      if (key === "forms" || key === "workflows") continue
+      if (TEMPLATE_GATED.includes(key)) continue
       expect(CAPABILITY_EVIDENCE[key], `${key} ima dokazilo v CAPABILITY_EVIDENCE`).toBeTruthy()
     }
   })
@@ -381,6 +387,42 @@ describe("§5b — capability metodologija: 13 ključev, vsak z lastnim dokazilo
       expect(keys, `${key} (scope=universal) ne sme biti manjkajoč`).not.toContain(key)
       // ključ mora biti res scope=universal (sicer bi ta test bil lažen)
       expect(CAPABILITY_EVIDENCE[key].scope).toBe("universal")
+    }
+  })
+
+  it("required TEMPLATE-GATED zmožnost (forms/workflows/workOrders) NI vrzel, če profil ima >= 1 predlogo", () => {
+    for (const key of TEMPLATE_GATED) {
+      const base = getProfile("skd-salon")
+      const p = {
+        ...base,
+        capabilities: { ...base.capabilities },
+        forms: [{ key: "f0", name: "form", description: "", fields: [] }],
+        workflows: [
+          { id: "w0", name: "workflow", description: "wf", steps: [], trigger: { event: "manual" } },
+        ],
+        extensions: [],
+      } as unknown as ReturnType<typeof getProfile>
+      for (const c of CAPS) setCap(p.capabilities as unknown as Record<string, CapState>, c, "required")
+      const missing = missingRequiredCapabilities(p)
+      const keys = missing.map((m) => m.key)
+      expect(keys, `${key} z >= 1 predlogo ne sme biti manjkajoč — template-materializacija pokriva`).not.toContain(key)
+    }
+  })
+
+  it("required TEMPLATE-GATED zmožnost (forms/workflows/workOrders) JE vrzel ob 0 predlogah", () => {
+    for (const key of TEMPLATE_GATED) {
+      const base = getProfile("skd-salon")
+      const p = {
+        ...base,
+        capabilities: { ...base.capabilities },
+        forms: [],
+        workflows: [],
+        extensions: [],
+      } as unknown as ReturnType<typeof getProfile>
+      for (const c of CAPS) setCap(p.capabilities as unknown as Record<string, CapState>, c, "required")
+      const missing = missingRequiredCapabilities(p)
+      const keys = missing.map((m) => m.key)
+      expect(keys, `${key} z 0 predlog MORA biti manjkajoč — createWorkOrder brez workflowa vrne NO_WORKFLOW`).toContain(key)
     }
   })
 

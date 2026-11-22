@@ -1,6 +1,6 @@
 # SKD 2025 — REGISTER POKRITOSTI DEJAVNOSTI
 
-**Generirano:** 2026-11-22T17:05:10.970Z — iz registerja `src/lib/skd/activity-coverage.ts`.
+**Generirano:** 2026-11-22T17:32:20.576Z — iz registerja `src/lib/skd/activity-coverage.ts`.
 **Vir:** SKD 2025 (SURS KLASJE) V1 (SURS KLASJE). **Podrazredov:** 678.
 
 > **Verodostojni vir:** ta dokument je *generiran* in se ne ureja ročno.
@@ -92,6 +92,9 @@
 | skd-v-international | 1 | sekcija |
 
 ## Celoten register (678 podrazredov)
+
+> **Status = »assessed« pomeni: opravljena je bila ocena POKRITOSTI ZMOŽNOSTI (razred A–E), ki je za `section-default` vrstice pokazala vzrel (D).**
+> Ne pomeni, da je bila preverjena SKLADNOST dejavnosti (fit) — `section-default` podrazredi so `fit` **not-assessed** in imajo lahko 0 obrazcev, 0 procesov, 0 razširitev, kljub oznaki D.
 
 | SKD | Slovensko | Sek | Oddelek | Profil | Vir preslikave | Oznaka | Forme | Procesi | Razširitve | Runtime eviden. | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -781,7 +784,8 @@
 - **A (specializirana):** izrecna preslikava podrazreda/oddelka (subclass-override/division-override) na profil z DOKAZANIM, PROFIL-SPECIFIČNIM runtime-evidence (strežniške akcije + test, ki poganja prav ta profil skozi materializacijo). Dokaz iz DRUGEGA profila (npr. `seamstress` → `apparel`) NI zadosten.
 - **B (arhetip):** podrazredna, koda-po-kodi preslikava na profil, katerega poslovno jedro res služi prav ta podrazred. NIKAKRŠNA samodejna promocija celotne sekcije za obstoj obrazca (ovaleno v PR #142).
 - **C (osnovna konfiguracija):** dokumentirano, da osnovna konfiguracija zadostuje (npr. `workOrders: required` krije splošno izvedbo). NIKOLI samodejno za `forms==0`.
-- **D (nepopolna):** preslikava obstaja, a zahtevana zmožnost (iz nabora `appointments, workOrders, shop, services, inventory, customers, staff, analytics, forms, workflows, documents, delivery, cashRegister`) ni dokazana (npr. forms/workflows `required` s 0 predlog, ali `documents/delivery/cashRegister` zahtevan zunaj univerzalnega jedra), ali je zapisana izjema (npr. S92).
+- **D (nepopolna):** preslikava obstaja, a zahtevana zmožnost (iz nabora `appointments, workOrders, shop, services, inventory, customers, staff, analytics, forms, workflows, documents, delivery, cashRegister`) ni dokazana (npr. forms/workflows/workOrders `required` z 0 predlog, ali `appointments/services/analytics/cashRegister/documents/delivery` zahtevan zunaj univerzalnega jedra), ali je zapisana izjema (npr. S92).
+- **D = ocenjena VZREL zmožnosti, NE preverjena SKLADNOST dejavnosti.** `section-default` vrstice (npr. G46.110 pri `skd-g-retail`) so »assessed« izključno v pomenu *izvedena je bila ocena pokritosti zmožnosti, ki je pokazala vzrel* — to NI potrditev, da platforma služi prav ta SKD podrazred. Za podrazrede z `section-default` vir ostaja `fit` **not-assessed** (skladnost dejavnosti ni bila preverjena). Stolpec Status razlikuje: `assessed` = opravljena ocena pokritosti zmožnosti (A–E), ne more biti prebran kot »fit verificiran«.
 - **E (nepokrita):** resolver je padel na generični fallback (neobstoječa ali oblikovno-varljiva koda ni predstavljena kot veljavna).
 - **Not assessed (ni ocenjeno):** preslikava obstaja (sekcijski privzetek), a le z runtime-evidence iz DRUGEGA profila ali brez profil-specifičnega dokaza, da prav ta podrazred res pokriva; cele sekcija (npr. gradbeništvo) se NE dvigne na nivo samo zato, ker en obrazec obstaja. To NI nivo — to je odkrito »preveri«.
 
