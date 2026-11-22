@@ -23,6 +23,9 @@
  *   4. `assessmentStatus` — "assessed" ali "not-assessed". Ne »sili« vseh 678
  *      vrstic v A/B/C: tam, kjer strokovne potrditve ni, ostane `not-assessed`.
  *   5. `coverageLevel` — A/B/C/D/E le, kadar je vrstica `assessed`.
+ *   6. `fitStatus` — poslovna ustreznost ("verified"|"not-assessed"), LOČENA od
+ *      pokritosti zmožnosti. `section-default`/deklarativni override NIKOLI ni
+ *      dokaz fitness; `verified` le za A/B (profil-specifičen runtime-dokaz).
  *
  * NIKAKOR se `extensions` ne šteje kot runtime: `materialize.ts` materializira
  * samo `forms` in `workflows` (ne `extensions`), zato je obstoj razširitve le
@@ -71,8 +74,10 @@ export interface DeclaredConfiguration {
  *
  * Ločeno od `required` deklaracije v registru: zmožnost, označena kot `required`,
  * NI vrzel natanko tedaj, ko platforma ta modul res dobavlja (je v tem naboru)
- * IN test/akcija to dokazujeta. Dokumenti in blagajna (WP-1 "eno jedro za VSE
- * dejavnosti", P2 #101 računi) so dobavljeni v jedru → nista vrzel. Dostava NIMA
+ * IN test/akcija to dokazujeta. `documents` (jedrni dokumentni + e-računski tok)
+ * je `universal` → `required` dokumentov NI vrzel. `cashRegister` pa je
+ * `context-limited` (strežniška akcija cash-register.ts ni testno poganjana) →
+ * `required` blagajna JE iskrena evidence-vrzel (→ D). Dostava NIMA
  * lastnega strežniškega modula (le `recordDelivery`/prevzem v inventuri in
  * work-order rokovanju) → `required` dostava je iskrena vrzel (→ D).
  */
@@ -164,7 +169,9 @@ export const CAPABILITY_EVIDENCE: Record<
     scope: "universal",
     caveat: "documents.itest poganja documents.ts (getDocumentDetail/getDocumentsOverview/listDocumentCustomers) na pravi DB; einvoices.itest poganja einvoices.ts (submitEinvoice/listEinvoices/downloadEinvoice). Jedrni dokumentni+računski tok univerzalen. quotes.ts NIMA izvajalnega testa in NI del te univerzalne trditve — je podsloj dokumentne zmoznosti, ki se tukaj NE šteje kot dobavljen.",
   },
-  // Blagajna (WP-1): dobavljeno v jedru za VSE dejavnosti.
+  // Blagajna (WP-1): NAMENJENA jedru, a trenutno `context-limited` — direct-sale
+  // poganja le direct-sale.ts, NE strežniške akcije cash-register.ts. Zato je
+  // `required` blagajna iskrena evidence-vrzel (→ D), ne "pokrita univerzalno".
   cashRegister: {
     module: "src/app/actions/cash-register.ts + direct-sale.ts",
     evidence: "tests/integration/direct-sale.itest.ts",
@@ -391,9 +398,14 @@ export function requiredCapabilitiesMissing(profile: ActivityProfile): boolean {
  * `required` NI nujno vrzel: zmožnost, ki jo jedro platforme res dobavlja
  * (glej CAPABILITY_EVIDENCE — dejanska strežniška akcija + test), že samo po
  * sebi ni vrzel. Vrzel (→ D) nastane LE kadar:
- *  - nova zmožnost `required`, ki NIMA univerzalnega modula (npr. delivery),
- *  - ali `forms`/`workflows` `required`, ki nimata prijavljenih predlog
- *    (deklaracija brez materializacije).
+ *  - nova zmožnost `required`, ki NIMA univerzalnega modula (`delivery` ali
+ *    `context-limited` zmoznost, katere scoped dokaz ne pokriva celotne dobave —
+ *    npr. `analytics`/`appointments`/`services`/`cashRegister`), ali
+ *  - `forms`/`workflows`/`workOrders` `required`, ki nimata prijavljenih predlog
+ *    (deklaracija brez materializacije / brez workflow predloge → NO_WORKFLOW).
+ * Pomembno: `context-limited` `required` je skupen Evidence-gap, ki se NIKAKOR
+ * ne sme brati kot da je vsak podrazred POSEBEJ dokazano nepopoln — ponavlja se
+ * kot platformni dokazni vzrok čez vse preslikave profila.
  * `optional` nikoli ne ustvarja vrzeli.
  */
 export function missingRequiredCapabilities(profile: ActivityProfile): Array<{ key: string; reason: "not-delivered" | "no-template" }> {
@@ -492,6 +504,25 @@ export type RowClass =
   | { kind: "E" }
   | { kind: "not-assessed" }
 
+/**
+ * Poslovna ustreznost (fit) — LOČENA od ocene pokritosti zmožnosti
+ * (`assessmentStatus`/`coverageLevel`).
+ *
+ *  - `not-assessed`: privzeto stanje. Tudi ko je vrstica deklarativno/template
+ *    pokrita (npr. profil deklarira workflow), to SAMO PO SEBI ni dokaz, da
+ *    profile dejansko služi prav ta podrazred. `section-default` dodelitev NIKOLI
+ *    ne šteje kot dokaz fitness.
+ *  - `verified`: šele ko profil-specifičen test (runtime-evidence,
+ *    `runtimeEvidence.profileSpecific === true`) dokaže, da preslikani profil
+ *    res služi prav to dejavnost. Specializirani override je nupo dovolj — ne
+ *    samodejno dokaz, da profil pokriva podrazred.
+ *
+ * Marcelle maturity: register NIKOLI ne sme navesti `verified`, kadar je factory
+ * dokaz iz drugega profila ali celo iz sekcije.
+ */
+export type FitStatus = "verified" | "not-assessed"
+
+/** Rumena strojno berljiva izvedba `fitStatus` v vsaki vrstici registerja. */
 export interface SkdCoverageRow {
   code: string
   sl: string
@@ -506,6 +537,12 @@ export interface SkdCoverageRow {
   assessmentStatus: AssessmentStatus
   /** A/B/C/D/E — samo kadar je `assessed`. */
   coverageLevel: CoverageLevel | null
+  /**
+   * Poslovna ustreznost (fit), NEODVISNA od pokritosti zmožnosti. `verified`
+   * le, kadar profil-specifičen test dokaže, da preslikani profil res služi
+   * prav to dejavnost; `section-default`/deklaracija_override nikoli ni dokaz.
+   */
+  fitStatus: FitStatus
   /** Deklarirana konfiguracija profila (niso dokaz runtime). */
   declared: DeclaredConfiguration
   /** Dokaz o delujoči poslovni poti — ali `null`, če ni dokazanega. */
@@ -547,6 +584,8 @@ export interface CoverageSummary {
     runtimeProvenCount: number
     /** Podrazredov s preverjeno poslovno ustreznostjo (A+B, profileSpecific). */
     businessFitVerifiedCount: number
+    /** Shrilt z error: neposredno iz `fitStatus === "verified"` (mora biti == businessFitVerifiedCount). */
+    fitVerifiedCount: number
     /** Podrazredov, katerih profil označi zmožnost required brez dokaza (D delno). */
     requiredMissingCount: number
     /** Skupaj deklariranih KONFIGURACIJSKIH ELEMENTOV (forme+procesi+razširitve) — unique po profilih. */
@@ -555,6 +594,11 @@ export interface CoverageSummary {
     weightedDeclaredConfigElementCount: number
     /** Neocenjenih dejavnosti (brez dokazane fit ali dokumentirane podlage). */
     unassessedCount: number
+  }
+  /** Poslovna ustreznost (fit), neodvisna od pokritosti zmožnosti. */
+  byFit: {
+    verified: number
+    notAssessed: number
   }
 }
 
@@ -618,8 +662,14 @@ export function classifyRow(profile: ActivityProfile, mappingSource: SkdMappingS
   //    Če dokaz izvira iz DRUGEGA profila, to NI A (revija P3) → not-assessed.
   if (isSpecialOverride && ev && ev.profileSpecific && !requiredMissing) return { kind: "A" }
 
-  // D: preslikava obstaja, a zahtevane zmožnosti nimajo predlog → deklaracija
-  //    zahteva runtime, ki ne obstaja, ali pa kot izjema (npr. S92).
+  // D: preslikava obstaja, a ostaja dokazni manko. Trije vzroki (seštejemo jih,
+  //    revija pokaže, da NISO vsi "podrazredno dokazano nepopolni"):
+  //    1. `required` context-limited zmožnost (npr. analytics/appointments/
+  //       services/cashRegister) ali `delivery`: NI univerzalnega modula → shared
+  //       platform evidence-gap, ponovljen čez vse preslikave tega profila;
+  //    2. `required` forms/workflows/workOrders brez predlog → deklaracija
+  //       zahteva runtime (predlogo/materializacijo), ki ne obstaja (no-template);
+  //    3. izrecna izjema (npr. S92).
   if (requiredMissing || formsOrWfMissing || isException) return { kind: "D" }
 
   // B: SAMO za točno določen podrazred, katerega poslovno jedro profil res služi
@@ -668,6 +718,10 @@ export function buildCoverage(): SkdCoverageRow[] {
       mappingSource: info.source,
       assessmentStatus: assessed ? "assessed" : "not-assessed",
       coverageLevel: assessed ? levelToCoverage(klass) : null,
+      // Fit je verificiran le za A/B, ki zahtevata profil-specifičen runtime
+      // dokaz (`runtimeEvidence.profileSpecific === true`). D/C/E in
+      // section-default NIKOLI niso dokaz fitness — tudi deklarirani override ne.
+      fitStatus: klass.kind === "A" || klass.kind === "B" ? "verified" : "not-assessed",
       declared: decl,
       runtimeEvidence: runtimeEvidenceFor(p.id),
       exception,
@@ -706,6 +760,7 @@ export function coverageSummary(): CoverageSummary {
   let assessed = 0
   let runtimeProvenCount = 0
   let businessFitVerifiedCount = 0
+  let fitVerifiedCount = 0
   let requiredMissingCount = 0
   let weightedDeclaredConfigElementCount = 0
   const uniqueProfiles = new Set<string>()
@@ -725,6 +780,7 @@ export function coverageSummary(): CoverageSummary {
     if (r.coverageLevel === "specialized-validated" || r.coverageLevel === "validated-archetype") {
       businessFitVerifiedCount++
     }
+    if (r.fitStatus === "verified") fitVerifiedCount++
     if (requiredCapabilitiesMissing(getProfile(r.profileId))) requiredMissingCount++
     // Uteženo: vsaka SKD vrstica, ki uporablja profil, prišteje njegove elemente.
     weightedDeclaredConfigElementCount += r.declared.totalConfigElements
@@ -748,10 +804,15 @@ export function coverageSummary(): CoverageSummary {
     metrics: {
       runtimeProvenCount,
       businessFitVerifiedCount,
+      fitVerifiedCount,
       requiredMissingCount,
       uniqueDeclaredConfigElementCount,
       weightedDeclaredConfigElementCount,
       unassessedCount: overall.notAssessed,
+    },
+    byFit: {
+      verified: fitVerifiedCount,
+      notAssessed: rows.length - fitVerifiedCount,
     },
   }
 }

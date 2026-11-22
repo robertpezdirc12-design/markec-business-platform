@@ -18,11 +18,18 @@
 > ne ročno.
 >
 > **Usklajenost z registerjem (po reviziji PR #142):** v register `/docs/SKD-2025-COMPLETE-COVERAGE.md`
-> so **vsi** ti predlogi trenutno **not-assessed** (A=0, B=0, D=382, E=0, not-assessed=296) —
-> ker noben profil-specifičen runtime-dokaz še ne obstaja za konkretno konfiguracijo profila.
-> Ta dokument zato opisuje **potencialne** arhetipe za prihodnjo implementacijo (EPIC-2 ponovna
-> uporaba), **ne** potrjenih pokritosti. Nič tukaj ni v nasprotju z registerjem; register je
-> avtoritativni vir o pokritosti, ta dokument o nameri.
+> so **vsi** ti predlogi trenutno **D** (678 = 0 A + 0 B + 0 C + 678 D + 0 E), **not-assessed = 0** —
+> ocena pokritosti zmožnosti je bila narejena za vseh 678 vrstic, a **poslovna ustreznost (fit)
+> ostaja `not-assessed` (0/678)**, ker noben profil-specifičen runtime-dokaz še ne obstaja za
+> konkretno konfiguracijo profila. Ta dokument zato opisuje **potencialne** arhetipe za prihodnjo
+> implementacijo (EPIC-2 ponovna uporaba), **ne** potrjenih pokritosti. Nič tukaj ni v nasprotju z
+> registerjem; register je avtoritativni vir o pokritosti, ta dokument o nameri.
+>
+> **Profilne številke (ločiti):** profilni register vsebuje **36** profilov, a sedanji SKD-resolver
+> jih za 678 preslikav uporablja **28** = **22 sekcijskih** (`skd-…`) + **6 specializiranih**
+> (`apparel`, `beauty`, `frizer`, `massage`, `mehanik`, `tattoo-studio`). Preostalih **8**
+> (npr. `seamstress`, `tire-service`, `beekeeping`) so ločeni specializirani profili, ki NISO del
+> 678 SKD-preslikav. Ne trditi, da resolver uporablja vseh 36.
 
 ---
 
@@ -189,8 +196,12 @@ zunaj poslovne platforme). To je poštena oznaka, ne napaka.
 
 Konceptualno: **~24 arhetipov, ki pokrijejo 678 podrazredov** (brez ~30 segment-groups
 reguliranih/trgiških, ki ostanejo evidentirani posebej). To je NEStokrat manj od 678 podrazredov —
-register jih pokriva z le **36 industrijskimi profili** (14 specializiranih + 22 SKD-sekcijskih),
-ne z enim profilom na podrazred.
+register jih pokriva z le **28 industrijskimi profili, ki jih dejansko uporablja SKD-resolver**
+(**22 SKD-sekcijskih + 6 specializiranih**: `apparel`, `beauty`, `frizer`, `massage`, `mehanik`,
+`tattoo-studio`), ne z enim profilom na podrazred. Skupni profilni register vsebuje **36** profilov;
+preostalih 8 (npr. `seamstress`, `tire-service`, `beekeeping`) so ločeni specializirani profili, ki
+NISO del 678 SKD-preslikav. (Prejšnja trditev »14 specializiranih + 22 SKD« ni opisovala dejanske
+preslikave — resolver uporablja 6 specializiranih, ne 14.)
 
 Čeprav število ni vnaprej določeno, ta analiza kaže, da je poslovno primerljivih tokov veliko
 manj od števila SKD-kod — to je argument za vzpostavitev **archetype sloja** kot deklarativne
@@ -207,7 +218,7 @@ nadgradnje obstoječih profilov (ne novega profila za vsak podrazred).
 | A3 | `projects`, `memberships`, `suppliers`, `delivery` runtime (za arhetipe tech/agency/sport/trade) | NEW-RUNTIME | EPIC-2 G1–G3 |
 | A4 | `skd-c-manufacturing`, `skd-g-retail`, `skd-h-transport` … — ni protiv. procesov; dodeliti arhetipskim workflow-im | NEW-DECL | GAP 2a |
 | A5 | anti-deklarirajoči test: profil z `workflows:"required"` brez predloge → napaka | TEST | GAP 2a |
-| A6 | README profili (14+22) uskladiti z registrom | DOC | GAP 3 |
+| A6 | README profili (36 skupaj; 28 = 22 SKD + 6 specializiranih v 678-preslikavi) uskladiti z registrom | DOC | GAP 3 |
 
 ---
 
@@ -224,6 +235,7 @@ nadgradnje obstoječih profilov (ne novega profila za vsak podrazred).
 
 Register (doc 2) ima polje `coverageLevel` (`A/B/C/D/E`) **le za `assessed` vrstice**; za
 `not-assessed` je `null`. Uporablja tudi `mappingSource`, `assessmentStatus`,
-`declaredConfiguration` in `runtimeEvidence`. Arhetip (`archetypeId`) se doda kot nov ključ
+`declaredConfiguration`, `runtimeEvidence` in **`fitStatus`** (poslovna ustreznost, ločena od
+pokritosti zmožnosti). Arhetip (`archetypeId`) se doda kot nov ključ
 v `ActivityCoverageDefinition`, kadar se ta register sprejme za implementacijo.
 Do takrat ostaja ta dokument analitski predlog — **brez spremembe kode**.

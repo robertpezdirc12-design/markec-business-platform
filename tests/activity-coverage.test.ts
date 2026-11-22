@@ -310,11 +310,11 @@ describe("§5 — gap analiza, pravilni capability flagi", () => {
     expect(formsOnlyRequiredNoTemplate).toBe(33)
     expect(wfRequiredNoTemplate + formsOnlyRequiredNoTemplate).toBe(380)
     expect(exceptions).toBe(2)
-    // D-partial je SEDAJ nadmnožica: poleg template-vrzeli in izjem šteje še
+    // D-partial je nadmnožica: poleg template-vrzeli in izjem šteje še
     // profile, ki so partial ZARADI context-limited required zmožnosti
-    // (services/analytics/appointments/cashRegister) — tudi ko imajo predloge.
-    // Zato ne enačimo 382 s skupnim partial, ampak preverimo strukturno
-    // konsistenco: vsaka partial vrstica je takšna v registerju.
+    // (analytics/appointments/services/cashRegister) — tudi ko imajo predloge.
+    // (Stari register je imel "D=382" — le template-vrzeli+izjeme; zdaj enotna
+    // metodologija pokritosti zmožnosti da D=678. Ta test loči oba računa.)
     const partialRows = activityCoverage().filter((r) => r.coverageLevel === "partial").length
     expect(partialRows).toBe(coverageSummary().byLevel.partial)
     // Template-izpeljan del je stroga podmnožica vseh partial vrstic
@@ -327,6 +327,84 @@ describe("§5 — gap analiza, pravilni capability flagi", () => {
     const s = coverageSummary()
     const sumProfiles = Object.values(s.byProfile).reduce((a, b) => a + b, 0)
     expect(sumProfiles).toBe(678)
+  })
+})
+
+// ------------------------------------------------------------------
+// §5c — SKLADNOST GAP ANALIZE z coverageSummary() + fitStatus.
+// GAP analiza in register se ne smeta razhajati; fit je ločena dimenzija.
+// ------------------------------------------------------------------
+describe("§5c — GAP analiza skladna s klasifikatorjem in fit-razmejitev", () => {
+  it("D in not-assessed v GAP ANALIZI sta iz pokritosti zmožnosti (coverageSummary), ne ročna", () => {
+    const s = coverageSummary()
+    // Register (doc 2) prikazuje pokritost zmožnosti:
+    expect(s.byLevel.partial).toBe(678) // D
+    expect(s.byLevel.specializedValidated).toBe(0) // A
+    expect(s.byLevel.validatedArchetype).toBe(0) // B
+    expect(s.byLevel.validatedBase).toBe(0) // C
+    expect(s.byLevel.uncovered).toBe(0) // E
+    expect(s.byLevel.notAssessed).toBe(0) // noben podrazred ni brez ocene pokritosti
+    expect(s.notAssessed).toBe(0)
+  })
+
+  it("razčlenitev D=678 (380 no-template + 298 samo not-delivered) izhaja iz missingRequiredCapabilities", () => {
+    // Enaka metodologija kot pri GAP 2a / 2c — NE trdo zakodirana, izpeljana.
+    let noTemplate = 0
+    let onlyNotDelivered = 0
+    let both = 0
+    for (const row of activityCoverage()) {
+      if (row.coverageLevel !== "partial") continue
+      const miss = missingRequiredCapabilities(getProfile(row.profileId))
+      const tpl = miss.some((m) => m.reason === "no-template")
+      const ndl = miss.some((m) => m.reason === "not-delivered")
+      if (tpl && ndl) both++
+      else if (tpl) noTemplate++
+      else if (ndl) onlyNotDelivered++
+    }
+    // 380 vrstic ima template-vrzel (in hkrati not-delivered); 298 jih je samo not-delivered.
+    expect(both).toBe(380)
+    expect(noTemplate).toBe(0)
+    expect(onlyNotDelivered).toBe(298)
+    expect(both + noTemplate + onlyNotDelivered).toBe(coverageSummary().byLevel.partial)
+  })
+
+  it("fitStatus je ločen od assessmentStatus in vezan na verificiran poslovni fit (A+B)", () => {
+    const s = coverageSummary()
+    const rows = activityCoverage()
+    let verified = 0
+    let notAssessed = 0
+    for (const row of rows) {
+      if (row.fitStatus === "verified") {
+        verified++
+        // fit=verified LE za A/B (profil-specifičen runtime dokaz)
+        expect(["specializedValidated", "validatedArchetype"]).toContain(row.coverageLevel)
+      } else {
+        notAssessed++
+        // section-default ali 6 specializiranih override-ov NIKOLI samodejno ne
+        // dajo fit=verified — za to je treba profil-specifičen test.
+        expect(row.assessmentStatus).toBe("assessed") // pokritost je ocenjena
+        expect(row.fitStatus).toBe("not-assessed") // fit pa še ni dokazan
+      }
+    }
+    expect(verified + notAssessed).toBe(678)
+    // Row-level fit se mora ujemati s summary metriko — trije viri, ena resnica.
+    expect(verified).toBe(s.byFit.verified)
+    expect(verified).toBe(s.metrics.fitVerifiedCount)
+    expect(verified).toBe(s.metrics.businessFitVerifiedCount)
+    expect(notAssessed).toBe(s.byFit.notAssessed)
+  })
+
+  it("specializirani override-i ne štejejo samodejno kot dokazan fit", () => {
+    // 6 subclass-override vrstic (apparel/beauty/frizer/massage/mehanik/tattoo-studio)
+    // so D-status z fit=not-assessed, dokler profil-specifičen test ne poganja teh.
+    const overrideRows = activityCoverage().filter(
+      (r) => r.mappingSource === "subclass-override",
+    )
+    expect(overrideRows.length).toBe(6)
+    for (const row of overrideRows) {
+      expect(row.coverageLevel).toBe("partial") // trenutno iskreno D
+      expect(row.fitStatus).toBe("not-assessed") // override ≠ dokaz fitness
+    }
   })
 })
 
