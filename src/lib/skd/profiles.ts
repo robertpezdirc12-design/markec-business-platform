@@ -189,6 +189,16 @@ export function skdCodeValidity(code: string): SkdCodeValidity {
  */
 export function resolveSkdProfileInfo(code: string): ResolvedSkdProfile {
   const c = code.trim().toUpperCase()
+  // KATALOŠKI PRAG pred vsemi prevlečki (F5.0 §2). Šifra mora biti DEJANSKO
+  // uradna koda v katalogu SKD 2025, preden se sploh upošteva kakršen koli
+  // subclass/division/section prevleček. Neobstoječa, a oblikovno varljiva koda
+  // (npr. "C14.999" ali "T99.999") se nikoli ne sme razrešiti na realen profil
+  // prek ujemanja predpone (DIVISION_PROFILE["C14"]) — vedno pade na
+  // generic-fallback.
+  if (!CATALOG_CODES.has(c)) {
+    const profile = getProfile("generic")
+    return { profile, profileId: profile.id, source: "generic-fallback", division: null }
+  }
   if (SUBCLASS_PROFILE[c]) {
     const profile = getProfile(SUBCLASS_PROFILE[c])
     return { profile, profileId: profile.id, source: "subclass-override", division: null }
@@ -206,10 +216,10 @@ export function resolveSkdProfileInfo(code: string): ResolvedSkdProfile {
     const profile = getProfile(DIVISION_PROFILE[probe])
     return { profile, profileId: profile.id, source: "division-override", division: probe }
   }
-  // Sekcijski privzetek le za DEJANSKO katalogirano kodo. Neobstoječa/oblikovno
-  // varljiva koda (npr. "T99.999") ne sme tiho dobiti sekcijskega profila.
+  // Sem pridejo le katalogirane kode (prag zgoraj), zato je sekcijski privzetek
+  // vedno veljaven za pravo sekcijo A–V.
   const sec = sectionOf(c)
-  if (sec && SECTION_PROFILE[sec] && (CATALOG_CODES.has(c))) {
+  if (sec && SECTION_PROFILE[sec]) {
     const profile = getProfile(SECTION_PROFILE[sec])
     return { profile, profileId: profile.id, source: "section-default", division: null }
   }

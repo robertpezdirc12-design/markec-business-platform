@@ -19,7 +19,7 @@ brez dokaza (strežniške akcije + testi).
 | A specializirana | A | **0** | izrecna preslikava podrazreda/oddelka + DOKAZAN PROFIL-SPECIFIČEN runtime (akcije + test, ki poganja prav ta profil). Trenutno NITI eden (dokazi A so bili iz drugih profilov — revidirano v PR #142) |
 | B arhetip | B | **0** | podrazredno 5-mestna preslikava na profil, ki res služi prav ta podrazred (nie avtomatska promocija sekcije za obstoj obrazca) |
 | C osnovna | C | **0** | dokumentirano »osnovna konfiguracija zadostuje« — nič se ne dodeli samodejno |
-| D nepopolna | D | **382** | zahtevana zmožnost iz obravnavanega nabora (forms/workflows predloge; documents/delivery/cashRegister zunaj jedra) brez dokaza, ali zapisana izjema |
+| D nepopolna | D | **382** | zahtevana zmožnost iz obravnavanega nabora brez dokaza (forms/workflows `required` brez predlog; `delivery` je edina neuniverzalna — documents/cashRegister je platforma dobavljena v jedru), ali zapisana izjema |
 | E nepokrita | E | **0** | resolver nikoli ne pade na generični fallback za katalogirane kode |
 | Ni ocenjeno | — | **296** | sekcijski privzetek brez profil-specifičnega dokaza ali dokumentirane podlage |
 

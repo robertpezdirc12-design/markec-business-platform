@@ -1,6 +1,6 @@
 # SKD 2025 — REGISTER POKRITOSTI DEJAVNOSTI
 
-**Generirano:** 2026-11-22T10:32:26.944Z — iz registerja `src/lib/skd/activity-coverage.ts`.
+**Generirano:** 2026-11-22T13:55:43.808Z — iz registerja `src/lib/skd/activity-coverage.ts`.
 **Vir:** SKD 2025 (SURS KLASJE) V1 (SURS KLASJE). **Podrazredov:** 678.
 
 > **Verodostojni vir:** ta dokument je *generiran* in se ne ureja ročno.

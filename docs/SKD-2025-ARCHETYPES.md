@@ -83,9 +83,12 @@ ali minimalen `energy-delivery` (NEW-DECL). Ne izmiĹˇljujemo meritev.
 `skd-e-water-waste` niÄŤ runtime. Zbiranje/ÄŤiĹˇÄŤenje â†’ `waste-collection` (NEW-DECL); ima routes,
 dobavitelje, tehtne liste. Regulirano.
 
-### Sekcija F â€” gradbeniĹˇtvo (27) â†’ `archetype: construction-project` (REUSE â…)
-**Ĺ˝e reĹˇeno in preverjeno:** `skd-f-construction` ima 10-fazni proces + 2 formi + `documents`.
-To je vzorÄŤni arhetip (B). Uskladi 27 podrazredov nanj; za F43 instalacije dodaj kosovnico (NEW-DECL).
+### Sekcija F â€” gradbeniĹˇtvo (27) â†’ `archetype: construction-project` (REUSE)
+**NOT-assessed (ne â€žĹľe potrjenoâ€ť):** `skd-f-construction` *deklarativno* ima 10-fazni
+workflow-predlog + 2 formi + `documents`, a ta ni profil-specifiÄŤno potrjen (testi ne
+kliÄŤejo materializeProfileAssets; materializedWorkflows=false). Zato je vseh 27 podrazredov
+F trenutno **not-assessed** (A=0, B=0) in ne smejo biti prikazani kot pokriti. Arhetip ostaja
+PREDLOG za prihodnjo implementacijo; za F43 instalacije bi se dodala kosovnica (NEW-DECL).
 
 ### Sekcija G â€” trgovina (86) â†’ `archetype: trade | retail-service`
 `skd-g-retail` (86) ima niÄŤ form/procesov, a deklarirane zmoĹľnosti (`forms`/`workflows`) so

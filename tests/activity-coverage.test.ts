@@ -27,7 +27,16 @@ import {
   declaredConfiguration,
   runtimeEvidenceFor,
   requiredCapabilitiesMissing,
+  missingRequiredCapabilities,
+  CAPABILITY_EVIDENCE,
 } from "@/lib/skd/activity-coverage"
+import type { CapabilityKey } from "@/lib/profiles/types"
+
+/** Tipkani dostop do CapabilityMatrix (brez `any`). */
+type CapState = "required" | "optional" | "disabled"
+const setCap = (caps: Record<string, CapState | undefined>, key: string, v: CapState) => {
+  ;(caps as Record<CapabilityKey, CapState>)[key as CapabilityKey] = v
+}
 
 const subclasses = () => SKD_RECORDS.filter((r) => r.l === 5)
 
@@ -96,10 +105,10 @@ describe("§2 — mappingSource je skladen z resolverjem", () => {
   it("točen podrazredni override in division override razrešita pravilno", () => {
     expect(resolveSkdProfileInfo("T96.210").source).toBe("subclass-override")
     expect(resolveSkdProfileInfo("T96.210").profileId).toBe("frizer")
-    // C14 ponudba → apparel prek division
-    expect(resolveSkdProfileInfo("C14.110").source).toBe("division-override")
-    expect(resolveSkdProfileInfo("C14.110").division).toBe("C14")
-    expect(resolveSkdProfileInfo("C14.110").profileId).toBe("apparel")
+    // C14 ponudba → apparel prek division (C14.100 in C14.290 sta katalogirana)
+    expect(resolveSkdProfileInfo("C14.100").source).toBe("division-override")
+    expect(resolveSkdProfileInfo("C14.100").division).toBe("C14")
+    expect(resolveSkdProfileInfo("C14.100").profileId).toBe("apparel")
     expect(resolveSkdProfileInfo("C14.290").profileId).toBe("apparel")
     // nekateri podrazredi T95.xx so explicit
     expect(resolveSkdProfileInfo("T95.310").source).toBe("subclass-override")
@@ -300,6 +309,144 @@ describe("§5 — gap analiza, pravilni capability flagi", () => {
   })
 })
 
+// ------------------------------------------------------------------
+// §5b — parametrizirano dokazilo za vseh 13 zmožnosti.
+// Vsaka zmožnost se preverja ISOLIRANO: samo sprememba ustreznega dokazila
+// jo da naprej/nazaj, NEPOVEZANA forma ali razširitev ne potrdi druge zmožnosti.
+// ------------------------------------------------------------------
+describe("§5b — capability metodologija: 13 ključev, vsak z lastnim dokazilom", () => {
+  const CAPS = [
+    "appointments", "workOrders", "shop", "services", "inventory",
+    "customers", "staff", "analytics", "forms", "workflows",
+    "documents", "delivery", "cashRegister",
+  ]
+
+  // Jedro, ki ga dobavlja platforma (strežniška akcija + test): zahtevano NI vrzel.
+  const PLATFORM_CAPS = [
+    "appointments", "workOrders", "shop", "services", "inventory",
+    "customers", "staff", "analytics", "documents", "cashRegister",
+  ]
+
+  // Zmožnost, ki NIMA univerzalnega modula: zahtevana je vedno vrzel.
+  const NON_UNIVERSAL = "delivery"
+
+  it("vsaka od 13 zahtevanih zmožnosti je ali dobavljena-v-jedru ali (forms/workflows) odvisna od predlog", () => {
+    for (const key of CAPS) {
+      expect(Boolean(CAPABILITY_EVIDENCE[key]) || key === NON_UNIVERSAL || key === "forms" || key === "workflows",
+        `${key} je ali v jedru, ali delivery, ali odvisna od predlog`).toBe(true)
+      if (key === NON_UNIVERSAL) continue
+      if (key === "forms" || key === "workflows") continue
+      expect(CAPABILITY_EVIDENCE[key], `${key} ima dokazilo v CAPABILITY_EVIDENCE`).toBeTruthy()
+    }
+  })
+
+  it("required platform-zmožnost (NPR cashRegister/documents/inventory/analytics) NI vrzel — ne glede na predloge", () => {
+    for (const key of PLATFORM_CAPS) {
+      const base = getProfile("skd-salon")
+      const p = {
+        ...base,
+        capabilities: { ...base.capabilities },
+        forms: [],
+        workflows: [],
+        extensions: [],
+      } as unknown as ReturnType<typeof getProfile>
+      // vse required, izjema testiranega ključa
+      for (const c of CAPS) setCap(p.capabilities as unknown as Record<string, CapState>, c, "required")
+      const missing = missingRequiredCapabilities(p)
+      const keys = missing.map((m) => m.key)
+      expect(keys, `${key} ne sme biti manjkajoč (platforma dobavlja modul)`).not.toContain(key)
+    }
+  })
+
+  it("NEPOVEZANA forma/razširitev NE potrdi druge zmožnosti (delivery: required ostane vrzel navkljub predlogam)", () => {
+    for (const extra of [0, 1, 3]) {
+      const base = getProfile("skd-salon")
+      const forms = Array.from({ length: extra }, (_, i) => ({
+        key: `f${i}`, name: `form ${i}`, description: "", fields: [],
+      }))
+      const ext = ["order-details"]
+      const p = {
+        ...base,
+        capabilities: { ...base.capabilities },
+        forms,
+        workflows: [],
+        extensions: ext,
+      } as unknown as ReturnType<typeof getProfile>
+      for (const c of CAPS) setCap(p.capabilities as unknown as Record<string, CapState>, c, "optional")
+      setCap(p.capabilities as unknown as Record<string, CapState>, "delivery", "required")
+      const keys = missingRequiredCapabilities(p).map((m) => m.key)
+      // dokaz: kljub extra form + extension je delivery še vedno manjkajoč
+      expect(keys, `delivery required + ${extra} forms => še vedno vrzel`).toContain("delivery")
+    }
+  })
+
+  it("optional nikoli ne ustvari vrzeli", () => {
+    for (const key of CAPS) {
+      const base = getProfile("skd-salon")
+      const p = {
+        ...base,
+        capabilities: { ...base.capabilities },
+        forms: [],
+        workflows: [],
+      } as unknown as ReturnType<typeof getProfile>
+      for (const c of CAPS) setCap(p.capabilities as unknown as Record<string, CapState>, c, "optional")
+      expect(missingRequiredCapabilities(p), `optional ${key} ni vrzel`).toEqual([])
+    }
+  })
+
+  it("forms/workflows: required brez predlog = vrzel; z vsaj eno = pokrito", () => {
+    for (const key of ["forms", "workflows"]) {
+      // brez predlog
+      const base = getProfile("skd-salon")
+      const empty = {
+        ...base,
+        capabilities: { ...base.capabilities },
+        forms: key === "forms" ? [] : [{ key: "wf-data", name: "x", entity: "order", stages: [] } as const],
+        workflows: key === "workflows" ? [] : [{ key: "wf", name: "x", entity: "order", stages: [] } as const],
+      } as unknown as ReturnType<typeof getProfile>
+      for (const c of CAPS) setCap(empty.capabilities as unknown as Record<string, CapState>, c, "optional")
+      setCap(empty.capabilities as unknown as Record<string, CapState>, key, "required")
+      expect(missingRequiredCapabilities(empty).map((m) => m.key), `${key} brez predlog = vrzel`).toContain(key)
+      // z eno predlogo
+      const filled = {
+        ...base,
+        capabilities: { ...base.capabilities },
+        forms: key === "forms" ? [{ key: "f", name: "x", description: "", fields: [] } as const] : [],
+        workflows: key === "workflows" ? [{ key: "wf", name: "x", entity: "order", stages: [] } as const] : [],
+      } as unknown as ReturnType<typeof getProfile>
+      for (const c of CAPS) setCap(filled.capabilities as unknown as Record<string, CapState>, c, "optional")
+      setCap(filled.capabilities as unknown as Record<string, CapState>, key, "required")
+      expect(missingRequiredCapabilities(filled).map((m) => m.key), `${key} z eno predlogo = pokrito`).not.toContain(key)
+    }
+  })
+
+  it("D v sekciji H je posledica MANJKAJOČEGA delivery IN workflowa (ne enega ali drugega) — ključi so izkazani neodvisno", () => {
+    // Vse sekcije H vrstice so razvrščene na isti profil skd-h-transport.
+    const hRows = activityCoverage().filter((r) => r.code.startsWith("H"))
+    expect(hRows.length).toBeGreaterThan(0)
+    const profilesInH = new Set(hRows.map((r) => r.profileId))
+    // vsak H profil mora dejansko biti razvrščen D (delno), da ima smisla diagnosticirati
+    for (const pid of profilesInH) {
+      const profile = getProfile(pid)
+      const missing = missingRequiredCapabilities(profile).map((m) => m.key)
+      // Metodologija: delivery je neuniverzalna zahtevana zmožnost → vrzel, IN workflows
+      // (forms) sta zahtevani a brez predlog → vrzel. Ne pripisujemo vzroka, ki ga
+      // test ne dokaže: vedno izpišemo točne ključe iz registerja.
+      const cap = profile.capabilities as unknown as Record<string, string>
+      expect(cap.delivery).toBe("required")
+      expect(missing).toContain("delivery")
+      expect(missing).toContain("workflows")
+      // ključi D ne smejo ostati skriti v enem številu
+    }
+  })
+
+  it("register oznacit DA in nedokazano: CAPABILITY_EVIDENCE ima 12 dobavljenih modulov, delivery edini neuniverzalen", () => {
+    const delivered = Object.keys(CAPABILITY_EVIDENCE).filter((k) => k !== NON_UNIVERSAL)
+    expect(delivered.length).toBe(12)
+    expect(CAPABILITY_EVIDENCE[NON_UNIVERSAL]).toBeUndefined()
+  })
+})
+
 describe("§6 — dokumentacija je izpeljana (brez ročnih popravkov)", () => {
   it("generirani dokument (COMPLETE-COVERAGE) vsebuje vseh 22 sekcij z uradnimi nazivi in pravilne vsote", () => {
     const doc = readFileSync(resolve(__dirname, "../docs/SKD-2025-COMPLETE-COVERAGE.md"), "utf8")
@@ -380,6 +527,48 @@ describe("§7 — neveljavne SKD kode se ne pokrijejo tiho", () => {
     const rows = activityCoverage()
     const raw = new Set(SKD_RECORDS.filter((r) => r.l === 5).map((r) => r.c))
     for (const row of rows) expect(raw.has(row.code)).toBe(true)
+  })
+
+  // KATALOŠKI PRAG pred prevlečki (F5.0 §2): neobstoječa a oblikovno varljiva
+  // koda (npr. "C14.999") NE sme dobiti realnega profila prek ujemanja predpone
+  // (DIVISION_PROFILE["C14"] = apparel) niti sekcijskega privzetka — vedno
+  // generic-fallback. Edini veljavni resolverji so katalogirane šifre.
+  it("C14.999 in prijatelji padejo na generic-fallback, nikoli na section/division", () => {
+    const cases = ["C14.999", "C14.999.999", "T99.999", "S92.099", ""]
+    for (const c of cases) {
+      const info = resolveSkdProfileInfo(c)
+      expect(info.source, c).toBe("generic-fallback")
+      expect(info.profileId, c).toBe("generic")
+      // BINKA #1: DIVISION_PROFILE["C14"] = "apparel" NE sme zadeti C14.999.
+      expect(info.profileId, c).not.toBe("apparel")
+    }
+  })
+
+  it("veljavne katalogirane kode ne spremenijo vira (subclass/division/section)", () => {
+    // A01.110 katalogiran podrazred → section (ni explicit override).
+    expect(resolveSkdProfileInfo("A01.110").source).toBe("section-default")
+    // T96.210 katalogiran → subclass-override frizer.
+    expect(resolveSkdProfileInfo("T96.210").source).toBe("subclass-override")
+    expect(resolveSkdProfileInfo("T96.210").profileId).toBe("frizer")
+    // C14 (nivo division, katalogiran) → division-override apparel.
+    expect(resolveSkdProfileInfo("C14").source).toBe("division-override")
+    expect(resolveSkdProfileInfo("C14").division).toBe("C14")
+    expect(resolveSkdProfileInfo("C14").profileId).toBe("apparel")
+    // C14.100 katalogiran podrazred pod C14 → division-override apparel (še vedno).
+    expect(resolveSkdProfileInfo("C14.100").source).toBe("division-override")
+    expect(resolveSkdProfileInfo("C14.100").profileId).toBe("apparel")
+  })
+
+  it("register brez regresije: razdelitev mappingSource za 678 veljavnih kod ostaja enaka", () => {
+    const s = coverageSummary()
+    const mapping = s.byMapping
+    // DISTRIBUCIJA (pred popravkom): subclass 6, division-override 6, section 666.
+    expect(mapping["subclass-override"]).toBe(6)
+    expect(mapping["division-override"]).toBe(6)
+    expect(mapping["section-default"]).toBe(666)
+    expect(mapping["generic-fallback"] ?? 0).toBe(0)
+    const total = Object.values(mapping).reduce((a, b) => a + (b as number), 0)
+    expect(total).toBe(678)
   })
 })
 

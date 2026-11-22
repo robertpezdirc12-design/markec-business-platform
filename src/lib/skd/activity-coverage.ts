@@ -57,29 +57,51 @@ export interface DeclaredConfiguration {
   extensions: number
   /** Capability zastavice iz registra (required/optional/disabled) — VSE zmožnosti. */
   capabilities: Record<string, string>
-  totalTemplates: number
+  /** Skupno število deklariranih konfiguracijskih elementov (forme+procesi+razširitve).
+   *  POZOR: to NISO le predloge — razširitve niso predloge, zato ime vsebuje "elemente". */
+  totalConfigElements: number
 }
 
 /**
- * Zmožnosti, ki jih dokazano omogoča univerzalno jedro platforme (strežniške
- * akcije + testi), neodvisno od profila: booking, delovni nalogi, e-šhop,
- * storitve, zaloge, stranke, osebje in forma/workflow-predloge prek skupnega
- * engine-ja. Če profil označi to zmožnost kot `required`, NI nujno vrzeli —
- * jedro jo dokaže. Zmožnosti ZUNAJ tega nabora so dokazane le, kadar ima profil
- * lasten runtime-evidence; sicer platum ostane na D (zahtevano-a-nedokazano).
+ * Dokaz o tem, da je zmožnost dejansko prisotna v platformi, neodvisno od
+ * posameznega profila. Vsak vnos je vezan na REALNO strežniško akcijo in na
+ * test, ki jo poganja — zmožnost se NE šteje za dokazano le na podlagi komentarja
+ * ali zgolj na podlagi katerekoli predloge (`templ > 0` je prepovedan nadomestek).
+ *
+ * Ločeno od `required` deklaracije v registru: zmožnost, označena kot `required`,
+ * NI vrzel natanko tedaj, ko platforma ta modul res dobavlja (je v tem naboru)
+ * IN test/akcija to dokazujeta. Dokumenti in blagajna (WP-1 "eno jedro za VSE
+ * dejavnosti", P2 #101 računi) so dobavljeni v jedru → nista vrzel. Dostava NIMA
+ * lastnega strežniškega modula (le `recordDelivery`/prevzem v inventuri in
+ * work-order rokovanju) → `required` dostava je iskrena vrzel (→ D).
  */
-const UNIVERSALLY_PROVEN_CAPABILITIES = new Set([
-  "appointments",
-  "workOrders",
-  "shop",
-  "services",
-  "inventory",
-  "customers",
-  "staff",
-  "analytics",
-  "forms",
-  "workflows",
-])
+export const CAPABILITY_EVIDENCE: Record<
+  string,
+  { module: string; evidence: string }
+> = {
+  // Jedro z dobavljeno strežniško akcijo + testom.
+  appointments: { module: "src/app/actions/appointments.ts", evidence: "tests/booking-integrity-93.test.ts" },
+  workOrders: { module: "src/app/actions/work-orders.ts", evidence: "tests/work-order-costs.itest.ts" },
+  shop: { module: "src/app/actions/cart.ts+orders.ts+product-checkout.ts", evidence: "tests/integration/f54/f551-variant-checkout.itest.ts" },
+  services: { module: "src/app/actions/services.ts", evidence: "tests/unit/services-list-ux.test.ts" },
+  inventory: { module: "src/app/actions/inventory.ts", evidence: "tests/integration/stock-integrity.itest.ts" },
+  customers: { module: "src/app/actions/customers.ts", evidence: "tests/integration/onboarding-3-vertical.itest.ts" },
+  staff: { module: "src/app/actions/staff.ts", evidence: "tests/integration/onboarding-membership.itest.ts" },
+  analytics: { module: "src/app/actions/dashboard.ts+analytics.ts", evidence: "tests/analytics-e42.test.ts" },
+  forms: { module: "src/app/actions/forms.ts (skupni engine)", evidence: "tests/integration/f2-3/f501-materialization.itest.ts" },
+  workflows: { module: "engine prek forms.ts/work-orders.ts", evidence: "tests/integration/f2-3/f501-materialization.itest.ts" },
+  // Dokumentacija + e-računi: dobavljeno (P2 #101, Phase 4+).
+  documents: { module: "src/app/actions/documents.ts+einvoices.ts+quotes.ts", evidence: "tests/integration/f554/documents.itest.ts + tests/unit/einvoice-*.test.ts" },
+  // Blagajna (WP-1): dobavljeno v jedru za VSE dejavnosti.
+  cashRegister: { module: "src/app/actions/cash-register.ts+direct-sale.ts", evidence: "tests/cash-register-core.test.ts + tests/integration/direct-sale.itest.ts" },
+}
+/** Zmožnosti, ki NISO dobavljene kot univerzalni jedrni modul. */
+const NON_UNIVERSAL_CAPABILITIES = new Set<string>(["delivery"])
+
+/** Ali je zmožnost dokazano dobavljena v jedru platforme? */
+function isPlatformDeliveredCapability(key: string): boolean {
+  return key in CAPABILITY_EVIDENCE && !NON_UNIVERSAL_CAPABILITIES.has(key)
+}
 
 /**
  * Dokaz o delujoči poslovni poti. Vsaka referenca je povezana na realen del
@@ -128,99 +150,99 @@ const RUNTIME_BY_PROFILE: Record<string, RuntimeEvidence> = {
     serverActions: ["Form data workflow advancement"],
     actionFiles: ["src/app/actions/forms.ts", "src/app/actions/work-orders.ts"],
     testFiles: ["tests/work-order-inquiry.test.ts", "tests/forms/form-data.test.ts", "tests/work-order-costs.itest.ts"],
-    materializedForms: true,
-    materializedWorkflows: true,
-    note: "gradbeni workflow (10 stopenj) materializiran + preverjen v work-order E2E",
+    materializedForms: false,
+    materializedWorkflows: false,
+    note: "engine-path (work-order E2E) — materializacija profilnih predlog NI dokazana: testi ne kličejo materializeProfileAssets",
     profileSpecific: false,
   },
   apparel: {
     serverActions: ["Seamstress / body measurements"],
     actionFiles: ["src/app/actions/seamstress.ts"],
     testFiles: ["tests/integration/seamstress.itest.ts", "e2e/d-seamstress.spec.ts"],
-    materializedForms: true,
-    materializedWorkflows: true,
-    note: "šivalni proces z merami — testiran (dokaz je iz profila seamstress, ne apparel)",
+    materializedForms: false,
+    materializedWorkflows: false,
+    note: "dokaz iz profila seamstress (materializedForms/Workflows=false — seamstress itest PID 44 seeda workflow neposredno prek prisma.workflowDefinition.create in NE kliče materializeProfileAssets; predloge tako NISO dokazano materializirane)",
     profileSpecific: false,
   },
   seamstress: {
     serverActions: ["Seamstress / body measurements"],
     actionFiles: ["src/app/actions/seamstress.ts"],
     testFiles: ["tests/integration/seamstress.itest.ts", "e2e/d-seamstress.spec.ts"],
-    materializedForms: true,
-    materializedWorkflows: true,
-    note: "specializirana (ni neposredno v SKD preslikavi)",
+    materializedForms: false,
+    materializedWorkflows: false,
+    note: "dokazan je engine-path (seamstress akcije) — materializedForms/Workflows=false: itest (PID 44) seeda workflow prek seedWorkflow() → prisma.workflowDefinition.create in se ne kliče materializeProfileAssets; ročni DB-zapis NI materializacija profilnih predlog.",
     profileSpecific: true,
   },
   mehanik: {
     serverActions: ["Vehicle workshop orders"],
     actionFiles: ["src/app/actions/vehicle-workshop.ts"],
     testFiles: ["tests/integration/tire-service.itest.ts", "e2e/b-tire-service.spec.ts", "tests/work-order-*.test.ts"],
-    materializedForms: true,
-    materializedWorkflows: true,
-    note: "vulkanizersko-program: vozilo + delovni nalog + testi (dokaz je iz profila tire-service)",
+    materializedForms: false,
+    materializedWorkflows: false,
+    note: "dokaz iz profila tire-service (materializedForms/Workflows=false — tire-service itest PID 47 seeda workflow prek seedWorkflow() → prisma.workflowDefinition.create in ne kliče materializeProfileAssets)",
     profileSpecific: false,
   },
   "tire-service": {
     serverActions: ["Vehicle workshop orders"],
     actionFiles: ["src/app/actions/vehicle-workshop.ts"],
     testFiles: ["tests/integration/tire-service.itest.ts", "e2e/b-tire-service.spec.ts"],
-    materializedForms: true,
-    materializedWorkflows: true,
-    note: "vulkanizersko-program: vozilo + delovni nalog + testi",
+    materializedForms: false,
+    materializedWorkflows: false,
+    note: "vulkanizersko-program: dokazan je engine-path (tire-service akcije) — materializedForms/Workflows=false: itest (PID 47) seeda workflow prek seedWorkflow() → prisma.workflowDefinition.create in se ne kliče materializeProfileAssets; ročni DB-zapis NI materializacija profilnih predlog.",
     profileSpecific: true,
   },
   beekeeping: {
     serverActions: ["Apiary / colony management"],
     actionFiles: ["src/app/actions/apiculture.ts", "src/app/actions/colony-moves.ts"],
     testFiles: ["tests/integration/beekeeping-final-validation.itest.ts", "e2e/c-beekeeping.spec.ts", "tests/integration/f2-3/colony-move-2c2.itest.ts"],
-    materializedForms: true,
+    materializedForms: false,
     materializedWorkflows: false,
-    note: "čebelarstvo: panji + žetev (batch-production) — testirano",
+    note: "čebelarstvo: panji + žetev (batch-production) — engine-path preverjen; materializacija profilnih predlog NI dokazana (itest ne kliče materializeProfileAssets)",
     profileSpecific: true,
   },
   "skd-a-agriculture": {
     serverActions: ["Apiary / colony management (batch-production)"],
     actionFiles: ["src/app/actions/apiculture.ts", "src/app/actions/colony-moves.ts"],
     testFiles: ["tests/integration/beekeeping-final-validation.itest.ts", "e2e/c-beekeeping.spec.ts"],
-    materializedForms: true,
+    materializedForms: false,
     materializedWorkflows: false,
-    note: "km. sekcija nese predvsem čebelarski runtime (ni dokaz za druge podrazrede A)",
+    note: "km. sekcija nosi predvsem čebelarski runtime (ni dokaz za druge podrazrede A); materializacija NI dokazana",
     profileSpecific: false,
   },
   frizer: {
     serverActions: ["Appointment booking + client records"],
     actionFiles: ["src/app/actions/appointments.ts"],
     testFiles: ["tests/booking-addons-92.test.ts", "tests/booking-integrity-93.test.ts", "tests/batch-74-87.test.ts"],
-    materializedForms: true,
+    materializedForms: false,
     materializedWorkflows: false,
-    note: "booking jedro — dokaz ni profil-specifičen za frizerja",
+    note: "booking jedro — dokaz ni profil-specifičen za frizerja; materializacija predlog NI dokazana",
     profileSpecific: false,
   },
   beauty: {
     serverActions: ["Appointment booking + client records"],
     actionFiles: ["src/app/actions/appointments.ts"],
     testFiles: ["tests/booking-addons-92.test.ts", "tests/booking-integrity-93.test.ts"],
-    materializedForms: true,
+    materializedForms: false,
     materializedWorkflows: false,
-    note: "booking jedro — dokaz ni profil-specifičen za beauty",
+    note: "booking jedro — dokaz ni profil-specifičen za beauty; materializacija predlog NI dokazana",
     profileSpecific: false,
   },
   massage: {
     serverActions: ["Appointment booking + client records"],
     actionFiles: ["src/app/actions/appointments.ts"],
     testFiles: ["tests/booking-addons-92.test.ts", "tests/booking-integrity-93.test.ts"],
-    materializedForms: true,
+    materializedForms: false,
     materializedWorkflows: false,
-    note: "wellness terminski tok — dokaz ni profil-specifičen za massage",
+    note: "wellness terminski tok — dokaz ni profil-specifičen za massage; materializacija predlog NI dokazana",
     profileSpecific: false,
   },
   "tattoo-studio": {
     serverActions: ["Appointment booking + client records"],
     actionFiles: ["src/app/actions/appointments.ts"],
     testFiles: ["tests/booking-addons-92.test.ts", "tests/booking-integrity-93.test.ts"],
-    materializedForms: true,
+    materializedForms: false,
     materializedWorkflows: false,
-    note: "studio terminski tok — dokaz ni profil-specifičen za tattoo-studio",
+    note: "studio terminski tok — dokaz ni profil-specifičen za tattoo-studio; materializacija predlog NI dokazana",
     profileSpecific: false,
   },
 }
@@ -248,7 +270,7 @@ export function declaredConfiguration(profile: ActivityProfile): DeclaredConfigu
     workflows,
     extensions,
     capabilities,
-    totalTemplates: forms + workflows + extensions,
+    totalConfigElements: forms + workflows + extensions,
   }
 }
 
@@ -274,22 +296,40 @@ const ASSESSED_CAPABILITIES: ReadonlyArray<string> = [
 ]
 
 export function requiredCapabilitiesMissing(profile: ActivityProfile): boolean {
+  return missingRequiredCapabilities(profile).length > 0
+}
+
+/**
+ * Pravila posameznih dokazal za obravnavane zmožnosti.
+ *
+ * `required` NI nujno vrzel: zmožnost, ki jo jedro platforme res dobavlja
+ * (glej CAPABILITY_EVIDENCE — dejanska strežniška akcija + test), že samo po
+ * sebi ni vrzel. Vrzel (→ D) nastane LE kadar:
+ *  - nova zmožnost `required`, ki NIMA univerzalnega modula (npr. delivery),
+ *  - ali `forms`/`workflows` `required`, ki nimata prijavljenih predlog
+ *    (deklaracija brez materializacije).
+ * `optional` nikoli ne ustvarja vrzeli.
+ */
+export function missingRequiredCapabilities(profile: ActivityProfile): Array<{ key: string; reason: "not-delivered" | "no-template" }> {
   const cap = (profile.capabilities ?? {}) as unknown as Record<string, "required" | "optional" | "disabled" | undefined>
+  const missing: Array<{ key: string; reason: "not-delivered" | "no-template" }> = []
   for (const key of ASSESSED_CAPABILITIES) {
     if (cap[key] !== "required") continue
-    // forms / workflows: zahtevani, a brez nobene predloge → vrzel.
-    if (key === "forms" && (profile.forms ?? []).length === 0) return true
-    if (key === "workflows" && (profile.workflows ?? []).length === 0) return true
-    // Ostale zahtevane zmožnosti: pokrite, če so del univerzalnega jedra.
-    if (UNIVERSALLY_PROVEN_CAPABILITIES.has(key)) continue
-    // Neuniverzalna zahtevana zmožnost brez lastne predloge → vrzel.
-    const templ =
-      (profile.forms ?? []).length +
-      (profile.workflows ?? []).length +
-      (profile.extensions ?? []).length
-    if (templ === 0) return true
+    // forms / workflows: zahtevani, a brez nobene predloge → vrzel (deklaracija brez vsebine).
+    if (key === "forms" && (profile.forms ?? []).length === 0) {
+      missing.push({ key, reason: "no-template" })
+      continue
+    }
+    if (key === "workflows" && (profile.workflows ?? []).length === 0) {
+      missing.push({ key, reason: "no-template" })
+      continue
+    }
+    // Ostale zahtevane zmožnosti: pokrite ravno tedaj, ko jih jedro res dobavlja.
+    // `templ > 0` (katerakoli predloga) NIKOLI ni del dokaza possible zmožnosti.
+    if (isPlatformDeliveredCapability(key)) continue
+    missing.push({ key, reason: "not-delivered" })
   }
-  return false
+  return missing
 }
 
 /**
@@ -416,8 +456,8 @@ export interface CoverageSummary {
     businessFitVerifiedCount: number
     /** Podrazredov, katerih profil označi zmožnost required brez dokaza (D delno). */
     requiredMissingCount: number
-    /** Skupaj deklariranih predlog (forme+procesi+razširitve) po vseh profilih. */
-    declaredTemplateSum: number
+    /** Skupaj deklariranih KONFIGURACIJSKIH ELEMENTOV (forme+procesi+razširitve) po vseh profilih. */
+    declaredConfigElementCount: number
     /** Neocenjenih dejavnosti (brez dokazane fit ali dokumentirane podlage). */
     unassessedCount: number
   }
@@ -572,7 +612,7 @@ export function coverageSummary(): CoverageSummary {
   let runtimeProvenCount = 0
   let businessFitVerifiedCount = 0
   let requiredMissingCount = 0
-  let declaredTemplateSum = 0
+  let declaredConfigElementCount = 0
 
   for (const r of rows) {
     const t = tally(runRowClass(r))
@@ -589,7 +629,7 @@ export function coverageSummary(): CoverageSummary {
       businessFitVerifiedCount++
     }
     if (requiredCapabilitiesMissing(getProfile(r.profileId))) requiredMissingCount++
-    declaredTemplateSum += r.declared.totalTemplates
+    declaredConfigElementCount += r.declared.totalConfigElements
   }
 
   return {
@@ -606,7 +646,7 @@ export function coverageSummary(): CoverageSummary {
       runtimeProvenCount,
       businessFitVerifiedCount,
       requiredMissingCount,
-      declaredTemplateSum,
+      declaredConfigElementCount,
       unassessedCount: overall.notAssessed,
     },
   }
