@@ -51,7 +51,8 @@ workflows, documents, delivery, cashRegister`) z **dejanskimi dokazi** (predloge
 > **AGREGAT (iz registerja, ne ročnega seznama):**
 > - **347** podrazredov na profilih z `workflows: required` in **0** workflow predlog;
 > - **33** dodatnih podrazredov na profilih z le `forms: required` in **0** forma predlog;
-> - skupaj **380** podrazredov (56 %) na profilih, ki zahtevajo runtime, ki ga ne dostavijo;
+> - skupaj **380** podrazredov (56 %) na profilih, ki zahtevajo proces/obrazec, za katerega
+>   **nimajo deklariranih predlog** (skupni engine obstaja; manjka materializacija predloge);
 > - poleg tega **2** evidentirani izjemi (S92 igre na srečo) → skupaj D = **382**.
 
 | Profil | Podrazredov na njem | Deklarira workflows | Deklarira forms | Dejanskih procesov | Dejanskih form |
@@ -88,7 +89,10 @@ workflows, documents, delivery, cashRegister`) z **dejanskimi dokazi** (predloge
 | `skd-f-construction` | 2 | 1 (10-fazni) | documents | 27 | not-assessed | gradbeni engine je preverjen, a test je **knjižnični** (`work-order-inquiry` preverja title/due-date parsing); NITI eden test ne materializira `construction-inquiry`/`construction-handover` in ne poganja 27 F-podrazredov skozi profil |
 | `apparel` | 2 | 1 | 3 | 6 (C14) | not-assessed | dokaz iz **`seamstress`** (drug profil) — test kreira `vertical:"seamstress"` + ročno zaseje workflow; ne uporabi `apparel`-profilnega `order-details` formularja |
 | `mehanik` | 1 | 1 | 2 | 2 | not-assessed | dokaz iz **`tire-service`** — test kreira `vertical:"tire-service"`; ne poganja `mehanik` `vehicle-intake` formularja (`last_service`) |
-| `frizer`/`beauty`/`massage`/`tattoo-studio` | 1 | 0 | 1 | 4 | not-assessed | dokaz je **generični booking** (noben test ne omenja teh profilov); `beauty` e2e naredi termin prek **DB-fixture**, ne prek strežniške akcije `createAppointment` |
+| `frizer` | 1 | 0 | 1 | (0 ročno SKD) | not-assessed | dokaz je **generični booking**; `beauty`/strokovni e2e termin se ustvari prek **DB-fixture**, ne prek strežniške akcije `createAppointment` |
+| `beauty` | 0 | 0 | 1 | 1 | not-assessed | dokaz je **generični booking** (noben test ne omenja tega profila); `beauty` e2e naredi termin prek **DB-fixture**, ne prek strežniške akcije `createAppointment` |
+| `massage` | 1 | 0 | 1 | 1 | not-assessed | dokaz je **generični booking**; ni profil-specifičnega runtime testa |
+| `tattoo-studio` | 2 | 0 | 1 | (0 ročno SKD) | not-assessed | dokaz je **generični booking**; ni profil-specifičnega runtime testa |
 | `seamstress` | 2 | 1 | 3 | (0 ročno SKD) | — | obstaja lasten itest (materializiran? ne — ročno zasejan), a ni del SKD preslikave |
 | `beekeeping` | 1 | 0 | 2 | (0 ročno SKD) | — | lasten e2e, a ni del SKD preslikave |
 
@@ -101,8 +105,11 @@ vendar to ni dokaz, da prav konfiguracija tega profila pokriva prav ta podrazred
 - README (vrstica 39) je **zastarel**: piše »12 poimenovanih + 24 SKD-sekcij, ~500 SKD«,
   medtem ko register vsebuje **14 specializiranih + 22 SKD** sekcijskih profilov in pokriva **678**.
 - `TerminologySet` pokriva jedro (appointment/order/service/product/customer/bookingCta) — ne
-  pokriva pa terminov za **workflow stopnje, proxy evidence, javne CTA po korakih**; obsežni
-  panogi (proizvodnja, trgovina) sta terminološko prazni.
+  pokriva pa terminov za **workflow stopnje, proxy evidence, javne CTA po korakih**.
+- Proizvodnja in trgovina **NISTA terminološko prazni**: `skd-c-manufacturing` (tovarna / Delovni
+  nalog / „Oddaj povpraševanje“) in `skd-g-retail` imata lastno profilno terminologijo. Prava vrzel
+  je **procesna**: oba deklarirata zahtevane workflowe/form-e, a BREZ materializiranih predlog,
+  zato terminologija sicer obstaja, dejanskega procesnega runtime-ja (predloge) pa ni.
 
 ## 4. Največje priložnosti (kjer je 1 arhetip = mnogo dejavnosti)
 

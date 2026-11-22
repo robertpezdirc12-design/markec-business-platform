@@ -73,7 +73,9 @@ To je **največja vrzel**. `skd-c-manufacturing` (227 podrazredov — 233 minus 
 | Malo/množično C10–C33 ostalo | pohištvo C31, igrače C32 | `manufacturing-general` | REUSE `skd-c-manufacturing` + 1 generičen proces (NEW-DECL) |
 | Popravila C33 | servis strojev, elektronickih naprav | `repair-service` | REUSE `mehanik`-vzorec (NEW-DECL za nelora vozila) |
 
-Skupno: **233 podrazredov → 6 arhetipov** (5 NEW-DECL + 1 REUSE), NE 233 profilov.
+Skupno: **233 podrazredov → 7 arhetipov (kot v tabeli zgoraj)**, NE 233 profilov. (Pojmi so
+trije reuse-vzorci — `apparel`, `skd-c-manufacturing`, `mehanik` — plus posamezni NEW-DECL
+procesi za hrano, les, tisk in kovino.)
 
 ### Sekcija D — energetika (12) → `archetype: energy-utility`
 Regulirana infra (elektrarna, omrežje, trgovanje). `skd-d-energy` nič runtime → **segment-groups**
@@ -186,7 +188,9 @@ zunaj poslovne platforme). To je poštena oznaka, ne napaka.
 ## 3. Skupno število arhetipov (predlog, ni fiksno)
 
 Konceptualno: **~24 arhetipov, ki pokrijejo 678 podrazredov** (brez ~30 segment-groups
-reguliranih/trgiških, ki ostanejo evidentirani posebej). To je NEStokrat manj od 678 profilov.
+reguliranih/trgiških, ki ostanejo evidentirani posebej). To je NEStokrat manj od 678 podrazredov —
+register jih pokriva z le **36 industrijskimi profili** (14 specializiranih + 22 SKD-sekcijskih),
+ne z enim profilom na podrazred.
 
 Čeprav število ni vnaprej določeno, ta analiza kaže, da je poslovno primerljivih tokov veliko
 manj od števila SKD-kod — to je argument za vzpostavitev **archetype sloja** kot deklarativne
@@ -210,7 +214,7 @@ nadgradnje obstoječih profilov (ne novega profila za vsak podrazred).
 ## 5. Priporočena implementacijska prioriteta (če se odloči za fazo 2+)
 
 1. **Po meri gostinstvo + trgovina** (I18 + G86 + C-frizer) — največ uporabnosti, jasen proces.
-2. **Processing / manufacturing** (sekcija C = 233; od tega 6 C14→apparel, torej `skd-c-manufacturing` drži 227) — največja masa, 6 arhetipov, vse REUSE/DECL.
+2. **Processing / manufacturing** (sekcija C = 233; od tega 6 C14→apparel, torej `skd-c-manufacturing` drži 227) — največja masa, 7 arhetipov, REUSE/DECL mešano.
 3. **Transport/energija/voda** (H/D/E) — višja regulatorna zahtevnost → pozneje.
 4. Regulirani sektorji (finance, zdravstvo, šolstvo) — samo evidenčni, nikoli izmišljeni.
 
