@@ -207,9 +207,9 @@ konfiguracija tega profila pokriva prav ta podrazred (fit).*
 ## 5. Ocena izvedbe (predlog — ne spreminjamo še)
 
 > **Razmerje do EPIC-2 (`docs/EPIC-2/PLAN.md`):** EPIC-2 obravnava univerzalni poslovni
-> konfiguracijski motor (vrzeli G1–G8). Ta analiza je komplementarna: kvantificira
-> **SKD-pokritost na nivoju vseh 678 podrazredov** in razporedi, v katere EPIC-2 izvedbene sklope
-> (dostavni sklopi E2-0–E2-7 iz `PLAN.md`) manjkajoči procesi spadajo.
+> konfiguracijski motor (vrzeli G1–G8), dobavljen v izvedbenih sklopih E2-0–E2-7.
+> Ta analiza je komplementarna: kvantificira **SKD-pokritost na nivoju vseh 678 podrazredov**
+> in tako izpostavi manjkajoče procese, ki so relevantni za EPIC-2 dostavo.
 
 1. **Register** (`activity-coverage.ts`) + testi. **To je osnova vseh faz.**
 2. **Validacija registrov** — dodati pravilo ANTI-deklaracije: profil, ki deklarira
