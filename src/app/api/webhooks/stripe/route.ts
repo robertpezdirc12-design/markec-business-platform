@@ -6,7 +6,7 @@ import {
   applyOrderStockDecrement,
   releaseStockReservation,
 } from "@/lib/orders/stock"
-import { constructWebhookEvent } from "@/lib/stripe"
+import { constructWebhookEvent, getStripeForOrg } from "@/lib/stripe"
 import { prisma } from "@/lib/prisma"
 import { addMinutes } from "date-fns"
 import { after } from "next/server"
@@ -72,6 +72,44 @@ async function verifyStripeEvent(
     }
   }
   return null
+}
+
+/**
+ * P0 (S3, audit 2026-11) — AVTORITATIVNA PREVERBA PLAČILA.
+ *
+ * Najemnik pozna SVOJO `whsec_`, zato lahko podpiše poljuben payload za
+ * lastno org (npr. `checkout.session.completed` brez dejanskega plačila).
+ * Payload ni dokaz plačila — edini vir resnice je Stripe API s ključem
+ * organizacije. Ta helper retrieve-a sejo in primerja `payment_status` +
+ * plačani znesek s pričakovanim (naročilo/polog iz DB).
+ */
+async function verifyPaidSessionMatches(
+  organizationId: string,
+  sessionId: string,
+  expectedAmount: number
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const org = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { stripeSecretKey: true },
+  })
+  const client = getStripeForOrg(org)
+  if (!client) return { ok: false, reason: "no-stripe-key" }
+  try {
+    const s = await client.checkout.sessions.retrieve(sessionId)
+    if (!s || s.payment_status !== "paid") {
+      return { ok: false, reason: "session-not-paid" }
+    }
+    const actual = Number(s.amount_total ?? 0) / 100
+    if (Math.abs(actual - expectedAmount) > 0.001) {
+      return {
+        ok: false,
+        reason: `amount-mismatch (${actual} !== ${expectedAmount})`,
+      }
+    }
+    return { ok: true }
+  } catch {
+    return { ok: false, reason: "retrieve-failed" }
+  }
 }
 
 /**
@@ -420,6 +458,21 @@ export async function POST(req: Request) {
           return NextResponse.json({ received: true })
         }
 
+        // P0 (S3): payload ni dokaz plačila — preveri sejo na Stripe API-ju
+        // (ključ org) in primerjaj plačani znesek z naročilom. Ob
+        // neskladju 400 → Stripe ponovi dostavo; naročilo ostane PENDING.
+        const paidCheck = await verifyPaidSessionMatches(
+          signedOrg.id,
+          session.id,
+          order.total.toNumber()
+        )
+        if (!paidCheck.ok) {
+          console.error(
+            `Webhook: paid-session verification failed (order ${order.id}): ${paidCheck.reason}`
+          )
+          return NextResponse.json({ received: false }, { status: 400 })
+        }
+
         const paymentIntentId =
           typeof session.payment_intent === "string"
             ? session.payment_intent
@@ -527,7 +580,7 @@ export async function POST(req: Request) {
         // postal "plačan" brez plačila.
         const existingAppointment = await prisma.appointment.findFirst({
           where: { id: metadata.appointmentId, organizationId: org.id },
-          select: { id: true },
+          select: { id: true, depositAmount: true },
         })
 
         if (!existingAppointment) {
@@ -535,6 +588,20 @@ export async function POST(req: Request) {
             `Webhook: appointment ${metadata.appointmentId} not found in org ${org.id} (session ${session.id})`
           )
           return NextResponse.json({ received: true })
+        }
+
+        // P0 (S3): preveri, da je bila seja dejansko plačana in da znesek
+        // ustreza pologu termina (payload ni dokaz plačila).
+        const paidCheck = await verifyPaidSessionMatches(
+          org.id,
+          session.id,
+          existingAppointment.depositAmount.toNumber()
+        )
+        if (!paidCheck.ok) {
+          console.error(
+            `Webhook: existing-appointment paid-session verification failed (${metadata.appointmentId}): ${paidCheck.reason}`
+          )
+          return NextResponse.json({ received: false }, { status: 400 })
         }
 
         await prisma.appointment.updateMany({

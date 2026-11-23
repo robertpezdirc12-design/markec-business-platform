@@ -633,6 +633,31 @@ export async function deleteUser(userId: string) {
       }
     }
 
+    // S2 (audit 2026-11): uporabnik je lahko član/osebje/ocenjevalec v
+    // VEČ organizacijah (F2.3.1). `prisma.user.delete` kaskadno briše
+    // Staff/OrganizationMember/Review v VSEH org-ih (onDelete: Cascade).
+    // Pred globalnim brisanjem preverimo, da v DRUGIH org-ih ni nobenih
+    // vezi — sicer zavrnemo (fail-closed; priporočen nadomestek je
+    // deaktivacija).
+    const foreignTies = await prisma.$transaction([
+      prisma.organizationMember.count({
+        where: { userId, organizationId: { not: org.id } },
+      }),
+      prisma.staff.count({
+        where: { userId, organizationId: { not: org.id } },
+      }),
+      prisma.review.count({
+        where: { userId, organizationId: { not: org.id } },
+      }),
+    ])
+    if (foreignTies.some((n) => n > 0)) {
+      return {
+        success: false,
+        error:
+          "Uporabnika ni mogoče izbrisati — član je še drugih poslovnih prostorov. Namesto tega ga deaktivirajte.",
+      }
+    }
+
     // Delete related records first (staff row scoped to THIS organization).
     if (user.customer) {
       await prisma.customer.delete({ where: { id: user.customer.id } })
@@ -641,7 +666,7 @@ export async function deleteUser(userId: string) {
       await prisma.staff.delete({ where: { id: user.staffs[0].id } })
     }
 
-    // Delete user
+    // Delete user — po zgornji zaščiti kaskada zadene SAMO trenutno org.
     await prisma.user.delete({ where: { id: userId } })
 
     revalidatePath("/dashboard/users")

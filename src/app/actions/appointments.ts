@@ -1603,49 +1603,14 @@ export async function getAdminAppointments(filters?: AdminAppointmentsFilter) {
     data: { status: "CANCELLED" },
   })
 
-  // 2. Handle CONFIRMED (paid) appointments - mark as NO_SHOW
-  const confirmedToNoShow = await prisma.appointment.findMany({
-    where: {
-      organizationId: org.id,
-      status: "CONFIRMED",
-      endTime: { lt: now },
-    },
-    include: {
-      customer: { select: { name: true, email: true } },
-      staff: { select: { name: true } },
-      services: { include: { service: { select: { name: true } } } },
-    },
-  })
-
-  for (const apt of confirmedToNoShow) {
-    const customerEmail = apt.customer?.email || apt.guestEmail
-    const customerName = apt.customer?.name || apt.guestName || "Customer"
-
-    if (customerEmail) {
-      // Send email in background (non-blocking)
-      after(async () => {
-        await sendNoShowNotificationEmail({
-          email: customerEmail,
-          customerName,
-          serviceName: apt.services.map((s) => s.service.name).join(", "),
-          staffName: apt.staff?.name || "Our Staff",
-          appointmentDate: apt.startTime,
-          appointmentTime: formatSalonTime(apt.startTime, salonTz),
-          depositAmount: apt.depositAmount.toNumber(),
-          appointmentId: apt.id,
-        })
-      })
-    }
-  }
-
-  await prisma.appointment.updateMany({
-    where: {
-      organizationId: org.id,
-      status: "CONFIRMED",
-      endTime: { lt: now },
-    },
-    data: { status: "NO_SHOW" },
-  })
+  // P0 (S4, audit 2026-11): samodejna pretvorba CONFIRMED → NO_SHOW je
+  // ODSTRANJENA. Razlog: GET (branje) ne sme imeti stranskih učinkov, poleg
+  // tega pa avtomatski NO_SHOW ob preteku endTime ni dokaz, da stranka ni
+  // prišla — salon lahko preprosto pozabi označiti storitev kot COMPLETED,
+  // kar bi sprožilo off-session bremenitev pologa (no-show charge). NO_SHOW
+  // sedaj nastane izključno ročno prek updateAppointmentStatus. Pretekli
+  // PENDING se še vedno čistijo v CANCELLED (zgoraj) in v cron jobu
+  // (src/lib/jobs/expire-stale-pending.ts).
 
   // Build where clause based on filters
   const where: Prisma.AppointmentWhereInput = {

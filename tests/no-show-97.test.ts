@@ -93,11 +93,16 @@ describe("#97 struktura: checkout setup, webhook, success, cron, wizard", () => 
     expect(page).toContain("getStripeForOrg")
   })
 
-  it("cron: bremenitev po prehodu v NO_SHOW — samo kandidati z vsemi pogoji", () => {
+  it("cron: samodejna bremenitev je odstranjena (S4) — NO_SHOW le ročno", () => {
     const job = read("src/lib/jobs/expire-stale-pending.ts")
-    expect(job).toContain("chargeNoShowFee")
-    expect(job).toContain('noShowSetupStatus: "SAVED"')
-    expect(job).toContain('noShowChargeStatus: "NONE"')
+    // P0 (audit 2026-11): končanje termina ni dokaz ne-prihoda —
+    // samodejna pretvorba CONFIRMED→NO_SHOW in samodejna bremenitev
+    // pologa se v cron jobu NE izvajata več. NO_SHOW + bremenitev
+    // ostaneta ročni poti (updateAppointmentStatus / chargeNoShowFee).
+    expect(job).not.toContain("chargeNoShowFee")
+    expect(job).not.toContain('noShowSetupStatus: "SAVED"')
+    expect(job).not.toContain('noShowChargeStatus: "NONE"')
+    expect(job).toContain("P0 (S4")
   })
 
   it("bremenitev: payment_method iz SetupIntenta; ključ izključno najemnika", () => {

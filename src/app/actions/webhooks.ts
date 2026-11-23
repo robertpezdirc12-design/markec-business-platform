@@ -19,18 +19,17 @@ import {
 async function requireOwner() {
   const session = await auth()
   if (!session?.user?.id) return { error: "unauthorized" as const }
-  const { org } = await requirePermissionOrg("settings.manage")
-  if (!org) return { error: "no_org" as const }
-
-  const member = await prisma.organizationMember.findUnique({
-    where: {
-      organizationId_userId: { organizationId: org.id, userId: session.user.id },
-    },
-    select: { role: true },
-  })
-  if (member?.role !== "OWNER") return { error: "forbidden" as const }
-
-  return { session, org }
+  try {
+    const { org } = await requirePermissionOrg("settings.manage")
+    if (!org) return { error: "no_org" as const }
+    return { session, org }
+  } catch {
+    // P0 (M1, audit 2026-11): vloga OWNER ne obstaja (vloge so samo
+    // ADMIN/STAFF/CLIENTE) — prejšnji `role !== "OWNER"` je ta vmesnik
+    // trajno zaklenil (vedno "forbidden"). `settings.manage` je edini
+    // avtoritativen prever; nepooblaščen dostop → "forbidden".
+    return { error: "forbidden" as const }
+  }
 }
 
 // ── Types ────────────────────────────────────────────────────
