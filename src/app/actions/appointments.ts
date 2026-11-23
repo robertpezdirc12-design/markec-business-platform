@@ -1678,6 +1678,8 @@ export async function getAdminAppointments(filters?: AdminAppointmentsFilter) {
       workOrder: { select: { id: true, number: true, title: true } },
     },
     orderBy: { startTime: "desc" },
+    // P2: omejena serija (paginacija v UI še ni implementirana).
+    take: 500,
   })
 
   // Convert Prisma Decimals to numbers for price fields

@@ -397,6 +397,8 @@ export async function getDocumentsOverview(): Promise<DocumentsOverview> {
         appointment: { select: { id: true } },
       },
       orderBy: [{ type: "asc" }, { fiscalYear: "desc" }, { number: "desc" }],
+      // P2: omejena serija (paginacija v UI še ni implementirana).
+      take: 500,
     }),
     prisma.workOrder.findMany({
       where: { organizationId: org.id, status: "OPEN" },

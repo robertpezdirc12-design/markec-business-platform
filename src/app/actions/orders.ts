@@ -35,6 +35,8 @@ export async function getAdminOrders(search?: string) {
       },
     },
     orderBy: { createdAt: "desc" },
+    // P2: omejena serija (paginacija v UI še ni implementirana).
+    take: 500,
   })
 
   return orders.map((order) => ({
