@@ -16,8 +16,9 @@
 //   5. Predloge sekundarne dejavnosti (secondaryVertical) ostanejo aktivne.
 //   6. Predloge DRUGE organizacije ostanejo nespremenjene.
 //   7. Ponovljen preklop (že enaka dejavnost) NE podvoji predlog.
-//   8. Napaka med preklopom ne pusti nekonsistentnega stanja (preklop je
-//      idempotenten: vertical se menja kot ZADNJI zapis).
+//   8. Napaka med preklopom se samozdravi ob ponovitvi: vertica je ZADNJI zapis,
+//      zato prekinitev pusti org.vertical nedotaknjen (star), ponovljen klic pa
+//      vse dosledno uskladi brez dvojnic in brez puščanja aktivnih starih predlog.
 //
 // Izolirana baza markec_e2e_test / markec_f501_test / markec_it.
 // ============================================================
@@ -45,13 +46,15 @@ import { completeGuidedEntry } from "@/app/actions/guided-entry"
 const RUN = "sc5b_" + Date.now().toString(36)
 const ORG = `${RUN}_org`
 const ORG2 = `${RUN}_org2` // druga organizacija (izolacija — scenarij 6)
+const ORG3 = `${RUN}_org3` // za test napake med preklopom (scenarij 8)
 let userId: string
+let userId3: string
 
 beforeAll(async () => {
   const rows = await prisma.$queryRawUnsafe<{ db: string }[]>("select current_database() as db")
   expect(["markec_f23_test", "markec_f501_test", "markec_e2e_test", "markec_it"]).toContain(rows[0].db)
 
-  await prisma.organization.deleteMany({ where: { id: { in: [ORG, ORG2] } } })
+  await prisma.organization.deleteMany({ where: { id: { in: [ORG, ORG2, ORG3] } } })
 
   // Začetna dejavnost: vulkanizer (tire-service) — workflow "work-order".
   await prisma.organization.create({
@@ -73,6 +76,16 @@ beforeAll(async () => {
       publishState: "DRAFT",
     },
   })
+  // Organizacija za test napake med preklopom (scenarij 8) — izoliran.
+  await prisma.organization.create({
+    data: {
+      id: ORG3,
+      slug: ORG3,
+      name: `SC5 fail ${RUN}`,
+      vertical: "tire-service",
+      publishState: "DRAFT",
+    },
+  })
 
   const user = await prisma.user.create({
     data: {
@@ -88,12 +101,27 @@ beforeAll(async () => {
   await prisma.organizationMember.create({
     data: { organizationId: ORG, userId: user.id, role: "ADMIN", isDefault: true },
   })
+
+  const user3 = await prisma.user.create({
+    data: {
+      email: `${RUN}@markec.fail.test`,
+      name: "Owner3",
+      role: "ADMIN",
+      organizationId: ORG3,
+      password: "x",
+      emailVerified: new Date(),
+    },
+  })
+  userId3 = user3.id
+  await prisma.organizationMember.create({
+    data: { organizationId: ORG3, userId: user3.id, role: "ADMIN", isDefault: true },
+  })
 })
 
 afterAll(async () => {
   state.session = null
-  await prisma.user.deleteMany({ where: { id: userId } })
-  await prisma.organization.deleteMany({ where: { id: { in: [ORG, ORG2] } } })
+  await prisma.user.deleteMany({ where: { id: { in: [userId, userId3] } } })
+  await prisma.organization.deleteMany({ where: { id: { in: [ORG, ORG2, ORG3] } } })
 })
 
 describe("NASLEDNJA FAZA scenarij 5 — sprememba SKD dejavnosti ob ohranitvi podatkov", () => {
@@ -221,24 +249,58 @@ describe("NASLEDNJA FAZA scenarij 5 — sprememba SKD dejavnosti ob ohranitvi po
     expect(after).toBe(1)
   })
 
-  it("napaka med preklopom ne pusti nekonsistentnega stanja (idempotenten preklop)", async () => {
-    // Simuliramo prekinitev PO materializaciji/deaktivaciji, AMPAK PRED
-    // posodobitvijo vertical: ponovni klic mora iti skozi celoten idempotenten
-    // preklop in končati konsistentno. `vertical` je ZADNJI zapis — če klic
-    // ne uspe, org.vertical ostane star, retry pa vse ponovi dosledno.
-    await materializeProfileAssets(ORG, "seamstress") // deljen korak brez vertical izmene
-    // Uporabnik ponovi vodeni vstop — vertical je že seamstress (iz prejšnjega testa),
-    // zato je changed=false in stanje ostane konsistentno (nobena tuja predloga reaktivarana).
-    const org = await prisma.organization.findUniqueOrThrow({ where: { id: ORG } })
-    expect(org.vertical).toBe("seamstress")
-    const prod = await prisma.workflowDefinition.findMany({
-      where: { organizationId: ORG, key: "production-order", isActive: true },
+  it("napaka med preklopom se samozdravi ob ponovitvi (vertical = zadnji zapis)", async () => {
+    // ORGANIZACIJA ORG3 (izolirana): začetni vulkanizer + materializiran work-order.
+    state.session = { user: { id: userId3, role: "ADMIN", email: `${RUN}@markec.fail.test` } }
+    await materializeProfileAssets(ORG3, "tire-service")
+    await prisma.organization.update({ where: { id: ORG3 }, data: { vertical: "tire-service" } })
+
+    // Napaka PO materializaciji novih predlog, AMPAK PRED zapisom vertical:
+    // prisilimo `organization.update({ data: { vertical } })` na ponovno. Tip
+    // `data.vertical` določa izključno vodeni preklop (NE profileVersion v
+    // materializeProfileAssets, ki ima samo `data.profileVersion`).
+    // Ohranimo sklic na izvirno metodo pred spyingem, da delegiramo brez rekurzije.
+    const orgUpdate = prisma.organization.update.bind(prisma.organization)
+    const spy = vi.spyOn(prisma.organization, "update")
+    spy.mockImplementation((args) => {
+      const data = args.data as { vertical?: string }
+      if (data.vertical) throw new Error("SC5_INJECTED_FAILURE")
+      return orgUpdate(args)
     })
-    expect(prod.length).toBe(1)
-    // Stare predloge še vedno deaktivirane.
-    const old = await prisma.workflowDefinition.findUniqueOrThrow({
-      where: { organizationId_key: { organizationId: ORG, key: "work-order" } },
+
+    const failed = await completeGuidedEntry({ vertical: "seamstress", palette: "teal" })
+    // Preklop se konča z napako; guided-entry varno vrne sanitizirano (generičen)
+    // error sporočilo, ne razkrije notranjega podatka — to samo potrjuje catch vejo.
+    expect(failed.success).toBe(false)
+    expect(String(failed.error)).toBeTruthy()
+
+    // Vertical je ZADNJI zapis → po napaki ostane star (tire-service).
+    const orgAfterFail = await prisma.organization.findUniqueOrThrow({ where: { id: ORG3 } })
+    expect(orgAfterFail.vertical).toBe("tire-service")
+    // Materializacija je vmes že zagnala → production-order je aktiven (začasno);
+    // to je dokumentiran vmesni (prehodni) vrzel, ki ga retry uskladi.
+    const partialProd = await prisma.workflowDefinition.findMany({
+      where: { organizationId: ORG3, key: "production-order", isActive: true },
     })
-    expect(old.isActive).toBe(false)
+    expect(partialProd.length).toBe(1)
+
+    // RETRY — isti lastnik ponovi vodeni vstop.
+    spy.mockRestore()
+    const retry = await completeGuidedEntry({ vertical: "seamstress", palette: "teal" })
+    expect(retry.success).toBe(true)
+    expect(retry.changed).toBe(true)
+
+    const orgFinal = await prisma.organization.findUniqueOrThrow({ where: { id: ORG3 } })
+    expect(orgFinal.vertical).toBe("seamstress")
+    // Nobena dvojnica: točno ena aktivna production-order vrstica.
+    const prodFinal = await prisma.workflowDefinition.findMany({
+      where: { organizationId: ORG3, key: "production-order", isActive: true },
+    })
+    expect(prodFinal.length).toBe(1)
+    // Stara predloga (work-order) deaktivirana — nobeno puščanje aktivne.
+    const oldFinal = await prisma.workflowDefinition.findUniqueOrThrow({
+      where: { organizationId_key: { organizationId: ORG3, key: "work-order" } },
+    })
+    expect(oldFinal.isActive).toBe(false)
   })
 })
