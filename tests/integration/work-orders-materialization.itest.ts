@@ -34,7 +34,7 @@ import { seedOrganizationCatalog } from "@/lib/verticals-seed"
 import { materializeProfileAssets } from "@/lib/profiles/materialize"
 import { getProfile } from "@/lib/profiles/registry"
 import { createWorkOrder, createFirstWorkflowDefinition } from "@/app/actions/work-orders"
-import { createFormDefinition, listFormDefinitions } from "@/app/actions/forms"
+import { createFormDefinition, listFormDefinitions, toggleFormDefinition } from "@/app/actions/forms"
 
 const RUN = "wom_" + Date.now().toString(36)
 const POS = `${RUN}_pos` // tire-service (workflows: 1, entity "order", 7 stages)
@@ -288,6 +288,17 @@ describe("PR #142 §5b — workOrders materializacija (ne le deklaracija)", () =
       // vendar je definicija prisotna v admin seznamu (vstopna točka obstaja).
       const listed = await listFormDefinitions()
       expect(listed.some((d) => d.id === res.definitionId)).toBe(true)
+
+      // Guard: praznega (0 polj) obrazca NI mogoče aktivirati/objaviti — javna stran
+      // ne sme prikazovati praznega, nefunkcionalnega obrazca. Sj le z vsaj 1 poljem.
+      const toggleEmpty = await toggleFormDefinition(res.definitionId!, true)
+      expect(toggleEmpty.ok).toBe(false)
+      expect(toggleEmpty.error).toBe("EMPTY_FIELDS")
+      const stillDraft = await prisma.formDefinition.findUnique({
+        where: { id: res.definitionId! },
+        select: { isActive: true },
+      })
+      expect(stillDraft!.isActive).toBe(false) // še vedno osnutek
     } finally {
       state.session = prevSession
     }

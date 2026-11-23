@@ -68,6 +68,7 @@ export default async function FormsPage() {
           createdWorkOrder: f.createdWorkOrder,
           statusLabels: f.statusLabels,
           deactivateConfirm: f.deactivateConfirm,
+          emptyFieldsCannotPublish: f.emptyFieldsCannotPublish,
         }}
       />
 

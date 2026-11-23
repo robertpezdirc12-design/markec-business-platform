@@ -304,13 +304,19 @@ export async function setSubmissionStatus(
 export async function toggleFormDefinition(
   id: string,
   isActive: boolean
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: "EMPTY_FIELDS" }> {
   const { org, session } = await requirePermissionOrg("inquiries.manage")
   const def = await prisma.formDefinition.findFirst({
     where: { id, organizationId: org.id },
     select: { id: true, key: true, name: true, fields: true, isActive: true },
   })
   if (!def) return { ok: false }
+
+  // Prepreči javno objavo praznega obrazca (0 polj): osnutek ne sme postati
+  // javno viden in vračati prazen, nefunkcionalen obrazec. Lastnik mora
+  // najprej dodati vsaj 1 polje, šele nato lahko obrazec aktivira.
+  const fieldCount = Array.isArray(def.fields) ? def.fields.length : 0
+  if (isActive && fieldCount === 0) return { ok: false, error: "EMPTY_FIELDS" }
 
   // E2-5: config history — toggle is a config change with a snapshot.
   const previous = formSnapshot({ name: def.name, fields: def.fields, isActive: def.isActive })

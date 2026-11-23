@@ -258,6 +258,8 @@ export const workFormsSl = {
       genericError: "Obrazca ni bilo mogoče ustvariti. Poskusite znova.",
       namePlaceholder: "npr. Povpraševanje",
     },
+    emptyFieldsCannotPublish:
+      "Praznega obrazca ni mogoče objaviti. Najprej dodajte vsaj eno polje.",
   },
 }
 
@@ -517,5 +519,7 @@ export const workFormsEn: WorkFormsDict = {
       genericError: "Could not create the form. Try again.",
       namePlaceholder: "e.g. Enquiry",
     },
+    emptyFieldsCannotPublish:
+      "An empty form cannot be published. Add at least one field first.",
   },
 }
