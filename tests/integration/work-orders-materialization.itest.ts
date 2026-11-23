@@ -33,7 +33,7 @@ import { prisma } from "@/lib/prisma"
 import { seedOrganizationCatalog } from "@/lib/verticals-seed"
 import { materializeProfileAssets } from "@/lib/profiles/materialize"
 import { getProfile } from "@/lib/profiles/registry"
-import { createWorkOrder } from "@/app/actions/work-orders"
+import { createWorkOrder, createFirstWorkflowDefinition } from "@/app/actions/work-orders"
 
 const RUN = "wom_" + Date.now().toString(36)
 const POS = `${RUN}_pos` // tire-service (workflows: 1, entity "order", 7 stages)
@@ -167,6 +167,50 @@ describe("PR #142 §5b — workOrders materializacija (ne le deklaracija)", () =
       const wo = await createWorkOrder({ title: "Nalog brez workflow predloge" })
       expect(wo.ok).toBe(false)
       expect(wo.error).toBe("NO_WORKFLOW")
+    } finally {
+      state.session = prevSession
+    }
+  })
+
+  it("createFirstWorkflowDefinition zapolni mrtvo točko (skd-a-agriculture): lastniški proces -> createWorkOrder zdaj USPE", async () => {
+    // Nadaljuje tam, kjer je prejšnji test ustavil: NEG ima še vedno
+    // workOrders=required, a nič workflow predlog -> ustvari se lastniški proces.
+    const prevSession = state.session
+    state.session = { user: { id: negUserId, role: "ADMIN", email: `${RUN}-neg@markec.test` } }
+    try {
+      // Kljub aktivnemu modulu ni nobenega procesa -> createFirstWorkflow ustvari prvega.
+      const res = await createFirstWorkflowDefinition()
+      expect(res.ok).toBe(true)
+      expect(res.definitionId).toBeTruthy()
+
+      const wf = await prisma.workflowDefinition.findUnique({
+        where: { id: res.definitionId! },
+        include: { stages: { orderBy: { order: "asc" } } },
+      })
+      expect(wf).toBeDefined()
+      // Lastniški proces: sourceProfile = null (NE profilna predloga).
+      expect(wf!.sourceProfile).toBeNull()
+      expect(wf!.isActive).toBe(true)
+      expect(wf!.entity).toBe("order")
+      // Ena strukturna stopnja, da createWorkOrder sploh deluje (stages>0).
+      expect(wf!.stages.length).toBeGreaterThan(0)
+
+      // Idempotentnost: ponovni klic ne sme ustvariti duplikata (EXISTS).
+      const dup = await createFirstWorkflowDefinition()
+      expect(dup.ok).toBe(false)
+      expect(dup.error).toBe("EXISTS")
+
+      // Mrtva točka zaprta: sedaj lahko lastnik ustvari delovno naročilo.
+      const wo = await createWorkOrder({ title: "Prvi delovni nalog po ustvarjenem procesu" })
+      expect(wo.ok).toBe(true)
+      expect(wo.id).toBeTruthy()
+      const created = await prisma.workOrder.findUnique({
+        where: { id: wo.id! },
+        select: { currentStageKey: true, workflowDefinitionId: true },
+      })
+      expect(created!.workflowDefinitionId).toBe(wf!.id)
+      // Trenutna stopnja = edina strukturna stopnja ustvarjenega procesa.
+      expect(created!.currentStageKey).toBe(wf!.stages[0].key)
     } finally {
       state.session = prevSession
     }

@@ -179,6 +179,16 @@ export const workFormsSl = {
       saved: "Proces je posodobljen.",
       finalBadge: "zaključna",
     },
+    firstWorkflow: {
+      title: "Ta dejavnost še nima delovnega procesa.",
+      description:
+        "Ustvarite neutralen prvi proces z eno stopnjo in ga nato poimenujte ter dopolnite po svoji dejavnosti. Brez procesa delovna naročila ni mogoče ustvarjati.",
+      cta: "Ustvari prvi proces",
+      creating: "Ustvarjam …",
+      created: "Prvi proces je ustvarjen. Sedaj ga uredite in mu dodajte stopnje.",
+      alreadyExists: "Aktiven delovni proces že obstaja.",
+      genericError: "Procesa ni bilo mogoče ustvariti. Poskusite znova.",
+    },
   },
   forms: {
     title: "Obrazci",
@@ -417,6 +427,16 @@ export const workFormsEn: WorkFormsDict = {
       cancel: "Cancel",
       saved: "Workflow updated.",
       finalBadge: "final",
+    },
+    firstWorkflow: {
+      title: "This activity has no work process yet.",
+      description:
+        "Create a neutral first workflow with one stage, then name it and add your own stages. Without a workflow, work orders cannot be created.",
+      cta: "Create first workflow",
+      creating: "Creating …",
+      created: "First workflow created. Edit it now to add your stages.",
+      alreadyExists: "An active work workflow already exists.",
+      genericError: "Could not create the workflow. Try again.",
     },
   },
   forms: {

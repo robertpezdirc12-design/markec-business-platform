@@ -251,7 +251,17 @@ konfiguracija tega profila pokriva prav ta podrazred (fit).*
   zapis; retry ponovi vse dosledno). Poenoten transakcijski ovitek obeh poti zahteva
   prenos `tx` v deljena `materializeProfileAssets`/`deactivateForeignProfileAssets` —
   arhitekturna sprememba, ki naj se uredi v ločeni PR-ju (EPIC-2), ne v #142.
-- ODPRTO (izven PR #142): profili z `workOrders: required` + `workflows: []` (npr.
-  `skd-a-agriculture`) dobijo modul `workOrders` ACTIVE, a `createWorkOrder` vrača
-  `NO_WORKFLOW` (iskreno prikazano v UI, ne lažno obljubljeno). Rešitev (avto-generacija
-  minimalnega workflow templete za panogo) zahteva poslovni SME-vnos — ločen PR.
+- REŠENO: profili z `workOrders: required` + `workflows: []` (npr. `skd-a-agriculture`,
+  `beekeeping`, `skd-b-mining`, `skd-c-manufacturing`, `skd-d-energy`, `skd-e-water-waste`,
+  `skd-h-transport`) dobijo modul `workOrders` ACTIVE, a `createWorkOrder` vrača
+  `NO_WORKFLOW` in lastnik **ni imel UI vstopne točke**, da bi ustvaril prvi proces.
+  Nova akcija `createFirstWorkflowDefinition` (v `src/app/actions/work-orders.ts`) ustvari
+  **lastniški nevtralni proces** (`sourceProfile: null`, ena strukturna stopnja), ki ga
+  lastnik takoj uredi/preimenuje z obstoječim `ProcessEditorDialog`; banner na
+  `dashboard/work-orders` ponuja vstopno točko, ko ni nobenega procesa. NIZA sector-predloga
+  (ne fabrikacija po §3). Regresijski test v `tests/integration/work-orders-materialization.itest.ts`
+  dokaže: po ustvarjenem procesu `createWorkOrder` USPE; idempotentno (EXISTS, brez duplikatov).
+- ODPRTO (avto-generacija predlog, ločen PR): še vedno ostaja odprto, da bi platforma sama
+  ustvarila **minimalen panogi-prirejen** workflow/form template (npr. za `skd-a-agriculture`).
+  To zahteva poslovni SME-vnos (kaj točno je minimalni proces npr. za kmetijstvo) in se tu
+  namerno NE fabrikira — predloga ostaja lastnikova odgovornost preko zgornje poti.
