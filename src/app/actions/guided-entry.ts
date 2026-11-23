@@ -153,6 +153,14 @@ export async function completeGuidedEntry(input: GuidedEntryInput): Promise<Guid
     // never clobbers owner edits, creates what the old profile lacked.
     const materialized = await materializeProfileAssets(org.id, profile.id)
 
+    // P1 #69: activity switch must also DEACTIVATE the previous profile's
+    // rows (never delete — submissions/owner data survive). Kept active are
+    // only the NEW profile's and the secondary activity's definitions.
+    // (Mirror of updateOrgVertical in site-content.ts; guided-entry now
+    // honors the same "switch switches everything" contract.)
+    const { deactivateForeignProfileAssets } = await import("@/lib/profiles/materialize")
+    await deactivateForeignProfileAssets(org.id, [profile.id, org.secondaryVertical ?? ""])
+
     await prisma.organization.update({
       where: { id: org.id },
       data: {
