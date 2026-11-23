@@ -167,6 +167,77 @@ jobs:
           NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ${{ secrets.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME }}
           CI: "true"
 
+  # P5 (audit 2026-11) — E2E (Playwright) v CI. Konfiguracija e2e
+  # (playwright.config.ts) poganja PRAVI produkcijski build (bunx next
+  # build && next start) proti izolirani bazi z seedom prisma/seed.ts.
+  # Opozorilo: e2e so bili do zdaj samo ročni (nikoli v CI).
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    # P5, predobstoječe stanje: e2e suite v CI trenutno ni zelena
+    # (prijava z registriranimi računi v produkcijskem buildu spodleti;
+    # težji tokovi dosežejo timeoute). Job teče kot poročilo in NE
+    # blokira PR-jev, dokler ni odpravljen.
+    continue-on-error: true
+    # P5 iteracija: časovna omejitev prepreči večurno obviselo
+    # izvajanje; workers=4 pospeši zagon.
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: markec_e2e
+          POSTGRES_PASSWORD: markec_e2e_pw
+          POSTGRES_DB: markec_e2e
+        ports:
+          - 5536:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      E2E_DATABASE_URL: postgresql://markec_e2e:markec_e2e_pw@localhost:5536/markec_e2e?schema=public
+      DATABASE_URL: postgresql://markec_e2e:markec_e2e_pw@localhost:5536/markec_e2e?schema=public
+      DIRECT_URL: postgresql://markec_e2e:markec_e2e_pw@localhost:5536/markec_e2e?schema=public
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3123
+      BASE_URL: http://127.0.0.1:3123
+      # P5: v e2e okolju izklopi IP/rate omejitve (vzporedni workerji).
+      E2E_RATE_LIMIT_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Setup Bun (bunx v playwright.config.ts)
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
+
+      - name: Push schema to E2E DB
+        run: pnpm prisma db push
+
+      - name: Seed E2E database
+        run: pnpm exec tsx prisma/seed.ts
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: npx playwright test --workers=4
+
   # P1 (audit 2026-11) — MIGRACIJE SE MORATAJO PREIZKUSITI, NE LE `db push`.
   #
   # Prej je CI postavil shemo z `prisma db push`, zato zlomljena ali manjkajoča

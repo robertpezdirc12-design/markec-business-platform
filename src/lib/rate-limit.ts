@@ -86,6 +86,13 @@ export function decideRateLimit(
  * Transakcija: upsert vrstice, nato branje + odločanje (zaklenjeno).
  */
 export async function rateLimit({ scope, key, limit, windowMs }: RateLimitOptions): Promise<RateLimitResult> {
+  // P5 (audit 2026-11): v e2e okolju je omejitev izklopljena —
+  // vzporedni Playwright workerji (isti IP) bi drugače sprožili lažne
+  // blokade (»Invalid credentials«) in padli vsi prijava-odvisni testi.
+  if (process.env.E2E_RATE_LIMIT_DISABLED === "1") {
+    return { ok: true, remaining: limit, retryAfterMs: 0 }
+  }
+
   const now = Date.now()
   const currentWindow = floorWindow(now, windowMs)
   const windowEnd = currentWindow.getTime() + windowMs
