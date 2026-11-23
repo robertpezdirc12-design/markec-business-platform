@@ -198,6 +198,8 @@ jobs:
       DIRECT_URL: postgresql://markec_e2e:markec_e2e_pw@localhost:5536/markec_e2e?schema=public
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3123
       BASE_URL: http://127.0.0.1:3123
+      # P5: v e2e okolju izklopi IP/rate omejitve (vzporedni workerji).
+      E2E_RATE_LIMIT_DISABLED: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
