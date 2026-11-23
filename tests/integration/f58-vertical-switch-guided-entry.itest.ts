@@ -142,6 +142,18 @@ describe("NASLEDNJA FAZA scenarij 5 — sprememba SKD dejavnosti ob ohranitvi po
         isActive: true,
       },
     })
+    // Uporabniški (lastniški) obrazec — sourceProfile = null → preklop ga z drugimi
+    // tujimi predlogami NIKOLI ne deaktivira (ista zaščita kot za lastniški workflow).
+    await prisma.formDefinition.create({
+      data: {
+        organizationId: ORG,
+        key: "owner-custom-form",
+        name: "Lastnikov lastni obrazec",
+        sourceProfile: null,
+        isActive: true,
+        fields: [],
+      },
+    })
     // Sekundarna dejavnost (apparel) — njene predloge se po P1 #69 ohranijo (scenarij 5).
     await prisma.organization.update({
       where: { id: ORG },
@@ -215,6 +227,15 @@ describe("NASLEDNJA FAZA scenarij 5 — sprememba SKD dejavnosti ob ohranitvi po
     })
     expect(ownerWf.sourceProfile).toBeNull()
     expect(ownerWf.isActive).toBe(true)
+
+    // 4b. Uporabniški (lastniški) OBRAZEC (sourceProfile null) prav tako ostane
+    // aktiven skozi preklop — ista zaščita kot za lastniški workflow; preklop
+    // deaktivira le tuje profilne predloge (sourceProfile != null, notIn keep).
+    const ownerForm = await prisma.formDefinition.findUniqueOrThrow({
+      where: { organizationId_key: { organizationId: ORG, key: "owner-custom-form" } },
+    })
+    expect(ownerForm.sourceProfile).toBeNull()
+    expect(ownerForm.isActive).toBe(true)
 
     // 5. Sekundarna panoga (apparel) — njena predloga ostane aktivna.
     const secWf = await prisma.workflowDefinition.findUniqueOrThrow({
