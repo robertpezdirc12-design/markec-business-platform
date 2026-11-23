@@ -7,6 +7,7 @@ import { getPublicOrg, getResolvedOrg } from "@/lib/tenant"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { getStripeForOrg } from "@/lib/stripe"
+import { getOrgCurrency } from "@/lib/org-currency"
 import { z } from "zod"
 import { randomBytes } from "node:crypto"
 import { sendGiftCardEmail } from "@/lib/email/gift-card"
@@ -193,6 +194,9 @@ export async function createGiftCardCheckoutSession(
       },
     })
 
+    // M5: valuta najemnika (privzeto EUR).
+    const currency = (await getOrgCurrency(org.id)).toLowerCase()
+
     const session = await stripeClient.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
@@ -200,7 +204,7 @@ export async function createGiftCardCheckoutSession(
       line_items: [
         {
           price_data: {
-            currency: "eur",
+            currency,
             product_data: {
               name: product.name,
               description: `Darilni bon za ${org.name} (vrednost ${faceValue.toFixed(2)} €)`,

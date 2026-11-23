@@ -835,6 +835,26 @@ export async function createAppointment(
     // Get salon configuration for deposit amount
     const config = await getSalonConfig()
 
+    // M6 (audit 2026-11): uveljavi strežniško razpon predhodnega
+    // naročanja (v dnevih) — prej je veljavnost veljala samo v klientu
+    // (date-time-step.tsx), direktni klici akcije pa so lahko predložili
+    // poljuben datum (tudi npr. leto 9999).
+    const advanceDays = (startInstant.getTime() - Date.now()) / 86_400_000
+    const minAdvance = Number(config.minBookingAdvance ?? 0)
+    const maxAdvance = Number(config.maxBookingAdvance ?? 0)
+    if (minAdvance > 0 && advanceDays < minAdvance) {
+      return {
+        success: false,
+        error: `Termin je mogoče rezervirati najmanj ${minAdvance} dni vnaprej.`,
+      }
+    }
+    if (maxAdvance > 0 && advanceDays > maxAdvance) {
+      return {
+        success: false,
+        error: `Termin je mogoče rezervirati največ ${maxAdvance} dni vnaprej.`,
+      }
+    }
+
     // #79: polog je PRAVILO (per storitev), ne ena globalna številka.
     // 15 € manikura z org pologom 50 € zahteva 15 €, ne 50 €. Employee
     // termini ostanejo brez pologa. (let — #80: paket lahko zniža na 0.)

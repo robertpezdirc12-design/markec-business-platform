@@ -74,6 +74,35 @@ describe("P1 (M3): direct-sale — plan limit naročil", () => {
   })
 })
 
+describe("P1 (M5): valuta najemnika pri Stripe bremenitvah", () => {
+  it("prepaid checkout uporablja getOrgCurrency", () => {
+    const src = read("src/app/actions/prepaid.ts")
+    expect(src).toContain("getOrgCurrency(org.id)")
+    expect(src).not.toContain('currency: "eur"')
+  })
+
+  it("no-show bremenitev uporablja getOrgCurrency", () => {
+    const src = read("src/lib/booking/no-show-charge.ts")
+    expect(src).toContain("getOrgCurrency(appointment.organizationId)")
+  })
+
+  it("dokument ob porabi na delovnem nalogu uporablja getOrgCurrency", () => {
+    const src = read("src/app/actions/work-order-consumption.ts")
+    expect(src).toContain("currency: await getOrgCurrency(orgId)")
+  })
+})
+
+describe("P1 (M6): min/maxBookingAdvance se uveljavljata strežniško", () => {
+  const src = read("src/app/actions/appointments.ts")
+  const create = src.slice(src.indexOf("export async function createAppointment"))
+
+  it("createAppointment preverja razpon predhodnega naročanja", () => {
+    expect(create).toContain("minBookingAdvance")
+    expect(create).toContain("maxBookingAdvance")
+    expect(create).toContain("advanceDays")
+  })
+})
+
 describe("P1 (M13): createWorkspace — materializacija profila", () => {
   const src = read("src/app/actions/workspace-management.ts")
   const create = src.slice(src.indexOf("export async function createWorkspace"))
