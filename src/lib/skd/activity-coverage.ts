@@ -221,9 +221,9 @@ export interface RuntimeEvidence {
   /**
    * Ali dokaz res poganja PRAV ta profil in njegove deklarirane konfiguracijske
    * obrazce/workflowe skozi dejansko materializacijo profila (onboarding →
-   * materializeProfileAssets → akcije). `false` = dokaz je izpelenjên iz
-   * DRUGega profila (npr. seamstress dokazuje apparel) ali pa je zgolj
-   * knjižnični test gestalnega engine-ja, ki ne uporabi tega profila.
+   * materializeProfileAssets → akcije). `false` = dokaz je izpeljan iz
+   * DRUGEGA profila (npr. seamstress dokazuje apparel) ali pa je zgolj
+   * knjižnični test enotnega engine-ja, ki ne uporabi tega profila.
    *
    * Nivoja A in B zahtevata `profileSpecific === true`. Če je `false`, se
    * podrazred UVEDE kot not-assessed (skupno jedro je sicer dokazano, a
@@ -268,19 +268,23 @@ const RUNTIME_BY_PROFILE: Record<string, RuntimeEvidence> = {
   mehanik: {
     serverActions: ["Vehicle workshop orders"],
     actionFiles: ["src/app/actions/vehicle-workshop.ts"],
-    testFiles: ["tests/integration/tire-service.itest.ts", "e2e/b-tire-service.spec.ts", "tests/work-order-*.test.ts"],
+    testFiles: ["tests/integration/tire-service.itest.ts", "e2e/b-tire-service.spec.ts"],
     materializedForms: false,
     materializedWorkflows: false,
-    note: "dokaz iz profila tire-service (materializedForms/Workflows=false — tire-service itest PID 47 seeda workflow prek seedWorkflow() → prisma.workflowDefinition.create in ne kliče materializeProfileAssets)",
+    note: "dokaz iz profila tire-service NE prenaša na mehanik (materializedForms/Workflows=false): tire-service itesti ne poganjajo mehanikovega vehicle-intake obrazca; PR #142 itest (work-orders-materialization) dokazuje le tire-service materializacijo — za mehanik materializacija profilnih predlog ostaja NEDOKAZANA",
     profileSpecific: false,
   },
   "tire-service": {
     serverActions: ["Vehicle workshop orders"],
     actionFiles: ["src/app/actions/vehicle-workshop.ts"],
-    testFiles: ["tests/integration/tire-service.itest.ts", "e2e/b-tire-service.spec.ts"],
-    materializedForms: false,
-    materializedWorkflows: false,
-    note: "vulkanizersko-program: dokazan je engine-path (tire-service akcije) — materializedForms/Workflows=false: itest (PID 47) seeda workflow prek seedWorkflow() → prisma.workflowDefinition.create in se ne kliče materializeProfileAssets; ročni DB-zapis NI materializacija profilnih predlog.",
+    testFiles: [
+      "tests/integration/tire-service.itest.ts",
+      "tests/integration/work-orders-materialization.itest.ts",
+      "e2e/b-tire-service.spec.ts",
+    ],
+    materializedForms: true,
+    materializedWorkflows: true,
+    note: "vulkanizersko-program: engine-path + PR #142 itest (work-orders-materialization) POGANJA dejansko materializacijo (seedOrganizationCatalog + materializeProfileAssets) in preveri, da tenant workflowDefinition s 7 stopnjami (checkin→closed, sourceProfile=tire-service) obstoji in da createWorkOrder USPE — materializacija profilnih predlog je za tire-service dokazana",
     profileSpecific: true,
   },
   beekeeping: {
@@ -478,8 +482,8 @@ const BASE_SUFFICIENT_PROFILES: ReadonlySet<string> = new Set<string>([])
 
 /**
  * Ali dejavnost res NI potrebuje dodatnih (specializiranih) evidence.
- * `workOrders === required` je NUPOgoj (obstaja splošen, preizkušen
- * delovnonalog), a C se dodeli le, kadar profil je v BASE_SUFFICIENT_PROFILES.
+ * `workOrders === required` je NUJEN pogoj (obstaja splošen, preizkušen
+ * delovni nalog), a C se dodeli le, kadar profil je v BASE_SUFFICIENT_PROFILES.
  */
 function isDocumentedBaseSufficient(profile: ActivityProfile): boolean {
   return profile.capabilities.workOrders === "required" && BASE_SUFFICIENT_PROFILES.has(profile.id)
@@ -514,15 +518,15 @@ export type RowClass =
  *    ne šteje kot dokaz fitness.
  *  - `verified`: šele ko profil-specifičen test (runtime-evidence,
  *    `runtimeEvidence.profileSpecific === true`) dokaže, da preslikani profil
- *    res služi prav to dejavnost. Specializirani override je nupo dovolj — ne
- *    samodejno dokaz, da profil pokriva podrazred.
+ *    res služi prav to dejavnost. Specializirani override sam po sebi ni
+ *    dovolj — ne pomeni samodejnega dokaza, da profil pokriva podrazred.
  *
- * Marcelle maturity: register NIKOLI ne sme navesti `verified`, kadar je factory
+ * Maturiteta registerja: register NIKOLI ne sme navesti `verified`, kadar je factory
  * dokaz iz drugega profila ali celo iz sekcije.
  */
 export type FitStatus = "verified" | "not-assessed"
 
-/** Rumena strojno berljiva izvedba `fitStatus` v vsaki vrstici registerja. */
+/** Strojno berljiva izvedba `fitStatus` v vsaki vrstici registerja. */
 export interface SkdCoverageRow {
   code: string
   sl: string

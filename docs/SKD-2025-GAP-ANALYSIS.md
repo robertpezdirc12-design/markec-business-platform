@@ -19,31 +19,33 @@ brez dokaza (strežniške akcije + testi).
 | A specializirana | A | **0** | izrecna preslikava podrazreda/oddelka + DOKAZAN PROFIL-SPECIFIČEN runtime (akcije + test, ki poganja prav ta profil). Trenutno NITI eden (dokazi A so bili iz drugih profilov — revidirano v PR #142) |
 | B arhetip | B | **0** | podrazredno 5-mestna preslikava na profil, ki res služi prav ta podrazred (nie avtomatska promocija sekcije za obstoj obrazca) |
 | C osnovna | C | **0** | dokumentirano »osnovna konfiguracija zadostuje« — nič se ne dodeli samodejno |
-| D nepopolna | D | **678** | preslikava obstaja, a ocena pokritosti zmožnosti pokaže dokazni manko — razčlenitev spodaj: 380 vrstic ima `no-template` (forms/workflows/workOrders `required` z 0 predlog) in je hkrati tudi `not-delivered`; 298 jih ima SAMO `not-delivered` (`context-limited` `required`, npr. `analytics`) ali `delivery`; + 2 izjemi (S92) |
+| D nepopolna | D | **678** | preslikava obstaja, a ocena pokritosti zmožnosti (`missingRequiredCapabilities`) najde vrzel — razčlenitev po dejanskih vrednostih polja `reason`: 380 vrstic ima `no-template` (profil deklarira `forms: required` z 0 obrazčnim predlogom) in je hkrati tudi `not-delivered`; 298 vrstic ima SAMO `not-delivered` (`context-limited` `required`, npr. `analytics`, ali `delivery`); 2 izjemi (S92) sta všteti v 298 in se NE štejeta posebej |
 | E nepokrita | E | **0** | resolver nikoli ne pade na generični fallback za katalogirane kode |
 | Ni ocenjeno | — | **0** | pokritost zmožnosti je ocenjena za VSEH 678 vrstic; ločeno je kljub temu celoten nabor `fit=not-assessed` |
 
 **Skupaj:** 678 podrazredov — **vsi D** (0 A + 0 B + 0 C + 678 D + 0 E + 0 ni-ocenjeno).
 
 > **Razčlenitev D = 678 (iz tekoče kode `missingRequiredCapabilities`, ne ročnega seznama):**
-> - **380** vrstic: profil deklarira `forms`/`workflows`/`workOrders: required` z **0 predlog**
->   (`no-template`, deklaracija brez materializacije). Prav teh 380 **ima hkrati tudi
->   `not-delivered`** vrzel (noben profil, ki mu manjka predloga, nima obenem `analytics`
->   pokritih univerzalno).
-> - **298** vrstic: SAMO `not-delivered` vrzel (ni `no-template`) — profil zahteva
->   `context-limited` zmožnost (`analytics`, `appointments`, `services`, `cashRegister`)
->   ali `delivery`, za katero NI univerzalnega modula.
-> - **2** izjemi (S92 igre na srečo) — že všteti v 678.
-> - Vsota: 0 + 298 + 380 = **678**. `380 + 2` iz prejšnje različice je bil **podmnožica**
->   D, ne celotni D.
+> - **380** vrstic: razvrstitev vrne **`no-template`** — profil deklarira `forms: required`
+>   z **0 obrazčnim predlogom** (v tekočem registru `no-template` nastane IZKLJUČNO za
+>   `forms`; `workflows`/`workOrders` `required` z 0 predlogom razvrstitev vrne kot
+>   `not-delivered`, ker `createWorkOrder` vrne `NO_WORKFLOW`, ko ni materializiranega
+>   tenant `workflowDefinition`). Prav teh 380 vrstic **ima hkrati tudi `not-delivered`**
+>   vrzel (vsak profil v registru deklarira `analytics: required`, kar nikoli ni
+>   univerzalno pokrito).
+> - **298** vrstic: razvrstitev vrne **SAMO `not-delivered`** (brez `no-template`) —
+>   `context-limited` `required` zmožnost (`analytics`, `appointments`, `services`,
+>   `cashRegister`) ali `delivery`, za katero NI univerzalnega strežniškega modula.
+> - **2 izjemi (S92 igre na srečo) sta v 298** (S92.001 in S92.002 sta `skd-s-culture-sport`,
+>   brez `no-template`) in se NE seštevata drugič: 380 + 298 = **678**.
+> - Predhodna različica je D navajala kot vsoto »no-template + izjeme« — to je bila **podmnožica** D, ne celotni D; celotni D je **678** (380 `no-template` + 298 samo `not-delivered`, S92 všteta v 298).
 > - **`fit`:** 0 `verified` / 678 `not-assessed`. Vrstica z `Oznaka=D` in `Status=assessed`
 >   NIMA dokazane poslovne ustreznosti (fit) — to sta dve različni dimenziji.
 
-> **Ključna sprememba od prejšnje različice:** prejšnja različica je imela »D = 382« in
-> »ni-ocenjeno = 296« ter »documents/cashRegister = dobavljeno univerzalno v jedru«. To je
-> bilo **nehonostno** na dva načina: (1) vrstice brez dokazane poslovne ustreznosti so štele
+> **Ključna sprememba od prejšnje različice:** prejšnja različica je celotni D zaniževala (navajala le »no-template + izjeme« namesto vseh vrzeli) ter »documents/cashRegister = dobavljeno univerzalno v jedru«. To je
+> bilo **nestrogo** (nepošteno) na dva načina: (1) vrstice brez dokazane poslovne ustreznosti so štele
 > kot `not-assessed`, čeprav je ocena evidence-gapa pokazala D; (2) kapaciteta `cashRegister`
-> (in indirectno `analytics`) je veljala za univerzalno, čeprav je v naboru `context-limited`.
+> (in posredno `analytics`) je veljala za univerzalno, čeprav je v naboru `context-limited`.
 > Nova metodologija **oceni pokritost zmožnosti za vseh 678** (od tod 678 D) in **ločeno**
 > vodi poslovno ustreznost (fit=0/678). A/B/C ostajata **0**, dokler ni podrazredno-specifičnega
 > dokaza. Dokumenti (`documents`) so `universal` in `required` dokumenti NISO vrzel;
@@ -56,7 +58,7 @@ brez dokaza (strežniške akcije + testi).
 > `skd-f-construction`). Nobena obstoječa A/B vrstica **ni imela** testa, ki bi poganjal
 > prav ta profil skozi realno materializacijo (`materializeProfileAssets`). Po pošteni
 > reviziji ti podrazredi ostanejo **`fit=not-assessed`/D**, dokler profil-specifični test ne obstaja.
-> Skupno D = **678** (380 no-template + 298 only-not-delivered + izjeme) — trdna, profil-agnostična vrzel.
+> Skupno D = **678** (380 vrstic z `no-template` + 298 vrstic z `not-delivered`; izjemi S92 sta v 298, brez dvojnega štetja) — skupna, profil-agnostična vrzel, ponovljena čez preslikave istih profilov.
 
 ## 2. Deklaracija vs. runtime (glavni arhitekturni vrzel)
 
@@ -64,37 +66,50 @@ Merjenje: za vsak profil primerjamo **deklarirane zmožnosti** (iz obravnavanega
 `appointments, workOrders, shop, services, inventory, customers, staff, analytics, forms,
 workflows, documents, delivery, cashRegister`) z **dejanskimi dokazi** (predloge + runtime).
 
-### 2a. Template-vrzel (deklaracija `required` brez predlog) — podmnožica D = 380
+### 2a. Template-vrzel (razvrstitev vrne `no-template`) — podmnožica D = 380
 
 > **AGREGAT (iz tekoče kode `missingRequiredCapabilities`, ne ročnega seznama):**
-> - **380** podrazredov (od skupnih **678 D**) leži na profilih, ki deklarirajo
->   `forms`/`workflows`/`workOrders: required` in imajo **0 predlog** (`no-template`,
->   deklaracija brez materializacije). To je **podmnožica** D — **ne** celotni D.
-> - Prav teh 380 ima hkrati tudi `not-delivered` vrzel (noben tak profil nima
->   `analytics` pokritih univerzalno) — tj. 380 ∈ {vrstice z `no-template`} ∈ D.
-> - Preostalih **298** D-podrazredov ima **samo `not-delivered`** vrzel
->   (in `no-template` napačno ni) — glej 2c.
+> - **380** podrazredov (od skupnih **678 D**) ima razvrstitev **`no-template`**:
+>   deklarirajo `forms: required` in imajo **0 obrazčnih predlogov** (deklaracija brez
+>   materializacije). V tekočem registru `no-template` nastane izključno za `forms`.
+>   To je **podmnožica** D — **ne** celotni D.
+> - Prav teh 380 ima hkrati tudi `not-delivered` vrzel (vsi profili v registru deklarirajo
+>   `analytics: required`, ki ni nikoli univerzalno pokrit) — tj. 380 = vrstice z
+>   `no-template` = vrstice z OBEH razlogoma.
+> - Širša skupina »vrzeli obdelovalne predloge« (workflows/workOrders `required` z 0
+>   predlogi; razvrstitev jih vrne kot `not-delivered`) je **386** vrstic: 347 od teh 380
+>   + **39** vrstic iz skupine 298 (vse pri `skd-a-agriculture`). Oznaka `no-template`
+>   se jim NE da — upošteva se le dejanska vrednost, ki jo vrne razvrstitev.
+> - Preostalih **298** D-podrazredov ima **samo `not-delivered`** vrzel (brez `no-template`)
+>   — glej 2c.
 > - **S92 izjemi (igre na srečo) nista v 380** — preslikani sta na `skd-s-culture-sport`
->   (v 298 bucketu), torej 380 (no-template) + 298 (samo not-delivered) = **678**.
+>   in ležita v skupini 298; torej 380 (`no-template`) + 298 (samo `not-delivered`) = **678**,
+>   brez dvojnega štetja izjem.
 
-| Profil | Podrazredov z `no-template` | Deklarira workflows | Deklarira forms | Dejanskih procesov | Dejanskih form |
-|---|---:|---|---|---:|---:|
-| `skd-c-manufacturing` | **227** | ✓ | ✓ | 0 | 0 |
-| `skd-h-transport` | 30 | ✓ | ✓ | 0 | 0 |
-| `skd-r-health` | 22 | ✓ | ✓ | 0 | 0 |
-| `skd-l-finance` | 20 | ✓ | ✓ | 0 | 0 |
-| `skd-b-mining` | 15 | ✓ | ✓ | 0 | 0 |
-| `skd-j-media` | 15 | – | ✓ | 0 | 0 |
-| `skd-q-education` | 13 | – | ✓ | 0 | 0 |
-| `skd-d-energy` | 12 | ✓ | ✓ | 0 | 0 |
-| `skd-e-water-waste` | 11 | ✓ | ✓ | 0 | 0 |
-| `skd-p-public-admin` | 9 | ✓ | ✓ | 0 | 0 |
-| `skd-m-real-estate` | 5 | – | ✓ | 0 | 0 |
-| `skd-v-international` | 1 | ✓ | ✓ | 0 | 0 |
+| Profil | Podrazredov z `no-template` | Vključno z `not-delivered` workflow/workOrders | Deklarira workflows | Deklarira forms | Dejanskih procesov | Dejanskih form |
+|---|---:|---:|---|---|---:|---:|
+| `skd-c-manufacturing` | **227** | 227 | ✓ | ✓ | 0 | 0 |
+| `skd-h-transport` | 30 | 30 | ✓ | ✓ | 0 | 0 |
+| `skd-r-health` | 22 | 22 | ✓ | ✓ | 0 | 0 |
+| `skd-l-finance` | 20 | 20 | ✓ | ✓ | 0 | 0 |
+| `skd-b-mining` | 15 | 15 | ✓ | ✓ | 0 | 0 |
+| `skd-j-media` | 15 | 0 | – | ✓ | 0 | 0 |
+| `skd-q-education` | 13 | 0 | – | ✓ | 0 | 0 |
+| `skd-d-energy` | 12 | 12 | ✓ | ✓ | 0 | 0 |
+| `skd-e-water-waste` | 11 | 11 | ✓ | ✓ | 0 | 0 |
+| `skd-p-public-admin` | 9 | 9 | ✓ | ✓ | 0 | 0 |
+| `skd-m-real-estate` | 5 | 0 | – | ✓ | 0 | 0 |
+| `skd-v-international` | 1 | 1 | ✓ | ✓ | 0 | 0 |
 
-> **Popravljeno (Revija P2):**
-> - Ta tabela meri **`no-template` podmnožico** (380), ne celotnega D. Za celotno
->   razčlenitev 678 = 380 (no-template ∩ not-delivered) + 298 (samo not-delivered) + izjeme glej 2c.
+> **Popravljeno (Revija P2; izravnava Cubic #142):**
+> - Ta tabela meri vrstice, pri katerih razvrstitev vrne **`no-template`** (380), ne
+>   celotnega D. Za celotno razčlenitev 678 = 380 (`no-template`) + 298 (samo
+>   `not-delivered`), kjer sta izjemi S92 všteti v 298, glej 2c.
+> - Prejšnja različica je skupino 380 opisala kot `forms`/`workflows`/`workOrders`
+>   »required z 0 predlog« — to se NE ujema s poljem `reason` (za workflows/workOrders ga
+>   razvrstitev vrne kot `not-delivered`). Stolpec »Vključno z `not-delivered`
+>   workflow/workOrders« loči dejansko vrzel obdelovalne predloge (347 od 380 + 39 iz
+>   skupine 298 = 386) od oznake `no-template` (380, izključno forms).
 > - `skd-g-retail` in `skd-n-professional` deklarirata `forms`/`workflows` kot **`optional`**
 >   (ne `required`), zato NE spadata v »zahtevano-a-nedostavljeno« template-vrzel. Njunih
 >   86+27 podrazredov je v D po drugi poti (`not-delivered`/`context-limited`), ne po template-vrzeli.
@@ -148,7 +163,7 @@ konfiguracija tega profila pokriva prav ta podrazred (fit).*
 | Zmožnost | Scope (evidence) | `required` povzroči D? | Pojasnilo |
 |---|---|---|---|
 | `appointments` | `context-limited` | ✓ | booking engine obstaja, a izvedba je vezana na profil; splošni dokaz ne velja za vsak presežek. |
-| `workOrders` | `context-limited` | pri 0 predlog | `createWorkOrder` vrne `NO_WORKFLOW`, ko ni tenant `workflowDefinition` s stopnjami. Pokrita LE, kadar profil deklarira ≥1 predlogo; **merimo deklaracijo/materializacijsko prehod, ne runtime-odbote** če ni testa. |
+| `workOrders` | `context-limited` | vedno, kadar je `required` | `createWorkOrder` vrne `NO_WORKFLOW`, ko ni materializiranega tenant `workflowDefinition` s stopnjami — zato razvrstitev manjkajočo `workOrders`/`workflows` predlogo vrne kot **`not-delivered`**, ne kot `no-template`. **Merimo deklaracijo/materializacijo, ne runtime-odbitek**, če profil-specifičnega testa ni. |
 | `services` | `context-limited` | ✓ | storitveni katalog je per-tenant; ni univerzalnega dokaza za vsak profil. |
 | `analytics` | `context-limited` | ✓ | strežniška akcija `/analytics` NI profil-specifično poganjana; `getKPIData`/`getRevenueChartData` nimata E2E dokaza. Obdržano `context-limited` (ne dvignjeno na universal samo zaradi števila D). Skupen evidence-gap, ponovljen čez 678. |
 | `cashRegister` | `context-limited` | ✓ | direct-sale poganja le `direct-sale.ts`; strežniške akcije `cash-register.ts` NISO testno poganjane. NI »dobavljeno v jedru za VSE« — prejšnja trditev popravljena. |
@@ -161,9 +176,10 @@ konfiguracija tega profila pokriva prav ta podrazred (fit).*
 
 ## 3. Terminološki premozki
 
-- README (vrstica 39) je **zastarel**: piše »12 poimenovanih + 24 SKD-sekcij, ~500 SKD«,
-  medtem ko register pokriva **678**. Profilni register sploh vsebuje **36** profilov;
-  od teh **28** dejansko uporablja sedanji SKD-resolver (678 preslikav) — **22 sekcijskih
+- README (vrstica 39) je **usklajen v PR #142**: piše »36 registriranih profilov, 28 jih
+  uporablja SKD-resolver (22 sekcijskih + 6 specializiranih), 678 podrazredov« —
+  register pokriva **678**. Profilni register vsebuje **36** profilov; od teh
+  **28** dejansko uporablja sedanji SKD-resolver (678 preslikav) — **22 sekcijskih
   (`skd-…`) + 6 specializiranih** (`apparel`, `beauty`, `frizer`, `massage`, `mehanik`,
   `tattoo-studio`). Preostalih **8** (npr. `seamstress`, `tire-service`, `beekeeping`) so
   ločeni specializirani profili, ki NISO del 678 SKD-preslikav — NE trditi, da jih resolver uporablja.
@@ -175,8 +191,8 @@ konfiguracija tega profila pokriva prav ta podrazred (fit).*
   - `skd-c-manufacturing` deklarira **workflowe/form-e kot required, a z 0 materializiranih
     predlog** → prava zahtevana-template vrzel (D).
   - `skd-g-retail` deklarira **workflowe/form-e kot optional** → NI zahtevane-template vrzeli;
-    ostaja `not-assessed`, ker ni dokazanega profilnoposebnega pokritja (business fit), in tudi ni
-    v makro procesne vrzeli, ki bi terjala nov univerzalni proces.
+    ostaja `not-assessed`, ker ni dokazanega profilno-posebnega pokritja (business fit), in tudi ni
+    v makro procesni vrzeli, ki bi terjala nov univerzalni proces.
 
 ## 4. Največje priložnosti (kjer je 1 arhetip = mnogo dejavnosti)
 
@@ -209,4 +225,6 @@ konfiguracija tega profila pokriva prav ta podrazred (fit).*
   serije/žetev/vozila v runtime. V registerju so dokazane le tiste z lastnimi akcijami + testi
   (vehicle-workshop, bee-apiary, batch-production, seamstress). Obravnava: EPIC-2 G1/G2.
 - ODPRTO: razmejitev z EPIC-2 — isto aditivno, malo-koračno načelo.
-- ODPRTO: README opis (vrstica 39) — potrditi, da register (36 profilov; 28 v 678-SKD-preslikavi) postane kanoničen.
+- REŠENO (PR #142): README (vrstica 39) je usklajen z registerjem — 678 podrazredov;
+  36 registriranih profilov, od katerih 28 uporablja SKD-resolver (22 sekcijskih + 6
+  specializiranih). Register je kanoničen vir.

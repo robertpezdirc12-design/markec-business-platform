@@ -9,7 +9,8 @@
 
 import { describe, expect, it } from "vitest"
 import { readFileSync } from "node:fs"
-import { resolve } from "node:path"
+import { resolve, join } from "node:path"
+import { buildCoverageDocMarkdown } from "../scripts/f51-generate-coverage-doc"
 
 import { SKD_RECORDS } from "@/lib/skd/data/skd2025"
 import {
@@ -20,7 +21,7 @@ import {
   isSkdException,
 } from "@/lib/skd/profiles"
 import { SKD_SECTIONS } from "@/lib/skd/catalog"
-import { getProfile } from "@/lib/profiles/registry"
+import { PROFILES, getProfile } from "@/lib/profiles/registry"
 import {
   activityCoverage,
   coverageSummary,
@@ -235,9 +236,9 @@ describe("§4 — deklaracija ≠ runtime", () => {
         // runtimeEvidence se vrsta ne more šteti kot specializirano/arhetip/
         // baza potrjena. To je realna, izvedljiva asercija (namesto gladke
         // `expect(true)`).
-        expect(row.coverageLevel).not.toBe("specializedValidated")
-        expect(row.coverageLevel).not.toBe("validatedArchetype")
-        expect(row.coverageLevel).not.toBe("validatedBase")
+        expect(row.coverageLevel).not.toBe("specialized-validated")
+        expect(row.coverageLevel).not.toBe("validated-archetype")
+        expect(row.coverageLevel).not.toBe("validated-base")
       }
     }
   })
@@ -377,7 +378,7 @@ describe("§5c — GAP analiza skladna s klasifikatorjem in fit-razmejitev", () 
       if (row.fitStatus === "verified") {
         verified++
         // fit=verified LE za A/B (profil-specifičen runtime dokaz)
-        expect(["specializedValidated", "validatedArchetype"]).toContain(row.coverageLevel)
+        expect(["specialized-validated", "validated-archetype"]).toContain(row.coverageLevel)
       } else {
         notAssessed++
         // section-default ali 6 specializiranih override-ov NIKOLI samodejno ne
@@ -919,5 +920,193 @@ describe("§8 — A/B zahtevata profil-specifičen sprejet runtime dokaz", () =>
       s.byLevel.specializedValidated + s.byLevel.validatedArchetype
     )
     expect(s.metrics.runtimeProvenCount).toBeGreaterThanOrEqual(0)
+  })
+})
+
+// ------------------------------------------------------------------
+// §9 Uskladitev generiranih dokumentov s registerjem (PR #142, Cubic)
+// ------------------------------------------------------------------
+
+/**
+ * Preveri, da vsaka Markdown tabela v `md` ima enotno število stolpcev:
+ * glava, razdalčnica in vse podatkovne vrstice morajo imeti enako število celic.
+ * Vrne število tabel. (Revija Cubic: register je imel 13 stolpcev v glavi,
+ * a samo 12 v razdalčnici.)
+ */
+function assertConsistentTableColumns(md: string, label: string): number {
+  const lines = md.split("\n")
+  const cells = (l: string) =>
+    l.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").length
+  const isSep = (l: string) => /^\|[\s:|-]+\|$/.test(l.trim())
+  let tables = 0
+  let i = 0
+  while (i < lines.length) {
+    if (lines[i].startsWith("|") && i + 1 < lines.length && isSep(lines[i + 1])) {
+      tables++
+      const headCells = cells(lines[i])
+      const sepCells = cells(lines[i + 1])
+      expect(
+        sepCells,
+        `${label}: razdalčnica vrstice ${i + 1} mora imeti toliko celic kot glava (${headCells})`,
+      ).toBe(headCells)
+      let j = i + 2
+      while (j < lines.length && lines[j].startsWith("|")) {
+        expect(cells(lines[j]), `${label}: podatkovna vrstica ${j + 1} mora imeti ${headCells} celic`).toBe(headCells)
+        j++
+      }
+      i = j
+    } else {
+      i++
+    }
+  }
+  return tables
+}
+
+describe("§9 — uskladitev dokumentov s registerjem (Cubic #142)", () => {
+  it("generirani register ima usklajeno število stolpcev v vseh tabelah", () => {
+    const md = buildCoverageDocMarkdown("2025-01-01T00:00:00.000Z")
+    const tables = assertConsistentTableColumns(md, "COMPLETE-COVERAGE (generator)")
+    // pregled, fit, preslikava, sekcije, profili + celoten register = 6 tabel
+    expect(tables).toBe(6)
+  })
+
+  it("datoteka na disku se ujema s generatorjem (brez ročnega urejanja)", () => {
+    const onDisk = readFileSync(join(process.cwd(), "docs/SKD-2025-COMPLETE-COVERAGE.md"), "utf8")
+    const expected = buildCoverageDocMarkdown("2025-01-01T00:00:00.000Z")
+    // Edina neskonstantna vrstica je žig »Generirano«.
+    const strip = (s: string) => s.replace(/^\*\*Generirano:\*\* .*/m, "**Generirano:** <TS>")
+    expect(strip(onDisk)).toBe(strip(expected))
+  })
+
+  it("D = 678 = 380 (no-template) + 298 (samo not-delivered); S92 enkrat, v 298", () => {
+    const rows = activityCoverage()
+    let both = 0 // no-template IN not-delivered
+    let onlyND = 0 // samo not-delivered
+    let onlyNT = 0
+    for (const r of rows) {
+      const m = missingRequiredCapabilities(getProfile(r.profileId))
+      const noT = m.some((x) => x.reason === "no-template")
+      const nD = m.some((x) => x.reason === "not-delivered")
+      if (noT && nD) both++
+      else if (nD) onlyND++
+      else if (noT) onlyNT++
+    }
+    expect(onlyNT).toBe(0) // vsaka no-template vrstica ima tudi not-delivered
+    expect(both).toBe(380)
+    expect(onlyND).toBe(298)
+    expect(both + onlyND).toBe(678)
+
+    // S92 izjemi sta v 298 (samo not-delivered) in se ne štejeta drugič
+    const s92 = rows.filter((r) => r.exception)
+    expect(s92.length).toBe(2)
+    for (const r of s92) {
+      const m = missingRequiredCapabilities(getProfile(r.profileId))
+      expect(m.some((x) => x.reason === "no-template"), `${r.code}: S92 nima no-template`).toBe(false)
+      expect(m.some((x) => x.reason === "not-delivered"), `${r.code}: S92 ima not-delivered`).toBe(true)
+    }
+  })
+
+  it("no-template nastane IZKLJUČNO za forms; workflows/workOrders → not-delivered", () => {
+    for (const r of activityCoverage()) {
+      for (const m of missingRequiredCapabilities(getProfile(r.profileId))) {
+        if (m.reason === "no-template") expect(m.key, `${r.code}: no-template le za forms`).toBe("forms")
+      }
+    }
+    // Preverba z resnim primerom: skd-c-manufacturing zahteva workflows+forms,
+    // ima 0 predlogov → workflows je not-delivered, forms no-template.
+    const m = missingRequiredCapabilities(getProfile("skd-c-manufacturing"))
+    expect(m.some((x) => x.key === "forms" && x.reason === "no-template")).toBe(true)
+    expect(m.some((x) => x.key === "workflows" && x.reason === "not-delivered")).toBe(true)
+  })
+
+  it("347/33 razcep v 380 in 39 workflow/workOrders vrstic v 298", () => {
+    const rows = activityCoverage()
+    let bothWfWo = 0
+    let bothFormsOnly = 0
+    let onlyNDWfWo = 0
+    for (const r of rows) {
+      const m = missingRequiredCapabilities(getProfile(r.profileId))
+      const noT = m.some((x) => x.reason === "no-template")
+      const nD = m.some((x) => x.reason === "not-delivered")
+      const wfWo = m.some((x) => (x.key === "workflows" || x.key === "workOrders") && x.reason === "not-delivered")
+      if (noT && nD) {
+        if (wfWo) bothWfWo++
+        else bothFormsOnly++
+      } else if (nD && wfWo) onlyNDWfWo++
+    }
+    expect(bothWfWo).toBe(347) // od 380 z vrzeljo obdelovalnega procesa
+    expect(bothFormsOnly).toBe(33) // forms-only (skd-j-media, skd-q-education, skd-m-real-estate)
+    expect(onlyNDWfWo).toBe(39) // vse pri skd-a-agriculture
+    const onlyNDWfWoProfiles = new Set(
+      rows
+        .filter((r) => {
+          const m = missingRequiredCapabilities(getProfile(r.profileId))
+          return (
+            !m.some((x) => x.reason === "no-template") &&
+            m.some((x) => (x.key === "workflows" || x.key === "workOrders") && x.reason === "not-delivered")
+          )
+        })
+        .map((r) => r.profileId),
+    )
+    expect([...onlyNDWfWoProfiles]).toEqual(["skd-a-agriculture"])
+  })
+
+  it("fit števci se uskladijo z row-level fitStatus", () => {
+    const s = coverageSummary()
+    const rows = activityCoverage()
+    const verified = rows.filter((r) => r.fitStatus === "verified").length
+    expect(s.byFit.verified).toBe(verified)
+    expect(s.byFit.notAssessed).toBe(rows.length - verified)
+    expect(s.metrics.fitVerifiedCount).toBe(verified)
+    expect(s.metrics.businessFitVerifiedCount).toBe(verified) // A/B ⇔ fit verified
+  })
+
+  it("profilni števci izhajajo iz registry + resolverja (36 registriranih, 28 v uporabi)", () => {
+    const s = coverageSummary()
+    expect(Object.keys(PROFILES).length).toBe(36) // registrirani
+
+    const used = new Set<string>()
+    const usedSection = new Set<string>()
+    const usedSpecialized = new Set<string>()
+    for (const rec of SKD_RECORDS.filter((r) => r.l === 5)) {
+      const info = resolveSkdProfileInfo(rec.c)
+      used.add(info.profileId)
+      if (info.source === "section-default") usedSection.add(info.profileId)
+      else usedSpecialized.add(info.profileId)
+    }
+    expect(used.size).toBe(28) // 22 sekcija + 6 specializirani
+    expect(usedSection.size).toBe(22)
+    expect(usedSpecialized.size).toBe(6)
+    // specializirani in sekcija sta disjunktna nabora
+    expect([...usedSection].filter((x) => usedSpecialized.has(x))).toHaveLength(0)
+    // byProfile v seštevku = natanko ti 28 profili
+    expect(Object.keys(s.byProfile).sort()).toEqual([...used].sort())
+    expect(Object.values(s.byProfile).reduce((a, b) => a + b, 0)).toBe(678)
+    // byMapping se uskladi s 666 + 12
+    expect(s.byMapping["section-default"]).toBe(666)
+    expect(s.byMapping["subclass-override"] + s.byMapping["division-override"]).toBe(12)
+  })
+
+  it("GAP-ANALYSIS in COMPLETE-COVERAGE vsebujeta usklajene agregate (678/380/298)", () => {
+    const gap = readFileSync(join(process.cwd(), "docs/SKD-2025-GAP-ANALYSIS.md"), "utf8")
+    const reg = readFileSync(join(process.cwd(), "docs/SKD-2025-COMPLETE-COVERAGE.md"), "utf8")
+    for (const n of ["678", "380", "298"]) {
+      expect(gap.includes(n), `GAP-ANALYSIS mora vsebovati agregat ${n}`).toBe(true)
+    }
+    expect(reg.includes("678")).toBe(true)
+    // Niti ena datoteka ne sme več trditi D = 680 ali 382.
+    expect(/\bD\b[= ]{1,3}680/.test(gap)).toBe(false)
+    expect(/= 382\b/.test(gap)).toBe(false)
+    assertConsistentTableColumns(gap, "GAP-ANALYSIS")
+    assertConsistentTableColumns(reg, "COMPLETE-COVERAGE (disk)")
+  })
+
+  it("README ima 678 aktivnosti in 36/28 razliko (ne ~500, ne 24 sekcij)", () => {
+    const readme = readFileSync(join(process.cwd(), "README.md"), "utf8")
+    expect(readme.includes("678 SKD podrazredov")).toBe(true)
+    expect(readme.includes("36 registriranih profilov")).toBe(true)
+    expect(readme.includes("28 dejansko uporablja SKD-resolver")).toBe(true)
+    expect(readme.includes("~500 SKD")).toBe(false)
+    expect(readme.includes("24 SKD-sekcij")).toBe(false)
   })
 })

@@ -1,6 +1,6 @@
 # SKD 2025 — REGISTER POKRITOSTI DEJAVNOSTI
 
-**Generirano:** 2026-11-22T18:01:17.860Z — iz registerja `src/lib/skd/activity-coverage.ts`.
+**Generirano:** 2026-11-23T06:25:17.406Z — iz registerja `src/lib/skd/activity-coverage.ts`.
 **Vir:** SKD 2025 (SURS KLASJE) V1 (SURS KLASJE). **Podrazredov:** 678.
 
 > **Verodostojni vir:** ta dokument je *generiran* in se ne ureja ročno.
@@ -106,7 +106,7 @@
 > Ne pomeni, da je bila preverjena SKLADNOST dejavnosti (fit) — `section-default` podrazredi so `fit` **not-assessed** in imajo lahko 0 obrazcev, 0 procesov, 0 razširitev, kljub oznaki D.
 
 | SKD | Slovensko | Sek | Oddelek | Profil | Vir preslikave | Oznaka | Forme | Procesi | Razširitve | Runtime eviden. | Status | Fit |
-|---|---|---|---|---|---|---|---|---|---|---|---|
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | A01.110 | Pridelovanje žit (razen riža), stročnic in oljnic | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed | not-assessed |
 | A01.120 | Pridelovanje riža | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed | not-assessed |
 | A01.130 | Pridelovanje zelenjadnic in melon, korenovk in gomoljnic | A | A01 | skd-a-agriculture | section-default | **D** | 0 | 0 | 0 | da | assessed | not-assessed |
@@ -791,13 +791,13 @@
 ## Metodologija (pošteno, brez izmišljanja dokazil)
 
 - **A (specializirana):** izrecna preslikava podrazreda/oddelka (subclass-override/division-override) na profil z DOKAZANIM, PROFIL-SPECIFIČNIM runtime-evidence (strežniške akcije + test, ki poganja prav ta profil skozi materializacijo). Dokaz iz DRUGEGA profila (npr. `seamstress` → `apparel`) NI zadosten.
-- **B (arhetip):** podrazredna, koda-po-kodi preslikava na profil, katerega poslovno jedro res služi prav ta podrazred. NIKAKRŠNA samodejna promocija celotne sekcije za obstoj obrazca (ovaleno v PR #142).
+- **B (arhetip):** podrazredna, koda-po-kodi preslikava na profil, katerega poslovno jedro res služi prav ta podrazred. Nikakršna samodejna promocija celotne sekcije za obstoj obrazca (odstranjeno v PR #142).
 - **C (osnovna konfiguracija):** dokumentirano, da osnovna konfiguracija zadostuje (npr. `workOrders: required` krije splošno izvedbo). NIKOLI samodejno za `forms==0`.
-- **D (nepopolna):** preslikava obstaja, a ostaja dokazni manko — trije iskreni vzroki: (1) `required` `context-limited` zmožnost (`appointments`, `services`, `analytics`, `cashRegister`) ali `delivery` — NI univerzalnega modula → skupen (shared) platformni evidence-gap, ponovljen čez vse preslikave profila, NE podrazredno dokazana nepopolnost; (2) `forms`/`workflows`/`workOrders` `required` z 0 prijavljenih predlog — *deklaracija/template* vrzel (ne prevzročeno kot prevzamov runtime mersena odsotnost — `createWorkOrder` vrne `NO_WORKFLOW` le, ko ni tenant `workflowDefinition`); (3) izrecna izjema (npr. S92). `documents` je `universal` → NI v tem seznamu.
-- **D = ocenjena VRZEL zmožnosti, NE preverjena SKLADNOST dejavnosti.** `section-default` vrstice (npr. G46.110 pri `skd-g-retail`) so »assessed« izključno v pomenu *izvedena je bila ocena pokritosti zmožnosti, ki je pokazala vzrel* — to NI potrditev, da platforma služi prav ta SKD podrazred. Za podrazrede z `section-default` vir ostaja `fit` **not-assessed** (skladnost dejavnosti ni bila preverjena). Stolpec Status razlikuje: `assessed` = opravljena ocena pokritosti zmožnosti (A–E), ne more biti prebran kot »fit verificiran«.
+- **D (nepopolna):** preslikava obstaja, a ocena pokritosti zmožnosti (`missingRequiredCapabilities`) najde vrzel. Razvrstitev po dejanskih vrednostih polja `reason`: (1) `not-delivered` — `required` `context-limited` zmožnost (`appointments`, `services`, `analytics`, `cashRegister`) ali `delivery`, za katero NI univerzalnega strežniškega modula; to je skupen platformni evidence-gap, ponovljen čez vse preslikave profila, NE podrazredno dokazana nepopolnost; (2) `no-template` — profil deklarira `forms` kot `required`, a ima **0 obrazčnih predlog** (to se danes zgodi izključno za `forms`; `workflows`/`workOrders` `required` brez predlogov se razvrsti kot `not-delivered`, ker `createWorkOrder` vrne `NO_WORKFLOW`, ko ni materializiranega tenant `workflowDefinition`); (3) izrecna izjema (npr. S92 igre na srečo). `documents` je `universal` → nikoli vrzel. Vsota: 380 vrstic ima `no-template` (in hkrati `not-delivered`), 298 samo `not-delivered` → 678, izjemi S92 sta všteti v 298 in se NE seštevata drugič.
+- **D = ocenjena VRZEL zmožnosti, NE preverjena SKLADNOST dejavnosti.** `section-default` vrstice (npr. G46.110 pri `skd-g-retail`) so »assessed« izključno v pomenu *izvedena je bila ocena pokritosti zmožnosti, ki je pokazala vrzel* — to NI potrditev, da platforma služi prav ta SKD podrazred. Za podrazrede z `section-default` vir ostaja `fit` **not-assessed** (skladnost dejavnosti ni bila preverjena). Stolpec Status razlikuje: `assessed` = opravljena ocena pokritosti zmožnosti (A–E), ne more biti prebran kot »fit verificiran«.
 - **E (nepokrita):** resolver je padel na generični fallback (neobstoječa ali oblikovno-varljiva koda ni predstavljena kot veljavna).
-- **Not assessed (ni ocenjeno):** preslikava obstaja (sekcijski privzetek), a le z runtime-evidence iz DRUGEGA profila ali brez profil-specifičnega dokaza, da prav ta podrazred res pokriva; cele sekcija (npr. gradbeništvo) se NE dvigne na nivo samo zato, ker en obrazec obstaja. To NI nivo — to je odkrito »preveri«.
+- **Not assessed (ni ocenjeno):** preslikava obstaja (sekcijski privzetek), a le z runtime-evidence iz DRUGEGA profila ali brez profil-specifičnega dokaza, da prav ta podrazred res pokriva; cela sekcija (npr. gradbeništvo) se NE dvigne na nivo samo zato, ker en obrazec obstaja. To NI nivo — to je odkrito »preveri«.
 
-> **Deklaracija ≠ runtime.** Stolpci Forme/Procesi/Razširitve prikazujejo **deklarirano konfiguracijo** (`declaredConfiguration`),
-> ne delujočega procesa. `extensions` se NUJNO obravnavajo kot deklaracija (niso materializirane — var. `materialize.ts`).
-> Stolpec **Runtime eviden.** je `da` le, kadar register nosi reference na strežniške akcije + test datoteke.
+> **Deklaracija ≠ runtime.** Stolpci Forme/Procesi/Razširitve prikazujejo **deklarirano konfiguracijo** (`declaredConfiguration`), ne delujočega procesa.
+> `extensions` se NUJNO obravnavajo kot deklaracija (niso materializirane — glej `src/lib/profiles/materialize.ts`).
+> Stolpec **Runtime eviden.** je »da« le, kadar register nosi reference na strežniške akcije + test datoteke.
