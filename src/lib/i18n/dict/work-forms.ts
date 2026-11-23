@@ -247,6 +247,17 @@ export const workFormsSl = {
         checkbox: "Potrditveno polje",
       },
     },
+    firstForm: {
+      title: "Ta dejavnost še nima nobenega obrazca.",
+      description:
+        "Ustvarite prvi obrazec s svojimi polji. Do dokončanja je to osnutek, ki na javni strani še ni viden — javno ga omogočite, ko ga dopolnite.",
+      cta: "Ustvari prvi obrazec",
+      creating: "Ustvarjam …",
+      created: "Osnutek obrazca je ustvarjen. Sedaj mu dodajte svoja polja.",
+      alreadyExists: "Obrazec že obstaja.",
+      genericError: "Obrazca ni bilo mogoče ustvariti. Poskusite znova.",
+      namePlaceholder: "npr. Povpraševanje",
+    },
   },
 }
 
@@ -494,6 +505,17 @@ export const workFormsEn: WorkFormsDict = {
         select: "Dropdown",
         checkbox: "Checkbox",
       },
+    },
+    firstForm: {
+      title: "This activity has no forms yet.",
+      description:
+        "Create the first form with your own fields. Until completed it stays a draft — invisible on the public site. Make it publicly active once you have filled it in.",
+      cta: "Create first form",
+      creating: "Creating …",
+      created: "Form draft created. Now add your own fields.",
+      alreadyExists: "A form already exists.",
+      genericError: "Could not create the form. Try again.",
+      namePlaceholder: "e.g. Enquiry",
     },
   },
 }

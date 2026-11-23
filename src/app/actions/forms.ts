@@ -609,3 +609,69 @@ async function resolveCustomerForSubmission(input: {
   })
   return createdCustomer.id
 }
+
+// ============================================================
+// CREATE FIRST FORM — odprava mrtve točke za profile z
+// forms: required a forms: [] (skd-b-mining, skd-c-manufacturing,
+// skd-d-energy, skd-e-water-waste, skd-h-transport, skd-j-media,
+// skd-l-finance, skd-m-real-estate, skd-p-public-admin,
+// skd-q-education, skd-r-health, skd-v-international).
+// Modul `forms` je ACTIVE (jedro dejavnosti), a definicij ni —
+// in lastnik doslej NI imel UI vstopne točke za prvi obrazec
+// (ni bilo `createFormDefinition`; doc F5-5-ARHITEKTURA.md:26 to
+// eksplicitno potrjuje kot znano luknjo).
+//
+// Ta akcija NIZA fiktivnih polj (kar bi bila fabrikacija po §3):
+// ustvari LASTNISKI OSNUTEK (sourceProfile: null = lastniški, se
+// ohrani in NE deaktivira ob preklopu dejavnosti) z NIČ polji in
+// isActive: false. Lastnik nato v pravega urejevalnika doda SVOJA
+// polja (validateFields = min(1)) in ga šele nato aktivira; osnutek
+// NIKOLI ni javno viden (getPublicForms vrača le isActive: true).
+// Idempotentna: aktiven osnutek/form preprečuje duplikate.
+// ============================================================
+export interface CreateFormDefinitionResult {
+  ok: boolean
+  error?: "EXISTS" | "GENERIC"
+  definitionId?: string
+}
+
+export async function createFormDefinition(input: { name: string }): Promise<CreateFormDefinitionResult> {
+  try {
+    const { org } = await requirePermissionOrg("inquiries.manage")
+
+    const name = input?.name?.trim()
+    if (!name) return { ok: false, error: "GENERIC" }
+
+    // Idempotenca v tej tenantu: če že obstaja lastniški OSNUTEK
+    // (sourceProfile: null), prepreči ponovno ustvarjanje vrstice.
+    const existingDraft = await prisma.formDefinition.findFirst({
+      where: { organizationId: org.id, sourceProfile: null },
+      select: { id: true },
+    })
+    if (existingDraft) return { ok: false, error: "EXISTS" }
+
+    // Edinstven per-org key; timestamp zato, da ne trčimo v
+    // @@unique([organizationId, key]) ob ponovnem zagonu.
+    const key = `custom-form-${Date.now()}`
+
+    const created = await prisma.formDefinition.create({
+      data: {
+        organizationId: org.id,
+        key,
+        name,
+        description: null,
+        version: 1,
+        isActive: false, // osnutek — še ni javno viden
+        fields: [], // lastnik doda svoja polja v urejevalniku
+        sourceProfile: null, // lastniški — ohranjen prek preklopov
+      },
+      select: { id: true },
+    })
+
+    revalidatePath("/dashboard/forms")
+    return { ok: true, definitionId: created.id }
+  } catch (error) {
+    console.error("createFormDefinition error:", error)
+    return { ok: false, error: "GENERIC" }
+  }
+}

@@ -34,12 +34,15 @@ import { seedOrganizationCatalog } from "@/lib/verticals-seed"
 import { materializeProfileAssets } from "@/lib/profiles/materialize"
 import { getProfile } from "@/lib/profiles/registry"
 import { createWorkOrder, createFirstWorkflowDefinition } from "@/app/actions/work-orders"
+import { createFormDefinition, listFormDefinitions } from "@/app/actions/forms"
 
 const RUN = "wom_" + Date.now().toString(36)
 const POS = `${RUN}_pos` // tire-service (workflows: 1, entity "order", 7 stages)
 const NEG = `${RUN}_neg` // skd-a-agriculture (workOrders: required, workflows: [])
+const FORMS = `${RUN}_forms` // skd-l-finance (forms: required, forms: [])
 let userId: string
 let negUserId: string
+let formsUserId: string
 
 beforeAll(async () => {
   const rows = await prisma.$queryRawUnsafe<{ db: string }[]>("select current_database() as db")
@@ -64,6 +67,15 @@ beforeAll(async () => {
       slug: NEG,
       name: `WOM B ${RUN}`,
       vertical: "skd-a-agriculture",
+      publishState: "DRAFT",
+    },
+  })
+  await prisma.organization.create({
+    data: {
+      id: FORMS,
+      slug: FORMS,
+      name: `WOM C ${RUN}`,
+      vertical: "skd-l-finance",
       publishState: "DRAFT",
     },
   })
@@ -103,11 +115,30 @@ beforeAll(async () => {
   await prisma.organizationMember.create({
     data: { organizationId: NEG, userId: negUser.id, role: "ADMIN", isDefault: true },
   })
+
+  const formsUser = await prisma.user.create({
+    data: {
+      email: `${RUN}-forms@markec.test`,
+      name: "Forms Owner",
+      role: "ADMIN",
+      organizationId: FORMS,
+      password: "x",
+      emailVerified: new Date(),
+    },
+  })
+  formsUserId = formsUser.id
+  await prisma.organizationMember.create({
+    data: { organizationId: FORMS, userId: formsUser.id, role: "ADMIN", isDefault: true },
+  })
 })
 
 afterAll(async () => {
-  await prisma.organization.deleteMany({ where: { id: { in: [POS, NEG] } } }).catch(() => undefined)
-  await prisma.user.deleteMany({ where: { id: { in: [userId, negUserId] } } }).catch(() => undefined)
+  await prisma.organization.deleteMany({
+    where: { id: { in: [POS, NEG, FORMS] } },
+  }).catch(() => undefined)
+  await prisma.user
+    .deleteMany({ where: { id: { in: [userId, negUserId, formsUserId] } } })
+    .catch(() => undefined)
   await prisma.$disconnect()
 })
 
@@ -211,6 +242,52 @@ describe("PR #142 §5b — workOrders materializacija (ne le deklaracija)", () =
       expect(created!.workflowDefinitionId).toBe(wf!.id)
       // Trenutna stopnja = edina strukturna stopnja ustvarjenega procesa.
       expect(created!.currentStageKey).toBe(wf!.stages[0].key)
+    } finally {
+      state.session = prevSession
+    }
+  })
+
+  it("createFormDefinition zapolni mrtvo točko (skd-l-finance): lastniški osnutek -> UI vstopna točka za prvi obrazec", async () => {
+    // skd-l-finance: forms=required, forms=[] -> modul ACTIVE, a brez definicij
+    // in doslej ni bilo UI vstopne točke za prvi obrazec (ni createFormDefinition).
+    const profile = getProfile("skd-l-finance")
+    expect(profile.capabilities.forms).toBe("required")
+    expect(profile.forms.length).toBe(0) // predhodna dejstva: ni materializiranih definicij
+
+    // Izhodišče: NOBENEGA obrazca (še noben lastniški niti profilni).
+    const before = await prisma.formDefinition.findMany({
+      where: { organizationId: FORMS },
+      select: { id: true },
+    })
+    expect(before.length).toBe(0)
+
+    const prevSession = state.session
+    state.session = {
+      user: { id: formsUserId, role: "ADMIN", email: `${RUN}-forms@markec.test` },
+    }
+    try {
+      const res = await createFormDefinition({ name: "Povpraševanje" })
+      expect(res.ok).toBe(true)
+      expect(res.definitionId).toBeTruthy()
+
+      const def = await prisma.formDefinition.findUnique({ where: { id: res.definitionId! } })
+      expect(def).toBeDefined()
+      // Lastniški OSNUTEK: sourceProfile=null (se ohrani prek preklopov dejavnosti),
+      // isActive=false (osnutek — NE javno viden), 0 polj (lastnik doda svoja).
+      expect(def!.sourceProfile).toBeNull()
+      expect(def!.isActive).toBe(false)
+      expect(def!.fields).toEqual([])
+      expect(def!.name).toBe("Povpraševanje")
+
+      // Idempotentnost: novi lastniški osnutek prepreči ponovno ustvarjanje.
+      const dup = await createFormDefinition({ name: "Duplikat" })
+      expect(dup.ok).toBe(false)
+      expect(dup.error).toBe("EXISTS")
+
+      // Osnutek ni viden na javni strani (getPublicForms vrača le isActive: true),
+      // vendar je definicija prisotna v admin seznamu (vstopna točka obstaja).
+      const listed = await listFormDefinitions()
+      expect(listed.some((d) => d.id === res.definitionId)).toBe(true)
     } finally {
       state.session = prevSession
     }

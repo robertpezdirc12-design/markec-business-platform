@@ -2,6 +2,7 @@ import { getServerI18n } from "@/lib/i18n/server"
 import { listFormDefinitions, listFormSubmissions } from "@/app/actions/forms"
 import { getSessionEffectiveProfile } from "@/lib/profiles/session"
 import { FormsClient } from "@/components/admin/forms/forms-client"
+import { FirstFormBanner } from "@/components/admin/forms/first-form-banner"
 import { IntakeForms } from "@/components/dashboard/intake-forms"
 import { requirePagePermission } from "@/lib/auth/guards"
 
@@ -30,6 +31,19 @@ export default async function FormsPage() {
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{f.title}</h1>
         <p className="text-muted-foreground">{f.subtitle}</p>
       </div>
+
+      {definitions.length === 0 && (
+        <FirstFormBanner
+          title={f.firstForm.title}
+          description={f.firstForm.description}
+          cta={f.firstForm.cta}
+          creating={f.firstForm.creating}
+          created={f.firstForm.created}
+          alreadyExists={f.firstForm.alreadyExists}
+          genericError={f.firstForm.genericError}
+          namePlaceholder={f.firstForm.namePlaceholder}
+        />
+      )}
 
       <FormsClient
         definitions={definitions}

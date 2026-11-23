@@ -261,6 +261,18 @@ konfiguracija tega profila pokriva prav ta podrazred (fit).*
   `dashboard/work-orders` ponuja vstopno točko, ko ni nobenega procesa. NIZA sector-predloga
   (ne fabrikacija po §3). Regresijski test v `tests/integration/work-orders-materialization.itest.ts`
   dokaže: po ustvarjenem procesu `createWorkOrder` USPE; idempotentno (EXISTS, brez duplikatov).
+- REŠENO: profili z `forms: required` + `forms: []` (12: `skd-b-mining`, `skd-c-manufacturing`,
+  `skd-d-energy`, `skd-e-water-waste`, `skd-h-transport`, `skd-j-media`, `skd-l-finance`,
+  `skd-m-real-estate`, `skd-p-public-admin`, `skd-q-education`, `skd-r-health`,
+  `skd-v-international`) dobijo modul `forms` ACTIVE, a brez definicij — in doslej lastnik
+  NI imel UI vstopne točke za prvi obrazec (ni bilo `createFormDefinition`; doc
+  `F5-5-ARHITEKTURA.md:26` to potrjuje kot znano luknjo). Nova akcija `createFormDefinition`
+  (v `src/app/actions/forms.ts`) ustvari **lastniški OSNUTEK** obrazca (`sourceProfile: null`,
+  `isActive: false`, 0 polj), ki ga lastnik dopolni s SVOJIMI polji v obstoječem urejevalniku
+  in šele nato aktivira; NIZA fiktivnih polj (ne fabrikacija po §3); idempotentna (EXISTS).
+  Banner na `dashboard/forms` ponuja vstopno točko, ko ni nobenega obrazca. Regresijski test
+  v `tests/integration/work-orders-materialization.itest.ts` (org FORMS, skd-l-finance)
+  dokaže: osnutek nastane z 0 polji/isActive=false, ponovni klic -> EXISTS.
 - ODPRTO (avto-generacija predlog, ločen PR): še vedno ostaja odprto, da bi platforma sama
   ustvarila **minimalen panogi-prirejen** workflow/form template (npr. za `skd-a-agriculture`).
   To zahteva poslovni SME-vnos (kaj točno je minimalni proces npr. za kmetijstvo) in se tu
