@@ -237,3 +237,21 @@ konfiguracija tega profila pokriva prav ta podrazred (fit).*
 - REŠENO (PR #142): README (vrstica 39) je usklajen z registerjem — 678 podrazredov;
   36 registriranih profilov, od katerih 28 uporablja SKD-resolver (22 sekcijskih + 6
   specializiranih). Register je kanoničen vir.
+- REŠENO (PR #142, commit `5b0713b`, scenarij 5): sprememba SKD dejavnosti skozi vodeni
+  vstop (`completeGuidedEntry`) zdaj **deaktivira** profilske predloge stare dejavnosti
+  (`deactivateForeignProfileAssets`), enako kot referenca `updateOrgVertical` — ob
+  materializaciji predlog nove dejavnosti se stare deaktivirajo (nikoli brišejo; podatki
+  in predloge, ki jih lastnik ustvari z `sourceProfile = null`, preživijo). Dokazano z
+  regresijskim testom `tests/integration/f58-vertical-switch-guided-entry.itest.ts`
+  (4 primeri: materializacija nove / deaktivacija stare / ohranitev uporabniških in
+  sekundarnih predlog / ohranitev predlog druge organizacije / idempotentnost ponovljenega
+  preklopa; test pred popravkom pade, po njem gre skozi).
+- ODPRTO (arhitekturna odločitev, izven PR #142): preklop dejavnosti v `completeGuidedEntry`
+  in `updateOrgVertical` je **idempotenten, a neatomaren** (vertical se menja kot zadnji
+  zapis; retry ponovi vse dosledno). Poenoten transakcijski ovitek obeh poti zahteva
+  prenos `tx` v deljena `materializeProfileAssets`/`deactivateForeignProfileAssets` —
+  arhitekturna sprememba, ki naj se uredi v ločeni PR-ju (EPIC-2), ne v #142.
+- ODPRTO (izven PR #142): profili z `workOrders: required` + `workflows: []` (npr.
+  `skd-a-agriculture`) dobijo modul `workOrders` ACTIVE, a `createWorkOrder` vrača
+  `NO_WORKFLOW` (iskreno prikazano v UI, ne lažno obljubljeno). Rešitev (avto-generacija
+  minimalnega workflow templete za panogo) zahteva poslovni SME-vnos — ločen PR.
