@@ -429,7 +429,41 @@ export async function verifyAndCreateAppointment(sessionId: string) {
       (sum, s) => sum + s.price.toNumber(),
       0
     )
-    const endTime = addMinutes(startTime, totalDuration)
+
+    // #92: dodatki potujejo kot ID-ji prek metadata — ponovno se
+    // razrešijo org-scoped iz DB (cene iz metadata se NE zaupajo) in
+    // prištejeta ceni/trajanju termina; snapshot gre na zapis.
+    // (P1/S7: fallback pot sedaj obravnava dodatke enako kot webhook.)
+    let selectedAddons: { name: string; price: number; durationMin: number }[] = []
+    if (metadata.addonIds) {
+      try {
+        const addonIds: string[] = JSON.parse(metadata.addonIds || "[]")
+        if (Array.isArray(addonIds) && addonIds.length > 0) {
+          const addonRows = await prisma.serviceAddon.findMany({
+            where: {
+              id: { in: addonIds },
+              isActive: true,
+              serviceId: { in: serviceIds },
+              service: { organizationId: org.id },
+            },
+          })
+          const byId = new Map(addonRows.map((a) => [a.id, a]))
+          selectedAddons = addonIds
+            .filter((id) => byId.has(id))
+            .map((id) => {
+              const a = byId.get(id)!
+              return { name: a.name, price: a.price.toNumber(), durationMin: a.durationMin }
+            })
+        }
+      } catch {
+        // Pokvarjen metadata → brez dodatkov; plačilo storitve ostane
+        // veljavno (ne obrnemo plačila zaradi dodatka).
+      }
+    }
+    const addonPrice = selectedAddons.reduce((s, a) => s + a.price, 0)
+    const addonDuration = selectedAddons.reduce((s, a) => s + a.durationMin, 0)
+
+    const endTime = addMinutes(startTime, totalDuration + addonDuration)
 
     // F5.1: promocija (iz metadate seje — klient nikoli ne pošlje
     // cene/popusta). Ovrednotimo jo nad izbranimi storitvami.
@@ -453,7 +487,9 @@ export async function verifyAndCreateAppointment(sessionId: string) {
           affectedLines: verifyPromo.affectedLines,
         })
       : null
-    const effectiveTotalPrice = Math.max(0, round2(totalPrice - verifyPromoDiscount))
+    // Skupna cena vključuje dodatke (snapshot iz DB); popust se nanaša
+    // samo na storitvene vrstice.
+    const effectiveTotalPrice = Math.max(0, round2(totalPrice + addonPrice - verifyPromoDiscount))
 
     // SECURITY: re-check slot availability before creating the appointment.
     // Prevents double-booking when the webhook and this fallback race,
@@ -626,6 +662,11 @@ export async function verifyAndCreateAppointment(sessionId: string) {
             depositAmount: bookingDeposit,
             depositPaid: true,
             stripePaymentId: paymentIntentId,
+            // #92: snapshot izbranih dodatkov (cene iz DB ob rezervaciji —
+            // kasnejša sprememba kataloga ne prepiše zgodovine termina).
+            ...(selectedAddons.length > 0
+              ? { addons: selectedAddons as unknown as Prisma.InputJsonValue }
+              : {}),
             services: {
               create: serviceIds.map((serviceId: string) => ({
                 serviceId,

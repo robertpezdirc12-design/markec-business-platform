@@ -12,9 +12,8 @@
  *    pogodbe, ne optimizacija — odpovedani termin ne dobi opomnika.
  *
  * Idempotentnost: `reminderSentAt = null` je ključ — drugi tek ne pošlje
- * ničesar istemu terminu. Okno 23–25 h pred startTime pomeni, da 15-minutni
- * cron teče 8-krat čez okno; brez idempotentnega zapisa bi to pomenilo
- * 8 opomnikov.
+ * ničesar istemu terminu. Okno 0–24 h pred startTime (P1/S5) pomeni, da
+ * dnevni cron (03:00 UTC) pokrije VSE termine v naslednjih 24 urah.
  */
 
 import { prisma } from "@/lib/prisma"

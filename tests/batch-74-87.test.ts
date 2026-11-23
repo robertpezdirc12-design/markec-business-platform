@@ -49,11 +49,11 @@ describe("P1 #76: scheduler exists and is safe", () => {
     expect(src).toContain("if (!secret) return false")
   })
 
-  it("reminder window is 23–25h ahead (24h reminder ± 1h)", () => {
+  it("reminder window covers 0–24h ahead (dnevni cron pokrije vse termine)", () => {
     const now = new Date("2026-01-15T10:00:00Z")
     const { horizonStart, horizonEnd } = reminderWindow(now)
-    expect(horizonStart.getTime() - now.getTime()).toBe(23 * 3_600_000)
-    expect(horizonEnd.getTime() - now.getTime()).toBe(25 * 3_600_000)
+    expect(horizonStart.getTime() - now.getTime()).toBe(0)
+    expect(horizonEnd.getTime() - now.getTime()).toBe(24 * 3_600_000)
   })
 
   it("reminders are contractually scoped: PENDING/CONFIRMED only, reminderSentAt null", () => {

@@ -2074,10 +2074,21 @@ export async function rescheduleAppointment(
     }
   }
 
-  const totalDuration = appointment.services.reduce(
+  // P1 (S6): trajanje prestavljenega termina mora vključevati tudi
+  // dodatke iz snapshota — sicer se novi termin ne pokrije z realnim
+  // trajanjem in naslednja stranka lahko rezervira v okno storitve+dodatkov.
+  const servicesDuration = appointment.services.reduce(
     (sum, s) => sum + s.service.duration,
     0
   )
+  const addonRows = Array.isArray(appointment.addons)
+    ? (appointment.addons as unknown as { durationMin?: number }[])
+    : []
+  const addonDuration = addonRows.reduce(
+    (sum, a) => sum + (typeof a?.durationMin === "number" ? a.durationMin : 0),
+    0
+  )
+  const totalDuration = servicesDuration + addonDuration
 
   const newEndTime = addMinutes(targetInstant, totalDuration)
 
@@ -2105,7 +2116,10 @@ export async function rescheduleAppointment(
   // ključavnice bi dopuščal vzporedna premika v isti termin.
   try {
     await prisma.$transaction(async (tx) => {
-      await acquireBookingLocks(tx, bookingLockKeys(org.id, appointment.staffId))
+      await acquireBookingLocks(
+        tx,
+        bookingLockKeys(org.id, appointment.staffId, appointment.resourceRecordId)
+      )
 
       const conflicts = await tx.appointment.count({
         where: {
@@ -2121,6 +2135,26 @@ export async function rescheduleAppointment(
         throw new BookingConflictError(
           "Izbrani termin ni več prost. Izberite drugi termin."
         )
+      }
+
+      // Vir/prostor se preveri POD ključavnico (kot pri createAppointment):
+      // navzkrižna rezervacija istega vira prek drugega osebja.
+      if (appointment.resourceRecordId) {
+        const resourceBusy = await tx.appointment.count({
+          where: {
+            resourceRecordId: appointment.resourceRecordId,
+            organizationId: appointment.organizationId,
+            id: { not: appointmentId },
+            status: { in: ["PENDING", "CONFIRMED"] },
+            startTime: { lt: newEndTime },
+            endTime: { gt: targetInstant },
+          },
+        })
+        if (resourceBusy > 0) {
+          throw new BookingConflictError(
+            "Izbrani prostor/vir je v tem času že zaseden. Izberite drugi termin ali prostor."
+          )
+        }
       }
 
       await tx.appointment.update({

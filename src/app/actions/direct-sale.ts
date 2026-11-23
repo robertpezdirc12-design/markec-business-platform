@@ -38,6 +38,8 @@
 
 import { prisma } from "@/lib/prisma"
 import { requirePermissionOrg } from "@/lib/auth/guards"
+import { getPlan } from "@/lib/plans/registry"
+import { checkPlanLimit, monthStartUtc } from "@/lib/plans/types"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import type { Prisma } from "@prisma/client"
@@ -108,6 +110,20 @@ export async function createDirectOrder(input: z.input<typeof directSaleSchema>)
   const data = parsed.data
 
   const { org } = await requirePermissionOrg("orders.manage")
+
+  // M3 (audit 2026-11): plan limit naročil velja tudi za neposredno
+  // prodajo (POS) — prej je bil uveljavljen samo na spletnem checkoutu.
+  const monthOrders = await prisma.order.count({
+    where: { organizationId: org.id, createdAt: { gte: monthStartUtc() } },
+  })
+  const ordersGate = checkPlanLimit(getPlan(org.plan), "orders", monthOrders)
+  if (!ordersGate.ok) {
+    return {
+      success: false,
+      error:
+        "Trgovina trenutno ne sprejema novih naročil. Kontaktirajte salon in poskusite znova kasneje.",
+    }
+  }
 
   // ---- Org-scoped validacija produktov + variant ---------------------------------
   const productIds = [...new Set(data.lines.map((l) => l.productId))]

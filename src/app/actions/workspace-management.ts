@@ -13,6 +13,8 @@ import { isReservedSlug, isSlugAvailable, slugify } from "@/lib/tenant"
 import { generateIntakeToken } from "@/lib/forms/intake-token"
 import { hashInvitationToken } from "@/lib/invitations/hash"
 import { listProfileOptions, GENERIC_PROFILE_ID } from "@/lib/profiles/registry"
+import { materializeProfileAssets } from "@/lib/profiles/materialize"
+import { seedNewOrgModuleStates } from "@/app/actions/modules"
 import { PALETTES } from "@/lib/verticals"
 
 // ============================================================
@@ -130,6 +132,17 @@ export async function createWorkspace(input: {
         },
       },
     })
+    // P1 (M13, audit 2026-11): materializiraj profilne predloge (obrazci,
+    // procesi) in začetna stanja modulov — enako kot onboarding. Pred tem
+    // je workspace ostal brez predlog (npr. skd-* z 0 predlogami), zato
+    // createWorkOrder/createForm nista imela vstopne točke.
+    try {
+      await materializeProfileAssets(org.id, vertical)
+      await seedNewOrgModuleStates(org.id, vertical, null)
+    } catch (err) {
+      console.error("[createWorkspace] materialization failed:", err)
+    }
+
     // Legacy kazalec + seja gresta na novi workspace (kot createSalonOrganization).
     await prisma.user.update({
       where: { id: session.user.id },
