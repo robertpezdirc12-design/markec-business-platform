@@ -10,18 +10,47 @@ import { getPublicOrg, getSessionOrg } from "@/lib/tenant"
 import { enforcePlanLimit } from "@/lib/plans/resolve"
 import { getLocaleFromCookies } from "@/lib/i18n/server"
 import {
-  startOfDay,
-  endOfDay,
-  startOfMonth,
-  endOfMonth,
   startOfWeek,
   endOfWeek,
 } from "date-fns"
+import { safeTimezone, toDateKey, dayBounds } from "@/lib/booking-time"
 import { StaffAppointmentFilters } from "@/lib/interfaces"
 import {
   staffSelfUpdateSchema,
   type StaffSelfUpdateFormData,
 } from "@/lib/validations/staff"
+
+/**
+ * M19 (audit 2026-11): meje dneva/meseca v časovnem pasu salona —
+ * ne v server-UTC. Vrnjene vrednosti so Date objekti v salonskem času.
+ */
+async function salonDayBounds(orgId: string, now: Date) {
+  const tz = safeTimezone(
+    (
+      await prisma.salonConfig.findFirst({
+        where: { organizationId: orgId },
+        select: { timezone: true },
+      })
+    )?.timezone
+  )
+  const today = toDateKey(now, tz) ?? "1970-01-01"
+  const day = dayBounds(today, tz) ?? { start: now, end: now }
+  const y = Number(today.slice(0, 4))
+  const m = Number(today.slice(5, 7))
+  const monthKey = `${y}-${String(m).padStart(2, "0")}`
+  const firstDay = dayBounds(`${monthKey}-01`, tz) ?? day
+  const lastDayNum = new Date(Date.UTC(y, m, 0)).getUTCDate()
+  const lastDay = dayBounds(
+    `${monthKey}-${String(lastDayNum).padStart(2, "0")}`,
+    tz
+  ) ?? day
+  return {
+    dayStart: day.start,
+    dayEnd: day.end,
+    monthStart: firstDay.start,
+    monthEnd: lastDay.end,
+  }
+}
 
 export type UpdateStaffInput = Partial<CreateStaffInput> & {
   serviceIds?: string[]
@@ -582,16 +611,17 @@ export const getStaffPortalStats = async () => {
 
   try {
     const now = new Date()
-    const dayStart = startOfDay(now)
-    const dayEnd = endOfDay(now)
-    const monthStart = startOfMonth(now)
-    const monthEnd = endOfMonth(now)
 
     // F2.3.1: org-scoped (a user may be staff in several orgs).
     const org = await getSessionOrg()
     if (!org) {
       return { success: false, error: "Staff profile not found" }
     }
+    // M19: meje dneva/meseca v časovnem pasu salona (ne server-UTC).
+    const { dayStart, dayEnd, monthStart, monthEnd } = await salonDayBounds(
+      org.id,
+      now
+    )
     const staffMember = await prisma.staff.findFirst({
       where: { userId: session.user.id, organizationId: org.id },
     })
@@ -662,14 +692,14 @@ export const getStaffTodaysAppointments = async () => {
 
   try {
     const now = new Date()
-    const dayStart = startOfDay(now)
-    const dayEnd = endOfDay(now)
 
     // F2.3.1: org-scoped.
     const org = await getSessionOrg()
     if (!org) {
       return { success: false, error: "Staff profile not found" }
     }
+    // M19: meja dneva v časovnem pasu salona.
+    const { dayStart, dayEnd } = await salonDayBounds(org.id, now)
     const staffMember = await prisma.staff.findFirst({
       where: { userId: session.user.id, organizationId: org.id },
       include: {
@@ -749,22 +779,28 @@ export const getStaffAppointments = async (
   try {
     const now = new Date()
 
+    // M19: za today/month filtra uporabimo meje v časovnem pasu salona.
+    const bounds =
+      filters.dateFilter === "today" || filters.dateFilter === "month"
+        ? await salonDayBounds((await getSessionOrg())?.id ?? "", now)
+        : null
+
     // Calculate date range based on filter
     let dateStart: Date | undefined
     let dateEnd: Date | undefined
 
     switch (filters.dateFilter) {
       case "today":
-        dateStart = startOfDay(now)
-        dateEnd = endOfDay(now)
+        dateStart = bounds?.dayStart
+        dateEnd = bounds?.dayEnd
         break
       case "week":
         dateStart = startOfWeek(now, { weekStartsOn: 1 })
         dateEnd = endOfWeek(now, { weekStartsOn: 1 })
         break
       case "month":
-        dateStart = startOfMonth(now)
-        dateEnd = endOfMonth(now)
+        dateStart = bounds?.monthStart
+        dateEnd = bounds?.monthEnd
         break
       case "all":
       default:

@@ -115,3 +115,65 @@ export async function GET(
     return NextResponse.json({ error: "Failed to serve media" }, { status: 500 })
   }
 }
+
+/**
+ * M15 (audit 2026-11): izbris media vrstice (DB) — samo lastnik
+ * (član z aktivno pripadnostjo lastniški org) ali platform admin.
+ * Izbris je org-scoped; ID neobstoječega zapisa dajemo kot 404.
+ */
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const media = await prisma.media.findUnique({
+      where: { id },
+      select: { id: true, organizationId: true },
+    })
+    if (!media || !media.organizationId) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
+
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
+
+    const requesterEmail = session.user.email ?? null
+    const isPlatformAdmin = requesterEmail
+      ? isPlatformAdminEmail(
+          requesterEmail,
+          process.env[PLATFORM_ADMIN_EMAILS_ENV]
+        )
+      : false
+
+    // Lastnik: član (OrganizationMember) ali aktivna staff vrstica v
+    // lastniški org — enako ogrodje kot drugi viri. Platform admin sme
+    // posegati kjerkoli (operaterska konzola).
+    const member = await prisma.organizationMember.findFirst({
+      where: { organizationId: media.organizationId, userId: session.user.id },
+      select: { id: true },
+    })
+    const staffActive = await prisma.staff.findFirst({
+      where: {
+        userId: session.user.id,
+        organizationId: media.organizationId,
+        isActive: true,
+      },
+      select: { id: true },
+    })
+    if (!isPlatformAdmin && !member && !staffActive) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
+
+    await prisma.media.delete({ where: { id: media.id } })
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    console.error("Media delete error:", error)
+    return NextResponse.json(
+      { error: "Failed to delete media" },
+      { status: 500 }
+    )
+  }
+}
