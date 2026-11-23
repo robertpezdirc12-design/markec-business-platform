@@ -8,6 +8,7 @@ import { getLocaleFromCookies } from "@/lib/i18n/server"
 import { getPlan } from "@/lib/plans/registry"
 import { checkStorageLimit } from "@/lib/plans/types"
 import { getOrgStorageBytes } from "@/lib/plans/resolve"
+import { rateLimit } from "@/lib/rate-limit"
 
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
@@ -53,6 +54,21 @@ export async function POST(request: NextRequest) {
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // M17 (audit 2026-11): per-uporabniška kvota nalaganj (ključ = userId) —
+    // omeji zlorabo shrambe s strani enega računa (tudi CLIENTE).
+    const quota = await rateLimit({
+      scope: "upload:user",
+      key: session.user.id,
+      limit: 100,
+      windowMs: 3_600_000,
+    })
+    if (!quota.ok) {
+      return NextResponse.json(
+        { error: "Preveč nalaganj. Poskusite kasneje." },
+        { status: 429 }
+      )
     }
 
     const formData = await request.formData()
