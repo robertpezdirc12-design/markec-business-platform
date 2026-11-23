@@ -1818,7 +1818,9 @@ const APPOINTMENT_STATUS_TRANSITIONS: Record<
   readonly AppointmentStatus[]
 > = {
   PENDING: ["CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"],
-  CONFIRMED: ["CANCELLED", "COMPLETED", "NO_SHOW"],
+  // CONFIRMED → PENDING je dovoljen (osebje vrne termin v čakanje na
+  // potrditev — npr. po popravku podatkov).
+  CONFIRMED: ["PENDING", "CANCELLED", "COMPLETED", "NO_SHOW"],
   COMPLETED: [],
   CANCELLED: [],
   NO_SHOW: [],

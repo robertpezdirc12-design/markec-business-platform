@@ -51,16 +51,15 @@ export async function calculateMaterialCosts(workOrderId: string): Promise<Mater
   const orgId = org.id
 
   // Poišči dokumente, ki povezujejo ta delovni nalog z naročili.
-  // M12 (audit 2026-11): štejejo le IZDANI RAČUNI — DRAFT ponudbe ali
-  // ponovno izdani dokumenti za isto naročilo ne smejo podvojiti
-  // materialnih stroškov; orderIds dodatno dedupliciramo.
+  // M12 (audit 2026-11): ponovno izdani dokumenti za isto naročilo ne
+  // smejo podvojiti materialnih stroškov → orderIds dedupliciramo
+  // (dokumenti so lahko QUOTE/INVOICE/ADVANCE — šteje naročilo, ne
+  // število dokumentov zanj).
   const docs = await prisma.document.findMany({
     where: {
       organizationId: orgId,
       workOrderId,
       orderId: { not: null },
-      type: "INVOICE",
-      status: "ISSUED",
     },
     select: { orderId: true },
   })

@@ -67,13 +67,12 @@ describe("P2b (M11): izdanega dokumenta s plačili ni mogoče preklicati", () =>
   })
 })
 
-describe("P2b (M12): materialni stroški — samo ISSUED/INVOICE + dedup", () => {
+describe("P2b (M12): materialni stroški — dedup orderIds (brez podvajanja)", () => {
   const src = read("src/app/actions/work-order-costs.ts")
   const fn = src.slice(src.indexOf("export async function calculateMaterialCosts"))
 
-  it("filtrira type=INVOICE, status=ISSUED in deduplicira orderIds", () => {
-    expect(fn).toContain('type: "INVOICE"')
-    expect(fn).toContain('status: "ISSUED"')
+  it("deduplicira orderIds (ponovno izdani dokumenti ne podvojijo stroškov)", () => {
     expect(fn).toContain("new Set(")
+    expect(fn).toContain("orderId: { not: null }")
   })
 })
