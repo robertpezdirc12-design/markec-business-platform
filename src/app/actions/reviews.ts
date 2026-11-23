@@ -78,7 +78,7 @@ export async function createReview(data: ReviewFormData) {
     ...(customer ? [{ customerId: customer.id }] : []),
     ...(email ? [{ guestEmail: email }] : []),
   ]
-  const hasPurchased =
+  const hasAnyPurchase =
     purchaseScopes.length > 0 &&
     ((await prisma.appointment.count({
       where: { organizationId: org.id, status: "COMPLETED", OR: purchaseScopes },
@@ -87,11 +87,50 @@ export async function createReview(data: ReviewFormData) {
         where: { organizationId: org.id, status: "COMPLETED", OR: purchaseScopes },
       })) > 0)
 
-  if (!hasPurchased) {
+  // M8 (audit 2026-11): ocena za STORITEV zahteva opravljen termin, ki je
+  // dejansko vključeval to storitev (nakup pri podjetju ni dovolj).
+  let hasServicePurchase = false
+  if (service) {
+    hasServicePurchase =
+      purchaseScopes.length > 0 &&
+      (await prisma.appointment.count({
+        where: {
+          organizationId: org.id,
+          status: "COMPLETED",
+          OR: purchaseScopes,
+          services: { some: { serviceId: service.id } },
+        },
+      })) > 0
+  }
+
+  if (service && !hasServicePurchase) {
+    return {
+      success: false,
+      error:
+        "Oceno za storitev lahko oddate samo po opravljenem terminu, ki je vključeval to storitev.",
+    }
+  }
+  if (!service && !hasAnyPurchase) {
     return {
       success: false,
       error:
         "Oceno lahko oddate samo po opravljenem terminu ali zaključenem naročilu pri tem podjetju.",
+    }
+  }
+
+  // M8: ena ocena na uporabnika + storitev (ali podjetje) — prepreči spam.
+  const existingReview = await prisma.review.findFirst({
+    where: {
+      userId: session.user.id,
+      organizationId: org.id,
+      serviceId: data.serviceId ?? null,
+    },
+    select: { id: true },
+  })
+  if (existingReview) {
+    return {
+      success: false,
+      error: "Oceno za to storitev/podjetje ste že oddali.",
     }
   }
 

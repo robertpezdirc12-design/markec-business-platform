@@ -90,9 +90,14 @@ export async function registerUser(data: RegisterInput) {
     })
 
     if (existingUser) {
+      // M14 (audit 2026-11): nevtralen odgovor — ne razkrijemo, ali
+      // račun obstaja (nasprotuje nevtralnim odgovorom forgot/resend).
+      // Enako sporočilo kot pri drugih napakah registracije.
       return {
         success: false,
-        errors: [{ message: "E-poštni naslov je že registriran." }],
+        errors: [
+          { message: "Registracija ni uspela. Preverite podatke in poskusite znova." },
+        ],
       }
     }
 

@@ -235,6 +235,27 @@ async function handleSubscriptionEvent(event: Stripe.Event) {
 
   const local = await upsertSubscriptionRow(orgId, snapshot, sub.id)
 
+  // M2 (audit 2026-11): zavrni zastarele dostave. Stripe lahko dostavi
+  // dogodke izven vrstnega reda (retry / več-dostavna pot); starejša
+  // »ACTIVE« fotografija ne sme prepisati novejšega PAST_DUE/CANCELED
+  // stanja. Primerjava po currentPeriodEnd (monotono narašča).
+  const snapshotPeriodEnd = snapshot.currentPeriodEnd
+    ? new Date(snapshot.currentPeriodEnd).getTime()
+    : NaN
+  const localPeriodEnd = local?.currentPeriodEnd
+    ? new Date(local.currentPeriodEnd).getTime()
+    : NaN
+  if (
+    !Number.isNaN(snapshotPeriodEnd) &&
+    !Number.isNaN(localPeriodEnd) &&
+    snapshotPeriodEnd < localPeriodEnd
+  ) {
+    console.warn(
+      `[platform-billing] stale event ${event.id}: period end ${snapshot.currentPeriodEnd} < ${local.currentPeriodEnd}; skipping`
+    )
+    return
+  }
+
   // Guarded apply — a replayed event that would change nothing is a no-op.
   const update = local
     ? subscriptionUpdateFromSnapshot(

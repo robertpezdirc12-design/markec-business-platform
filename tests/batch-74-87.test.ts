@@ -260,7 +260,10 @@ describe("P2 #75: reviews are a first-class section", () => {
   it("createReview resolves the tenant server-side (never from the form)", () => {
     const actions = read("src/app/actions/reviews.ts")
     expect(actions).toContain("organizationId: org.id")
-    expect(actions).toContain("hasPurchased")
+    // M8 (audit 2026-11): preimenovano hasPurchased → hasAnyPurchase +
+    // hasServicePurchase (ocena za storitev zahteva termin s to storitvijo).
+    expect(actions).toContain("hasAnyPurchase")
+    expect(actions).toContain("hasServicePurchase")
   })
 })
 
