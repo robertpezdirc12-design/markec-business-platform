@@ -4,11 +4,17 @@ import { auth } from "@/lib/auth/auth"
 import { prisma } from "@/lib/prisma"
 import { unstable_update } from "@/lib/auth/auth"
 import { revalidatePath } from "next/cache"
-import { userHasPermission } from "@/lib/permissions/effective"
+import {
+  userHasPermission,
+  getEffectivePermissions,
+} from "@/lib/permissions/effective"
+import { hasAllPermissions } from "@/lib/permissions/roles"
 import { isReservedSlug, isSlugAvailable, slugify } from "@/lib/tenant"
 import { generateIntakeToken } from "@/lib/forms/intake-token"
 import { hashInvitationToken } from "@/lib/invitations/hash"
 import { listProfileOptions, GENERIC_PROFILE_ID } from "@/lib/profiles/registry"
+import { materializeProfileAssets } from "@/lib/profiles/materialize"
+import { seedNewOrgModuleStates } from "@/app/actions/modules"
 import { PALETTES } from "@/lib/verticals"
 
 // ============================================================
@@ -126,6 +132,17 @@ export async function createWorkspace(input: {
         },
       },
     })
+    // P1 (M13, audit 2026-11): materializiraj profilne predloge (obrazci,
+    // procesi) in začetna stanja modulov — enako kot onboarding. Pred tem
+    // je workspace ostal brez predlog (npr. skd-* z 0 predlogami), zato
+    // createWorkOrder/createForm nista imela vstopne točke.
+    try {
+      await materializeProfileAssets(org.id, vertical)
+      await seedNewOrgModuleStates(org.id, vertical, null)
+    } catch (err) {
+      console.error("[createWorkspace] materialization failed:", err)
+    }
+
     // Legacy kazalec + seja gresta na novi workspace (kot createSalonOrganization).
     await prisma.user.update({
       where: { id: session.user.id },
@@ -351,15 +368,47 @@ export async function listWorkspaceMembers(
   }))
 }
 
-/** Spremeni vlogo člana v workspaceu. Skrbnik; zadnji ADMIN ne more biti degradiran. */
+/**
+ * Spremeni vlogo člana v workspaceu. Skrbnik; zadnji ADMIN ne more biti
+ * degradiran. P0 (audit 2026-11): upravljanje članov zahteva dovoljenje
+ * `staff.manage` (omejen ADMIN s custom vlogo ga ne sme obiti), povišanje
+ * v ADMIN samo z NEOmejeno vlogo, lastne vloge ni mogoče spreminjati.
+ */
 export async function updateMemberRole(input: {
   organizationId: string
   userId: string
   role: "ADMIN" | "STAFF"
 }): Promise<{ success: boolean; error?: string }> {
-  const actorRole = await memberRoleIn(input.organizationId)
-  if (actorRole !== "ADMIN")
+  const session = await auth()
+  if (!session?.user?.id) return { success: false, error: "Prijavite se." }
+
+  // Nikoli ne zapiši arbitrarnih nizov v varnostno polje.
+  if (input.role !== "ADMIN" && input.role !== "STAFF") {
+    return { success: false, error: "Neveljavna vloga." }
+  }
+
+  const { role, orgStatus } = await membershipWithStatus(input.organizationId)
+  if (role !== "ADMIN")
     return { success: false, error: "Le skrbnik lahko menja vloge." }
+  if (orgStatus !== "ACTIVE") {
+    return {
+      success: false,
+      error: "Arhiviranega poslovnega prostora ni mogoče urejati.",
+    }
+  }
+
+  // F2.2 / E4-6b: upravljanje članov je dovoljenje — omejen ADMIN brez
+  // `staff.manage` ne sme upravljati članov (nasprotuje inviteMember).
+  if (
+    !(await userHasPermission(session.user.id, "staff.manage", input.organizationId))
+  ) {
+    return { success: false, error: "Nimate dovoljenja za upravljanje članov." }
+  }
+
+  // Svoje vloge ni mogoče spremeniti tukaj.
+  if (input.userId === session.user.id) {
+    return { success: false, error: "Svoje vloge ne morete spremeniti tukaj." }
+  }
 
   const target = await prisma.organizationMember.findUnique({
     where: {
@@ -375,9 +424,19 @@ export async function updateMemberRole(input: {
       error: "Uporabnik ni član tega poslovnega prostora.",
     }
 
-  if (target.role !== "ADMIN" && input.role === "STAFF") {
-    // običajen prehod, dovoljen
+  // Povišanje v ADMIN je dovoljeno samo administratorju z VSEMI pravicami
+  // (E4-6b, zrcali updateUserRole v users.ts).
+  if (target.role !== "ADMIN" && input.role === "ADMIN") {
+    const perms = await getEffectivePermissions(session.user.id, input.organizationId)
+    if (!hasAllPermissions(perms)) {
+      return {
+        success: false,
+        error:
+          "Nove administratorje lahko ustvari samo administrator brez skrčene vloge.",
+      }
+    }
   }
+
   // Zaščita zadnjega ADMIN: ne degradiraj ADMIN na STAFF, če je to edini ADMIN.
   if (target.role === "ADMIN" && input.role === "STAFF") {
     const adminCount = await prisma.organizationMember.count({
@@ -404,14 +463,32 @@ export async function updateMemberRole(input: {
   return { success: true }
 }
 
-/** Odstrani člana iz workspacea. Skrbnik; samega zadnjega ADMIN se ne da odstraniti. */
+/**
+ * Odstrani člana iz workspacea. Skrbnik; samega zadnjega ADMIN se ne da
+ * odstraniti. P0 (audit 2026-11): zahteva dovoljenje `staff.manage` in
+ * aktivno organizacijo; odstranitev ADMIN je omejena na neoomejenega ADMIN.
+ */
 export async function removeMember(input: {
   organizationId: string
   userId: string
 }): Promise<{ success: boolean; error?: string }> {
-  const actorRole = await memberRoleIn(input.organizationId)
-  if (actorRole !== "ADMIN")
+  const session = await auth()
+  if (!session?.user?.id) return { success: false, error: "Prijavite se." }
+
+  const { role, orgStatus } = await membershipWithStatus(input.organizationId)
+  if (role !== "ADMIN")
     return { success: false, error: "Le skrbnik lahko odstrani člane." }
+  if (orgStatus !== "ACTIVE") {
+    return {
+      success: false,
+      error: "Arhiviranega poslovnega prostora ni mogoče urejati.",
+    }
+  }
+  if (
+    !(await userHasPermission(session.user.id, "staff.manage", input.organizationId))
+  ) {
+    return { success: false, error: "Nimate dovoljenja za upravljanje članov." }
+  }
 
   const target = await prisma.organizationMember.findUnique({
     where: {
@@ -428,6 +505,14 @@ export async function removeMember(input: {
     }
 
   if (target.role === "ADMIN") {
+    // Odstranitev ADMIN omejena na neoomejenega ADMIN (E4-6b).
+    const perms = await getEffectivePermissions(session.user.id, input.organizationId)
+    if (!hasAllPermissions(perms)) {
+      return {
+        success: false,
+        error: "Administratorjev ne more odstraniti administrator s skrčeno vlogo.",
+      }
+    }
     const adminCount = await prisma.organizationMember.count({
       where: { organizationId: input.organizationId, role: "ADMIN" },
     })

@@ -92,6 +92,7 @@ function lines(m: EInvoiceModel): string {
       (l, i) => `  <${tag} xmlns="${esc(UBL_NS)}">
     <ID>${i + 1}</ID>
     <LineExtensionAmount currencyID="${esc(m.currency)}">${amt(l.taxBaseLine)}</LineExtensionAmount>
+    <Quantity unitCode="C62">${l.quantity}</Quantity>
     <Item>
       <Name>${esc(l.description)}</Name>
       <ClassifiedTaxCategory>

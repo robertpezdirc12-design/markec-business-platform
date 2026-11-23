@@ -8,6 +8,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { getStripeForOrg, isOrgStripeConfigured } from "@/lib/stripe"
+import { getOrgCurrency } from "@/lib/org-currency"
 import { shouldChargeOnNoShow } from "./no-show-policy"
 
 export async function chargeNoShowFee(appointmentId: string): Promise<{
@@ -66,9 +67,12 @@ export async function chargeNoShowFee(appointmentId: string): Promise<{
       return { charged: false, skipped: "no-payment-method" }
     }
 
+    // M5: valuta najemnika (privzeto EUR).
+    const currency = (await getOrgCurrency(appointment.organizationId)).toLowerCase()
+
     const intent = await client.paymentIntents.create({
       amount: Math.round(Number(appointment.depositAmount) * 100),
-      currency: "eur",
+      currency,
       customer: appointment.stripeCustomerId!,
       payment_method: paymentMethod as string,
       off_session: true,

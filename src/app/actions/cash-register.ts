@@ -373,50 +373,79 @@ export async function closeCashSession(
 
   const { org, session } = await requirePermissionOrg("orders.manage")
 
-  const open = await prisma.cashSession.findFirst({
-    where: { organizationId: org.id, status: "OPEN" },
-    orderBy: { openedAt: "desc" },
-    select: { id: true },
-  })
-  if (!open) return { ok: false, error: "NO_OPEN_SESSION" }
+  // M4 (audit 2026-11): zaprtje v ENI interaktivni transakciji z
+  // `SELECT … FOR UPDATE` na seji. Prej je bilo branje + pisanje ločeno:
+  // prodaja med branjem in zaprtjem je bila izgubljena iz snapshota in
+  // sočasni zapirji sta si lahko prepisala podatke. Pogojni updateMany z
+  // `status='OPEN'` zavrne sočasno zaprtje (fail-closed).
+  const result = await prisma.$transaction(async (tx) => {
+    const open = await tx.cashSession.findFirst({
+      where: { organizationId: org.id, status: "OPEN" },
+      orderBy: { openedAt: "desc" },
+      select: { id: true },
+    })
+    if (!open) return { ok: false as const, error: "NO_OPEN_SESSION" }
 
-  const { orders, expenses } = await readLiveSession(open.id)
-  const totals = computeSessionTotals({
-    openingFloat: Number(
-      (
-        await prisma.cashSession.findUnique({
-          where: { id: open.id },
-          select: { openingFloat: true },
-        })
-      )?.openingFloat ?? 0
-    ),
-    sales: orders.map((o) => ({
-      paymentMethod: o.paymentMethod ?? "cash",
-      amount: Number(o.total),
-    })),
-    expenses: expenses.map((e) => ({ amount: Number(e.amount) })),
+    const locked = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "CashSession"
+      WHERE id = ${open.id} AND status = 'OPEN'
+      FOR UPDATE`
+    if (locked.length === 0) {
+      return { ok: false as const, error: "NO_OPEN_SESSION" }
+    }
+
+    const [orders, expenses] = await Promise.all([
+      tx.order.findMany({
+        where: { cashSessionId: open.id },
+        select: { total: true, paymentMethod: true },
+      }),
+      tx.cashExpense.findMany({
+        where: { sessionId: open.id },
+        select: { amount: true },
+      }),
+    ])
+    const openingRow = await tx.cashSession.findUnique({
+      where: { id: open.id },
+      select: { openingFloat: true },
+    })
+
+    const totals = computeSessionTotals({
+      openingFloat: Number(openingRow?.openingFloat ?? 0),
+      sales: orders.map((o) => ({
+        paymentMethod: o.paymentMethod ?? "cash",
+        amount: Number(o.total),
+      })),
+      expenses: expenses.map((e) => ({ amount: Number(e.amount) })),
+    })
+
+    const variance = computeVariance(totals.expectedCash, countedCash)
+
+    const closed = await tx.cashSession.updateMany({
+      where: { id: open.id, status: "OPEN" },
+      data: {
+        status: "CLOSED",
+        closedAt: new Date(),
+        closedById: session.user.id,
+        salesCount: totals.saleCount,
+        cashSalesTotal: totals.cashTotal,
+        cardSalesTotal: totals.cardTotal,
+        transferSalesTotal: totals.transferTotal,
+        expensesTotal: totals.expensesTotal,
+        expectedAmount: totals.expectedCash,
+        actualAmount: countedCash,
+        varianceAmount: variance,
+        notes: parsed.data.notes ?? null,
+      },
+    })
+    if (closed.count === 0) {
+      return { ok: false as const, error: "NO_OPEN_SESSION" }
+    }
+
+    return { ok: true as const, sessionId: open.id }
   })
 
-  const variance = computeVariance(totals.expectedCash, countedCash)
-
-  await prisma.cashSession.update({
-    where: { id: open.id },
-    data: {
-      status: "CLOSED",
-      closedAt: new Date(),
-      closedById: session.user.id,
-      salesCount: totals.saleCount,
-      cashSalesTotal: totals.cashTotal,
-      cardSalesTotal: totals.cardTotal,
-      transferSalesTotal: totals.transferTotal,
-      expensesTotal: totals.expensesTotal,
-      expectedAmount: totals.expectedCash,
-      actualAmount: countedCash,
-      varianceAmount: variance,
-      notes: parsed.data.notes ?? null,
-    },
-  })
+  if (!result.ok) return { ok: false, error: result.error }
 
   revalidatePath("/dashboard/cash-register")
-  return { ok: true, sessionId: open.id }
+  return { ok: true, sessionId: result.sessionId }
 }

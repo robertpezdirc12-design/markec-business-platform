@@ -30,19 +30,32 @@
 
 ## 📁 Struktura kode
 
-### Skupno jedro (`src/lib/core/`) — NE SPREMINJAJ BREZ PREMISLEKA!
+### Skupno jedro (`src/lib/`) — NE SPREMINJAJ BREZ PREMISLEKA!
+
+Skupne funkcije so v `src/lib/` po domenah (npr. `booking/`, `orders/`,
+`payments/`, `documents/`, `inventory/`, `email/`, `auth/`, `tenant/`,
+`permissions/`, `modules/`, `profiles/`). **Note (P2, audit 2026-11):**
+zgodovinska različica tega dokumenta je omenjala `src/lib/core/` — ta
+mapa ne obstaja; dejansko jedro so zgoraj navedeni moduli.
 
 ```
-src/lib/core/
-├── calendar/          → univerzalni koledar (termini, dogodki)
-├── customers/         → univerzalni profili strank
-├── catalog/           → univerzalni katalog (storitve, izdelki)
-├── marketing/         → univerzalni marketing (kampanje, segmenti)
-├── appointments/      → univerzalne rezervacije
-├── orders/            → univerzalna naročila
-├── payments/          → univerzalna plačila
-├── notifications/     → univerzalna obvestila
-└── reports/           → univerzalna poročila
+src/lib/
+├── booking/            → univerzalne rezervacije + ključavnice
+├── customers/          → univerzalni profili strank
+├── services/           → univerzalni katalog storitev
+├── products/           → izdelki, variante, paketi
+├── orders/             → univerzalna naročila
+├── payments/           → plačila (Stripe, pologi)
+├── documents/          → ponudbe, računi, e-računi (UBL/e-SLOG)
+├── inventory/          → zaloge, StockMovement ledger
+├── work-orders/        → delovni nalogi + procesi
+├── modules/            → politika »VSI MODULI ZA VSE« + katalog modulov
+├── profiles/           → register profilov, razširitve, overrides
+├── tenant/             → najemniška izolacija (+ proxy-proof)
+├── permissions/        → pooblastila in vloge po meri
+├── auth/               → NextAuth v5 + guards
+├── email/              → React Email + Resend
+└── jobs/               → cron opravila (opomniki, grace, digest)
 ```
 
 **Pravila za jedro:**
@@ -55,27 +68,14 @@ src/lib/core/
 
 ```
 src/lib/profiles/
-├── registry.ts        → definicije dejavnosti
-├── extensions.ts      → moduli po dejavnostih
+├── registry.ts        → definicije dejavnosti (36 profilov: 14 imenovanih + 22 SKD sekcij)
+├── extensions.ts      → razširitve po dejavnostih (vozila, mere, serije …)
+├── overrides.ts       → lastniški nadomestki profilnih nastavitev
 ├── secondary.ts       → sekundarne vertikale
+├── materialize.ts     → materializacija predlog ob nastanku org / preklopu
 ├── validate.ts        → validacija profilov
-│
-├── salon/             → salon specifično
-│   ├── services.ts    → storitve (striženje, barvanje...)
-│   ├── staff.ts       → osebje (frizer, kozmetičarka...)
-│   └── terminology.ts → terminologija
-│
-├── auto-service/      → avtoservis specifično
-│   ├── vehicles.ts    → vozila
-│   ├── work-orders.ts → delovni nalogi
-│   └── terminology.ts → terminologija
-│
-├── seamstress/        → šiviljstvo specifično
-│   ├── measurements.ts → mere
-│   ├── fabrics.ts     → tkanine
-│   └── terminology.ts → terminologija
-│
-└── ...
+├── types.ts           → ActivityProfile/CapabilityState tipi
+└── modules.ts          → moduli za vodeni vstop (čarovnik)
 ```
 
 **Pravila za profile:**

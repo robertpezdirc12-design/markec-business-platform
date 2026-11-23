@@ -61,6 +61,10 @@ prisma/_extract_models.*
 prisma/_read_migrations.*
 prisma/_PODATKOVNI_MODEL_ANALIZA.md
 
+# PR #142 delovni artefakti (niso del izdelka)
+PR142-*
+docs/PR142-*
+
 # Agentski skills (lokalna konfiguracija, ni del repozitorija)
 .agents/
 .open-next/

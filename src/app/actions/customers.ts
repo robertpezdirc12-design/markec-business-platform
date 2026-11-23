@@ -35,6 +35,8 @@ export async function getCustomers(): Promise<{ id: string; name: string; email:
     where: { organizationId: org.id, isArchived: false },
     select: { id: true, name: true, email: true, phone: true },
     orderBy: { createdAt: "desc" },
+    // P2: omejena serija za izbirnike.
+    take: 500,
   })
 }
 
@@ -102,6 +104,8 @@ export async function listCustomers(opts: CustomerListOptions = {}): Promise<Cus
       },
     },
     orderBy: { name: "asc" },
+    // P2: omejena serija (paginacija v UI še ni implementirana).
+    take: 500,
   })
 
   // Skupna poraba (samo COMPLETED termini + PAID/COMPLETED naročila).

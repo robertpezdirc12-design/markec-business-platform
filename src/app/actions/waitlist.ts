@@ -116,6 +116,8 @@ export async function getWaitlistEntries(status?: "WAITING" | "NOTIFIED" | "BOOK
     where: { organizationId: org.id, ...(status ? { status } : {}) },
     include: { service: { select: { id: true, name: true, slug: true } } },
     orderBy: { createdAt: "desc" },
+    // P2: omejena serija (prepreči unbounded branje pri velikih vrstah).
+    take: 500,
   })
 }
 

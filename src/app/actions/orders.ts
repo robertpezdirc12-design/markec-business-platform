@@ -35,6 +35,8 @@ export async function getAdminOrders(search?: string) {
       },
     },
     orderBy: { createdAt: "desc" },
+    // P2: omejena serija (paginacija v UI še ni implementirana).
+    take: 500,
   })
 
   return orders.map((order) => ({
@@ -129,6 +131,18 @@ export async function getOrderById(id: string) {
   }
 }
 
+// S8 (audit 2026-11): dovoljeni prehodi statusov. PAID→CANCELLED ni
+// dovoljen (preskočil bi vračilo zaloge) — za vračilo uporabi
+// refundOrder (PAID/COMPLETED → REFUNDED). CANCELLED/REFUNDED sta
+// terminalna.
+const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
+  PENDING: ["PAID", "COMPLETED", "CANCELLED"],
+  PAID: ["COMPLETED", "REFUNDED"],
+  COMPLETED: ["REFUNDED"],
+  CANCELLED: [],
+  REFUNDED: [],
+}
+
 // Update order status
 export async function updateOrderStatus(id: string, status: OrderStatus) {
   const { org } = await requirePermissionOrg("orders.manage")
@@ -137,10 +151,21 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
     // Verify ownership before mutating
     const existing = await prisma.order.findFirst({
       where: { id, organizationId: org.id },
-      select: { id: true },
+      select: { id: true, status: true },
     })
     if (!existing) {
       return { success: false, error: "Order not found" }
+    }
+
+    // S8: prehod mora biti dovoljen; no-op (isti status) zavrnemo.
+    if (existing.status === status) {
+      return { success: false, error: "Naročilo je že v tem stanju." }
+    }
+    if (!ORDER_STATUS_TRANSITIONS[existing.status].includes(status)) {
+      return {
+        success: false,
+        error: `Prehod statusa ${existing.status} → ${status} ni dovoljen. Za vračilo uporabite vračilo (refund).`,
+      }
     }
 
     const order = await prisma.order.update({
@@ -341,6 +366,22 @@ export async function refundOrder(orderId: string): Promise<{
       return { success: false, error: "Naročilo je že refundirano." }
     if (order.status === "CANCELLED")
       return { success: false, error: "Preklicanega naročila ni mogoče refundirati." }
+    // S8: PENDING naročilo še nikoli ni odštelo zaloge (offline naročilo),
+    // zato bi vračilo umetno napihnilo zalogo.
+    if (order.status === "PENDING")
+      return { success: false, error: "Neplačanega naročila ni mogoče refundirati." }
+    // S8: zaščita pred dvojnim vračilom zaloge — obstoj RETURN gibov za
+    // naročilo pomeni, da je bila zaloga že vrnjena (nekonzistentno stanje
+    // ali ponovljen poskus).
+    const existingReturns = await prisma.stockMovement.count({
+      where: { orderId, direction: "IN", source: "RETURN" },
+    })
+    if (existingReturns > 0) {
+      return {
+        success: false,
+        error: "Zaloga za to naročilo je že bila vrnjena.",
+      }
+    }
 
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       for (const item of order.items) {

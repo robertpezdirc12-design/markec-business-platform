@@ -41,6 +41,11 @@ jobs:
       - name: ESLint
         run: pnpm lint
 
+      - name: Dependency cruiser (arhitektura)
+        # P2 (audit 2026-11): arhitekturni regresiji (cycle, prepovedani
+        # uvoz) se zdaj uveljavljata v CI — lokalno preverjeno brez kršitev.
+        run: pnpm depcruise
+
       - name: Dependency audit (poročilo)
         # FAZA 2.5: samodejno poročilo o ranljivih odvisnostih ob vsaki
         # spremembi. Trenutno ni blokade (39 high — vse transitivne, npr.

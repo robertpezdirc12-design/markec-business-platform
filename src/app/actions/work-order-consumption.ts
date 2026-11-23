@@ -20,6 +20,7 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import type { Prisma } from "@prisma/client"
 import { nextDocumentNumber, fiscalYearOf, type DocType } from "@/lib/documents/numbering"
+import { getOrgCurrency } from "@/lib/org-currency"
 
 // ============================================================
 // Skupne sheme in vmesniki
@@ -353,7 +354,8 @@ export async function consumeOnWorkOrder(
           orderId: created.id,
           issueDate: new Date(),
           fiscalYear,
-          currency: "EUR",
+          // M5: valuta najemnika (privzeto EUR).
+          currency: await getOrgCurrency(orgId),
           vatEnabled: false,
           subtotal,
           discountAmount: 0,

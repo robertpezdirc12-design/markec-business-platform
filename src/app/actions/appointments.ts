@@ -835,6 +835,26 @@ export async function createAppointment(
     // Get salon configuration for deposit amount
     const config = await getSalonConfig()
 
+    // M6 (audit 2026-11): uveljavi strežniško razpon predhodnega
+    // naročanja (v dnevih) — prej je veljavnost veljala samo v klientu
+    // (date-time-step.tsx), direktni klici akcije pa so lahko predložili
+    // poljuben datum (tudi npr. leto 9999).
+    const advanceDays = (startInstant.getTime() - Date.now()) / 86_400_000
+    const minAdvance = Number(config.minBookingAdvance ?? 0)
+    const maxAdvance = Number(config.maxBookingAdvance ?? 0)
+    if (minAdvance > 0 && advanceDays < minAdvance) {
+      return {
+        success: false,
+        error: `Termin je mogoče rezervirati najmanj ${minAdvance} dni vnaprej.`,
+      }
+    }
+    if (maxAdvance > 0 && advanceDays > maxAdvance) {
+      return {
+        success: false,
+        error: `Termin je mogoče rezervirati največ ${maxAdvance} dni vnaprej.`,
+      }
+    }
+
     // #79: polog je PRAVILO (per storitev), ne ena globalna številka.
     // 15 € manikura z org pologom 50 € zahteva 15 €, ne 50 €. Employee
     // termini ostanejo brez pologa. (let — #80: paket lahko zniža na 0.)
@@ -1519,11 +1539,50 @@ export async function cancelAppointment(appointmentId: string) {
       }
     }
 
-    // Update appointment status to CANCELLED
-    await prisma.appointment.update({
-      where: { id: appointmentId },
-      data: { status: "CANCELLED" },
+    // M7 (audit 2026-11): odpoved atomatsko obnovi paketno sejo, če je
+    // termin pokrivala (prepaidRedemption → sessionsLeft +1; EXHAUSTED
+    // → ACTIVE, ko se vrne na 1). Hkrati preprečimo dvojno odpoved
+    // (terminalna stanja se ne odpovedujejo znova).
+    const cancelled = await prisma.$transaction(async (tx) => {
+      const appt = await tx.appointment.findUnique({
+        where: { id: appointmentId },
+        select: { id: true, status: true },
+      })
+      if (!appt || appt.status === "CANCELLED" || appt.status === "NO_SHOW") {
+        return false
+      }
+
+      const redemption = await tx.prepaidRedemption.findFirst({
+        where: { appointmentId },
+        select: { prepaidPurchaseId: true },
+      })
+      if (redemption) {
+        await tx.prepaidPurchase.updateMany({
+          where: { id: redemption.prepaidPurchaseId },
+          data: { sessionsLeft: { increment: 1 } },
+        })
+        // Če je bil paket prav zaradi tega termina izčrpan, ga vrnemo
+        // med aktivne (sessionsLeft je spet >= 1).
+        await tx.prepaidPurchase.updateMany({
+          where: {
+            id: redemption.prepaidPurchaseId,
+            status: "EXHAUSTED",
+            sessionsLeft: 1,
+          },
+          data: { status: "ACTIVE" },
+        })
+      }
+
+      await tx.appointment.update({
+        where: { id: appointmentId },
+        data: { status: "CANCELLED" },
+      })
+      return true
     })
+
+    if (!cancelled) {
+      return { success: false, error: "Termin ni več v stanju, ki bi ga bilo mogoče odpovedati." }
+    }
 
     // #99: push lastniku (odpoved stranke) — neblokirajoče, po commitu.
     if (appointment.organizationId) {
@@ -1603,49 +1662,14 @@ export async function getAdminAppointments(filters?: AdminAppointmentsFilter) {
     data: { status: "CANCELLED" },
   })
 
-  // 2. Handle CONFIRMED (paid) appointments - mark as NO_SHOW
-  const confirmedToNoShow = await prisma.appointment.findMany({
-    where: {
-      organizationId: org.id,
-      status: "CONFIRMED",
-      endTime: { lt: now },
-    },
-    include: {
-      customer: { select: { name: true, email: true } },
-      staff: { select: { name: true } },
-      services: { include: { service: { select: { name: true } } } },
-    },
-  })
-
-  for (const apt of confirmedToNoShow) {
-    const customerEmail = apt.customer?.email || apt.guestEmail
-    const customerName = apt.customer?.name || apt.guestName || "Customer"
-
-    if (customerEmail) {
-      // Send email in background (non-blocking)
-      after(async () => {
-        await sendNoShowNotificationEmail({
-          email: customerEmail,
-          customerName,
-          serviceName: apt.services.map((s) => s.service.name).join(", "),
-          staffName: apt.staff?.name || "Our Staff",
-          appointmentDate: apt.startTime,
-          appointmentTime: formatSalonTime(apt.startTime, salonTz),
-          depositAmount: apt.depositAmount.toNumber(),
-          appointmentId: apt.id,
-        })
-      })
-    }
-  }
-
-  await prisma.appointment.updateMany({
-    where: {
-      organizationId: org.id,
-      status: "CONFIRMED",
-      endTime: { lt: now },
-    },
-    data: { status: "NO_SHOW" },
-  })
+  // P0 (S4, audit 2026-11): samodejna pretvorba CONFIRMED → NO_SHOW je
+  // ODSTRANJENA. Razlog: GET (branje) ne sme imeti stranskih učinkov, poleg
+  // tega pa avtomatski NO_SHOW ob preteku endTime ni dokaz, da stranka ni
+  // prišla — salon lahko preprosto pozabi označiti storitev kot COMPLETED,
+  // kar bi sprožilo off-session bremenitev pologa (no-show charge). NO_SHOW
+  // sedaj nastane izključno ročno prek updateAppointmentStatus. Pretekli
+  // PENDING se še vedno čistijo v CANCELLED (zgoraj) in v cron jobu
+  // (src/lib/jobs/expire-stale-pending.ts).
 
   // Build where clause based on filters
   const where: Prisma.AppointmentWhereInput = {
@@ -1693,6 +1717,8 @@ export async function getAdminAppointments(filters?: AdminAppointmentsFilter) {
       workOrder: { select: { id: true, number: true, title: true } },
     },
     orderBy: { startTime: "desc" },
+    // P2: omejena serija (paginacija v UI še ni implementirana).
+    take: 500,
   })
 
   // Convert Prisma Decimals to numbers for price fields
@@ -1785,6 +1811,21 @@ export async function markNoShowAppointments() {
 }
 
 // Update appointment status
+// M9 (audit 2026-11): dovoljeni prehodi statusov termina. COMPLETED,
+// CANCELLED in NO_SHOW so terminalni — preteklost se ne da oživiti.
+const APPOINTMENT_STATUS_TRANSITIONS: Record<
+  AppointmentStatus,
+  readonly AppointmentStatus[]
+> = {
+  PENDING: ["CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"],
+  // CONFIRMED → PENDING je dovoljen (osebje vrne termin v čakanje na
+  // potrditev — npr. po popravku podatkov).
+  CONFIRMED: ["PENDING", "CANCELLED", "COMPLETED", "NO_SHOW"],
+  COMPLETED: [],
+  CANCELLED: [],
+  NO_SHOW: [],
+}
+
 export async function updateAppointmentStatus(
   id: string,
   status: AppointmentStatus
@@ -1854,6 +1895,18 @@ export async function updateAppointmentStatus(
     if (!ownStaff || appointmentDetails.staffId !== ownStaff.id) {
       throw new Error("Unauthorized")
     }
+  }
+
+  // M9: prehod mora biti dovoljen (brez oživljanja terminalnih stanj).
+  if (appointmentDetails.status === status) {
+    throw new Error("Termin je že v tem stanju.")
+  }
+  if (
+    !APPOINTMENT_STATUS_TRANSITIONS[appointmentDetails.status]?.includes(status)
+  ) {
+    throw new Error(
+      `Prehod statusa ${appointmentDetails.status} → ${status} ni dovoljen.`
+    )
   }
 
   // Update appointment status
@@ -2109,10 +2162,21 @@ export async function rescheduleAppointment(
     }
   }
 
-  const totalDuration = appointment.services.reduce(
+  // P1 (S6): trajanje prestavljenega termina mora vključevati tudi
+  // dodatke iz snapshota — sicer se novi termin ne pokrije z realnim
+  // trajanjem in naslednja stranka lahko rezervira v okno storitve+dodatkov.
+  const servicesDuration = appointment.services.reduce(
     (sum, s) => sum + s.service.duration,
     0
   )
+  const addonRows = Array.isArray(appointment.addons)
+    ? (appointment.addons as unknown as { durationMin?: number }[])
+    : []
+  const addonDuration = addonRows.reduce(
+    (sum, a) => sum + (typeof a?.durationMin === "number" ? a.durationMin : 0),
+    0
+  )
+  const totalDuration = servicesDuration + addonDuration
 
   const newEndTime = addMinutes(targetInstant, totalDuration)
 
@@ -2140,7 +2204,10 @@ export async function rescheduleAppointment(
   // ključavnice bi dopuščal vzporedna premika v isti termin.
   try {
     await prisma.$transaction(async (tx) => {
-      await acquireBookingLocks(tx, bookingLockKeys(org.id, appointment.staffId))
+      await acquireBookingLocks(
+        tx,
+        bookingLockKeys(org.id, appointment.staffId, appointment.resourceRecordId)
+      )
 
       const conflicts = await tx.appointment.count({
         where: {
@@ -2156,6 +2223,26 @@ export async function rescheduleAppointment(
         throw new BookingConflictError(
           "Izbrani termin ni več prost. Izberite drugi termin."
         )
+      }
+
+      // Vir/prostor se preveri POD ključavnico (kot pri createAppointment):
+      // navzkrižna rezervacija istega vira prek drugega osebja.
+      if (appointment.resourceRecordId) {
+        const resourceBusy = await tx.appointment.count({
+          where: {
+            resourceRecordId: appointment.resourceRecordId,
+            organizationId: appointment.organizationId,
+            id: { not: appointmentId },
+            status: { in: ["PENDING", "CONFIRMED"] },
+            startTime: { lt: newEndTime },
+            endTime: { gt: targetInstant },
+          },
+        })
+        if (resourceBusy > 0) {
+          throw new BookingConflictError(
+            "Izbrani prostor/vir je v tem času že zaseden. Izberite drugi termin ali prostor."
+          )
+        }
       }
 
       await tx.appointment.update({

@@ -835,6 +835,8 @@ export const getStaffAppointments = async (
         },
       },
       orderBy: { startTime: "desc" },
+      // P2: omejena serija (paginacija v UI še ni implementirana).
+      take: 500,
     })
 
     return {

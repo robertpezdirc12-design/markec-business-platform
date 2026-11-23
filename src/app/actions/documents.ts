@@ -397,6 +397,8 @@ export async function getDocumentsOverview(): Promise<DocumentsOverview> {
         appointment: { select: { id: true } },
       },
       orderBy: [{ type: "asc" }, { fiscalYear: "desc" }, { number: "desc" }],
+      // P2: omejena serija (paginacija v UI še ni implementirana).
+      take: 500,
     }),
     prisma.workOrder.findMany({
       where: { organizationId: org.id, status: "OPEN" },
@@ -936,6 +938,26 @@ export async function changeDocumentStatus(id: string, status: string): Promise<
   // IMMUTABILNOST: nikoli ne vračaj iz terminalnega statusa.
   if (doc.status === "PAID" || doc.status === "ACCEPTED" || doc.status === "REJECTED") {
     return { ok: false, error: "INVALID_TRANSITION" }
+  }
+
+  // M11 (audit 2026-11): izdanega dokumenta s poravnanimi plačili ali
+  // aktivnimi avansi ni mogoče preklicati — plačila bi ostala v ledgerju
+  // brez nasprotne knjižbe. Preklic samo še brez plačil.
+  if (status === "CANCELLED" && doc.status === "ISSUED") {
+    const [clearedPayments, activeAdvances] = await Promise.all([
+      prisma.documentPayment.count({
+        where: { documentId: doc.id, kind: "PAYMENT", status: "CLEARED" },
+      }),
+      prisma.documentAdvanceAllocation.count({
+        where: {
+          OR: [{ advanceId: doc.id }, { appliedToInvoice: doc.id }],
+          status: "ACTIVE",
+        },
+      }),
+    ])
+    if (clearedPayments > 0 || activeAdvances > 0) {
+      return { ok: false, error: "HAS_PAYMENTS" }
+    }
   }
 
   const issueValidation = validateForIssue(doc)
