@@ -12,12 +12,12 @@ Ta dokument izhaja iz **istega verodostojnega vira** kot `docs/SKD-2025-COMPLETE
 (kaj je dejansko delujoče in preverjeno). Nobena vrstica ni označena kot »poslovno preverjena«
 brez dokaza (strežniške akcije + testi).
 
-## 1. Izmerjena pokritost (poverno z merjenjem, ne z obljubo)
+## 1. Izmerjena pokritost (dokažemo z merjenjem, ne z obljubo)
 
 | Nivo | Oznaka | Št. | Pomen |
 |---|---|---:|---|
 | A specializirana | A | **0** | izrecna preslikava podrazreda/oddelka + DOKAZAN PROFIL-SPECIFIČEN runtime (akcije + test, ki poganja prav ta profil). Trenutno NITI eden (dokazi A so bili iz drugih profilov — revidirano v PR #142) |
-| B arhetip | B | **0** | podrazredno 5-mestna preslikava na profil, ki res služi prav ta podrazred (nie avtomatska promocija sekcije za obstoj obrazca) |
+| B arhetip | B | **0** | podrazredno 5-mestna preslikava na profil, ki res služi prav ta podrazred (ni avtomatska promocija sekcije za obstoj obrazca) |
 | C osnovna | C | **0** | dokumentirano »osnovna konfiguracija zadostuje« — nič se ne dodeli samodejno |
 | D nepopolna | D | **678** | preslikava obstaja, a ocena pokritosti zmožnosti (`missingRequiredCapabilities`) najde vrzel — razčlenitev po dejanskih vrednostih polja `reason`: 380 vrstic ima `no-template` (profil deklarira `forms: required` z 0 obrazčnim predlogom) in je hkrati tudi `not-delivered`; 298 vrstic ima SAMO `not-delivered` (`context-limited` `required`, npr. `analytics`, ali `delivery`); 2 izjemi (S92) sta všteti v 298 in se NE štejeta posebej |
 | E nepokrita | E | **0** | resolver nikoli ne pade na generični fallback za katalogirane kode |
@@ -208,8 +208,8 @@ konfiguracija tega profila pokriva prav ta podrazred (fit).*
 
 > **Razmerje do EPIC-2 (`docs/EPIC-2/PLAN.md`):** EPIC-2 obravnava univerzalni poslovni
 > konfiguracijski motor (vrzeli G1–G8). Ta analiza je komplementarna: kvantificira
-> **SKD-pokritost na nivoju vseh 678 podrazredov** in razporedi, kje v EPIC-2 sprinterje
-> manjkajoči procesi spadajo.
+> **SKD-pokritost na nivoju vseh 678 podrazredov** in razporedi, v katere EPIC-2 izvedbene sprinte
+> (work packages) manjkajoči procesi spadajo.
 
 1. **Register** (`activity-coverage.ts`) + testi. **To je osnova vseh faz.**
 2. **Validacija registrov** — dodati pravilo ANTI-deklaracije: profil, ki deklarira

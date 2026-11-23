@@ -160,7 +160,7 @@ export const CAPABILITY_EVIDENCE: Record<
     module: "engine prek forms.ts / work-orders.ts",
     evidence: "tests/integration/f2-3/f501-materialization.itest.ts",
     scope: "context-limited",
-    caveat: "workflow dobava velja LE ob materializiranih workflow-predlogah profila; zmožnost `required` brez predloge je iskrena vrzel (no-template).",
+    caveat: "workflow dobava JE ODVISNA od predlog profila: materializirajo se le dejansko deklarirane workflow-predloge (`workflows: [...]`), onboarding pa sam predlog ne ustvari. `required` workflows z 0 predlogo je iskrena vrzel in `missingRequiredCapabilities()` jo označi z `not-delivered` (ne `no-template` — ta oznaka velja za `required` forms z 0 obrazčnimi predlogami); `createWorkOrder` na profilu brez predloge vrne NO_WORKFLOW.",
   },
   // Dokumentacija + e-računi: jedrni modul, dogazan end-to-end (documents.ts + einvoices.ts). Quotes NI del univerzalne trditve.
   documents: {
@@ -190,8 +190,9 @@ function isPlatformDeliveredCapability(key: string): boolean {
   // v pravem testu na pravi DB) sme zadostiti `required`. `context-limited`
   // (le sub-path/čista funkcija ali source-read test) NI univerzalna dobava in
   // zato `required` zveze ne sme postati `not-delivered` gap. forms/workflows
-  // obravnava pred tem template-materializacija (no-template) — ta funkcija se
-  // zanje NE pokliče.
+  // workOrders obravnava pred tem template-materializacija (forms brez predloge →
+  // `no-template`; workflows/workOrders brez workflow predloge → `not-delivered`)
+  // — ta funkcija se zanje NE pokliče.
   return ev.scope === "universal"
 }
 
@@ -407,6 +408,13 @@ export function requiredCapabilitiesMissing(profile: ActivityProfile): boolean {
  *    npr. `analytics`/`appointments`/`services`/`cashRegister`), ali
  *  - `forms`/`workflows`/`workOrders` `required`, ki nimata prijavljenih predlog
  *    (deklaracija brez materializacije / brez workflow predloge → NO_WORKFLOW).
+ *    Razlog po nivoju vrzeli je različen in mora ostati skladen z izvajanjem:
+ *      - `forms` z 0 obrazčnimi predlogami → `no-template`;
+ *      - `workflows` z 0 workflow predlogami → `not-delivered`;
+ *      - `workOrders` z 0 workflow predlogami → `not-delivered`
+ *        (createWorkOrder na profilu brez predloge vrne NO_WORKFLOW);
+ *      - profil, ki dejansko deklarira >= 1 predlogo, gre po predložno-odvisni poti
+ *        in zmožnost je POKRITA (template-materializacija), ne `no-template`.
  * Pomembno: `context-limited` `required` je skupen Evidence-gap, ki se NIKAKOR
  * ne sme brati kot da je vsak podrazred POSEBEJ dokazano nepopoln — ponavlja se
  * kot platformni dokazni vzrok čez vse preslikave profila.
@@ -672,7 +680,9 @@ export function classifyRow(profile: ActivityProfile, mappingSource: SkdMappingS
   //       services/cashRegister) ali `delivery`: NI univerzalnega modula → shared
   //       platform evidence-gap, ponovljen čez vse preslikave tega profila;
   //    2. `required` forms/workflows/workOrders brez predlog → deklaracija
-  //       zahteva runtime (predlogo/materializacijo), ki ne obstaja (no-template);
+  //       zahteva runtime (predlogo/materializacijo), ki ne obstaja. Konkreten
+  //       razlog oznake je po nivoju: forms brez predloge = `no-template`;
+  //       workflows/workOrders brez workflow predloge = `not-delivered`;
   //    3. izrecna izjema (npr. S92).
   if (requiredMissing || formsOrWfMissing || isException) return { kind: "D" }
 

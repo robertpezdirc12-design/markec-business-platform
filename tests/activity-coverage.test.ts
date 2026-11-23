@@ -1132,4 +1132,21 @@ describe("§9 — uskladitev dokumentov s registerjem (Cubic #142)", () => {
     expect(readme.toLowerCase().includes("oblačila")).toBe(true)
     expect(readme.includes("mehanik")).toBe(true)
   })
+
+  it("README ne trdi več, da `workflows: required` samodejno materializira predlogo", () => {
+    // Agent A + §5b: onboarding pokliče materializeProfileAssets, ki materializira
+    // SAMO predloge, ki jih profil dejansko deklarira (workflows: [...]). Profil z
+    // `workflows: required` in `workflows: []` (skd-a-agriculture, skd-c-manufacturing)
+    // ne dobi workflowDefinition → createWorkOrder vrne NO_WORKFLOW. README to mora
+    // izražati, ne pa trditi samodejne materializacije za vsak required-profil.
+    const readme = readFileSync(join(process.cwd(), "README.md"), "utf8")
+    // Pravilno: materializira se tukaj tiste predloge, ki jih profil deklarira.
+    expect(readme.includes("točno tiste predloge")).toBe(true)
+    expect(readme.includes("materializeProfileAssets")).toBe(true)
+    expect(readme.includes("nobene predloge")).toBe(true)
+    expect(readme.includes("NO_WORKFLOW")).toBe(true)
+    // Ne sme se vrniti k pretirani trditvi, da so vsi required-profili predlogo
+    // materializirali ob nastanku najemnika.
+    expect(readme.includes("so predlogo materializirali ob nastanku najemnika")).toBe(false)
+  })
 })
