@@ -282,9 +282,9 @@ const RUNTIME_BY_PROFILE: Record<string, RuntimeEvidence> = {
       "tests/integration/work-orders-materialization.itest.ts",
       "e2e/b-tire-service.spec.ts",
     ],
-    materializedForms: true,
+    materializedForms: false,
     materializedWorkflows: true,
-    note: "vulkanizersko-program: engine-path + PR #142 itest (work-orders-materialization) POGANJA dejansko materializacijo (seedOrganizationCatalog + materializeProfileAssets) in preveri, da tenant workflowDefinition s 7 stopnjami (checkin→closed, sourceProfile=tire-service) obstoji in da createWorkOrder USPE — materializacija profilnih predlog je za tire-service dokazana",
+    note: "vulkanizersko-program: engine-path + PR #142 itest (work-orders-materialization) POGANJA dejansko materializacijo (seedOrganizationCatalog + materializeProfileAssets) in dokaže, da tenant workflowDefinition s 7 stopnjami (checkin→closed, sourceProfile=tire-service) obstoji in da createWorkOrder USPE → materializedWorkflows=true. materializedForms=false: itest NE preveri obrazca — profil deklarira form-predlogo (vehicle-intake), ki pa prek forms.ts NE poteka; za true je potreben test, ki materializirani obrazec preverja prek forms.ts",
     profileSpecific: true,
   },
   beekeeping: {

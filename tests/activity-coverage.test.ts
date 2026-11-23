@@ -1109,4 +1109,27 @@ describe("§9 — uskladitev dokumentov s registerjem (Cubic #142)", () => {
     expect(readme.includes("~500 SKD")).toBe(false)
     expect(readme.includes("24 SKD-sekcij")).toBe(false)
   })
+
+  it("README razčlenitev (14 poimenovanih + 22 sekcij) se uskladi z registry", () => {
+    // Cubic P3: razčlenitev v README mora izhajati iz registry, ne iz ročnih
+    // številk. 14 poimenovanih (vklj. apparel + mehanik) + 22 SKD-sekcij = 36.
+    const readme = readFileSync(join(process.cwd(), "README.md"), "utf8")
+    const all = Object.keys(PROFILES)
+    const sectionIds = all.filter((id) => id.startsWith("skd-"))
+    const namedIds = all.filter((id) => !id.startsWith("skd-"))
+    expect(namedIds.length).toBe(14)
+    expect(sectionIds.length).toBe(22)
+    // README navaja točno tista števila
+    expect(readme.includes("14 poimenovanih")).toBe(true)
+    expect(readme.includes("22 profilov SKD-sekcij")).toBe(true)
+    // in ne stara napačna razčlenitev
+    expect(readme.includes("13 poimenovanih")).toBe(false)
+    expect(readme.includes("23 profilov SKD-sekcij")).toBe(false)
+    // seznam poimenovanih profilov ne sme izpuščati apparel (oblačila)
+    // in mehanik — oba sta v registry in se pojavita v README.
+    expect(namedIds).toContain("apparel")
+    expect(namedIds).toContain("mehanik")
+    expect(readme.toLowerCase().includes("oblačila")).toBe(true)
+    expect(readme.includes("mehanik")).toBe(true)
+  })
 })
