@@ -215,7 +215,8 @@ konfiguracija tega profila pokriva prav ta podrazred (fit).*
 2. **Validacija registrov** — dodati pravilo ANTI-deklaracije (usklajeno z
    `missingRequiredCapabilities()` v `activity-coverage.ts`): profil MORA imeti vsaj eno
    ustrezno predlogo za vsako deklarirano `required` zmožnost, ki jo predloge poganjajo
-   (ali biti not-assessed):
+   (`not-assessed` ne odvezuje od tega preverjanja — `missingRequiredCapabilities()`
+   za `required` zmožnost z 0 predlogami vedno javi vrzel):
    - `forms: required` → vsaj 1 form predloga (`no-template`, če je manjka);
    - `workflows: required` **ali** `workOrders: required` → vsaj 1 workflow predloga
      (`not-delivered` / `createWorkOrder`→`NO_WORKFLOW`, če je manjka).
