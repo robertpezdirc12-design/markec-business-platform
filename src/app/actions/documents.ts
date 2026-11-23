@@ -940,6 +940,26 @@ export async function changeDocumentStatus(id: string, status: string): Promise<
     return { ok: false, error: "INVALID_TRANSITION" }
   }
 
+  // M11 (audit 2026-11): izdanega dokumenta s poravnanimi plačili ali
+  // aktivnimi avansi ni mogoče preklicati — plačila bi ostala v ledgerju
+  // brez nasprotne knjižbe. Preklic samo še brez plačil.
+  if (status === "CANCELLED" && doc.status === "ISSUED") {
+    const [clearedPayments, activeAdvances] = await Promise.all([
+      prisma.documentPayment.count({
+        where: { documentId: doc.id, kind: "PAYMENT", status: "CLEARED" },
+      }),
+      prisma.documentAdvanceAllocation.count({
+        where: {
+          OR: [{ advanceId: doc.id }, { appliedToInvoice: doc.id }],
+          status: "ACTIVE",
+        },
+      }),
+    ])
+    if (clearedPayments > 0 || activeAdvances > 0) {
+      return { ok: false, error: "HAS_PAYMENTS" }
+    }
+  }
+
   const issueValidation = validateForIssue(doc)
   if (status === "ISSUED" && issueValidation) return { ok: false, error: issueValidation }
 

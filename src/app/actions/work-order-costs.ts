@@ -50,13 +50,24 @@ export async function calculateMaterialCosts(workOrderId: string): Promise<Mater
   const { org } = await requirePermissionOrg("workorders.manage")
   const orgId = org.id
 
-  // Poišči dokumente, ki povezujejo ta delovni nalog z naročili
+  // Poišči dokumente, ki povezujejo ta delovni nalog z naročili.
+  // M12 (audit 2026-11): štejejo le IZDANI RAČUNI — DRAFT ponudbe ali
+  // ponovno izdani dokumenti za isto naročilo ne smejo podvojiti
+  // materialnih stroškov; orderIds dodatno dedupliciramo.
   const docs = await prisma.document.findMany({
-    where: { organizationId: orgId, workOrderId, orderId: { not: null } },
+    where: {
+      organizationId: orgId,
+      workOrderId,
+      orderId: { not: null },
+      type: "INVOICE",
+      status: "ISSUED",
+    },
     select: { orderId: true },
   })
 
-  const orderIds = docs.map((d) => d.orderId).filter((x): x is string => !!x)
+  const orderIds = [
+    ...new Set(docs.map((d) => d.orderId).filter((x): x is string => !!x)),
+  ]
   const items: MaterialCostItem[] = []
 
   if (orderIds.length > 0) {

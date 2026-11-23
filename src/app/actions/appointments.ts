@@ -1539,11 +1539,50 @@ export async function cancelAppointment(appointmentId: string) {
       }
     }
 
-    // Update appointment status to CANCELLED
-    await prisma.appointment.update({
-      where: { id: appointmentId },
-      data: { status: "CANCELLED" },
+    // M7 (audit 2026-11): odpoved atomatsko obnovi paketno sejo, če je
+    // termin pokrivala (prepaidRedemption → sessionsLeft +1; EXHAUSTED
+    // → ACTIVE, ko se vrne na 1). Hkrati preprečimo dvojno odpoved
+    // (terminalna stanja se ne odpovedujejo znova).
+    const cancelled = await prisma.$transaction(async (tx) => {
+      const appt = await tx.appointment.findUnique({
+        where: { id: appointmentId },
+        select: { id: true, status: true },
+      })
+      if (!appt || appt.status === "CANCELLED" || appt.status === "NO_SHOW") {
+        return false
+      }
+
+      const redemption = await tx.prepaidRedemption.findFirst({
+        where: { appointmentId },
+        select: { prepaidPurchaseId: true },
+      })
+      if (redemption) {
+        await tx.prepaidPurchase.updateMany({
+          where: { id: redemption.prepaidPurchaseId },
+          data: { sessionsLeft: { increment: 1 } },
+        })
+        // Če je bil paket prav zaradi tega termina izčrpan, ga vrnemo
+        // med aktivne (sessionsLeft je spet >= 1).
+        await tx.prepaidPurchase.updateMany({
+          where: {
+            id: redemption.prepaidPurchaseId,
+            status: "EXHAUSTED",
+            sessionsLeft: 1,
+          },
+          data: { status: "ACTIVE" },
+        })
+      }
+
+      await tx.appointment.update({
+        where: { id: appointmentId },
+        data: { status: "CANCELLED" },
+      })
+      return true
     })
+
+    if (!cancelled) {
+      return { success: false, error: "Termin ni več v stanju, ki bi ga bilo mogoče odpovedati." }
+    }
 
     // #99: push lastniku (odpoved stranke) — neblokirajoče, po commitu.
     if (appointment.organizationId) {
@@ -1772,6 +1811,19 @@ export async function markNoShowAppointments() {
 }
 
 // Update appointment status
+// M9 (audit 2026-11): dovoljeni prehodi statusov termina. COMPLETED,
+// CANCELLED in NO_SHOW so terminalni — preteklost se ne da oživiti.
+const APPOINTMENT_STATUS_TRANSITIONS: Record<
+  AppointmentStatus,
+  readonly AppointmentStatus[]
+> = {
+  PENDING: ["CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"],
+  CONFIRMED: ["CANCELLED", "COMPLETED", "NO_SHOW"],
+  COMPLETED: [],
+  CANCELLED: [],
+  NO_SHOW: [],
+}
+
 export async function updateAppointmentStatus(
   id: string,
   status: AppointmentStatus
@@ -1841,6 +1893,18 @@ export async function updateAppointmentStatus(
     if (!ownStaff || appointmentDetails.staffId !== ownStaff.id) {
       throw new Error("Unauthorized")
     }
+  }
+
+  // M9: prehod mora biti dovoljen (brez oživljanja terminalnih stanj).
+  if (appointmentDetails.status === status) {
+    throw new Error("Termin je že v tem stanju.")
+  }
+  if (
+    !APPOINTMENT_STATUS_TRANSITIONS[appointmentDetails.status]?.includes(status)
+  ) {
+    throw new Error(
+      `Prehod statusa ${appointmentDetails.status} → ${status} ni dovoljen.`
+    )
   }
 
   // Update appointment status
