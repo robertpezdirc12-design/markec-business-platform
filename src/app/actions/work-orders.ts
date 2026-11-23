@@ -1016,3 +1016,77 @@ export async function updateWorkflowStages(
     return { ok: false, error: "GENERIC" }
   }
 }
+
+// ============================================================
+// CREATE FIRST WORKFLOW — odprava mrtve točke za profile brez
+// predloge (beekeeping, skd-a-agriculture, skd-b-mining,
+// skd-c-manufacturing, skd-d-energy, skd-e-water-waste,
+// skd-h-transport): capabilities.workOrders = "required", a
+// workflows: [] -> modul je ACTIVE (jedro dejavnosti), a
+// createWorkOrder bi vedno vrnil NO_WORKFLOW. Lastnik doslej NI
+// imel UI vstopne točke, da bi sploh ustvaril prvi proces.
+//
+// Ta akcija NIZA SECTOR PREDLOGO (zato ni fabrikacija po §3) —
+// ustvari NEVTRALEN, lastnik-posedovan proces (sourceProfile:
+// null, ista konvencija kot lastniški poteki iz f58) z ENO
+// strukturno stopnjo (»Prejeto«), ki jo lastnik takoj uredi/
+// preimenuje z obstoječim ProcessEditorDialog / updateWorkflowStages.
+// createWorkOrder zahteva stages.length > 0, zato je ena
+// nevtralna stopnja nujen strukturni minimum — imenoval jo bo
+// lastnik po svoji pravi panogi, ne platforma.
+// Idempotentna: obstoječ aktiven proces -> EXISTS (brez duplikatov).
+// ============================================================
+export interface CreateFirstWorkflowResult {
+  ok: boolean
+  error?: "EXISTS" | "GENERIC"
+  definitionId?: string
+}
+
+export async function createFirstWorkflowDefinition(): Promise<CreateFirstWorkflowResult> {
+  try {
+    const { org } = await requirePermissionOrg("workorders.manage")
+
+    const existing = await prisma.workflowDefinition.findFirst({
+      where: { organizationId: org.id, isActive: true, entity: "order" },
+      select: { id: true },
+    })
+    if (existing) return { ok: false, error: "EXISTS" }
+
+    // Unique per-org key; timestamp suffix avoids the @@unique collision
+    // if the owner deletes and re-creates in the same run.
+    const key = `custom-workflow-${Date.now()}`
+
+    const created = await prisma.$transaction(async (tx) => {
+      const def = await tx.workflowDefinition.create({
+        data: {
+          organizationId: org.id,
+          key,
+          name: "Delovni proces",
+          entity: "order",
+          version: 1,
+          isActive: true,
+          sourceProfile: null, // owner-created, preserved through profile switches
+          stages: {
+            create: {
+              key: "received",
+              name: "Prejeto",
+              description: "Nevtralna začetna stopnja — poimenujte jo po svoji panogi.",
+              order: 0,
+              slaHours: null,
+              isFinal: false,
+            },
+          },
+        },
+      })
+
+      return def
+    })
+
+    revalidatePath("/dashboard/work-orders")
+    revalidatePath("/dashboard")
+    return { ok: true, definitionId: created.id }
+  } catch (error) {
+    console.error("createFirstWorkflowDefinition error:", error)
+    return { ok: false, error: "GENERIC" }
+  }
+}

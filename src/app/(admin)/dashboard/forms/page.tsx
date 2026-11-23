@@ -2,6 +2,7 @@ import { getServerI18n } from "@/lib/i18n/server"
 import { listFormDefinitions, listFormSubmissions } from "@/app/actions/forms"
 import { getSessionEffectiveProfile } from "@/lib/profiles/session"
 import { FormsClient } from "@/components/admin/forms/forms-client"
+import { FirstFormBanner } from "@/components/admin/forms/first-form-banner"
 import { IntakeForms } from "@/components/dashboard/intake-forms"
 import { requirePagePermission } from "@/lib/auth/guards"
 
@@ -31,6 +32,19 @@ export default async function FormsPage() {
         <p className="text-muted-foreground">{f.subtitle}</p>
       </div>
 
+      {definitions.length === 0 && (
+        <FirstFormBanner
+          title={f.firstForm.title}
+          description={f.firstForm.description}
+          cta={f.firstForm.cta}
+          creating={f.firstForm.creating}
+          created={f.firstForm.created}
+          alreadyExists={f.firstForm.alreadyExists}
+          genericError={f.firstForm.genericError}
+          namePlaceholder={f.firstForm.namePlaceholder}
+        />
+      )}
+
       <FormsClient
         definitions={definitions}
         submissions={submissions}
@@ -54,6 +68,7 @@ export default async function FormsPage() {
           createdWorkOrder: f.createdWorkOrder,
           statusLabels: f.statusLabels,
           deactivateConfirm: f.deactivateConfirm,
+          emptyFieldsCannotPublish: f.emptyFieldsCannotPublish,
         }}
       />
 

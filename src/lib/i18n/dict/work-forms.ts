@@ -179,6 +179,16 @@ export const workFormsSl = {
       saved: "Proces je posodobljen.",
       finalBadge: "zaključna",
     },
+    firstWorkflow: {
+      title: "Ta dejavnost še nima delovnega procesa.",
+      description:
+        "Ustvarite neutralen prvi proces z eno stopnjo in ga nato poimenujte ter dopolnite po svoji dejavnosti. Brez procesa delovna naročila ni mogoče ustvarjati.",
+      cta: "Ustvari prvi proces",
+      creating: "Ustvarjam …",
+      created: "Prvi proces je ustvarjen. Sedaj ga uredite in mu dodajte stopnje.",
+      alreadyExists: "Aktiven delovni proces že obstaja.",
+      genericError: "Procesa ni bilo mogoče ustvariti. Poskusite znova.",
+    },
   },
   forms: {
     title: "Obrazci",
@@ -237,6 +247,19 @@ export const workFormsSl = {
         checkbox: "Potrditveno polje",
       },
     },
+    firstForm: {
+      title: "Ta dejavnost še nima nobenega obrazca.",
+      description:
+        "Ustvarite prvi obrazec s svojimi polji. Do dokončanja je to osnutek, ki na javni strani še ni viden — javno ga omogočite, ko ga dopolnite.",
+      cta: "Ustvari prvi obrazec",
+      creating: "Ustvarjam …",
+      created: "Osnutek obrazca je ustvarjen. Sedaj mu dodajte svoja polja.",
+      alreadyExists: "Obrazec že obstaja.",
+      genericError: "Obrazca ni bilo mogoče ustvariti. Poskusite znova.",
+      namePlaceholder: "npr. Povpraševanje",
+    },
+    emptyFieldsCannotPublish:
+      "Praznega obrazca ni mogoče objaviti. Najprej dodajte vsaj eno polje.",
   },
 }
 
@@ -418,6 +441,16 @@ export const workFormsEn: WorkFormsDict = {
       saved: "Workflow updated.",
       finalBadge: "final",
     },
+    firstWorkflow: {
+      title: "This activity has no work process yet.",
+      description:
+        "Create a neutral first workflow with one stage, then name it and add your own stages. Without a workflow, work orders cannot be created.",
+      cta: "Create first workflow",
+      creating: "Creating …",
+      created: "First workflow created. Edit it now to add your stages.",
+      alreadyExists: "An active work workflow already exists.",
+      genericError: "Could not create the workflow. Try again.",
+    },
   },
   forms: {
     title: "Forms",
@@ -475,5 +508,18 @@ export const workFormsEn: WorkFormsDict = {
         checkbox: "Checkbox",
       },
     },
+    firstForm: {
+      title: "This activity has no forms yet.",
+      description:
+        "Create the first form with your own fields. Until completed it stays a draft — invisible on the public site. Make it publicly active once you have filled it in.",
+      cta: "Create first form",
+      creating: "Creating …",
+      created: "Form draft created. Now add your own fields.",
+      alreadyExists: "A form already exists.",
+      genericError: "Could not create the form. Try again.",
+      namePlaceholder: "e.g. Enquiry",
+    },
+    emptyFieldsCannotPublish:
+      "An empty form cannot be published. Add at least one field first.",
   },
 }

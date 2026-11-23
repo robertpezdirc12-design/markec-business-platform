@@ -68,6 +68,7 @@ interface FormsClientProps {
     createdWorkOrder: string
     statusLabels: Record<string, string>
     deactivateConfirm: string
+    emptyFieldsCannotPublish: string
   }
 }
 
@@ -101,6 +102,7 @@ export function FormsClient({
       const result = await toggleFormDefinition(def.id, next)
       setBusyId(null)
       if (result.ok) router.refresh()
+      else if (result.error === "EMPTY_FIELDS") toast.error(labels.emptyFieldsCannotPublish)
       else toast.error("Napaka pri shranjevanju.")
     })
   }

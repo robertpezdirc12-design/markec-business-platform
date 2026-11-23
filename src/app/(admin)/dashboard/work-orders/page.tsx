@@ -11,6 +11,7 @@ import { getWorkOrdersOverview } from "@/app/actions/work-orders"
 import { getServerI18n } from "@/lib/i18n/server"
 import { WorkOrdersClient } from "@/components/admin/work-orders/work-orders-client"
 import { ProcessEditorDialog } from "@/components/admin/work-orders/process-editor-dialog"
+import { FirstWorkflowBanner } from "@/components/admin/work-orders/first-workflow-banner"
 import { requirePagePermission } from "@/lib/auth/guards"
 
 // ============================================================
@@ -94,6 +95,18 @@ export default async function WorkOrdersPage() {
           </Card>
         ))}
       </div>
+
+      {overview.definitions.length === 0 && (
+        <FirstWorkflowBanner
+          title={w.firstWorkflow.title}
+          description={w.firstWorkflow.description}
+          cta={w.firstWorkflow.cta}
+          creating={w.firstWorkflow.creating}
+          created={w.firstWorkflow.created}
+          alreadyExists={w.firstWorkflow.alreadyExists}
+          genericError={w.firstWorkflow.genericError}
+        />
+      )}
 
       <WorkOrdersClient
         orders={overview.orders}
