@@ -1133,20 +1133,26 @@ describe("§9 — uskladitev dokumentov s registerjem (Cubic #142)", () => {
     expect(readme.includes("mehanik")).toBe(true)
   })
 
-  it("README ne trdi več, da `workflows: required` samodejno materializira predlogo", () => {
-    // Agent A + §5b: onboarding pokliče materializeProfileAssets, ki materializira
-    // SAMO predloge, ki jih profil dejansko deklarira (workflows: [...]). Profil z
-    // `workflows: required` in `workflows: []` (skd-a-agriculture, skd-c-manufacturing)
-    // ne dobi workflowDefinition → createWorkOrder vrne NO_WORKFLOW. README to mora
-    // izražati, ne pa trditi samodejne materializacije za vsak required-profil.
+  it("README ne trdi več, da `workOrders: required` samodejno materializira predlogo", () => {
+    // Agent A + §5b + Cubic P2: onboarding pokliče materializeProfileAssets,
+    // ki materializira SAMO predloge, ki jih profil dejansko deklarira
+    // (workflows: [...]). Trigger vrzeli je `workOrders: required` (ne
+    // `workflows: required` — npr. skd-a-agriculture ima workOrders: required
+    // in workflows: optional): profil s required-workOrders in workflows: []
+    // ne dobi workflowDefinition → createWorkOrder vrne NO_WORKFLOW. README to
+    // mora izražati, ne pa trditi samodejne materializacije za vsak required-profil.
     const readme = readFileSync(join(process.cwd(), "README.md"), "utf8")
-    // Pravilno: materializira se tukaj tiste predloge, ki jih profil deklarira.
+    // Pravilno: materializira se tukaj tiste predloge, ki jih profil deklarira;
+    // vrzel je vezana na `workOrders: required` brez workflow predloge.
     expect(readme.includes("točno tiste predloge")).toBe(true)
     expect(readme.includes("materializeProfileAssets")).toBe(true)
-    expect(readme.includes("nobene predloge")).toBe(true)
+    expect(readme.includes("workOrders: required")).toBe(true)
+    expect(readme.includes("nobene workflow predloge")).toBe(true)
     expect(readme.includes("NO_WORKFLOW")).toBe(true)
     // Ne sme se vrniti k pretirani trditvi, da so vsi required-profili predlogo
-    // materializirali ob nastanku najemnika.
+    // materializirali ob nastanku najemnika, niti k napačnemu triggerju
+    // `workflows: required` za primer, ko je workflows dejansko optional.
     expect(readme.includes("so predlogo materializirali ob nastanku najemnika")).toBe(false)
+    expect(readme.includes("ki deklarira `workflows: required`, vendar")).toBe(false)
   })
 })
