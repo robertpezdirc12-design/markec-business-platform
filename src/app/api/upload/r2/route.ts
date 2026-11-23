@@ -5,6 +5,7 @@ import { uploadBusinessImage, uploadProductImage, uploadAvatar } from "@/lib/r2-
 import { getSessionOrg } from "@/lib/tenant"
 import { getEffectivePermissions } from "@/lib/permissions/effective"
 import { validateImageUpload } from "@/lib/uploads/image-type"
+import { rateLimit } from "@/lib/rate-limit"
 
 // ============================================================
 // R2 IMAGE UPLOAD API
@@ -20,6 +21,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Nepooblaščen dostop" },
         { status: 401 }
+      )
+    }
+
+    // M17: per-uporabniška kvota nalaganj (ključ = userId).
+    const quota = await rateLimit({
+      scope: "upload:user",
+      key: session.user.id,
+      limit: 100,
+      windowMs: 3_600_000,
+    })
+    if (!quota.ok) {
+      return NextResponse.json(
+        { error: "Preveč nalaganj. Poskusite kasneje." },
+        { status: 429 }
       )
     }
 
