@@ -212,8 +212,16 @@ konfiguracija tega profila pokriva prav ta podrazred (fit).*
 > in tako izpostavi manjkajoče procese, ki so relevantni za EPIC-2 dostavo.
 
 1. **Register** (`activity-coverage.ts`) + testi. **To je osnova vseh faz.**
-2. **Validacija registrov** — dodati pravilo ANTI-deklaracije: profil, ki deklarira
-   `workflows: required`, MORA imeti vsaj 1 `workflows: [...]` predlog (ali biti not-assessed).
+2. **Validacija registrov** — dodati pravilo ANTI-deklaracije (usklajeno z
+   `missingRequiredCapabilities()` v `activity-coverage.ts`): profil MORA imeti vsaj eno
+   ustrezno predlogo za vsako deklarirano `required` zmožnost, ki jo predloge poganjajo
+   (ali biti not-assessed):
+   - `forms: required` → vsaj 1 form predloga (`no-template`, če je manjka);
+   - `workflows: required` **ali** `workOrders: required` → vsaj 1 workflow predloga
+     (`not-delivered` / `createWorkOrder`→`NO_WORKFLOW`, če je manjka).
+   Primer: `skd-a-agriculture` ima `workOrders: required` (in `workflows: optional`,
+   `workflows: []`), zato kljub odsotnosti `workflows: required` klasifikator pri
+   `workOrders` javi vrzel `not-delivered`.
 3. **Arhetipi:** za 3–5 največjih skupin (C, G, A, H, I) pripraviti ločene poslovne procese +
    terminologijo, ki se deklarativno prilepijo na obstoječe profile (specializacije).
 4. **Vsak korak** = majhen PR; testi pokritosti ob vsakem.

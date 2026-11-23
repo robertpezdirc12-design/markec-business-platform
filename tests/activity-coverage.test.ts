@@ -1155,4 +1155,20 @@ describe("§9 — uskladitev dokumentov s registerjem (Cubic #142)", () => {
     expect(readme.includes("so predlogo materializirali ob nastanku najemnika")).toBe(false)
     expect(readme.includes("ki deklarira `workflows: required`, vendar")).toBe(false)
   })
+
+  it("GAP-ANALYSIS §5 ANTI-deklaracija zahteva predlogo za forms IN (workflows ali workOrders)", () => {
+    // Agent B + §3: razdelek 5, korak 2 dokumentira načrtovano pravilo ANTI-deklaracije.
+    // Mora zajemati OBA pogoja, ker `missingRequiredCapabilities()` (activity-coverage.ts)
+    // za workOrders uporablja ISTE workflow predloge kot workflows — npr. skd-a-agriculture
+    // ima workOrders: required + workflows: [] (workflows: optional) → not-delivered.
+    const gap = readFileSync(join(process.cwd(), "docs/SKD-2025-GAP-ANALYSIS.md"), "utf8")
+    // Pravilo je usklajeno z dejansko klasifikacijo:
+    expect(gap.includes("forms: required` → vsaj 1 form predloga")).toBe(true)
+    expect(gap.includes("`workflows: required` **ali** `workOrders: required` → vsaj 1 workflow predloga")).toBe(true)
+    // Aktivira tudi ključni primer (skd-a-agriculture), kjer ni workflows: required,
+    // a je vrzel kljub temu not-delivered.
+    expect(gap.includes("skd-a-agriculture` ima `workOrders: required`")).toBe(true)
+    // Ne sme ostati stara zožena formulacija, ki je poznala le workflows: required.
+    expect(gap.includes("dodati pravilo ANTI-deklaracije: profil, ki deklarira")).toBe(false)
+  })
 })
