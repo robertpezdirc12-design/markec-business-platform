@@ -16,7 +16,7 @@ import { test, expect, type Page } from "@playwright/test"
 //   PROJECT_URL=http://localhost:3002 npx playwright test playwright.2d8.config.ts
 // ============================================================
 
-const BASE = process.env.PROJECT_URL || "http://localhost:3002"
+const BASE = process.env.PROJECT_URL || ""
 
 const ORGS = {
   vulkanizer: ["cebeler.tire@markec.test", "demo1234", "svezi-vulkanizer-2d1s", "Vaše vozilo v najboljših rokah"],
