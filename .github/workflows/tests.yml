@@ -179,9 +179,9 @@ jobs:
     # težji tokovi dosežejo timeoute). Job teče kot poročilo in NE
     # blokira PR-jev, dokler ni odpravljen.
     continue-on-error: true
-    # P5 iteracija: časovna omejitev prepreči večurno obviselo
-    # izvajanje; workers=4 pospeši zagon.
-    timeout-minutes: 30
+    # P5/P9 iteracija: workers=1 (deterministično zaporedje) pomeni
+    # daljši tek — dovolimo do 90 minut.
+    timeout-minutes: 90
     services:
       postgres:
         image: postgres:16
@@ -236,7 +236,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests
-        run: npx playwright test --workers=4
+        run: npx playwright test
 
   # P1 (audit 2026-11) — MIGRACIJE SE MORATAJO PREIZKUSITI, NE LE `db push`.
   #

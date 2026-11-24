@@ -25,11 +25,18 @@ export default defineConfig({
   // (playwright.2d8.config.ts, dev strežnik :3002 + fixture podatki, npr.
   // organ z obstoječo storitvijo "Balansiranje"). V CI ne obstajajo in
   // niso del acceptance scenarijev §16 A–E — izključimo jih tukaj.
-  testIgnore: [/2d(8|9|10|11|12)-.*\.spec\.ts/],
+  // beekeeper-demo zahteva poseben demo seed (scripts/seed-beekeeping-
+  // complete.ts → org 'svezi-cebeler-demo'), ki NI del osnovnega seeda,
+  // zato v CI ne more preiti (demo-only).
+  testIgnore: [
+    /2d(8|9|10|11|12)-.*\.spec\.ts/,
+    /beekeeper-demo\.spec\.ts/,
+  ],
   timeout: 180_000,
   expect: { timeout: 20_000 },
   fullyParallel: false, // scenarios share server + DB; keep order deterministic
-  workers: 1,
+  workers: 1, // deterministično zaporedje (deljeno DB/strežnik) — vzporedno
+  // izvajanje je povzročalo race + lažne timeoute.
   retries: 0,
   globalSetup: path.join(__dirname, "e2e/global-setup.ts"),
   reporter: [["list"]],
