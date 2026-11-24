@@ -30,6 +30,14 @@ export type RateLimitScope = "login:ip" | "login:email" | "register:ip" | "forgo
  * Pridobi naslov odjemalca iz request konteksta (server action / route).
  * Na Vercel/shared-gateway je odjemalski IP v `x-forwarded-for` (prvi naslov).
  * Odpove fail-soft: če IP ni berljiv, vrnemo stabilen "unknown" (brez klica).
+ *
+ * VARNOSTNA OPOMBA (M16, audit 2026-11): `x-forwarded-for` je glava, ki jo
+ * lahko nastavi tudi odjemalec. Na Vercel/Cloudflare (produkcija) platforma
+ * glavo ob vstopu prepiše/povampira, zato je prvi vnos zanesljiv. Na
+ * LASTNO GOSTOVANEM `next start` brez proxyja pred aplikacijo lahko odjemalec
+ * glavo ponaredi in s tem zaobide IP omejitve. V takem deploymentu je treba
+ * pred aplikacijo postaviti zaupanja vreden reverse proxy, ki glavo prepiše
+ * (npr. nginx real_ip), ali pa omejitve vezati na druge ključe (email/org).
  */
 export async function getClientIp(): Promise<string> {
   try {
