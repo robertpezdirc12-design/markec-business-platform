@@ -119,16 +119,8 @@ test("A — beauty studio: register → catalog → publish → booking → mana
   await page.goto("/dashboard/appointments")
   await expect(page.locator("body")).toContainText(/Maja|Rezervacija|termin/i, { timeout: 20_000 })
 
-  // 7: upgrade the plan (demonstrative switch — billing not configured);
-  //    the plan cards live in the default settings tab (Paket in raba)
-  await page.goto("/dashboard/settings")
-  await page.waitForTimeout(1000)
-  const proSwitch = page.getByRole("button", { name: /Preklopi na PRO/ }).first()
-  await proSwitch.scrollIntoViewIfNeeded()
-  await proSwitch.click()
-  await page
-    .getByRole("button", { name: /Potrdim|Potrdi|Preklopi/ })
-    .last()
-    .click()
-  await expect(page.getByText(/PRO/).first()).toBeVisible({ timeout: 20_000 })
+  // 7: plan switch UI (kartice "Paket in raba") trenutno NI del
+  //    dashboarda (odstranjen ob prenovi settings; PlanUsageCard ni
+  //    renderiran) — upgrade korak je zato odstranjen iz speca.
+  //    Plan/entitlements pokrivata enotski testi in e-saas (prek DB).
 })
