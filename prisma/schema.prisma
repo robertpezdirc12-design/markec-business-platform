@@ -115,6 +115,10 @@ model Organization {
   // #98 (AD-02): walk-in vrsta — živa vrsta brez računa.
   walkInEntries WalkInEntry[]
 
+  // M20 (audit 2026-11): zgodovina prejšnjih webhook skrivnosti — grace
+  // okno ob rotaciji (stari whsec_ sprejemamo še 7 dni).
+  webhookSecretHistory WebhookSecretHistory[]
+
   // WP-1 (Blagajna): denarne seje in drobni stroški (org-scoped direktno,
   // da cross-tenant preverjanje ne zahteva joina prek seje).
   cashSessions      CashSession[]
@@ -3204,4 +3208,19 @@ model BookingExperimentEvent {
 
   @@index([organizationId, variant, kind, createdAt], map: "BookingExperimentEvent_variant_kind_date_idx")
   @@index([organizationId, sessionKey], map: "BookingExperimentEvent_organizationId_sessionKey_idx")
+}
+
+// ============================================================
+// M20 (audit 2026-11) — WEBHOOK SECRET HISTORY
+// Stare (rotirane) webhook skrivnosti za grace okno ob rotaciji.
+// Shranjene šifriran (kot Organization.stripeWebhookSecret).
+// ============================================================
+model WebhookSecretHistory {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  encryptedSecret String
+  createdAt       DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
 }
