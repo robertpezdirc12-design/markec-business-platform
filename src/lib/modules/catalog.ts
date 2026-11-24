@@ -196,8 +196,10 @@ export function effectiveCapabilities(
 ): Record<string, string> {
   const out = { ...profileCapabilities }
   for (const mod of MODULES) {
-    const state = states[mod.id]
-    if (!state) continue
+    // #1318 (P2 #5): missing-row fallback je identičen prikazu getModuleOverview
+    // in buildSeedRows politiki — required→ACTIVE, optional→DEACTIVATED.
+    // Ne sme se "brez vrstice" obravnavati kot ACTIVE (opt-in bi postal privzet).
+    const state = states[mod.id] ?? moduleMissingDefault(mod, profileCapabilities)
     for (const cap of mod.capabilities) {
       const base = out[cap] as CapabilityState | undefined
       if (base === "disabled") {
@@ -233,14 +235,29 @@ export function effectiveCapabilities(
  *   - disabled → nikoli (tudi ACTIVE ga ne odpre).
  * Dashboard uporablja `effectiveCapabilities` (kjer HIDDEN pomeni »plošča dela«).
  */
+/**
+ * Politika default-a za manjkajočo vrstico modula (F5.4.1 / #1318 P2 #5),
+ * identična `buildSeedRows` in `getModuleOverview`:
+ *   required→ACTIVE, optional→DEACTIVATED.
+ */
+function moduleMissingDefault(
+  mod: ModuleDef,
+  profileCapabilities: Record<string, string>
+): ModuleState {
+  const base = mod.capabilities[0]
+    ? (profileCapabilities[mod.capabilities[0]] as CapabilityState | undefined)
+    : undefined
+  return base === "required" ? "ACTIVE" : "DEACTIVATED"
+}
+
 export function effectivePublicCapabilities(
   profileCapabilities: Record<string, string>,
   states: ModuleStateMap
 ): Record<string, string> {
   const out: Record<string, string> = { ...profileCapabilities }
   for (const mod of MODULES) {
-    const state = states[mod.id]
-    if (!state) continue
+    const state =
+      states[mod.id] ?? moduleMissingDefault(mod, profileCapabilities)
     for (const cap of mod.capabilities) {
       const base = out[cap] as CapabilityState | undefined
       if (base === "disabled") {

@@ -8,7 +8,7 @@
 //     JointDokument; Drugi preverbi 4xx/network etc. bugi: ne zapletamo.
 // ============================================================
 
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, beforeEach, afterEach } from "vitest"
 import {
   canonicalizeXml,
   xmlDsigSign,
@@ -16,8 +16,18 @@ import {
   makeSelfSignedTestPair,
 } from "@/lib/einvoice/xmldsig"
 import { CertHttpProvider, eSlogJointWrapper } from "@/lib/einvoice/providers"
+import { __setDnsLookupForTests } from "@/lib/einvoice/endpoint-validation"
 import type { ChannelCfg, SubmitPayload } from "@/lib/einvoice/channel"
 import type { HttpsTransport } from "@/lib/einvoice/providers"
+
+// Fail-closed DNS (P1) zavrača ne-rassolve `.example` — v enotnih testih
+// injiciramo mock-DNS, da UJP eslog-joint preverjanje oziroma ne rezervirano.
+beforeEach(() => {
+  __setDnsLookupForTests(async () => [{ address: "93.184.216.34", family: 4 }])
+})
+afterEach(() => {
+  __setDnsLookupForTests(null)
+})
 
 const ORG = "org-1"
 const payload: SubmitPayload = {
