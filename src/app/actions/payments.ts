@@ -128,6 +128,21 @@ export async function saveStripeSettings(input: {
       },
     })
 
+    // M20 (audit 2026-11): ob rotaciji webhook skrivnosti arhiviraj
+    // prejšnjo (šifriran) — verifikacija webhooka jo še 7 dni sprejema
+    // (grace okno za letijoče dostave).
+    if (webhookSecret && org.stripeWebhookSecret) {
+      const previous = decryptSecret(org.stripeWebhookSecret)
+      if (previous && previous !== webhookSecret) {
+        await prisma.webhookSecretHistory.create({
+          data: {
+            organizationId: org.id,
+            encryptedSecret: org.stripeWebhookSecret,
+          },
+        })
+      }
+    }
+
     revalidatePath("/dashboard/settings")
 
     return {

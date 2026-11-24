@@ -59,16 +59,41 @@ async function verifyStripeEvent(
     select: { id: true, slug: true, stripeWebhookSecret: true },
   })
 
+  // M20 (audit 2026-11): ob rotaciji ključa sprejemamo še arhivirane
+  // skrivnosti (grace okno 7 dni) — v nasprotnem primeru bi letijoče
+  // dostave po rotaciji ostale PENDING/plačila izgubljena.
+  const graceSince = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  const history = await prisma.webhookSecretHistory.findMany({
+    where: { createdAt: { gte: graceSince } },
+    select: { organizationId: true, encryptedSecret: true },
+    orderBy: { createdAt: "desc" },
+  })
+  const historyByOrg = new Map<string, string[]>()
+  for (const h of history) {
+    const arr = historyByOrg.get(h.organizationId) ?? []
+    arr.push(h.encryptedSecret)
+    historyByOrg.set(h.organizationId, arr)
+  }
+
   for (const org of orgsWithWebhook) {
-    // P2 (audit 2026-11): webhook secret je v bazi šifriran.
-    const secret = decryptSecret(org.stripeWebhookSecret)
-    if (!secret) continue
-    try {
-      const event = constructWebhookEvent(body, signature, secret)
-      // The signature belongs to THIS organization — never to metadata.
-      return { event, org: { id: org.id, slug: org.slug } }
-    } catch {
-      continue
+    const candidates = [
+      org.stripeWebhookSecret,
+      ...(historyByOrg.get(org.id) ?? []),
+    ]
+    const seen = new Set<string>()
+    for (const candidate of candidates) {
+      if (!candidate || seen.has(candidate)) continue
+      seen.add(candidate)
+      // P2 (audit 2026-11): webhook secret je v bazi šifriran.
+      const secret = decryptSecret(candidate)
+      if (!secret) continue
+      try {
+        const event = constructWebhookEvent(body, signature, secret)
+        // The signature belongs to THIS organization — never to metadata.
+        return { event, org: { id: org.id, slug: org.slug } }
+      } catch {
+        continue
+      }
     }
   }
   return null
