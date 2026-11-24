@@ -61,6 +61,9 @@ export default defineConfig({
       // V production je fallback privzeto izklopljen (NODE_ENV=production);
       // testi (register → verify → login) ga predpostavljajo.
       EMAIL_VERIFICATION_FALLBACK: "1",
+      // Vzporedni workerji (isti IP) bi drugače sprožili IP rate-limit
+      // prijave (login:ip 10/15min) → lažne "Invalid credentials".
+      E2E_RATE_LIMIT_DISABLED: "1",
     },
   },
 })
