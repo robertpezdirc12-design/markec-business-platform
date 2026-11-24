@@ -42,7 +42,7 @@ test("G — golden order: switch → publish → guest order → owner reads the
 
   // ---- switch activity (real dialog: beekeeping → beauty) ----
   await page.goto("/dashboard/settings")
-  await page.getByRole("tab", { name: "Izgled in vsebina" }).click()
+  await page.getByRole("tab", { name: "Spletna stran" }).click()
   await page.waitForTimeout(800)
   // The settings tab opens the VISUAL editor by default — the classic form
   // (with the activity switch) lives behind the "Klasični obrazec" tab.
@@ -69,7 +69,7 @@ test("G — golden order: switch → publish → guest order → owner reads the
   await page.waitForTimeout(3000)
   // persisted: the vertical combobox now shows the new activity
   await page.reload()
-  await page.getByRole("tab", { name: "Izgled in vsebina" }).click()
+  await page.getByRole("tab", { name: "Spletna stran" }).click()
   await page.waitForTimeout(800)
   await page.getByRole("tab", { name: "Klasični obrazec" }).click()
   await page.getByText("Prikaži napredne nastavitve panoge").click()

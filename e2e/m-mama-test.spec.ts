@@ -38,7 +38,8 @@ test("M — mama test: objava strani s sliko in ceno (brez programiranja)", asyn
     await page.locator("#price").fill("24")
     // nalaganje slike (isti nadzor kot ga uporablja obrazec)
     const fileInput = page.locator('input[type="file"]').first()
-    await fileInput.setInputFiles("public/images/placeholders/service-placeholder.svg")
+    // P1 security: SVG ni več dovoljen (whitelist rastrskih formatov).
+    await fileInput.setInputFiles("e2e/fixtures/f63-test.png")
     await expect(page.getByText(/uspešno|uploaded|naložen/i).first()).toBeVisible({ timeout: 30_000 })
     await page.waitForTimeout(1500) // kategorija se naloži asinhrono
     await page.locator("#name").fill("Krema za obraz")

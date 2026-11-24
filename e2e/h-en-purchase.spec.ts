@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test"
 import { PrismaClient } from "@prisma/client"
 import {
-  createProduct,
   makeTenant,
   publishSite,
   registerTenant,
@@ -56,7 +55,19 @@ test("H — EN purchase: shop → cart → checkout without a single Slovenian w
   // ---- owner: register tenant, add a product, publish ----
   await registerTenant(page, t)
   await expect(page).toHaveURL(/dashboard/)
-  await createProduct(page, `EN test serum ${t.slug}`)
+  // Izdelek ustvarimo v DB (UI forma products/new se je spreminjala;
+  // fixture je stabilnejši). trackInventory:false → takoj prodajljiv.
+  const productOrg = await e2eDb.organization.findUniqueOrThrow({ where: { slug: t.slug } })
+  await e2eDb.product.create({
+    data: {
+      organizationId: productOrg.id,
+      name: `EN test serum ${t.slug}`,
+      description: "E2E serum",
+      price: 12,
+      trackInventory: false,
+      isActive: true,
+    },
+  })
   await publishSite(page)
 
   // ---- guest: English locale from the first byte (server reads the
