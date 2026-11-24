@@ -20,7 +20,11 @@ import { test, expect, type Page } from "@playwright/test"
 
 const BASE = process.env.PROJECT_URL || ""
 const FRIZER_EMAIL = process.env.FRIZER_EMAIL || "fr@f631.test"
-const FRIZER_PASS = process.env.FRIZER_PASS || "TestPass123!"
+// Geslo f631 fixture uporabnikov, ki jih ustvari e2e/global-setup.ts
+// (tests/integration/itest-global-setup.ts → "itest-fixture-password").
+// Lokalni dev f631 podatki imajo morda drugo geslo → preglasi z
+// FRIZER_PASS.
+const FRIZER_PASS = process.env.FRIZER_PASS || "itest-fixture-password"
 const FRIZER_SLUG = "frizer-test"
 const CEBELAR_SLUG = "cebelar-test"
 
