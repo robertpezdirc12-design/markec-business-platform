@@ -3,12 +3,16 @@
 // build-time import (not a runtime dependency on xlsx). Re-run after a
 // SURS update to regenerate.
 //
-// Output: src/lib/skd/data/skd2025.ts  (full 5-level hierarchy, 1725 records)
+// Output (P8, 2026-11):
+//   src/lib/skd/data/skd2025.json — podatki (1725 zapisov)
+//   src/lib/skd/data/skd2025.ts   — tipi + loader nad JSON (berljivo,
+//     lažje za diff, ni 12k-vrstične "god file" datoteke)
 import { writeFileSync, mkdirSync } from "node:fs"
 import ExcelJS from "exceljs"
 
 const SRC = "src/lib/skd/official/SKD_2025_V1.xlsx"
-const OUT = "src/lib/skd/data/skd2025.ts"
+const OUT_JSON = "src/lib/skd/data/skd2025.json"
+const OUT_TS = "src/lib/skd/data/skd2025.ts"
 const CLASSIFICATION_ID = "SKD_2025"
 const VERSION = "V1"
 const SOURCE = "SURS KLASJE, Standardna klasifikacija dejavnosti 2025, V1 (Uradni list RS št. 27/2024)"
@@ -59,11 +63,13 @@ for (const r of rows) {
   })
 }
 
-// Compact write: group by level into arrays for O(1) by-level listing; keep a
-// flat full list too. Codes are unique; emit as nested literal.
-function esc(s) {
-  return JSON.stringify(s)
-}
+mkdirSync("src/lib/skd/data", { recursive: true })
+
+// Podatki v JSON (čisti podatki, brez kode).
+writeFileSync(OUT_JSON, JSON.stringify(records, null, 1) + "\n")
+
+// TS modul: tipi + loader nad JSON.
+const esc = (s) => JSON.stringify(s)
 const lines = []
 lines.push(`// ============================================================`)
 lines.push(`// OFFICIAL SKD 2025 classification — generated file.`)
@@ -74,6 +80,8 @@ lines.push(`//`)
 lines.push(`// DO NOT EDIT BY HAND — regenerate with:`)
 lines.push(`//   node scripts/f50-generate-skd-module.mjs`)
 lines.push(`// ============================================================`)
+lines.push(``)
+lines.push(`import skdRecordsJson from "./skd2025.json"`)
 lines.push(``)
 lines.push(`export const SKD_CLASSIFICATION = ${esc(CLASSIFICATION_ID)}`)
 lines.push(`export const SKD_VERSION = ${esc(VERSION)}`)
@@ -92,10 +100,9 @@ lines.push(`  /** parent code (null for sections) */`)
 lines.push(`  p: string | null`)
 lines.push(`}`)
 lines.push(``)
-lines.push(`/** All 1725 records, in official hierarchy order. */`)
-lines.push(`export const SKD_RECORDS: SkdRecord[] = ${JSON.stringify(records, null, 1)}`)
+lines.push(`/** All ${records.length} records, in official hierarchy order. */`)
+lines.push(`export const SKD_RECORDS: SkdRecord[] = skdRecordsJson as unknown as SkdRecord[]`)
 lines.push(``)
-// index helpers
 lines.push(`const byCode = new Map<string, SkdRecord>(SKD_RECORDS.map((r) => [r.c, r]))`)
 lines.push(`export const skdByCode = (code: string): SkdRecord | undefined => byCode.get(code)`)
 lines.push(`export const SKD_TRUSTED = true`)
@@ -109,7 +116,6 @@ lines.push(`  4: SKD_RECORDS.filter((r) => r.l === 4),`)
 lines.push(`  5: SKD_RECORDS.filter((r) => r.l === 5),`)
 lines.push(`}`)
 
-mkdirSync("src/lib/skd/data", { recursive: true })
-writeFileSync(OUT, lines.join("\n") + "\n")
-console.log(`wrote ${OUT} (${records.length} records): by level`,
+writeFileSync(OUT_TS, lines.join("\n") + "\n")
+console.log(`wrote ${OUT_JSON} + ${OUT_TS} (${records.length} records): by level`,
   [1,2,3,4,5].map((l) => `${l}:${records.filter((r) => r.l === l).length}`).join(", "))
