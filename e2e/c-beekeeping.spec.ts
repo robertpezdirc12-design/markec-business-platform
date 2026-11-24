@@ -1,5 +1,13 @@
 import { test, expect } from "@playwright/test"
+import { PrismaClient } from "@prisma/client"
 import { makeTenant, publishSite, registerTenant, visitPublished } from "./helpers"
+
+const e2eDb = new PrismaClient({
+  datasources: { db: { url: process.env.E2E_DATABASE_URL ?? "" } },
+})
+test.afterAll(async () => {
+  await e2eDb.$disconnect()
+})
 
 // ============================================================
 // SCENARIO C — Beekeeper / honey producer (issue #3 §16 C)
@@ -18,7 +26,20 @@ test("C — beekeeping: shop flow + honest checkout + no booking", async ({ page
   await registerTenant(page, t)
   await expect(page).toHaveURL(/dashboard/)
 
-  // 3: owner manages products — open the products list (seeded honey products)
+  // 3: owner manages products — nov tenant nima seeded izdelkov,
+  //    zato enega ustvarimo v DB (trackInventory:false → takoj
+  //    prodajljiv), nato preverimo seznam.
+  const org = await e2eDb.organization.findUniqueOrThrow({ where: { slug: t.slug } })
+  await e2eDb.product.create({
+    data: {
+      organizationId: org.id,
+      name: `Cvetlični med ${t.slug}`,
+      description: "E2E čebelarski izdelek",
+      price: 12,
+      trackInventory: false,
+      isActive: true,
+    },
+  })
   await page.goto("/dashboard/products")
   await expect(page.locator("body")).toContainText(/Cvetlični med|med/i, { timeout: 15_000 })
 
