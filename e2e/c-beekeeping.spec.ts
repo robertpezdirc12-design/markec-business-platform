@@ -38,6 +38,7 @@ test("C — beekeeping: shop flow + honest checkout + no booking", async ({ page
       price: 12,
       trackInventory: false,
       isActive: true,
+      images: [],
     },
   })
   await page.goto("/dashboard/products")
