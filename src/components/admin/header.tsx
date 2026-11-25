@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -23,12 +23,15 @@ import {
   UsersIcon,
   HouseIcon,
   StorefrontIcon,
+  ChatsCircleIcon,
+  CalendarCheckIcon,
 } from "@/components/icons"
 import { Question as QuestionIcon } from "@phosphor-icons/react"
 import { MobileSidebar } from "./sidebar"
 import { CommandPalette } from "./command-palette"
 import { LanguageSwitcher } from "./language-switcher"
 import { useI18n } from "@/lib/i18n/provider"
+import { getNavCounters } from "@/app/actions/nav-counters"
 
 export function AdminHeader({
   orgSlug,
@@ -51,6 +54,46 @@ export function AdminHeader({
   const { data: session } = useSession()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { t } = useI18n()
+
+  // Obvestila niso okras: števci prihajajo iz resničnih, org-scoped podatkov.
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [counters, setCounters] = useState<{
+    chatActive: number
+    waitlist: number
+    apptPending: number
+  } | null>(null)
+  const [countersUnavailable, setCountersUnavailable] = useState(false)
+
+  const handleNotificationsOpenChange = (open: boolean) => {
+    setNotificationsOpen(open)
+    if (open) {
+      setCounters(null)
+      setCountersUnavailable(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!notificationsOpen) return
+    let active = true
+
+    getNavCounters()
+      .then((result) => {
+        if (!active) return
+        if (result.ok && result.counters) setCounters(result.counters)
+        else setCountersUnavailable(true)
+      })
+      .catch(() => {
+        if (active) setCountersUnavailable(true)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [notificationsOpen])
+
+  const notificationTotal = counters
+    ? counters.chatActive + counters.waitlist + counters.apptPending
+    : 0
 
   const handleSignOut = async () => {
     await signOut({ redirect: false })
@@ -142,11 +185,104 @@ export function AdminHeader({
               </Link>
             </Button>
 
-            {/* Notifications */}
-            <Button variant="ghost" size="icon" className="relative">
-              <BellIcon size={20} />
-              <span className="sr-only">{t.common.header.notifications}</span>
-            </Button>
+            {/* Notifications — resnični, org-scoped števci. */}
+            <DropdownMenu
+              open={notificationsOpen}
+              onOpenChange={handleNotificationsOpenChange}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative min-h-11 min-w-11"
+                  aria-label={`${t.common.header.notifications}${
+                    notificationTotal > 0 ? ` (${notificationTotal})` : ""
+                  }`}
+                >
+                  <BellIcon size={20} />
+                  {notificationTotal > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className="bg-destructive text-destructive-foreground absolute right-0.5 top-0.5 flex min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-4"
+                    >
+                      {notificationTotal > 9 ? "9+" : notificationTotal}
+                    </span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-[min(20rem,calc(100vw-2rem))] p-0"
+              >
+                <DropdownMenuLabel className="border-b px-4 py-3">
+                  <p className="text-sm font-semibold">
+                    {t.common.header.notifications}
+                  </p>
+                  <p className="text-muted-foreground mt-0.5 text-xs">
+                    Današnji pogled na dogajanje v poslovnem prostoru
+                  </p>
+                </DropdownMenuLabel>
+
+                <div className="p-2">
+                  {countersUnavailable ? (
+                    <p className="text-muted-foreground px-2 py-5 text-center text-xs">
+                      Obvestila trenutno niso dostopna za to vlogo.
+                    </p>
+                  ) : !counters ? (
+                    <p className="text-muted-foreground px-2 py-5 text-center text-xs">
+                      Nalagam obvestila…
+                    </p>
+                  ) : notificationTotal === 0 ? (
+                    <div className="px-3 py-6 text-center">
+                      <div className="bg-muted mx-auto mb-3 flex size-9 items-center justify-center rounded-full">
+                        <BellIcon size={18} className="text-muted-foreground" />
+                      </div>
+                      <p className="text-sm font-medium">Za zdaj ni obvestil</p>
+                      <p className="text-muted-foreground mx-auto mt-1 max-w-56 text-xs leading-relaxed">
+                        Ko pride do nove rezervacije, odpovedi ali vprašanja stranke,
+                        bo opozorilo tukaj.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {counters.chatActive > 0 && (
+                        <DropdownMenuItem asChild className="min-h-11">
+                          <Link href="/dashboard/chats" className="gap-3">
+                            <ChatsCircleIcon size={18} />
+                            <span className="flex-1">Neprebrani pogovori</span>
+                            <span className="bg-primary/10 text-primary-text rounded px-2 py-0.5 text-xs font-semibold">
+                              {counters.chatActive}
+                            </span>
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
+                      {counters.apptPending > 0 && (
+                        <DropdownMenuItem asChild className="min-h-11">
+                          <Link href="/dashboard/appointments" className="gap-3">
+                            <CalendarCheckIcon size={18} />
+                            <span className="flex-1">Termini v potrditev</span>
+                            <span className="bg-primary/10 text-primary-text rounded px-2 py-0.5 text-xs font-semibold">
+                              {counters.apptPending}
+                            </span>
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
+                      {counters.waitlist > 0 && (
+                        <DropdownMenuItem asChild className="min-h-11">
+                          <Link href="/dashboard/waitlist" className="gap-3">
+                            <UsersIcon size={18} />
+                            <span className="flex-1">Čakalna lista</span>
+                            <span className="bg-primary/10 text-primary-text rounded px-2 py-0.5 text-xs font-semibold">
+                              {counters.waitlist}
+                            </span>
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* User menu */}
             <DropdownMenu>

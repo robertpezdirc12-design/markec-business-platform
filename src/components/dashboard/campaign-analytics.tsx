@@ -6,6 +6,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { EmptyState } from "@/components/ui/empty-state"
 import {
   TrendingUpIcon,
   EnvelopeIcon,
@@ -69,6 +70,28 @@ export function CampaignAnalytics({
   totalRevenue = 0,
   totalSent = 0,
 }: CampaignAnalyticsProps) {
+  // Brez kampanj ni metrik. Prej je 0 % odprtij sprožilo napačen nasvet
+  // "Nizka stopnja odprtij" — to je bil lažen vpogled, ne analitika.
+  if (campaigns.length === 0 && totalSent === 0) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="px-5">
+          <EmptyState
+            icon={<EnvelopeIcon size={44} />}
+            title="Še ni poslanih kampanj"
+            description="Ko bo poslana prva kampanja, se bodo odprtja, kliki in prihodki prikazali tukaj. Prikazujemo samo resnične rezultate."
+            action={{ label: "Ustvari kampanjo", href: "/dashboard/marketing" }}
+            secondaryAction={{
+              label: "Oglej si stranke",
+              href: "/dashboard/customers",
+            }}
+            size="md"
+          />
+        </CardContent>
+      </Card>
+    )
+  }
+
   const totalOpens = campaigns.reduce((sum, c) => sum + c.openCount, 0)
   const totalClicks = campaigns.reduce((sum, c) => sum + c.clickCount, 0)
   const totalConversions = campaigns.reduce((sum, c) => sum + c.conversionCount, 0)
