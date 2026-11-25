@@ -94,3 +94,9 @@ scripts/tmp**
 
 # local lint/diagnostic artifacts
 _remain.json
+
+# WorkBuddy agent memory / local notes (project-related, not product artifacts)
+.workbuddy-ai/
+
+# Local Playwright diagnostic override (not part of CI config)
+playwright.local.config.ts
