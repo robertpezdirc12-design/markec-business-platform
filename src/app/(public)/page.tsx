@@ -22,7 +22,7 @@ import type { Metadata } from "next"
 import { headers } from "next/headers"
 import { auth } from "@/lib/auth/auth"
 import { resolveAppUrl } from "@/lib/seo"
-import { getTrustedOrgSlug } from "@/lib/tenant"
+import { getCustomDomainOrg, getTrustedOrgSlug } from "@/lib/tenant"
 import { hostFromHostHeader, isPlatformHost } from "@/lib/domains/normalize"
 import { getPlatformHosts } from "@/lib/domains/provider"
 import { landingSl } from "@/lib/i18n/dict/landing"
@@ -59,14 +59,15 @@ export default async function HomePage() {
   //  - tenant context (/s/[slug] rewrite or custom domain) → tenant home
   //  - platform root + logged-in owner → their own site (unchanged)
   //  - platform root + anonymous/customer → PRODUCT LANDING
-  const h = await headers()
   // V-1 (issue #102): only the proxy-SIGNED header counts — a forged one
   // must not turn the platform root into a tenant surface.
   const slugHeader = await getTrustedOrgSlug()
-  const requestHost = hostFromHostHeader(h.get("host"))
-  const isTenantContext =
-    !!slugHeader ||
-    (!!requestHost && !isPlatformHost(requestHost, getPlatformHosts()))
+  // F0-S: tenant context = a proxy-signed /s/<slug> header OR a VERIFIED
+  // custom domain that resolves to a live org (getCustomDomainOrg is null on
+  // platform hosts, UNVERIFIED/dev/preview hosts and dead tenants). Those
+  // unverified hosts fall through to the platform landing (documented
+  // pass-through) instead of 404ing via redirectBareToTenant.
+  const isTenantContext = !!slugHeader || (await getCustomDomainOrg() != null)
 
   if (!isTenantContext) {
     // lastnik (7. 11. 2026): "MARKEC je glavna naša stran na vercelu" —

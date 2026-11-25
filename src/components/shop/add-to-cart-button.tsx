@@ -73,7 +73,7 @@ export function AddToCartButton({
       onClick={handleAddToCart}
       variant={inStock ? "default" : "secondary"}
       disabled={!inStock}
-      aria-label={inStock ? label : undefined}
+      aria-label={inStock ? pick(locale, `Dodaj v košarico: ${label}`, `Add to cart: ${label}`) : undefined}
       className={`w-full transition-transform duration-150 ${pulsing ? "scale-[1.05]" : "scale-100"}`}
     >
       <ShoppingCartIcon className="mr-2 h-4 w-4" />
