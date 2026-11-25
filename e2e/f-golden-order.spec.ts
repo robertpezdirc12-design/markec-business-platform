@@ -208,8 +208,11 @@ test("G — golden order: switch → publish → guest order → owner reads the
   await expect(page.locator("body")).toContainText("Stran ni najdena", {
     timeout: 20_000,
   })
-  // still the dashboard shell (sidebar present), never the public page
-  await expect(page.locator("body")).toContainText("Nadzorna plošča")
+  // still the DASHBOARD shell 404 (P2 #71 — dashboard not-found boundary), never
+  // the public page. The dashboard not-found renders the back link
+  // "Nazaj na nadzorno ploščo"; the global/public 404 says "Nazaj na domačo
+  // stran". This back link is the unambiguous discriminator.
+  await expect(page.locator("body")).toContainText("Nazaj na nadzorno ploščo")
   // a missing order is the same dashboard 404
   await page.goto("/dashboard/orders/doesnotexist123")
   await expect(page.locator("body")).toContainText("Stran ni najdena", {
