@@ -52,7 +52,7 @@ export function EnhancedFooter() {
         <div className="grid gap-8 lg:grid-cols-5">
           {/* Brand Column */}
           <div className="lg:col-span-2">
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/" className="flex min-h-11 items-center gap-2">
               <div className="bg-primary text-primary-foreground flex h-10 w-10 items-center justify-center rounded-lg font-bold">
                 M
               </div>
@@ -128,7 +128,7 @@ export function EnhancedFooter() {
                   <li key={link.name}>
                     <Link
                       href={link.href}
-                      className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+                      className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center text-sm transition-colors"
                     >
                       {link.name}
                     </Link>
@@ -151,19 +151,19 @@ export function EnhancedFooter() {
             <div className="flex items-center gap-6">
               <Link
                 href="/terms"
-                className="text-muted-foreground hover:text-foreground text-sm"
+                className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center text-sm"
               >
                 Pogoji
               </Link>
               <Link
                 href="/privacy"
-                className="text-muted-foreground hover:text-foreground text-sm"
+                className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center text-sm"
               >
                 Zasebnost
               </Link>
               <Link
                 href="/cookies"
-                className="text-muted-foreground hover:text-foreground text-sm"
+                className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center text-sm"
               >
                 Piškotki
               </Link>

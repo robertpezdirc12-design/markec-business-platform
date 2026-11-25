@@ -89,6 +89,8 @@ export default async function MarketplacePage({
         popularBusinesses={hasSearch ? [] : showcase.popular}
         newBusinesses={hasSearch ? [] : showcase.new}
         isSearchResults={hasSearch}
+        query={query}
+        location={location}
       />
 
       {!hasSearch && (

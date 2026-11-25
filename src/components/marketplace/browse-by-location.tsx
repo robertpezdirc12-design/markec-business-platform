@@ -96,7 +96,7 @@ export function BrowseByLocation({
                   <li key={cat.slug}>
                     <Link
                       href={`/kategorije/${cat.slug}`}
-                      className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                      className="flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
                       <span>{cat.icon}</span>
                       <span>{cat.label}</span>
@@ -120,7 +120,7 @@ export function BrowseByLocation({
                     <li key={cat.slug}>
                       <Link
                         href={`/kategorije/${cat.slug}?mesto=${encodeURIComponent(city)}`}
-                        className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                        className="flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                       >
                         <span>{cat.label} v {city}</span>
                       </Link>
@@ -140,7 +140,7 @@ export function BrowseByLocation({
               <Link
                 key={cat.slug}
                 href={`/kategorije/${cat.slug}`}
-                className="flex items-center gap-2 rounded-full border bg-background px-4 py-2 text-sm transition-all hover:border-primary hover:bg-primary/5 hover:shadow-md"
+                className="flex min-h-11 items-center gap-2 rounded-full border bg-background px-4 py-2 text-sm transition-all hover:border-primary hover:bg-primary/5 hover:shadow-md"
               >
                 <span>{cat.icon}</span>
                 <span>{cat.label}</span>
@@ -161,7 +161,7 @@ export function BrowseByLocation({
                     <li key={city}>
                       <Link
                         href={`/podjetja?mesto=${encodeURIComponent(city)}`}
-                        className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                        className="flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                       >
                         <MapPinIcon size={14} />
                         <span>{city}</span>
@@ -195,7 +195,7 @@ export function BrowseByLocation({
               <Link
                 key={link}
                 href={`/podjetja?iskanje=${encodeURIComponent(link)}`}
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center text-sm transition-colors hover:underline"
               >
                 {link}
               </Link>

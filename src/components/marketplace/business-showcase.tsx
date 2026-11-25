@@ -14,11 +14,13 @@ import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
 import {
   StarIcon,
   MapPinIcon,
   ArrowRightIcon,
   ClockIcon,
+  StorefrontIcon,
 } from "@/components/icons"
 import { openStateFor } from "@/lib/hours/open-state"
 
@@ -52,6 +54,9 @@ interface BusinessShowcaseProps {
   newBusinesses?: Business[]
   /** Iskalni način: naslov prve sekcije je "Rezultati iskanja". */
   isSearchResults?: boolean
+  /** Za pošteno prazno stanje — brez izmišljenih "popularnih" podjetij. */
+  query?: string
+  location?: string
 }
 
 interface CarouselSectionProps {
@@ -293,6 +298,8 @@ export function BusinessShowcase({
   newBusinesses = [],
   /** Iskalni način: naslov prve sekcije je "Rezultati iskanja". */
   isSearchResults = false,
+  query = "",
+  location = "",
 }: BusinessShowcaseProps) {
   // No sample fallbacks. An empty section stays empty and says so.
   // Prazna vrstica (karusel brez kartic) ni nikoli uporabna — prej se je
@@ -301,6 +308,47 @@ export function BusinessShowcase({
   const showRecommended = recommendedBusinesses.length > 0
   const showPopular = popularBusinesses.length > 0
   const showNew = newBusinesses.length > 0
+
+  // Ni lažnih "sample" podjetij. Ko je katalog prazen ali iskanje ne najde
+  // zadetka, prikažemo eno jasno sporočilo — ne treh praznih karuselov.
+  if (!showRecommended && !showPopular && !showNew) {
+    const suffix = [
+      query ? ` za »${query}«` : "",
+      location ? ` v ${location}` : "",
+    ].join("")
+
+    return (
+      <section className="container mx-auto px-4 py-10">
+        <div className="bg-card rounded-2xl border px-5 py-4 sm:px-8">
+          {isSearchResults ? (
+            <EmptyState
+              icon={<MapPinIcon size={44} />}
+              title={`Ni rezultatov${suffix}`}
+              description="Prikazujemo samo podjetja, ki so res objavljena v platformi. Preverite zapis ali izberite drugo dejavnost."
+              action={{ label: "Počisti iskanje", href: "/podjetja" }}
+              secondaryAction={{
+                label: "Razišči dejavnosti",
+                href: "/podjetja#dejavnosti",
+              }}
+              size="lg"
+            />
+          ) : (
+            <EmptyState
+              icon={<StorefrontIcon size={44} />}
+              title="Tržnica še nima objavljenih podjetij"
+              description="Ko se podjetje pridruži in objavi svoj profil, bo njegova kartica vidna tukaj. Do takrat lahko raziščete dejavnosti."
+              action={{ label: "Objavi svoj profil", href: "/za-podjetja" }}
+              secondaryAction={{
+                label: "Razišči dejavnosti",
+                href: "/podjetja#dejavnosti",
+              }}
+              size="lg"
+            />
+          )}
+        </div>
+      </section>
+    )
+  }
 
   return (
     <>

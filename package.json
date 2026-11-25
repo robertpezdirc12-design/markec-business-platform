@@ -22,6 +22,7 @@
     "mail:check": "node scripts/check-mail-setup.mjs",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:demo": "tsx prisma/seed.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",

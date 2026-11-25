@@ -38,12 +38,6 @@ export function EmptyState({
     lg: "py-16",
   }
 
-  const iconSizes = {
-    sm: 32,
-    md: 48,
-    lg: 64,
-  }
-
   return (
     <div className={`flex flex-col items-center justify-center text-center ${sizeClasses[size]}`}>
       {/* Icon with decorative background */}
@@ -62,17 +56,17 @@ export function EmptyState({
       <div className="flex flex-col gap-2 sm:flex-row">
         {action && (
           action.href ? (
-            <Link href={action.href}>
-              <Button>{action.label}</Button>
-            </Link>
+            <Button asChild>
+              <Link href={action.href}>{action.label}</Link>
+            </Button>
           ) : (
             <Button onClick={action.onClick}>{action.label}</Button>
           )
         )}
         {secondaryAction && (
-          <Link href={secondaryAction.href}>
-            <Button variant="outline">{secondaryAction.label}</Button>
-          </Link>
+          <Button asChild variant="outline">
+            <Link href={secondaryAction.href}>{secondaryAction.label}</Link>
+          </Button>
         )}
       </div>
     </div>
