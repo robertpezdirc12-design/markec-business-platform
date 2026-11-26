@@ -68,21 +68,27 @@ export function ProductVariantsCard({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
   const [form, setForm] = useState(emptyForm)
+  // Povečaj po vsaki spremembi — efekt spodaj znova naloži seznam.
+  const [reloadKey, setReloadKey] = useState(0)
 
-  const load = async () => {
-    try {
-      setVariants(await getProductVariants(productId))
-    } catch {
-      // card stays empty; non-fatal
-    } finally {
-      setLoading(false)
-    }
-  }
-
+  // Naloži različice ob menjavi izdelka. Zapis po `await` + zastavica
+  // preprečita, da bi odgovor prejšnjega izdelka prepisal novega.
   useEffect(() => {
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId])
+    let alive = true
+    void (async () => {
+      try {
+        const next = await getProductVariants(productId)
+        if (alive) setVariants(next)
+      } catch {
+        // card stays empty; non-fatal
+      } finally {
+        if (alive) setLoading(false)
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [productId, reloadKey])
 
   const openCreate = () => {
     setEditingId(null)
@@ -123,7 +129,7 @@ export function ProductVariantsCard({
         setOpen(false)
         setForm(emptyForm)
         setEditingId(null)
-        load()
+        setReloadKey((k) => k + 1)
         router.refresh()
       } else {
         toast.error(errorText(result.error))
@@ -139,7 +145,7 @@ export function ProductVariantsCard({
         toast.success(
           result.deactivated ? labels.deactivatedUsed : labels.deleted
         )
-        load()
+        setReloadKey((k) => k + 1)
         router.refresh()
       } else {
         toast.error(errorText(result.error))

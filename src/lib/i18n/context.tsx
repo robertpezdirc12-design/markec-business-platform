@@ -18,7 +18,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
 } from "react"
@@ -66,21 +65,21 @@ export function BaseI18nProvider({
   profileOverrides,
   children,
 }: BaseI18nProviderProps) {
-  const [locale, setLocaleState] = useState<Locale>(initialLocale)
+  // Optimistični jezik med `router.refresh()`: velja le, dokler strežnik ne
+  // pošlje nove vrednosti. Ko se `initialLocale` spremeni (osvežitev, drug
+  // zavihek), izpeljava samodejno pade nazaj na strežniško vrednost — brez
+  // efekta in brez kaskadnega izrisa.
+  const [pending, setPending] = useState<{ from: Locale; to: Locale } | null>(null)
+  const locale = pending && pending.from === initialLocale ? pending.to : initialLocale
   const router = useRouter()
-
-  // Keep client state in sync when the server re-renders with a new cookie value.
-  useEffect(() => {
-    setLocaleState(initialLocale)
-  }, [initialLocale])
 
   const setLocale = useCallback(
     (next: Locale) => {
       document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`
-      setLocaleState(next)
+      setPending({ from: initialLocale, to: next })
       router.refresh()
     },
-    [router]
+    [router, initialLocale]
   )
 
   const value = useMemo<I18nContextValue>(() => {

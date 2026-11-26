@@ -18,7 +18,7 @@ interface SeoInput {
 }
 
 export function generateSeoDescription(input: SeoInput): string {
-  const { name, type, price, category, businessName, city } = input
+  const { name, type, price, businessName, city } = input
   const location = city ? ` v ${city}` : ""
   const business = businessName ? ` | ${businessName}` : ""
   const priceStr = price ? ` že od ${price} €` : ""
@@ -36,7 +36,7 @@ export function generateSeoDescription(input: SeoInput): string {
 }
 
 export function generateSeoTitle(input: SeoInput): string {
-  const { name, type, price, businessName } = input
+  const { name, price, businessName } = input
   const priceStr = price ? ` — od ${price} €` : ""
   const business = businessName ? ` | ${businessName}` : ""
   return `${name}${priceStr}${business}`

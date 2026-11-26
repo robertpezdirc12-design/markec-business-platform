@@ -9,7 +9,7 @@
 // odpre se jutri ob 9:00« (brez osvežitve strani).
 // ============================================================
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ClockIcon } from "@/components/icons"
 import { openStateFor, type OpeningHour } from "@/lib/hours/open-state"
 import { cn } from "@/lib/utils"
@@ -21,13 +21,15 @@ export function OpenStatusPill({
   hours: OpeningHour[] | undefined | null
   className?: string
 }) {
-  const [state, setState] = useState(() => openStateFor(hours))
-
+  // Stanje izpeljemo iz (urnik, trenutek) — uro osvežujemo na minuto, zato
+  // ob 19:00 značka sama preklopi v »Zaprto« brez osvežitve strani in brez
+  // setState v telesu efekta.
+  const [now, setNow] = useState(() => new Date())
   useEffect(() => {
-    setState(openStateFor(hours))
-    const timer = window.setInterval(() => setState(openStateFor(hours)), 60_000)
+    const timer = window.setInterval(() => setNow(new Date()), 60_000)
     return () => window.clearInterval(timer)
-  }, [hours])
+  }, [])
+  const state = useMemo(() => openStateFor(hours, now), [hours, now])
 
   if (state.state === "unknown") return null
 

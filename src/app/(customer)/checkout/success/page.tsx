@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -26,14 +26,12 @@ export default function CheckoutSuccessPage() {
   const orgSlug = searchParams.get("org")
   const orgPrefix = orgSlug ? `/s/${orgSlug}` : ""
   const { clearCart } = useCartStore()
-  const [isClearing, setIsClearing] = useState(true)
 
   useEffect(() => {
     // Clear cart if this was a product purchase
     if (type === "products") {
       clearCart()
     }
-    setIsClearing(false)
   }, [type, clearCart])
 
   return (

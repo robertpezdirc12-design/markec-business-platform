@@ -481,8 +481,17 @@ export function BrandingEditor() {
     }
   }, [b])
 
+  // Naloži ob priklopu. Klic gre skozi `await`, zato se stanje ne nastavlja
+  // sinhrono v telesu efekta; zastavica prepreči zapis po odklopu.
   useEffect(() => {
-    void load()
+    let alive = true
+    void (async () => {
+      await Promise.resolve()
+      if (alive) await load()
+    })()
+    return () => {
+      alive = false
+    }
   }, [load])
 
   /** Immutable update of a top-level SiteContent field. */

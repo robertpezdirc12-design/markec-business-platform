@@ -115,7 +115,6 @@ export function ServiceForm({ categories, staff, service, onSuccess }: ServiceFo
 
   const {
     register,
-    handleSubmit,
     watch,
     setValue,
     formState: { errors },
@@ -139,7 +138,7 @@ export function ServiceForm({ categories, staff, service, onSuccess }: ServiceFo
   const watchIsFeatured = watch("isFeatured")
   const watchDepositType = watch("depositType")
 
-  const [state, formAction, pending] = useActionState(
+  const [, formAction, pending] = useActionState(
     async (prev: unknown, formData: FormData) => {
       try {
         const data = {

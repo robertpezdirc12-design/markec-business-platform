@@ -7,7 +7,7 @@
 // povezave in prenos QRja kot PNG.
 // ============================================================
 
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { QRCodeSVG } from "qrcode.react"
 import { Button } from "@/components/ui/button"
 import { SpinnerGapIcon } from "@/components/icons"
@@ -18,19 +18,24 @@ export function ShareQrCard() {
   const [info, setInfo] = useState<ShareInfo | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const load = useCallback(async () => {
-    try {
-      setInfo(await getShareInfo())
-    } catch {
-      setInfo(null)
-    } finally {
-      setLoading(false)
+  // Naloži ob priklopu. Stanje se nastavi šele po `await` (nikoli sinhrono
+  // v telesu efekta) in zastavica prepreči zapis po odklopu komponente.
+  useEffect(() => {
+    let alive = true
+    void (async () => {
+      try {
+        const next = await getShareInfo()
+        if (alive) setInfo(next)
+      } catch {
+        if (alive) setInfo(null)
+      } finally {
+        if (alive) setLoading(false)
+      }
+    })()
+    return () => {
+      alive = false
     }
   }, [])
-
-  useEffect(() => {
-    void load()
-  }, [load])
 
   async function copyUrl() {
     if (!info) return

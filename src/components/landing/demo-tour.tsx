@@ -176,13 +176,17 @@ export function DemoTour({ open, onOpenChange, vertical, accent, stepsRaw }: Dem
   const [index, setIndex] = React.useState(0)
   const [playing, setPlaying] = React.useState(true)
 
-  // Reset ob vsakem odprtju (začnemo od začetka, predvajamo).
-  React.useEffect(() => {
+  // Reset ob vsakem odprtju (začnemo od začetka, predvajamo). Nastavljamo med
+  // izrisom po uradnem vzorcu »prilagodi stanje ob spremembi propa« — tako ni
+  // vmesnega izrisa s starim indeksom.
+  const [prevOpen, setPrevOpen] = React.useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
     if (open) {
       setIndex(0)
       setPlaying(true)
     }
-  }, [open])
+  }
 
   const count = steps.length
   const current = steps[Math.min(index, count - 1)]

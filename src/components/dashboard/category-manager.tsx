@@ -9,7 +9,7 @@
 // preverijo sejo, pravico in organizacijsko izolacijo.
 // ============================================================
 
-import { useEffect, useState, useTransition } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -63,7 +63,6 @@ type FormMode = null | "create" | "edit"
 export function CategoryManager({ initial }: Props) {
   const router = useRouter()
   const { t } = useI18n()
-  const [items, setItems] = useState<ManagedCategory[]>(initial)
   const [query, setQuery] = useState("")
   const [mode, setMode] = useState<FormMode>(null)
   const [form, setForm] = useState<ManagerForm | null>(null)
@@ -73,10 +72,9 @@ export function CategoryManager({ initial }: Props) {
   const [cascadeChildren, setCascadeChildren] = useState(false)
   const [pending, startTransition] = useTransition()
 
-  // Po router.refresh() server pošlje svež seznam; sinkroniziraj lokalno stanje.
-  useEffect(() => {
-    setItems(initial)
-  }, [initial])
+  // Seznam je vedno natanko to, kar je poslal strežnik: vsaka sprememba
+  // sproži router.refresh(), zato lokalna kopija v stanju ni potrebna.
+  const items = initial
 
   const roots = items
     .filter((i) => !i.parentId)

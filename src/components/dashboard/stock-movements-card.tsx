@@ -93,26 +93,33 @@ export function StockMovementsCard({
   const [formOpen, setFormOpen] = useState(false)
   const [pending, startTransition] = useTransition()
   const [form, setForm] = useState(emptyForm)
+  // Povečaj po vnosu gibanja — efekt spodaj znova naloži seznam in zalogo.
+  const [reloadKey, setReloadKey] = useState(0)
 
-  const load = async () => {
-    try {
-      const [items, linkOptions] = await Promise.all([
-        listStockMovements(productId),
-        getStockLinkOptions(),
-      ])
-      setMovements(items)
-      setLinks(linkOptions)
-    } catch {
-      // card stays empty; non-fatal
-    } finally {
-      setLoading(false)
-    }
-  }
-
+  // Naloži gibanja zaloge ob menjavi izdelka — zapis šele po `await`, z
+  // zastavico proti prepisu z odgovorom prejšnjega izdelka.
   useEffect(() => {
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId])
+    let alive = true
+    void (async () => {
+      try {
+        const [items, linkOptions] = await Promise.all([
+          listStockMovements(productId),
+          getStockLinkOptions(),
+        ])
+        if (alive) {
+          setMovements(items)
+          setLinks(linkOptions)
+        }
+      } catch {
+        // card stays empty; non-fatal
+      } finally {
+        if (alive) setLoading(false)
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [productId, reloadKey])
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -135,7 +142,7 @@ export function StockMovementsCard({
       if (typeof result.nextStock === "number") setStock(result.nextStock)
       setForm(emptyForm)
       setFormOpen(false)
-      await load()
+      setReloadKey((k) => k + 1)
       router.refresh()
     })
   }
