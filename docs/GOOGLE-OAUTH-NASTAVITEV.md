@@ -165,3 +165,95 @@ Nimam dostopa do tvoje prijavljene Google seje v brskalniku in nimam nameščene
 **19:48 — Vercel env je bil popravljen neposredno prek REST API-ja** s tokenom, ki si ga posredoval (token ni shranjen v projektu). Zamenjana sta bila `AUTH_GOOGLE_ID` (novi client brez narekovaja) in `AUTH_GOOGLE_SECRET` (iz lokalnega `.env.local`) za `production`, `preview` in `development`. Sprožen je bil nov produkcijski deployment `dpl_Di2AVrCStXcxuG9FFoyUueNa6RSf`, ki je dosegel status `READY`.
 
 **19:52 — ponovljen preizkus na produkciji je uspešen:** Google gumb odpre prijavno stran z novim client ID-jem in pravilnim produkcijskim callbackom brez napak.
+
+---
+
+## Google Calendar (izvoz terminov)
+
+**Datum:** 2026-12-04
+
+Ta povezava je **ločena** od prijave z Googlom: prijava uporablja scope
+`openid email profile`, koledar pa `calendar.events` z lastnim soglasjem in
+lastnim refresh žetonom. Uporabnik lahko poveže koledar, ne da bi se prijavil z
+Googlom (in obratno).
+
+### 1. Dovoljenje v OAuth consent screen
+
+`APIs & Services → OAuth consent screen → Scopes` dodaj:
+
+```txt
+https://www.googleapis.com/auth/calendar.events
+```
+
+Dokler je aplikacija v načinu »Testing«, mora biti račun, katerega koledar
+povezujete, med **Test users** — sicer Google vrne `access_denied`.
+
+`calendar.events` je najmanjši obseg, ki še omogoča branje in pisanje
+dogodkov; celoten `calendar` (urejanje koledarjev, brisanje) ni potreben in ga
+ne zahtevamo.
+
+### 2. Authorized redirect URI
+
+V istem OAuth clientu dodaj še:
+
+```txt
+http://localhost:3008/api/integrations/google/calendar/callback
+https://rcbeautysalon-phi.vercel.app/api/integrations/google/calendar/callback
+```
+
+Naslov se sestavi iz `NEXT_PUBLIC_APP_URL` (oziroma `VERCEL_URL`), zato mora
+vrednost v okolju ustrezati domeni, na kateri povezavo odpirate.
+
+### 3. Okoljske spremenljivke
+
+Če ne želite ločenega OAuth clienta, se uporabijo obstoječe `AUTH_GOOGLE_*`.
+Ločen client je priporočen, ker se soglasje za koledar tako ne meša s prijavo:
+
+```env
+GOOGLE_CALENDAR_CLIENT_ID=
+GOOGLE_CALENDAR_CLIENT_SECRET=
+# neobvezno: če nastavite, podpisuje OAuth state za koledar (sicer NEXTAUTH_SECRET)
+CALENDAR_STATE_SECRET=
+```
+
+### 4. Baza
+
+```bash
+pnpm prisma migrate deploy   # v produkciji
+pnpm prisma migrate dev      # lokalno
+```
+
+Migracija `20261204000000_calendar_connection` doda tabelo
+`CalendarConnection` in stolpec `Appointment.googleEventId`.
+
+### 5. Kako deluje
+
+- Povezava je **na organizacijo** (ena vrstica), žetoni so šifrirani
+  (AES-256-GCM) — v bazi ni berljivih žetonov.
+- Nov termin, prestavitev in sprememba statusa se izvozijo **samodejno**, po
+  odgovoru na zahtevo (`after()`), torej ne podaljšajo rezervacije.
+- Preklic (ročni, strankin, potekli PENDING iz cron joba) dogodek iz koledarja
+  **odstrani**.
+- Termin, ki se je končal pred povezavo, se ne izvozi (brez zasipanja
+  zgodovine); že izvožen dogodek se vseeno posodobi ali odstrani.
+- Gumb **Sinhroniziraj zdaj** izvozi okno od včeraj do +18 mesecev, največ 500
+  terminov, po 5 vzporedno (Googlov rate limit).
+- Smer je enosmerna: MARKEC → Google. Dogodki, vneseni v Google, se ne
+  uvažajo.
+
+### 6. Odpravljanje težav
+
+Po neuspehu nastavitve vas aplikacija vrne na
+`/dashboard/settings?calendar=<vzrok>`:
+
+| Vzrok | Pomen |
+|---|---|
+| `unconfigured` | manjkajo `GOOGLE_CALENDAR_*` in `AUTH_GOOGLE_*` |
+| `state` | piškotek state se ne ujema, je potekel ali je bil ponovno uporabljen |
+| `denied` | uporabnik je soglasje zavrnil |
+| `scope` | Google ni podelil `calendar.events` |
+| `failed` | izmenjava kode za žeton ni uspela (napačen secret, `redirect_uri_mismatch`) |
+| `session` / `no-org` / `permission` | seja ali pravice so se med potjo spremenile |
+
+Napake med sinhronizacijo se zapišejo v kartici (»Zadnja napaka«) in v
+`CalendarConnection.lastSyncError`.

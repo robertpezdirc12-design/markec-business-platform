@@ -18,6 +18,7 @@ import { prisma } from "@/lib/prisma"
 import { isEmailServiceConfigured } from "@/lib/email/config"
 import { sendAppointmentExpiredEmail } from "@/lib/email/appointment-expired"
 import { formatSalonTime, safeTimezone } from "@/lib/booking-time"
+import { exportAppointmentQuietly } from "@/lib/calendar/sync-appointment"
 
 const BATCH_SIZE = 100
 
@@ -72,6 +73,14 @@ async function cancelStale(
         data: { status: "CANCELLED" },
       })
       cancelled += 1
+
+      // GOOGLE KOLEDAR: če je bil termin izvožen, mora iz koledarja
+      // izginiti — sicer v koledarju obvisi termin, ki ga v MARKEC-u ni
+      // več. Počnemo samo za izvožene (googleEventId), da za termine brez
+      // povezave ne delamo poizvedbe na vsakem ciklu.
+      if (appt.googleEventId) {
+        await exportAppointmentQuietly(appt.id)
+      }
 
       const email = appt.customer?.email || appt.guestEmail
       if (notify && email) {
