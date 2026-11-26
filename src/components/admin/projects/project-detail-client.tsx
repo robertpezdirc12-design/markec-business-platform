@@ -84,6 +84,7 @@ export interface ProjectDetailLabels {
   saveTask: string
   editTask: string
   deleteTask: string
+  deleteTaskConfirm: (title: string) => string
   noTasks: string
   tasksDoneCount: string
   taskOverdue: string
@@ -135,6 +136,8 @@ export function ProjectDetailClient({ project, tasks, locale, labels }: ProjectD
   const loc = locale || i18nLocale
   const [pending, startTransition] = useTransition()
   const [deleteOpen, setDeleteOpen] = useState(false)
+  // Brisanje naloge je trajno (server akcija), zato gre skozi potrditev.
+  const [taskToDelete, setTaskToDelete] = useState<{ id: string; title: string } | null>(null)
   const [taskDialogOpen, setTaskDialogOpen] = useState(false)
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [taskForm, setTaskForm] = useState(EMPTY_TASK)
@@ -382,7 +385,7 @@ export function ProjectDetailClient({ project, tasks, locale, labels }: ProjectD
           <CardContent className="space-y-3">
             <div className="bg-muted h-3 overflow-hidden rounded-full">
               <div
-                className="bg-primary h-full rounded-full transition-all"
+                className="bg-primary h-full rounded-full transition-[width]"
                 style={{ width: `${project.progress.pct}%` }}
               />
             </div>
@@ -500,7 +503,7 @@ export function ProjectDetailClient({ project, tasks, locale, labels }: ProjectD
                           size="icon"
                           variant="ghost"
                           className="text-destructive hover:text-destructive h-8 w-8"
-                          onClick={() => removeTask(task.id)}
+                          onClick={() => setTaskToDelete({ id: task.id, title: task.title })}
                           disabled={pending}
                           aria-label={labels.deleteTask}
                         >
@@ -525,6 +528,25 @@ export function ProjectDetailClient({ project, tasks, locale, labels }: ProjectD
         confirmLabel={labels.deleteProject}
         cancelLabel={labels.cancelProject}
         onConfirm={removeProject}
+        variant="destructive"
+      />
+
+      {/* Delete task confirm */}
+      <ConfirmDialog
+        open={taskToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setTaskToDelete(null)
+        }}
+        title={labels.deleteTask}
+        description={
+          taskToDelete ? labels.deleteTaskConfirm(taskToDelete.title) : ""
+        }
+        confirmLabel={labels.deleteTask}
+        cancelLabel={labels.cancelProject}
+        onConfirm={() => {
+          if (taskToDelete) removeTask(taskToDelete.id)
+          setTaskToDelete(null)
+        }}
         variant="destructive"
       />
 
