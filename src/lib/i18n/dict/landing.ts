@@ -31,6 +31,7 @@ export const landingSl = {
     examples: "Primeri",
     steps: "Kako deluje",
     plans: "Paketi",
+    pricing: "Cene",
     login: "Prijava za podjetnike",
     dashboard: "Moja plošča",
     cta: "Začni brezplačno",
@@ -110,6 +111,19 @@ export const landingSl = {
         body: "Predloga je lepa, a prazna. Nihče vam ne pripravi storitev, izdelkov in besedil za vašo dejavnost.",
       },
     ],
+  },
+  // Iskalnik po imeniku platforme. Kategorije so HRATNO vrednosti za URL
+  // (?kategorija=...) — label se prevede, value ostane nespremenjen, da
+  // angleški vmesnik ne pokvari filtra.
+  discovery: {
+    eyebrow: "Razišči platformo",
+    title: "Poišči podjetje ali storitev",
+    lead: "Vsa podjetja na platformi so na enem mestu — od storitev in terminov do izdelkov.",
+    searchAria: "Storitev ali podjetje",
+    searchPlaceholder: "Kaj iščete?",
+    location: "Kraj",
+    submit: "Išči",
+    all: "Razišči vsa podjetja",
   },
   modules: [
     {
@@ -312,6 +326,7 @@ export const landingEn: LandingDictionary = {
     examples: "Examples",
     steps: "How it works",
     plans: "Plans",
+    pricing: "Pricing",
     login: "Business login",
     dashboard: "My dashboard",
     cta: "Start for free",
@@ -384,6 +399,18 @@ export const landingEn: LandingDictionary = {
         body: "The template looks good but is blank. Nobody prepares the services, products and copy for your trade.",
       },
     ],
+  },
+  // Platform directory search. `value` stays Slovenian because it is the
+  // filter key the /podjetja route matches; only `label` is translated.
+  discovery: {
+    eyebrow: "Explore the platform",
+    title: "Find a business or a service",
+    lead: "Every business on the platform in one place — services, appointments and products.",
+    searchAria: "Service or business",
+    searchPlaceholder: "What are you looking for?",
+    location: "Location",
+    submit: "Search",
+    all: "Explore all businesses",
   },
   modules: [
     {
