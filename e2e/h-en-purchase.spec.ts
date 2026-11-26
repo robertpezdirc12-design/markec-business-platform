@@ -66,6 +66,7 @@ test("H — EN purchase: shop → cart → checkout without a single Slovenian w
       price: 12,
       trackInventory: false,
       isActive: true,
+      images: [],
     },
   })
   await publishSite(page)
@@ -80,11 +81,14 @@ test("H — EN purchase: shop → cart → checkout without a single Slovenian w
 
   // ---- shop: English product listing ----
   await visitPublished(g, `${baseUrl}/s/${t.slug}/shop`, /serum/i)
+  // The add-to-cart button's accessible name is "Add to cart: <product>"
+  // (the addToCartNamed convention, shared with the landing ProductCard) —
+  // match on the action, not the exact string.
   await expect(
-    g.getByRole("button", { name: "Add to cart" }).first()
+    g.getByRole("button", { name: /Add to cart/ }).first()
   ).toBeVisible({ timeout: 20_000 })
   await expectEnglish(g)
-  await g.getByRole("button", { name: "Add to cart" }).first().click()
+  await g.getByRole("button", { name: /Add to cart/ }).first().click()
 
   // ---- cart: English form, no Slovenian ----
   await g.goto(`${baseUrl}/s/${t.slug}/cart`)

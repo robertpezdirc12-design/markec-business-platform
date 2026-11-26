@@ -222,12 +222,12 @@ export function B2BShowcase() {
 
         {/* CTA */}
         <div className="mt-16 text-center">
-          <Link href="/register">
-            <Button size="lg" className="gap-2">
+          <Button asChild size="lg" className="gap-2">
+            <Link href="/register">
               Začnite brezplačno
               <ArrowRightIcon size={18} />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
           <p className="mt-4 text-sm text-muted-foreground">
             Brez kreditne kartice • 14 dni brezplačno • Prekličite kadarkoli
           </p>

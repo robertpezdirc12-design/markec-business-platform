@@ -50,8 +50,18 @@ export function PublicationHistoryDialog({ open, onOpenChange }: Props) {
     }
   }, [])
 
+  // Osveži seznam ob vsakem odprtju — klic gre skozi `await`, zato ni
+  // setState v telesu efekta; zastavica prepreči zapis po zaprtju.
   useEffect(() => {
-    if (open) void load()
+    if (!open) return
+    let alive = true
+    void (async () => {
+      await Promise.resolve()
+      if (alive) await load()
+    })()
+    return () => {
+      alive = false
+    }
   }, [open, load])
 
   async function handleRevert(id: string) {

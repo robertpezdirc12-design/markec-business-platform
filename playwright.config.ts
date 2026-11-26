@@ -71,6 +71,19 @@ export default defineConfig({
       // Vzporedni workerji (isti IP) bi drugače sprožili IP rate-limit
       // prijave (login:ip 10/15min) → lažne "Invalid credentials".
       E2E_RATE_LIMIT_DISABLED: "1",
+      // R2 (Cloudflare) storage — the m-mama / upload flows POST /api/upload/r2
+      // against this. Without R2_ENDPOINT the @aws-sdk S3 client falls back to
+      // AWS ("markec-images.s3.auto.amazonaws.com" — ENOTFOUND in CI) and the
+      // upload (hence the success toast the tests assert) never happens. The
+      // e2e job in .github/workflows/tests.yml sets these from GitHub secrets
+      // so the real R2 bucket is reachable. Omit → R2 upload steps degrade to
+      // their documented PARTIAL (no crash, no false success).
+      R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID ?? "",
+      R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID ?? "",
+      R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY ?? "",
+      R2_ENDPOINT: process.env.R2_ENDPOINT ?? "",
+      R2_BUCKET: process.env.R2_BUCKET ?? "",
+      R2_PUBLIC_URL: process.env.R2_PUBLIC_URL ?? "",
     },
   },
 })

@@ -47,11 +47,21 @@ export function AnalyticsIntegrationCard({
     FormData
   >(updateAnalyticsIntegration, null)
 
+  // Rezultat akcije prevzamemo med izrisom (uradni vzorec za stanje, ki
+  // sledi zunanjemu viru) — tako ni kaskadnega izrisa iz efekta.
+  const [prevState, setPrevState] = useState(state)
+  if (state !== prevState) {
+    setPrevState(state)
+    if (state?.ok) {
+      setStored(state.value)
+      setValue(state.value ?? "")
+    }
+  }
+
+  // Ostanejo samo obvestila — brez setState v telesu efekta.
   useEffect(() => {
     if (!state) return
     if (state.ok) {
-      setStored(state.value)
-      setValue(state.value ?? "")
       toast.success(state.value ? a.saved : a.cleared)
     } else if (state.error === "invalid") {
       toast.error(a.errInvalid)

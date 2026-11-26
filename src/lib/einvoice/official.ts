@@ -83,7 +83,7 @@ function javaAvailable(): boolean {
   }
 }
 
-function run(prog: string, args: string[], opts: { encoding?: BufferEncoding } = {}): Promise<{ code: number; stdout: string; stderr: string }> {
+function run(prog: string, args: string[], _opts: { encoding?: BufferEncoding } = {}): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
     execFile(prog, args, { maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => {
       // err je non-null le za ENOENT / lahko exit!=0; stdout vseeno preberemo.

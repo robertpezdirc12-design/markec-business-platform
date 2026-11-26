@@ -69,28 +69,43 @@ export function CommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
+  // Počisti iskanje ob zaprtju. Klici so v handlerjih (ne v efektu), zato
+  // ni kaskadnega izrisa: React Compiler opozori na setState v telesu efekta.
+  const resetSearch = useCallback(() => {
+    setQuery("")
+    setResults(EMPTY_RESULTS)
+    setActiveIndex(0)
+  }, [])
+
   // ⌘K / Ctrl+K — globalna bližnjica (tudi ko je fokus v polju).
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault()
+        // Zapiranje s tipkovnico ne gre skozi Dialog.onOpenChange.
+        if (open) resetSearch()
         setOpen((prev) => !prev)
       }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [])
+  }, [open, resetSearch])
 
+  // Fokus po animaciji odpiranja — sicer Radix vrne fokus na trigger.
   useEffect(() => {
-    if (open) {
-      // Fokus po animaciji odpiranja — sicer Radix vrne fokus na trigger.
-      const timer = window.setTimeout(() => inputRef.current?.focus(), 40)
-      return () => window.clearTimeout(timer)
-    }
-    setQuery("")
-    setResults(EMPTY_RESULTS)
-    setActiveIndex(0)
+    if (!open) return
+    const timer = window.setTimeout(() => inputRef.current?.focus(), 40)
+    return () => window.clearTimeout(timer)
   }, [open])
+
+  // Radix pokliče to ob preklopu (Esc, klik na ozadje, gumb za zaprtje).
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      setOpen(next)
+      if (!next) resetSearch()
+    },
+    [resetSearch]
+  )
 
   const navCtx = useMemo(
     () => ({
@@ -145,6 +160,10 @@ export function CommandPalette() {
     [RECENT_KEY, recentIds]
   )
 
+  // Rezultati veljajo samo za poizvedbe z vsaj 2 znakoma — tako ostanejo
+  // stari zadetki skriti brez dodatnega setState klica.
+  const activeResults = query.trim().length >= 2 ? results : EMPTY_RESULTS
+
   const entries = useMemo<PaletteEntry[]>(() => {
     const q = query.trim().toLocaleLowerCase("sl")
     const match = (text: string) => !q || text.toLocaleLowerCase("sl").includes(q)
@@ -172,9 +191,9 @@ export function CommandPalette() {
         kind: "destination" as const,
       }))
 
-    const dbEntries: PaletteEntry[] = (Object.keys(results) as SearchHit["kind"][])
+    const dbEntries: PaletteEntry[] = (Object.keys(activeResults) as SearchHit["kind"][])
       .flatMap((kind) =>
-        results[kind].map((hit) => ({
+        activeResults[kind].map((hit) => ({
           id: `${kind}-${hit.id}`,
           label: hit.title,
           hint: hit.subtitle,
@@ -198,15 +217,13 @@ export function CommandPalette() {
     return q
       ? [...dbEntries, ...destinations, ...actions]
       : [...recent, ...actionsRest, ...destinationsRest]
-  }, [query, navItems, results, label, t, navCtx, recentIds])
+  }, [query, navItems, activeResults, label, t, navCtx, recentIds])
 
   // Iskanje po bazi z zakasnitvijo — brez poizvedbe na vsak pritisk.
   useEffect(() => {
     const q = query.trim()
-    if (q.length < 2) {
-      setResults(EMPTY_RESULTS)
-      return
-    }
+    // Pod 2 znakoma ne iščemo; prazne zadetke izpeljemo spodaj (brez setState v efektu).
+    if (q.length < 2) return
     const timer = window.setTimeout(() => {
       startTransition(async () => {
         try {
@@ -219,18 +236,15 @@ export function CommandPalette() {
     return () => window.clearTimeout(timer)
   }, [query])
 
-  useEffect(() => {
-    setActiveIndex(0)
-  }, [query])
-
   const run = useCallback(
     (entry?: PaletteEntry) => {
       if (!entry) return
       remember(entry)
       setOpen(false)
+      resetSearch()
       router.push(entry.href)
     },
-    [router, remember]
+    [router, remember, resetSearch]
   )
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -294,7 +308,7 @@ export function CommandPalette() {
         </kbd>
       </button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
           aria-describedby={undefined}
           className="top-[12%] max-w-xl translate-y-0 gap-0 overflow-hidden p-0"
@@ -307,7 +321,10 @@ export function CommandPalette() {
             <input
               ref={inputRef}
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                setActiveIndex(0)
+              }}
               onKeyDown={onKeyDown}
               placeholder={t.common.navGroups.searchPlaceholder}
               aria-label={t.common.navGroups.searchPlaceholder}

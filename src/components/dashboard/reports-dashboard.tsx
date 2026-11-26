@@ -6,6 +6,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { EmptyState } from "@/components/ui/empty-state"
 import { Separator } from "@/components/ui/separator"
 import {
   TrendingUpIcon,
@@ -49,6 +50,8 @@ interface BusinessMetrics {
 
 interface ReportsDashboardProps {
   metrics: BusinessMetrics
+  /** FALSE dokler ni resničnih strank/terminov — brez lažnih ničelnih kartic. */
+  hasData?: boolean
 }
 
 function MetricCard({
@@ -91,7 +94,33 @@ function MetricCard({
   )
 }
 
-export function ReportsDashboard({ metrics }: ReportsDashboardProps) {
+export function ReportsDashboard({
+  metrics,
+  hasData = false,
+}: ReportsDashboardProps) {
+  if (!hasData) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="px-5">
+          <EmptyState
+            icon={<CalendarIcon size={44} />}
+            title="Poročila bodo vidna po prvi rezervaciji"
+            description="Prikazujemo samo resnične podatke. Ko boste imeli stranko ali termin, se bodo prihodki, termini in stranke izrisali tukaj."
+            action={{
+              label: "Dodaj storitev",
+              href: "/dashboard/services/new",
+            }}
+            secondaryAction={{
+              label: "Odpri koledar",
+              href: "/dashboard/appointments",
+            }}
+            size="md"
+          />
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Revenue Overview */}

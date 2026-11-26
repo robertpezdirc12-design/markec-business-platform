@@ -143,8 +143,17 @@ export function SiteVisualEditor() {
     lastSavedRef.current = JSON.stringify(res.siteContent)
   }, [])
 
+  // Naloži ob priklopu — klic gre skozi `await`, zato ni setState v telesu
+  // efekta; zastavica prepreči zapis po odklopu komponente.
   useEffect(() => {
-    load()
+    let alive = true
+    void (async () => {
+      await Promise.resolve()
+      if (alive) await load()
+    })()
+    return () => {
+      alive = false
+    }
   }, [load])
 
   // Pošlji trenutni osnutek iframe predogledu → takojšnja posodobitev.

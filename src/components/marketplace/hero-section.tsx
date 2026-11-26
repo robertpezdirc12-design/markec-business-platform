@@ -9,6 +9,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { SearchIcon, MapPinIcon } from "@/components/icons"
+import { ActivityExplorer } from "@/components/marketplace/activity-explorer"
 
 const categories = [
   { slug: "frizerski-saloni", name: "Frizerski saloni", icon: "✂️" },
@@ -100,12 +101,16 @@ export function HeroSection({
               <Link
                 key={cat.slug}
                 href={`/podjetja?kategorija=${encodeURIComponent(cat.name)}`}
-                className="flex items-center gap-2 rounded-full border bg-background/80 px-4 py-2 text-sm transition-all hover:border-primary hover:bg-primary/5 hover:shadow-md"
+                className="flex min-h-11 items-center gap-2 rounded-full border bg-background/80 px-4 py-2 text-sm transition-all hover:border-primary hover:bg-primary/5 hover:shadow-md"
               >
                 <span>{cat.icon}</span>
                 <span>{cat.name}</span>
               </Link>
             ))}
+          </div>
+
+          <div id="dejavnosti" className="mt-4 flex scroll-mt-24 justify-center">
+            <ActivityExplorer />
           </div>
 
           <div className="mt-12 grid grid-cols-3 gap-6">

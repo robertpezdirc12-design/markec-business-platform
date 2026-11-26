@@ -7,6 +7,8 @@
 // ============================================================
 
 import { useState, useEffect, useRef } from "react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 import {
   CalendarIcon,
   UsersIcon,
@@ -107,11 +109,44 @@ interface BigStatsSectionProps {
 }
 
 export function BigStatsSection({
-  totalAppointments = 1000000,
-  totalBusinesses = 500,
-  citiesCount = 85,
-  totalCustomers = 10000,
+  totalAppointments = 0,
+  totalBusinesses = 0,
+  citiesCount = 0,
+  totalCustomers = 0,
 }: BigStatsSectionProps) {
+  // Poštenost: ni izmišljenih "1.000.000+" številk, ko baza nima podatkov.
+  // Dokler ni resničnih objav/rezervacij, prikažemo mirno pojasnilo.
+  const hasData =
+    totalAppointments > 0 ||
+    totalBusinesses > 0 ||
+    citiesCount > 0 ||
+    totalCustomers > 0
+
+  if (!hasData) {
+    return (
+      <section className="border-border/60 bg-muted/30 border-y py-16">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto max-w-2xl text-center">
+            <div className="bg-card border-border mx-auto mb-5 flex size-12 items-center justify-center rounded-xl border">
+              <Buildings size={24} className="text-muted-foreground" />
+            </div>
+            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              Številke bodo vidne, ko bodo resnične
+            </h2>
+            <p className="text-muted-foreground mx-auto mt-3 max-w-xl text-sm leading-relaxed sm:text-base">
+              MARKEC ne prikazuje izmišljenih statistik. Ko bodo podjetja
+              objavljena in rezervacije izvedene, se bodo podatki pojavili
+              tukaj.
+            </p>
+            <Button asChild variant="outline" className="mt-6 min-h-11">
+              <Link href="/za-podjetja">Objavi svoj profil</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
   const stats: Stat[] = [
     {
       icon: <CalendarIcon size={28} />,

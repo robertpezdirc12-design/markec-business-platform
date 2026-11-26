@@ -26,10 +26,14 @@ export function SearchInput({
 
   const [inputValue, setInputValue] = useState(query)
 
-  // Sync state with URL when query changes (e.g., "All Products" button clicked)
-  useEffect(() => {
+  // Ko se URL spremeni od zunaj (npr. gumb »Vsi izdelki«), polje sledi URL-ju.
+  // Uradni vzorec »prilagodi stanje ob spremembi propa« namesto efekta — brez
+  // vmesnega izrisa s staro vrednostjo.
+  const [prevQuery, setPrevQuery] = useState(query)
+  if (query !== prevQuery) {
+    setPrevQuery(query)
     setInputValue(query)
-  }, [query])
+  }
 
   // Debounced URL update
   useEffect(() => {

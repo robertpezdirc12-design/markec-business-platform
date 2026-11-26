@@ -40,10 +40,6 @@ export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: 
   // the fresh cookie immediately (cart/checkout read it client-side).
   const { update } = useSession()
   const rawCallback = searchParams.get("callbackUrl") || searchParams.get("redirectTo")
-  // Google OAuth preusmerja nazaj sem takoj po prijavi → vedno na
-  // /self-service (samodejno ustvari/izbere prostor; nov uporabnik pade
-  // na izbiro modulov). Večposlovni uporabnik dobi vstopno tablo.
-  const callbackUrl = "/self-service"
   // P2 #74: najemniško označena prijava (?org=) je VRATA STRANKE — iz nje
   // je gost prišel prek "Prijava" v nogi najemnikove strani. Nikoli ne
   // ponujaj provider CTA-ja ("Ustvari svoje podjetje") nekomu, ki kupuje
@@ -51,6 +47,19 @@ export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: 
   // platformina lastna vrata (obe poti sta tam legitimni, glej #68).
   const isTenantContext =
     Boolean(orgSlug) || Boolean((rawCallback ?? "").startsWith("/s/"))
+
+  // Google je v prvi vrsti VSTOP ZA STRANKO. Prej je vsak Google login
+  // pristal na /self-service, kjer se je samodejno ustvaril POSLOVNI prostor
+  // — stranka je bila potisnjena v onboarding podjetja, če je le hotela
+  // pogledati svoje termine. Zato:
+  //  - najemniški kontekst → nazaj v trgovino / na varno ciljno pot,
+  //  - nevtralni login → /my-account (račun stranke),
+  //  - ekspliciten varni callback (npr. /self-service) se še vedno spoštuje.
+  const safeCallback =
+    rawCallback && rawCallback.startsWith("/") && !rawCallback.startsWith("//")
+      ? rawCallback
+      : null
+  const callbackUrl = safeCallback ?? (isTenantContext ? `/s/${orgSlug}` : "/my-account")
 
   const {
     register,
@@ -163,7 +172,7 @@ export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: 
             {orgName && orgSlug && (
               <Link
                 href={`/s/${orgSlug}`}
-                className="text-muted-foreground hover:text-primary-text text-sm transition-colors"
+                className="text-muted-foreground hover:text-primary-text inline-flex min-h-11 items-center text-sm transition-colors"
               >
                 ← Nazaj v trgovino · {orgName}
               </Link>
@@ -225,7 +234,7 @@ export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: 
                 <Label htmlFor="password">{t.auth.login.password}</Label>
                 <Link
                   href="/forgot-password"
-                  className="text-muted-foreground hover:text-primary-text text-sm"
+                  className="text-muted-foreground hover:text-primary-text inline-flex min-h-11 items-center text-sm"
                 >
                   {t.auth.login.forgotPassword}
                 </Link>
@@ -267,7 +276,7 @@ export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: 
               {t.auth.login.noAccount}{" "}
               <Link
                 href="/register"
-                className="text-primary-text font-medium hover:underline"
+                className="text-primary-text font-medium hover:underline inline-flex min-h-11 items-center"
               >
                 {t.auth.login.createAccount}
               </Link>
@@ -282,7 +291,7 @@ export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: 
                 {/* P2 #68: nevtralni CTA — platforma najema strani vsem obrtom. */}
                 <Link
                   href="/start"
-                  className="text-primary-text font-medium hover:underline"
+                  className="text-primary-text font-medium hover:underline inline-flex min-h-11 items-center"
                 >
                   Ustvari svoje podjetje
                 </Link>
@@ -292,7 +301,7 @@ export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: 
             <div className="text-center">
               <Link
                 href="/"
-                className="text-muted-foreground hover:text-primary-text text-sm"
+                className="text-muted-foreground hover:text-primary-text inline-flex min-h-11 items-center text-sm"
               >
                 {t.auth.login.backToHome}
               </Link>

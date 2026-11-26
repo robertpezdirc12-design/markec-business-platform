@@ -204,6 +204,16 @@ jobs:
       BASE_URL: http://127.0.0.1:3123
       # P5: v e2e okolju izklopi IP/rate omejitve (vzporedni workerji).
       E2E_RATE_LIMIT_DISABLED: "1"
+      # R2 (Cloudflare) storage — e2e webServer (next start) mora znati naložiti
+      # slike (m-mama test: "Slika je bila naložena"). Brez R2_ENDPOINT bi
+      # @aws-sdk S3 klient padel na AWS in upload (hence uspešni toast) ni
+      # mogoč. Sestavljene so iz GitHub secrets (vse prisotne).
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

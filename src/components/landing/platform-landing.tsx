@@ -368,7 +368,7 @@ export function PlatformLanding({
                 <Link
                   key={category}
                   href={`/podjetja?kategorija=${encodeURIComponent(category)}`}
-                  className="text-muted-foreground hover:border-primary hover:text-foreground rounded-full border px-4 py-2 text-sm transition-colors"
+                  className="text-muted-foreground hover:border-primary hover:text-foreground inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm transition-colors"
                 >
                   {category}
                 </Link>
@@ -379,7 +379,7 @@ export function PlatformLanding({
             <div className="mt-6 text-center">
               <Link
                 href="/podjetja"
-                className="text-primary-text text-sm font-medium hover:underline"
+                className="text-primary-text hover:underline inline-flex min-h-11 items-center text-sm font-medium"
               >
                 Razišči vsa podjetja →
               </Link>
@@ -604,7 +604,7 @@ export function PlatformLanding({
             <div className="mt-6 text-center">
               <Link
                 href="/pricing"
-                className="text-primary-text text-sm font-medium hover:underline"
+                className="text-primary-text hover:underline inline-flex min-h-11 items-center text-sm font-medium"
               >
                 Poglej vse cene in primerjavo paketov →
               </Link>
@@ -695,19 +695,19 @@ export function PlatformLanding({
             <nav aria-label={t.aria.legal} className="flex flex-wrap gap-5">
               <Link
                 href="/privacy"
-                className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+                className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center text-sm transition-colors"
               >
                 {t.foot.privacy}
               </Link>
               <Link
                 href="/terms"
-                className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+                className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center text-sm transition-colors"
               >
                 {t.foot.terms}
               </Link>
               <Link
                 href="/cookies"
-                className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+                className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center text-sm transition-colors"
               >
                 {t.foot.cookies}
               </Link>
@@ -717,20 +717,20 @@ export function PlatformLanding({
             <nav aria-label={t.aria.footer} className="flex flex-wrap gap-5">
               <Link
                 href="/login"
-                className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+                className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center text-sm transition-colors"
               >
                 {dashboardHref ? t.foot.dashboard : t.foot.login}
               </Link>
               <Link
                 href="/start"
-                className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+                className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center text-sm transition-colors"
               >
                 {t.foot.start}
               </Link>
               <Link
                 href={otherLangHref}
                 hrefLang={isEn ? "sl" : "en"}
-                className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+                className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center text-sm transition-colors"
               >
                 {isEn ? t.languages.sl : t.languages.en}
               </Link>

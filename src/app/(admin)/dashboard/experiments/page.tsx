@@ -44,7 +44,7 @@ async function collectByVariant(orgId: string): Promise<Record<string, Row>> {
 export default async function ExperimentsPage() {
   // A/B metrike so del upravljanja poslovanja — večinoma lastnik/admin.
   await requirePagePermission("appointments.view")
-  const [{ t }, org] = await Promise.all([getServerI18n(), getResolvedOrg()])
+  const [, org] = await Promise.all([getServerI18n(), getResolvedOrg()])
   const orgId = org?.id ?? ""
   const by = await collectByVariant(orgId)
   const fmt = (n: number) => (Number.isFinite(n) ? n.toFixed(1) : "0.0")

@@ -115,6 +115,61 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     console.error("[e2e global-setup] f631 fixtures failed:", e)
   }
 
+  // S5 (visual-editor): frizer-test needs a PUBLISHED gallery + FAQ so the
+  // public page renders `#galerija` / `#pogosta-vprasanja`. Idempotent —
+  // create only when absent (re-runs against a persistent DB stay clean).
+  // cebelar-test is intentionally left gallery/FAQ-free: S1b asserts that
+  // the beekeeper page shows ZERO of these (tenant isolation).
+  try {
+    const frizer = await prisma.organization.findUnique({
+      where: { slug: "frizer-test" },
+    })
+    if (frizer) {
+      const hasGallery = await prisma.gallery.count({
+        where: { organizationId: frizer.id, isPublic: true, isPublished: true },
+      })
+      if (hasGallery === 0) {
+        const g = await prisma.gallery.create({
+          data: {
+            organizationId: frizer.id,
+            title: "Galerija frizerskih del",
+            isPublic: true,
+            isPublished: true,
+          },
+        })
+        await prisma.galleryItem.create({
+          data: {
+            galleryId: g.id,
+            // 1px data-URI placeholder — the section renders even if the
+            // <img> is empty; S5 asserts the section is visible, not the
+            // image bytes.
+            mediaId: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwAEcAJFAKVzrwIAAAABklEQVR4nGNgYGBgAAAACQAB6sHUTwAAAABJRU5ErkJggg==",
+            caption: "E2E galerija",
+            position: 0,
+            isPublished: true,
+          },
+        })
+      }
+      const hasFaq = await prisma.faqItem.count({
+        where: { organizationId: frizer.id, isPublic: true, isPublished: true },
+      })
+      if (hasFaq === 0) {
+        await prisma.faqItem.create({
+          data: {
+            organizationId: frizer.id,
+            question: "Kje lahko rezerviram termin?",
+            answer: "Poziv v gumb Rezerviraj na zgornjem delu strani.",
+            isPublic: true,
+            isPublished: true,
+            position: 0,
+          },
+        })
+      }
+    }
+  } catch (e) {
+    console.error("[e2e global-setup] frizer gallery/faq seed failed:", e)
+  }
+
   // Public + auth surfaces first (compile-heavy), then dashboard/admin
   // surfaces (redirect to /login when unauthenticated — still compiles).
   await warm(baseUrl, [

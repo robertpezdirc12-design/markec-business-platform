@@ -22,8 +22,8 @@ interface AppDownloadSectionProps {
 }
 
 export function AppDownloadSection({
-  bookingsCount = 12500,
-  businessesCount = 500,
+  bookingsCount = 0,
+  businessesCount = 0,
   appStoreUrl = "#",
   playStoreUrl = "#",
 }: AppDownloadSectionProps) {

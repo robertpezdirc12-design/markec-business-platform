@@ -11,6 +11,16 @@
 // `verticals` so vrednosti, ki jih snapshot zapiše v polje `type`/`category`
 // (id dejavnosti iz src/lib/profiles/registry.ts). Ujemanje je natančno —
 // zato kategorija nikoli ne pokaže tujega podjetja.
+//
+// ARHITEKTURA DVEH DREVES (2026-11-25, po zgledu Taobao / Yelp / Google):
+//   ZALEDJE: SKD 2025 = 1725 vozlov / 678 podrazredov, ena koda na subjekt,
+//            državni standard za register, davke in statistiko.
+//   PRESLIKAVA: polje `verticals` (N:N, brez kod) — ta datoteka.
+//   PREDNJA STRAN: 14 kuriranih kategorij za iskanje in odkrivanje.
+// SKD se zato NE sme prikazovati v uporabniškem vmesniku: njegovi listi so
+// pregrobi (npr. T96.210 združuje frizerje in brivce) in vsebujejo panoge,
+// ki za obiskovalca tržnice niso smiselne (orožje, javna uprava, kmetijstvo).
+// Novo področje/oznako dodaj SEM, v `MARKETPLACE_CATEGORIES`, ne v SKD.
 // ============================================================
 
 export interface MarketplaceCategory {

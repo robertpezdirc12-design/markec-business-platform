@@ -130,6 +130,12 @@ export default async function AdminDashboard() {
         : Promise.resolve(null),
     ])
 
+  // Poštenost: ničelne kartice niso "stanje podjetja", ampak odsotnost
+  // podatkov. Poročila zato dobesedno povejo, zakaj so prazna.
+  const hasReportData =
+    Boolean(stats && (stats.appointments.total > 0 || stats.customers.total > 0)) ||
+    Boolean(revenueStats?.revenue?.total && revenueStats.revenue.total > 0)
+
   // Capability-gated dashboard (EPIC #1 §21): irrelevant modules never render.
   // Phase 5: the EFFECTIVE profile (shared profile + owner overrides) drives gating.
   const profile = await getSessionEffectiveProfile()
@@ -906,34 +912,39 @@ export default async function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Business Reports Summary */}
-      <ReportsDashboard
-        metrics={{
-          revenue: {
-            today: revenueStats?.revenue?.total || 0,
-            thisWeek: 0,
-            thisMonth: revenueStats?.revenue?.total || 0,
-            lastMonth: 0,
-            change: revenueStats?.revenue?.change || 0,
-          },
-          appointments: {
-            today: todaysAppointments?.length || 0,
-            thisWeek: 0,
-            thisMonth: 0,
-            completed: todaysAppointments?.filter((a) => a.status === "COMPLETED").length || 0,
-            cancelled: todaysAppointments?.filter((a) => a.status === "CANCELLED").length || 0,
-            noShow: todaysAppointments?.filter((a) => a.status === "NO_SHOW").length || 0,
-          },
-          customers: {
-            total: 0,
-            new: 0,
-            returning: 0,
-            averageVisitValue: 0,
-          },
-          services: { top: [] },
-          products: { top: [] },
-        }}
-      />
+      {/* Business Reports Summary — samo za vloge, ki smejo videti podatke. */}
+      {(canAppointments || canFinances) && (
+        <ReportsDashboard
+          hasData={hasReportData}
+          metrics={{
+            revenue: {
+              today: revenueStats?.revenue?.total || 0,
+              thisWeek: 0,
+              thisMonth: revenueStats?.revenue?.total || 0,
+              lastMonth: 0,
+              change: revenueStats?.revenue?.change || 0,
+            },
+            appointments: {
+              today: todaysAppointments?.length || 0,
+              thisWeek: 0,
+              thisMonth: 0,
+              completed:
+                todaysAppointments?.filter((a) => a.status === "COMPLETED").length || 0,
+              cancelled:
+                todaysAppointments?.filter((a) => a.status === "CANCELLED").length || 0,
+              noShow: todaysAppointments?.filter((a) => a.status === "NO_SHOW").length || 0,
+            },
+            customers: {
+              total: 0,
+              new: 0,
+              returning: 0,
+              averageVisitValue: 0,
+            },
+            services: { top: [] },
+            products: { top: [] },
+          }}
+        />
+      )}
 
       {/* Plan status — compact card showing current plan + top usage bars.
           Moved from Settings (2026-11-15) — plan is STATUS, not config. */}

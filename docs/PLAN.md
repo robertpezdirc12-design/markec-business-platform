@@ -24,7 +24,7 @@ spodaj, popravi le označene vrzeli in šele nato postavi kljukico.
 | Točka | Naslov | Status | Kaj manjka |
 |---|---|---|---|
 | 1 | Varnost in higiena | 🟡 | **rate-limit, backup obnova, email senderji 16/16 ✅**; SPF/DKIM/MX že v DNS; ostane: `RESEND_API_KEY` + `RESEND_FROM_EMAIL` in **en sam** `_dmarc` zapis — preveri z `pnpm mail:check` |
-| 2 | Katalog dejavnosti (SKD 2025) | ✅ | — (1725 zapisov / 678 podrazredov, preskok, 21 področij, iskalnik) |
+| 2 | Katalog dejavnosti (SKD 2025) | ✅ | — (1725 vozlov = 22 področij / 87 oddelkov / 287 skupin / 651 razredov / 678 podrazredov; ločeno od tega 21 lastnih področij `SKD_AREAS`, iskalnik) |
 | 3 | Predeloki za dejavnosti | ✅ | le preveriti, da vsak arhetip dobi prave module (dokaz E2E) |
 | 4 | Knjižnica slik | ✅ | **Cloudinary auto-rezanje (2000px + q_auto/f_auto) NAREJEN**; hero zamenjava tu |
 | 5 | Urejevalnik z živim predogledom | ✅ | **auto-save (900ms debounce) NAREJEN**; E2E `visual-editor.spec.ts` obstaja |
@@ -374,12 +374,12 @@ _(Nove ideje zapisujemo tu; izvajamo šele po poglavjih 1–12.)_
 
 ## DODATEK A — Google OAuth prijava (2026-11-13)
 
-**Status: NAREJEN v kodi in preverjen do Google strani.**
+**Status: NAREJEN v kodi; 2026-11-25 ponovno aktiviran z novim OAuth clientom.**
 
-**Ključi (varno shranjeni v `.env`, ki je gitignoriran — NE kopiraj v git):**
-- Client ID: `831336859645-639dlrg9i9cr5bad68up43a92i5unkjs.apps.googleusercontent.com`
-- Client Secret: v `.env` pod `AUTH_GOOGLE_SECRET` (ne piši v dokumente/kodo/git).
+**Ključi (varno shranjeni v `.env.local` / Vercel env, ki sta gitignorirana — NE kopiraj v git):**
+- `AUTH_GOOGLE_ID` in `AUTH_GOOGLE_SECRET` sta v okolju, ne v dokumentaciji.
 - Projekt: `project-1cadb8e6-7cd7-4018-b1a` · Google Auth Platform → Clients.
+- Stari Client ID iz tega dokumenta je bil odstranjen, ker je bil zamenjan.
 
 **V kodi (vse preverjeno, lint čisto, testi 1368/1368):**
 - `src/lib/auth/auth.ts` — Google provider (fail-closed: vpisan samo, če sta ID+Secret v okolju)
@@ -388,15 +388,16 @@ _(Nove ideje zapisujemo tu; izvajamo šele po poglavjih 1–12.)_
 - `src/components/auth/login-form.tsx` — gumb "Nadaljuj z Google" (prikazan samo, če je omogočen).
 - `src/components/icons/google-icon.tsx` — uradna Google "G" ikona.
 
-**Potrebno — ne morem sam (Google Console → OAuth → Authorized redirect URIs):**
-Produkcijska je že registrirana:
-- `https://rcbeautysalon-phi.vercel.app/api/auth/callback/google`
+**2026-11-25 — popravek poti za stranke:**
+- Google prijava zdaj ne ustvarja več samodejno poslovnega prostora. Privzeta ciljna pot je `/my-account`; ekspliciten varni `callbackUrl` (npr. `/self-service` za podjetnike) se še vedno spoštuje.
+- Secret je bil izgubljen ob regeneraciji `.env.local` prek Vercel CLI; ustvarjen je bil NOV OAuth client. Provider je spet aktiven (`/api/auth/providers` vključuje `google`).
+- Preverjeno: gumb se prikaže, `redirect_uri` je `http://localhost:3008/api/auth/callback/google`, scope `openid profile email`.
 
-Za lokalni razvoj dodaj (tam kjer poganjaš dev strežnik):
-- `http://localhost:3000/api/auth/callback/google`
-- `http://localhost:3001/api/auth/callback/google`
-- `http://localhost:3002/api/auth/callback/google`   ← dev test strežnik tu trenutno
-- `http://localhost:3008/api/auth/callback/google`   (po potrebi)
+**Podroben postopek in status:** [`docs/GOOGLE-OAUTH-NASTAVITEV.md`](./GOOGLE-OAUTH-NASTAVITEV.md).
 
-Brez tega Google vrne `400 redirect_uri_mismatch` (dokazano delujoč tok — to NI bug; je samo
-manjkajoč dovoljen URI na Google strani). Ko dodaš, prijava z Google deluje »out of the box«.
+**2026-11-25 19:52 — končni živ preizkus:**
+
+- Google Console je **pravilen**: novi client `831336859645-7l8bqd189pfp9pls7s1kvao3lkpisrr5...` ima vpisane lokalne in produkcijske callback URI-je.
+- **Lokalno deluje:** klik na Google gumb odpre pravo Google prijavno stran brez `redirect_uri_mismatch`.
+- **Produkcija deluje:** Vercel env je bil popravljen (novi client ID brez narekovaja + novi secret), sledil je redeploy `dpl_Di2AVrCStXcxuG9FFoyUueNa6RSf` (status `READY`). Klik na Google gumb zdaj odpre Google prijavno stran z `client_id=831336859645-7l8bqd189pfp9pls7s1kvao3lkpisrr5...` in pravilnim produkcijskim callbackom — brez `invalid_client`.
+- Preostane samo še zaključek prijave z resničnim Google testnim uporabnikom do `/my-account`. V kodi ni bilo potrebno nič popraviti.

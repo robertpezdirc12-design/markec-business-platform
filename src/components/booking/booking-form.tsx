@@ -84,7 +84,6 @@ export function BookingForm(props: BookingFormProps) {
         () => {}
       )
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId, abVariant])
 
   const router = useRouter()

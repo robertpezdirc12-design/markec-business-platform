@@ -13,7 +13,7 @@ Univerzalna, modularna večnajemniška poslovna platforma za samostojne ponudnik
 > *Universal modular multi-tenant business platform for independent service providers — configurable per business vertical, without code changes for new industry profiles.*
 
 🌐 **Produkcija:** [rcbeautysalon-phi.vercel.app](https://rcbeautysalon-phi.vercel.app)  
-📚 **Arhitektura:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · **Vodnik za nov profil/razširitev:** [`docs/ADD-NEW-TEMPLATE.md`](docs/ADD-NEW-TEMPLATE.md)
+📚 **Arhitektura:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · **Vodnik za nov profil/razširitev:** [`docs/ADD-NEW-TEMPLATE.md`](docs/ADD-NEW-TEMPLATE.md) · **Google OAuth:** [`docs/GOOGLE-OAUTH-NASTAVITEV.md`](docs/GOOGLE-OAUTH-NASTAVITEV.md) · **Stanje projekta:** [`docs/PROJEKT-VS-KONKURENCA-2026-11-25.md`](docs/PROJEKT-VS-KONKURENCA-2026-11-25.md)
 
 > 🏷️ **Preimenovanje (#100):** aplikacija je bila sprva »RCBeauty« (lepotni saloni). Danes je **MARKEC – MY BUSINESS PLATFORM** — univerzalna platforma za katerokoli dejavnost. Nekateri tehnični identifikatorji (ime repozitorija, produkcijski URL, e-poštni naslovi, slug-i) zaenkrat ostajajo nespremenjeni, dokler lastnik ne odloči o migraciji.
 
@@ -23,6 +23,8 @@ Univerzalna, modularna večnajemniška poslovna platforma za samostojne ponudnik
 - [Tehnologije](#tehnologije)
 - [Lokalna namestitev](#lokalna-namestitev)
 - [Okoljske spremenljivke](#okoljske-spremenljivke)
+- [Google prijava](#google-prijava)
+- [Tržnica in odkrivanje](#tržnica-in-odkrivanje)
 - [Stripe plačila](#stripe-plačila)
 - [Struktura projekta](#struktura-projekta)
 - [Večnajemniškost](#večnajemniškost)
@@ -36,7 +38,7 @@ Univerzalna, modularna večnajemniška poslovna platforma za samostojne ponudnik
 ## Ključne zmožnosti
 
 ### Profilni motor in dejavnosti (EPIC #1)
-- **36 profilov dejavnosti:** 12 poimenovanih (lepotni salon, frizer, barber, nohti, kozmetika, masaža, epilacija, tetoviranje, šiviljstvo, vulkanizer/avtoservis, čebelarstvo, univerzalni) + **24 SKD-sekcij** (trgovina, kmetijstvo, gozdarstvo, transport, gostinstvo, javna uprava, obrt, gradbeništvo, znanost in druge). Na te profile se preslika **~500 SKD dejavnosti** — novi panogi ni treba pisati kode.
+- **36 profilov dejavnosti:** 14 poimenovanih (lepotni salon, frizer, barber, nohti, kozmetika, masaža, epilacija, tetoviranje, oblačila, univerzalni, šiviljstvo, vulkanizer/avtoservis, mehanik, čebelarstvo) + **22 uradnih SKD-sekcij A–V** (kmetijstvo, rudarstvo, predelovalne dejavnosti, trgovina, transport, gostinstvo, javna uprava, gradbeništvo, znanost in druge). Vir profilov je `src/lib/profiles/registry.ts`; številki 14 + 22 = 36 sta preverjeni v kodi. Na te profile se preslika **678 SKD 2025 podrazredov** (5. raven, uradni vir SURS) — novi panogi ni treba pisati kode. Pozor: **21 področij** v `SKD_AREAS` je *MARKEC-ova lastna* razdelitev, ne uradna SKD raven; uradne SKD 2025 sekcije so **22** (SKD 2008 jih je imel 21).
 - **Profil določa izkušnjo:** privzeto vklopljene (jedrne) module, terminologijo (SL/EN), obrazce, delovne procese, dashboard widgete, javni CTA način (`booking | inquiry | order | quote`) in razširitve.
 - **Vseh 15 modulov na voljo vsaki dejavnosti (`required | optional`):** podjetje si **spozna module, ki jih potrebuje** — vsak modul lahko vklopi, izklopi ali skrije iz lastne nadzorne plošče, ne glede na panogo. `required` so samo privzeto vklopljena jedra (npr. računi za salone, delovna naročila za obrt/kmetijo, trgovina+zaloge za trgovce).
 - **15 modulov:** rezervacije in koledar, delovna naročila, storitve in cenik, spletna trgovina, zaloge, stranke, zaposleni in urniki, statistika in poročila, ocene strank, obrazci in povpraševanja, poslovni procesi, **dokumenti (ponudbe in računi)**, dostava, walk-in vrsta in blagajna.
@@ -87,6 +89,17 @@ Univerzalna, modularna večnajemniška poslovna platforma za samostojne ponudnik
 - **Dvojezičnost:** slovenščina (privzeto) + angleščina; preklopnik v admin in javnem delu, preveden rezervacijski tok in ključni UI elementi.
 - **Vloge:** `ADMIN`, `STAFF`, `CLIENTE` z dodatnimi per-salon omejitvami prek vlog po meri.
 
+### Google prijava
+- **Google OAuth prek NextAuth v5:** gumb se prikaže samo, če sta `AUTH_GOOGLE_ID` in `AUTH_GOOGLE_SECRET` prisotna (fail-closed). Stranke po prijavi romajo na `/my-account`; eksplicitni varni `callbackUrl` (npr. `/self-service` za lastnike) se še vedno spoštuje.
+- **Navodila za Google Cloud in Vercel:** [`docs/GOOGLE-OAUTH-NASTAVITEV.md`](docs/GOOGLE-OAUTH-NASTAVITEV.md). Callback mora biti natančno `/api/auth/callback/google` brez dodatnega `/`.
+
+### Tržnica in odkrivanje
+- **Iskanje brez JavaScripta:** `/podjetja` uporablja pravi `GET` obrazec z `q` in `location`; deluje na mobilnem in namiznem prikazu.
+- **»Zemljevid dejavnosti«** je vizualni raziskovalec kategorij, ne geografski zemljevid: 14 kuriranih kategorij iz `MARKETPLACE_CATEGORIES`, iskanje po vsebini in povezave na kanonične `/kategorije/<slug>` strani.
+- **Arhitektura dveh dreves:** uradni SKD 2025 (1.725 vozlov / 678 podrazredov / 22 sekcij A–V) → preslikava `verticals` → kurirane kategorije za končne uporabnike. SKD se v tržničnem UI ne razkriva neposredno.
+- **Brez izmišljenih podatkov:** dokler ni resničnih najemnikov, tržnica, statistika, poročila in kampanje prikazujejo jasna prazna stanja. Javni snapshot in sitemap izključujeta `demo-`/`test-`/`qa-` najemnike.
+- **Responsive UX:** dostopni mobilni meni in iskanje v sticky glavi, 44×44 px ciljna območja, Escape/focus restoration, `inert`, zunanji klik in samodejno zapiranje pri prehodu na namizje.
+
 ## Tehnologije
 
 | Področje | Tehnologija |
@@ -95,7 +108,7 @@ Univerzalna, modularna večnajemniška poslovna platforma za samostojne ponudnik
 | Jezik | TypeScript 5 |
 | UI | React 19, Tailwind CSS v4, shadcn/ui, Phosphor/Lucide ikone |
 | Baza | PostgreSQL (Neon) + Prisma ORM |
-| Avtentikacija | NextAuth.js v5 (Prisma adapter) |
+| Avtentikacija | NextAuth.js v5 (Prisma adapter, credentials + Google OAuth) |
 | Plačila | Stripe (ključi na nivoju organizacije) |
 | E-pošta | React Email + Resend |
 | Obrazci/validacija | React Hook Form + Zod |
@@ -126,7 +139,7 @@ cp .env.example .env
 # 4. Pripravi bazo
 pnpm exec prisma generate
 pnpm run db:push      # ali: pnpm run db:migrate
-pnpm run db:seed      # neobvezno: demo podatki za lokalni razvoj
+pnpm run db:seed:demo # neobvezno: lokalni demo najemnik (`demo-salon`); nikoli v javni tržnici
 
 # 5. Zaženi razvojni strežnik
 pnpm run dev          # http://localhost:3008 (Turbopack)
@@ -141,6 +154,10 @@ DATABASE_URL="postgresql://user:password@localhost:5432/markec_db"
 DIRECT_URL="postgresql://user:password@localhost:5432/markec_db" # za migracije/direct access
 AUTH_SECRET=""              # npr. openssl rand -base64 32
 NEXT_PUBLIC_APP_URL="http://localhost:3008" # uskladi z lokalnim dev URL-jem
+
+# Neobvezno: Google OAuth (prijava strank)
+AUTH_GOOGLE_ID=""
+AUTH_GOOGLE_SECRET=""
 
 # Neobvezno: dedno preusmerjanje golih poti na določenega najemnika
 # LEGACY_DEFAULT_SLUG="ime-najemnika"
@@ -242,6 +259,8 @@ Workflow [`.github/workflows/tests.yml`](.github/workflows/tests.yml) na `push`/
 
 > Po spremembi odvisnosti vedno posodobi `pnpm-lock.yaml` z `pnpm install`, sicer lahko build pade z `ERR_PNPM_OUTDATED_LOCKFILE`.
 
+> Spremembe Vercel okoljskih spremenljivk (npr. `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`) zahtevajo nov deployment. Natančni OAuth callback URI-ji in postopek so v [`docs/GOOGLE-OAUTH-NASTAVITEV.md`](docs/GOOGLE-OAUTH-NASTAVITEV.md).
+
 ## Dokumentacija
 
 | Dokument | Namen |
@@ -259,25 +278,22 @@ Workflow [`.github/workflows/tests.yml`](.github/workflows/tests.yml) na `push`/
 | [`docs/EPIC-4/PLAN.md`](docs/EPIC-4/PLAN.md) | Analitika, zdravje, vizualni pregled |
 | [`docs/EPIC-5/PLAN.md`](docs/EPIC-5/PLAN.md) | Nadaljnji načrt (EPIC 5) |
 | [`docs/KONKURENCA-ANALIZA-2026-11.md`](docs/KONKURENCA-ANALIZA-2026-11.md) | Konkurenčna analiza (november 2026) |
+| [`docs/PROJEKT-VS-KONKURENCA-2026-11-25.md`](docs/PROJEKT-VS-KONKURENCA-2026-11-25.md) | Preverjeno stanje projekta, primerjava s konkurenco in P0/P1/P2 načrt |
+| [`docs/GOOGLE-OAUTH-NASTAVITEV.md`](docs/GOOGLE-OAUTH-NASTAVITEV.md) | Google Cloud Console, callback URI-ji, Vercel env in preverjanje prijave |
+| [`docs/PLAN.md`](docs/PLAN.md) | Celovit razvojni načrt (vključno z Dodatkom A za Google OAuth) |
 
 ## Demo najemniki
 
-Produkcija vsebuje demo najemnike za pokritost panog (primeri):
+Demo podatki so **izključno za lokalni razvoj**. Seed ustvari lokalni najemnik `demo-salon` z geslom iz [`prisma/seed.ts`](prisma/seed.ts). Generiranje javnega snapshota in sitemapa izrecno izloča vse slug-e `demo-`, `test-` in `qa-` ter testne e-poštne domene — zato se localni demo ne sme pojaviti na javni tržnici.
 
-| Panoga | Javna stran |
-| --- | --- |
-| Frizer | [`/s/demo-frizer`](https://rcbeautysalon-phi.vercel.app/s/demo-frizer) |
-| Barber | [`/s/demo-barber`](https://rcbeautysalon-phi.vercel.app/s/demo-barber) |
-| Naili | [`/s/demo-nails`](https://rcbeautysalon-phi.vercel.app/s/demo-nails) |
-| Kozmetika | [`/s/demo-kozmetika`](https://rcbeautysalon-phi.vercel.app/s/demo-kozmetika) |
-| Masaža | [`/s/demo-masaza`](https://rcbeautysalon-phi.vercel.app/s/demo-masaza) |
-| Epilacija | [`/s/demo-epilacija`](https://rcbeautysalon-phi.vercel.app/s/demo-epilacija) |
-| Lepotni salon | [`/s/demo-lepotni`](https://rcbeautysalon-phi.vercel.app/s/demo-lepotni) |
-| Šiviljstvo | [`/s/demo-siviljstvo`](https://rcbeautysalon-phi.vercel.app/s/demo-siviljstvo) |
-| Vulkanizer | [`/s/demo-vulkanizer`](https://rcbeautysalon-phi.vercel.app/s/demo-vulkanizer) |
-| Čebelarstvo | [`/s/demo-cebelarstvo`](https://rcbeautysalon-phi.vercel.app/s/demo-cebelarstvo) |
+```bash
+pnpm run db:seed:demo   # alias za `tsx prisma/seed.ts`
+node scripts/generate-marketplace-snapshot.mjs   # javni snapshot brez demo najemnikov
+```
 
-> **Varnost:** v javnem repozitoriju ne objavljamo produkcijskih poverilnic. Za lokalni razvoj uporabi `pnpm run db:seed` in gesla iz `prisma/seed.ts` (namenjena izključno lokalni bazi). V demo okoljih brez Stripe ključa se plačilni tok degradira v pričakovano vedenje (polog ob obisku / offline naročilo).
+> **Integriteta:** dokler ni resničnega najemnika, javna tržnica ne prikazuje izmišljenih podjetij, ocen, statistik ali kampanj. Prazna stanja so namensko poštena in vodijo k prijavi podjetja oziroma raziskovalcu dejavnosti.
+
+> **Varnost:** v javnem repozitoriju ne objavljamo produkcijskih poverilnic. Gesla iz seeda veljajo samo za lokalno bazo. V demo okoljih brez Stripe ključa se plačilni tok degradira v pričakovano vedenje (polog ob obisku / offline naročilo).
 
 ## Prispevanje in varnost
 
