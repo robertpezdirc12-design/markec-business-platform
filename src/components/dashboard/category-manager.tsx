@@ -225,23 +225,30 @@ export function CategoryManager({ initial }: Props) {
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-1">
-          <Button size="icon" variant="ghost" title="Vzgor" disabled={pending} onClick={() => move(item, -1)}>
-            <ChevronUpIcon size={16} />
+          {/* Ikonski gumbi: aria-label je edino zanesljivo dostopno ime (`title`
+              ni izpostavljen na dotiku). Switch je samostojen element — ne sme
+              biti gnezden v <Button> (gumb-v-gumbu je neveljaven HTML in lomi
+              tipkovnico/bralnik zaslona). */}
+          <Button size="icon" variant="ghost" title="Vzgor" aria-label="Vzgor" disabled={pending} onClick={() => move(item, -1)}>
+            <ChevronUpIcon size={16} aria-hidden="true" />
           </Button>
-          <Button size="icon" variant="ghost" title="Navzdol" disabled={pending} onClick={() => move(item, 1)}>
-            <ChevronDownIcon size={16} />
+          <Button size="icon" variant="ghost" title="Navzdol" aria-label="Navzdol" disabled={pending} onClick={() => move(item, 1)}>
+            <ChevronDownIcon size={16} aria-hidden="true" />
           </Button>
-          <Button size="icon" variant="ghost" title={t.categories.toggleActive} disabled={pending} onClick={() => toggleActive(item)}>
-            <Switch checked={item.isActive} onCheckedChange={() => toggleActive(item)} />
+          <Switch
+            checked={item.isActive}
+            onCheckedChange={() => toggleActive(item)}
+            disabled={pending}
+            aria-label={t.categories.toggleActive}
+          />
+          <Button size="icon" variant="ghost" title={t.categories.edit} aria-label={t.categories.edit} disabled={pending} onClick={() => openEdit(item)}>
+            <PencilIcon size={16} aria-hidden="true" />
           </Button>
-          <Button size="icon" variant="ghost" title={t.categories.edit} disabled={pending} onClick={() => openEdit(item)}>
-            <PencilIcon size={16} />
+          <Button size="icon" variant="ghost" title={t.categories.addSubcategory} aria-label={t.categories.addSubcategory} disabled={pending} onClick={() => openCreate(item.id)}>
+            <PlusIcon size={16} aria-hidden="true" />
           </Button>
-          <Button size="icon" variant="ghost" title={t.categories.addSubcategory} disabled={pending} onClick={() => openCreate(item.id)}>
-            <PlusIcon size={16} />
-          </Button>
-          <Button size="icon" variant="ghost" title={t.categories.delete} disabled={pending} onClick={() => openDelete(item)}>
-            <TrashIcon size={16} />
+          <Button size="icon" variant="ghost" title={t.categories.delete} aria-label={t.categories.delete} disabled={pending} onClick={() => openDelete(item)}>
+            <TrashIcon size={16} aria-hidden="true" />
           </Button>
         </div>
       </div>

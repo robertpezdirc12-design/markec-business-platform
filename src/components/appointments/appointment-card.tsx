@@ -281,7 +281,7 @@ export function AppointmentCard({
             <div className="flex w-full gap-2">
               {!appointment.depositPaid && canPayOnline && (
                 <Button
-                  className="flex-1 shadow-lg transition-all hover:scale-105"
+                  className="flex-1 shadow-lg transition hover:scale-105"
                   onClick={handlePayNow}
                   disabled={isPending}
                 >

@@ -88,7 +88,7 @@ export function WorkspacePicker({
             role="group"
             aria-label={ws.name}
             className={cn(
-              "bg-card flex min-w-0 flex-col rounded-xl border p-6 shadow-sm transition-all duration-200",
+              "bg-card flex min-w-0 flex-col rounded-xl border p-6 shadow-sm transition-[box-shadow] duration-200",
               ws.isActive && "border-primary ring-primary/30 ring-1",
               !disabled && "hover:shadow-md"
             )}

@@ -42,7 +42,7 @@ export function StaffCard({ staff }: StaffCardProps) {
         onClick={() => setIsDialogOpen(true)}
         className="w-full text-left"
       >
-        <Card className="border-primary/10 transition-all duration-300 hover:border-primary/40 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
+        <Card className="border-primary/10 cursor-pointer transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-3">
               {staff.image ? (

@@ -92,6 +92,7 @@ export default async function ProjectDetailPage({
           saveTask: d.saveTask,
           editTask: d.editTask,
           deleteTask: d.deleteTask,
+          deleteTaskConfirm: d.deleteTaskConfirm,
           noTasks: d.noTasks,
           tasksDoneCount: d.tasksDoneCount,
           taskOverdue: d.taskOverdue,

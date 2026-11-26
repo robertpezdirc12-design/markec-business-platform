@@ -63,7 +63,7 @@ export function RelatedServicesSection({
             {relatedServices.map((service) => (
               <Card
                 key={service.id}
-                className="border-primary/10 group overflow-hidden transition-all duration-300 hover:shadow-lg w-full md:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1rem)] flex flex-col"
+                className="border-primary/10 group overflow-hidden transition duration-300 hover:shadow-lg w-full md:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1rem)] flex flex-col"
               >
                 {/* Service Image */}
                 <div className="relative h-48 overflow-hidden">

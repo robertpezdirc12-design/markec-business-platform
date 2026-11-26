@@ -101,7 +101,7 @@ const StaffPage = async () => {
                 <Link
                   key={staff.id}
                   href={orgPath(slug, `/staff/${generateSlug(staff.name)}`)}
-                  className="group relative block aspect-3/4 overflow-hidden rounded-2xl shadow-lg transition-all duration-500 hover:shadow-2xl hover:-translate-y-2"
+                  className="group relative block aspect-3/4 overflow-hidden rounded-2xl shadow-lg transition duration-500 hover:shadow-2xl hover:-translate-y-2"
                 >
                   {/* Background Image */}
                   <StaffAvatar
@@ -116,7 +116,7 @@ const StaffPage = async () => {
                   {/* Content */}
                   <div className="absolute inset-0 flex flex-col justify-end p-6 text-white">
                     {/* Services Count Badge */}
-                    <div className="absolute top-4 right-4 rounded-full bg-white/20 backdrop-blur-sm px-3 py-1 transition-all duration-300 group-hover:bg-accent group-hover:text-black">
+                    <div className="absolute top-4 right-4 rounded-full bg-white/20 backdrop-blur-sm px-3 py-1 transition duration-300 group-hover:bg-accent group-hover:text-black">
                       <span className="text-xs font-medium font-body">
                         {staff.services.length} storitev
                       </span>
@@ -135,7 +135,7 @@ const StaffPage = async () => {
                     )}
 
                     {/* View Profile Button */}
-                    <div className="flex items-center gap-2 text-sm font-medium text-accent-text opacity-0 translate-y-4 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0 font-body">
+                    <div className="flex items-center gap-2 text-sm font-medium text-accent-text opacity-0 translate-y-4 transition duration-300 group-hover:opacity-100 group-hover:translate-y-0 font-body">
                       <span>Poglej profil</span>
                       <svg
                         className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
@@ -173,7 +173,7 @@ const StaffPage = async () => {
           </p>
           <Link
             href={orgPath(slug, content.cta.buttonHref)}
-            className="inline-flex items-center justify-center rounded-full bg-primary px-8 py-3 font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-lg font-body"
+            className="inline-flex items-center justify-center rounded-full bg-primary px-8 py-3 font-semibold text-primary-foreground transition hover:bg-primary/90 hover:shadow-lg font-body"
           >
             {content.cta.buttonLabel}
           </Link>

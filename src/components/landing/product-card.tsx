@@ -57,7 +57,7 @@ export function ProductCard({ id, name, price, category, image, hrefPrefix = "" 
   }
 
   return (
-    <Card className="group border-primary/10 overflow-hidden transition-all duration-300 hover:shadow-xl">
+    <Card className="group border-primary/10 overflow-hidden transition duration-300 hover:shadow-xl">
       <div className="bg-muted/30 relative aspect-square overflow-hidden">
         {image ? (
           <Image

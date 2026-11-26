@@ -48,7 +48,7 @@ export function PromoBanner({ promos }: { promos: PublicActivePromotion[] }) {
           type="button"
           onClick={() => setDismissed(true)}
           aria-label={locale === "en" ? "Dismiss promotions" : "Skrij akcije"}
-          className="ml-1 opacity-70 transition-opacity hover:opacity-100"
+          className="ml-1 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
         >
           <X size={14} aria-hidden="true" />
         </button>

@@ -1021,7 +1021,7 @@ export function BrandingEditor() {
                   aria-pressed={active}
                   aria-label={b.themeAria(p.label)}
                   className={cn(
-                    "flex flex-col items-center gap-2 rounded-xl border bg-card p-3 text-center transition-all hover:border-primary/50 disabled:opacity-60",
+                    "flex flex-col items-center gap-2 rounded-xl border bg-card p-3 text-center transition hover:border-primary/50 disabled:opacity-60",
                     active && "border-primary ring-2 ring-primary"
                   )}
                 >

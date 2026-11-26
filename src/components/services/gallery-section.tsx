@@ -51,7 +51,7 @@ export function GallerySection({
             {sortedGallery.map((item) => (
               <div
                 key={item.id}
-                className="group relative aspect-4/3 overflow-hidden rounded-lg shadow-md transition-all duration-300 hover:shadow-xl"
+                className="group relative aspect-4/3 overflow-hidden rounded-lg shadow-md transition duration-300 hover:shadow-xl"
               >
                 {/* Image */}
                 <Image

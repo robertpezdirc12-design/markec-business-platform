@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useI18n } from "@/lib/i18n/context"
+import type { FieldErrors } from "react-hook-form"
 
 // A/B runtime //xeno (U4-2025-01). Varianto določi SERVER (lib/ab/variant),
 // ne build-time env — lastnik jo lahko zamenja ob živo. `variant="short"`
@@ -16,17 +17,19 @@ import { useI18n } from "@/lib/i18n/context"
 // action submission — so all customer fields are controlled here and
 // immune to that reset (React re-renders the state value back).
 
+type CustomerInfoValues = {
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  notes: string
+}
+
 interface CustomerInfoStepProps {
-  values: {
-    firstName: string
-    lastName: string
-    email: string
-    phone: string
-    notes: string
-  }
-  onChange: (field: keyof CustomerInfoStepProps["values"], value: string) => void
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  errors: any
+  values: CustomerInfoValues
+  onChange: (field: keyof CustomerInfoValues, value: string) => void
+  /** RHF FieldErrors: vsako polje nosi `message`; odsotno polje = brez napake. */
+  errors: FieldErrors<CustomerInfoValues>
   isAuthenticated: boolean
   /** P1 #9 (audit-2026-11): validate a single field on blur (RHF trigger). */
   onBlurField?: (field: "firstName" | "lastName" | "email" | "phone") => void
@@ -68,10 +71,10 @@ export function CustomerInfoStep({
 
   // P1 #9: inline error slots get stable ids wired via aria-describedby, so
   // screen readers announce the message next to the field.
-  const describedBy = (field: string) =>
+  const describedBy = (field: keyof CustomerInfoValues) =>
     errors[field] ? `${field}-error` : undefined
 
-  const errorText = (field: string) =>
+  const errorText = (field: keyof CustomerInfoValues) =>
     errors[field] ? (
       // U10/WCAG 4.1.3: role="alert" → screen-reader takoj najavi ob pojavu
       <p

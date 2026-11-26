@@ -151,8 +151,8 @@ export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: 
         // the session cookie server-side.
         router.push(multiTarget)
       }
-    } catch (error) {
-      console.log("Login error:", error)
+    } catch {
+      // Podrobnosti napake ne izpisujemo v konzolo brskalnika (PII/higiena).
       toast.error(t.auth.login.toast.loginFailed, {
         description: t.auth.login.toast.somethingWrong,
       })

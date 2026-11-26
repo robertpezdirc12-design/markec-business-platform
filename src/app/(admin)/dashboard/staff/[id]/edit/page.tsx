@@ -47,11 +47,11 @@ export default async function EditStaffPage({ params }: EditStaffPageProps) {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link href="/dashboard/staff">
-          <Button variant="ghost" size="icon">
-            <ArrowLeftIcon size={20} />
-          </Button>
-        </Link>
+        <Button variant="ghost" size="icon" asChild>
+          <Link href="/dashboard/staff" aria-label={t.common.actions.back}>
+            <ArrowLeftIcon size={20} aria-hidden="true" />
+          </Link>
+        </Button>
         <div>
           <h1 className="text-3xl font-bold">{t.staff.editStaffTitle}</h1>
           <p className="text-muted-foreground">{staff.name}</p>

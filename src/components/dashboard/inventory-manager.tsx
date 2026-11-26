@@ -70,7 +70,7 @@ function StockBar({ current, min, max }: { current: number; min: number; max: nu
   return (
     <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
       <div
-        className={`h-full rounded-full transition-all ${
+        className={`h-full rounded-full transition-[width] ${
           current === 0
             ? "bg-red-500"
             : isLow

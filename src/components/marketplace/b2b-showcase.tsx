@@ -94,7 +94,7 @@ export function B2BShowcase() {
           {features.map((feature) => (
             <div
               key={feature.title}
-              className="rounded-2xl border bg-background p-6 transition-all hover:shadow-lg hover:-translate-y-1"
+              className="rounded-2xl border bg-background p-6 transition hover:shadow-lg hover:-translate-y-1"
             >
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
                 <div className="text-primary">{feature.icon}</div>

@@ -332,10 +332,10 @@ export function PlanUsageCard({ initial, billing, billingFlag }: PlanUsageCardPr
                     <div
                       className={
                         over
-                          ? "h-full rounded-full bg-red-500 transition-all"
+                          ? "h-full rounded-full bg-red-500 transition-[width]"
                           : near
-                            ? "h-full rounded-full bg-amber-500 transition-all"
-                            : "bg-primary h-full rounded-full transition-all"
+                            ? "h-full rounded-full bg-amber-500 transition-[width]"
+                            : "bg-primary h-full rounded-full transition-[width]"
                       }
                       style={{ width: `${pct}%` }}
                     />

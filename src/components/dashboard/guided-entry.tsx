@@ -129,7 +129,7 @@ export function GuidedEntryBody({
                 aria-checked={isSelected}
                 onClick={() => setSelected(profile.id)}
                 className={cn(
-                  "relative rounded-xl border p-4 text-left transition-all",
+                  "relative rounded-xl border p-4 text-left transition",
                   // #94 §F: značka »Trenutna dejavnost« je abs. pozicionirana
                   // (right-2 top-2) — brez dodatnega odmika prekriva naslov
                   // kartice. Rezerviraj prostor zgoraj, ko je značka prisotna.
@@ -226,7 +226,7 @@ export function GuidedEntryBody({
               aria-label={p.label}
               onClick={() => setPalette(p.id)}
               className={cn(
-                "flex items-center gap-2 rounded-full border py-1.5 pl-2 pr-3 text-sm transition-all",
+                "flex items-center gap-2 rounded-full border py-1.5 pl-2 pr-3 text-sm transition",
                 palette === p.id
                   ? "border-primary ring-2 ring-primary/30"
                   : "hover:border-primary/40"
@@ -281,7 +281,7 @@ export function GuidedEntryBody({
               aria-checked={teamSize === value}
               onClick={() => setTeamSize(value)}
               className={cn(
-                "rounded-full border px-4 py-1.5 text-sm transition-all",
+                "rounded-full border px-4 py-1.5 text-sm transition",
                 teamSize === value
                   ? "border-primary bg-primary/5 ring-2 ring-primary/30"
                   : "hover:border-primary/40",
@@ -315,7 +315,7 @@ export function GuidedEntryBody({
               aria-checked={onlineBooking === value}
               onClick={() => setOnlineBooking(value)}
               className={cn(
-                "rounded-full border px-4 py-1.5 text-sm transition-all",
+                "rounded-full border px-4 py-1.5 text-sm transition",
                 onlineBooking === value
                   ? "border-primary bg-primary/5 ring-2 ring-primary/30"
                   : "hover:border-primary/40",

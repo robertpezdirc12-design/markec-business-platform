@@ -38,7 +38,7 @@ export function PlanCompactCard({ planContext }: PlanCompactCardProps) {
               </div>
               <div className="bg-primary/10 h-1.5 overflow-hidden rounded-full">
                 <div
-                  className="bg-primary h-full rounded-full transition-all"
+                  className="bg-primary h-full rounded-full transition-[width]"
                   style={{ width: `${pct}%` }}
                 />
               </div>

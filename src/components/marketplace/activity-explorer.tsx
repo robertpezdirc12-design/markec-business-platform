@@ -62,7 +62,7 @@ export function ActivityExplorer() {
             </DialogDescription>
           </DialogHeader>
 
-          <label className="border-border flex min-h-11 items-center gap-2 rounded-lg border px-3">
+          <label className="border-border focus-within:ring-ring flex min-h-11 items-center gap-2 rounded-lg border px-3 focus-within:ring-2">
             <Search
               className="text-muted-foreground size-4 shrink-0"
               aria-hidden="true"

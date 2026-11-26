@@ -226,7 +226,7 @@ export default function BusinessLandingPage() {
                 color: "bg-teal-100 text-teal-600",
               },
             ].map((feature) => (
-              <Card key={feature.title} className="transition-all hover:shadow-md">
+              <Card key={feature.title} className="transition hover:shadow-md">
                 <CardContent className="p-6">
                   <div
                     className={`flex h-12 w-12 items-center justify-center rounded-xl ${feature.color}`}

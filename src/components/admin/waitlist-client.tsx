@@ -80,7 +80,7 @@ export function WaitlistClient({ entries }: { entries: WaitlistEntryView[] }) {
             role="radio"
             aria-checked={filter === value}
             onClick={() => setFilter(value)}
-            className={`rounded-full border px-3.5 py-1.5 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            className={`rounded-full border px-3.5 py-1.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               filter === value
                 ? "border-primary bg-primary/5 ring-2 ring-primary/30"
                 : "hover:border-primary/40"

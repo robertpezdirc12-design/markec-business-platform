@@ -103,7 +103,7 @@ export function ServicesList({
     <Link
       key={service.id}
       href={`${prefix}/services/${service.slug}`}
-      className="group border-primary/10 relative w-full overflow-hidden rounded-lg border shadow-sm transition-all duration-500 hover:shadow-xl sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1rem)] xl:w-[calc(25%-1.125rem)]"
+      className="group border-primary/10 relative w-full overflow-hidden rounded-lg border shadow-sm transition duration-500 hover:shadow-xl sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1rem)] xl:w-[calc(25%-1.125rem)]"
     >
       {/* Background Image */}
       <div className="relative h-[280px] overflow-hidden">
@@ -219,7 +219,7 @@ export function ServicesList({
             <TabsList className="bg-muted text-muted-foreground inline-flex h-12 items-center justify-center rounded-lg p-1">
               <TabsTrigger
                 value={ALL_TAB}
-                className="ring-offset-background focus-visible:ring-ring hover:text-accent-text data-[state=active]:bg-primary data-[state=active]:text-primary-foreground inline-flex shrink-0 items-center justify-center rounded-md px-6 py-2 text-sm font-medium whitespace-nowrap transition-all focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow-sm"
+                className="ring-offset-background focus-visible:ring-ring hover:text-accent-text data-[state=active]:bg-primary data-[state=active]:text-primary-foreground inline-flex shrink-0 items-center justify-center rounded-md px-6 py-2 text-sm font-medium whitespace-nowrap transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow-sm"
               >
                 Vse
               </TabsTrigger>
@@ -227,7 +227,7 @@ export function ServicesList({
                 <TabsTrigger
                   key={category.name}
                   value={category.name}
-                  className="ring-offset-background focus-visible:ring-ring hover:text-accent-text data-[state=active]:bg-primary data-[state=active]:text-primary-foreground inline-flex shrink-0 items-center justify-center rounded-md px-6 py-2 text-sm font-medium whitespace-nowrap transition-all focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow-sm"
+                  className="ring-offset-background focus-visible:ring-ring hover:text-accent-text data-[state=active]:bg-primary data-[state=active]:text-primary-foreground inline-flex shrink-0 items-center justify-center rounded-md px-6 py-2 text-sm font-medium whitespace-nowrap transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow-sm"
                 >
                   {category.name}
                 </TabsTrigger>

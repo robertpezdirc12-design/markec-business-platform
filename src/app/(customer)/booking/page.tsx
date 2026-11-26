@@ -202,7 +202,7 @@ export default async function BookingPage(props: BookingPageProps) {
                   <Link
                     key={service.id}
                     href={p(`/booking?service=${service.slug}`)}
-                    className="group overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                    className="group overflow-hidden rounded-xl border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                   >
                     {service.imageUrl && (
                       <div className="relative h-40 w-full overflow-hidden">

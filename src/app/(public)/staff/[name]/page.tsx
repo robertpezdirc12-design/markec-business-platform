@@ -150,7 +150,7 @@ const StaffDetailPage = async ({ params }: StaffDetailPageProps) => {
               {/* Book Button */}
               <Link
                 href={orgPath(orgSlug, `/booking?staff=${staffMember.id}`)}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-8 py-4 text-lg font-semibold text-primary-foreground shadow-lg transition-all hover:bg-primary/90 hover:shadow-xl font-body"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-8 py-4 text-lg font-semibold text-primary-foreground shadow-lg transition hover:bg-primary/90 hover:shadow-xl font-body"
               >
                 <CalendarIcon size={22} />
                 Rezerviraj pri {staffMember.name.split(" ")[0]}
@@ -180,7 +180,7 @@ const StaffDetailPage = async ({ params }: StaffDetailPageProps) => {
                 <Link
                   key={service.id}
                   href={orgPath(orgSlug, `/services/${service.slug}`)}
-                  className="group rounded-2xl border border-border bg-card p-6 transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:-translate-y-1"
+                  className="group rounded-2xl border border-border bg-card p-6 transition duration-300 hover:border-primary/50 hover:shadow-lg hover:-translate-y-1"
                 >
                   <div className="mb-4 flex items-start justify-between">
                     <h3 className="font-heading text-2xl transition-colors group-hover:text-accent-text">
@@ -260,7 +260,7 @@ const StaffDetailPage = async ({ params }: StaffDetailPageProps) => {
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link
               href={orgPath(orgSlug, `/booking?staff=${staffMember.id}`)}
-              className="inline-flex items-center justify-center rounded-full bg-primary px-8 py-3 font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-lg font-body"
+              className="inline-flex items-center justify-center rounded-full bg-primary px-8 py-3 font-semibold text-primary-foreground transition hover:bg-primary/90 hover:shadow-lg font-body"
             >
               Rezerviraj zdaj
             </Link>

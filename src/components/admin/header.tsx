@@ -140,10 +140,10 @@ export function AdminHeader({
             <Button
               variant="ghost"
               size="icon"
-              className="shrink-0"
+              className="shrink-0 min-h-11 min-w-11 lg:hidden"
               onClick={() => setMobileMenuOpen(true)}
             >
-              <MenuIcon size={20} />
+              <MenuIcon size={20} aria-hidden="true" />
               <span className="sr-only">{t.common.header.openMenu}</span>
             </Button>
             {/* F7.1 K2: stalna identiteta okolja (ime podjetja + dejavnost) —
@@ -177,7 +177,7 @@ export function AdminHeader({
               className="hidden gap-2 sm:flex"
               asChild
             >
-              <Link href={publicSiteHref} target="_blank">
+              <Link href={publicSiteHref} target="_blank" rel="noopener noreferrer">
                 <HouseIcon size={16} />
                 <span className="hidden md:inline">
                   {t.common.header.visitSite}
@@ -199,7 +199,7 @@ export function AdminHeader({
                     notificationTotal > 0 ? ` (${notificationTotal})` : ""
                   }`}
                 >
-                  <BellIcon size={20} />
+                  <BellIcon size={20} aria-hidden="true" />
                   {notificationTotal > 0 && (
                     <span
                       aria-hidden="true"

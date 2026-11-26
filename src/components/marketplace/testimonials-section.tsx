@@ -36,7 +36,7 @@ interface Testimonial {
 
 function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
   return (
-    <Card className="h-full transition-all hover:shadow-lg">
+    <Card className="h-full transition hover:shadow-lg">
       <CardContent className="flex h-full flex-col p-6">
         {/* Quote Icon */}
         <div className="mb-4 text-primary/20">

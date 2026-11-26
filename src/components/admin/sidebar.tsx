@@ -190,7 +190,7 @@ function SidebarNav({ onNavigate }: SidebarNavProps) {
         onClick={onNavigate}
         aria-current={isActive ? "page" : undefined}
         className={cn(
-          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
+          "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200",
           isActive
             ? "bg-primary text-primary-foreground shadow-sm"
             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -451,11 +451,11 @@ export function MobileSidebar({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="min-h-11 min-w-11"
             onClick={() => onOpenChange(false)}
+            aria-label={t.common.header.closeMenu}
           >
-            <CloseIcon size={18} />
-            <span className="sr-only">{t.common.header.closeMenu}</span>
+            <CloseIcon size={18} aria-hidden="true" />
           </Button>
         </SheetHeader>
         {switcher && (
