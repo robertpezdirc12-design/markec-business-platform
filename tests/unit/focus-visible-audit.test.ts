@@ -64,7 +64,10 @@ describe("U10/2.4.7 Focus Visible audit", () => {
     }
     if (offenders.length) console.log("FOCUS-AUDIT OFFENDERS:\n" + offenders.join("\n"))
     expect(offenders).toEqual([])
-  })
+    // Pregled celotnega src/ (532 datotek) traja na Windowsu z antivirusnim
+    // pregledom tudi 15 s; privzetih 5 s je test obremenilo s časom, ne z
+    // vsebino. Assertions ostanejo nespremenjene, podaljšan je le rok.
+  }, 30_000)
 
   it("UI primitivi (Button/Link) ne kličejo focus:outline-none brez ring", () => {
     const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8")
