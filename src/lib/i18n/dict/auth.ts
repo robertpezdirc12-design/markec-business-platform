@@ -58,6 +58,8 @@ export const authSl = {
     fallbackLink: "Potrdi račun zdaj",
     fallbackToLogin: "Nazaj na prijavo",
   },
+  continueWithGoogle: "Nadaljuj z Google",
+  orEmail: "ali z e-pošto",
   forgot: {
     title: "Pozabljeno geslo?",
     description:
@@ -167,6 +169,8 @@ export const authEn: AuthDict = {
     fallbackLink: "Verify account now",
     fallbackToLogin: "Back to sign in",
   },
+  continueWithGoogle: "Continue with Google",
+  orEmail: "or with email",
   forgot: {
     title: "Forgot your password?",
     description:
