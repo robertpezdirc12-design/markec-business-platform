@@ -101,7 +101,7 @@ export default async function MyAppointmentsPage(
           <Link href={orgPath(org?.slug, "/services")}>
             <Button
               size="lg"
-              className="w-full shadow-lg transition-all hover:scale-105 sm:w-auto"
+              className="w-full shadow-lg transition hover:scale-105 sm:w-auto"
             >
               <CalendarIcon size={20} className="mr-2" weight="regular" />
               Rezerviraj nov termin

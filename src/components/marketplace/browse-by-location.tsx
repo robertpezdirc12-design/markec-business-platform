@@ -73,7 +73,7 @@ export function BrowseByLocation({
           {countries.map((country, index) => (
             <button
               key={country}
-              className={`rounded-full px-6 py-3 text-sm font-medium transition-all ${
+              className={`rounded-full px-6 py-3 text-sm font-medium transition ${
                 index === 0
                   ? "bg-primary text-primary-foreground shadow-md"
                   : "border bg-background hover:border-primary hover:bg-primary/5"
@@ -140,7 +140,7 @@ export function BrowseByLocation({
               <Link
                 key={cat.slug}
                 href={`/kategorije/${cat.slug}`}
-                className="flex min-h-11 items-center gap-2 rounded-full border bg-background px-4 py-2 text-sm transition-all hover:border-primary hover:bg-primary/5 hover:shadow-md"
+                className="flex min-h-11 items-center gap-2 rounded-full border bg-background px-4 py-2 text-sm transition hover:border-primary hover:bg-primary/5 hover:shadow-md"
               >
                 <span>{cat.icon}</span>
                 <span>{cat.label}</span>

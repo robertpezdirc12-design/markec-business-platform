@@ -119,6 +119,11 @@ model Organization {
   // okno ob rotaciji (stari whsec_ sprejemamo še 7 dni).
   webhookSecretHistory WebhookSecretHistory[]
 
+  // GOOGLE KOLEDAR (2026-12): prostovoljna povezava, ki jo lastnik
+  // vklopi v Nastavitve → Integracije. Ena povezava na najemnika
+  // (unique); žetoni so v bazi ŠIFRIRANI (SECRETS_ENCRYPTION_KEY).
+  calendarConnection CalendarConnection?
+
   // WP-1 (Blagajna): denarne seje in drobni stroški (org-scoped direktno,
   // da cross-tenant preverjanje ne zahteva joina prek seje).
   cashSessions      CashSession[]
@@ -1212,6 +1217,12 @@ model Appointment {
   // Postgres unique index dopušča poljubno mnogo NULL (termini brez
   // Stripe plačila ostanejo veljavni).
   stripePaymentId String? @unique
+
+  // GOOGLE KOLEDAR (2026-12): id dogodka v Googlovem koledarju, ki je
+  // zrcalil ta termin. Po njem je izvoz IDEMPOTENTEN (dvakratni klik
+  // "Sinhroniziraj" ne ustvari dveh dogodkov), ob preklicu pa dogodek
+  // iz Googla pobrišemo in polje spet nastavimo na null.
+  googleEventId    String?
 
   // #79: tips are revenue the salon collects but must NOT count as service
   // revenue; commission is frozen at completion (null = not yet computed).
@@ -3223,4 +3234,39 @@ model WebhookSecretHistory {
   createdAt       DateTime     @default(now())
 
   @@index([organizationId, createdAt])
+}
+
+// ============================================================
+// GOOGLE KOLEDAR — povezava najemnika (2026-12)
+//
+// Zakaj svoj model in ne polja na Organization: povezava ima lasten
+// življenjski cikel (poveži / prekini / osveži žeton / zadnja
+// sinhronizacija + zadnja napaka), zato je vrstica zase in se ob
+// prekinitvi BRIŠE — brez ostankov žetonov. Žetoni so šifrirani z
+// AES-256-GCM (src/lib/crypto/secrets.ts); kopija baze sama po sebi
+// ne omogoča dostopa do koledarja.
+// ============================================================
+model CalendarConnection {
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  provider   String @default("google") // pripravljeno na outlook (isti model)
+  calendarId String @default("primary")
+
+  // Šifrirano (enc:v1:…). Access žeton poteče po ~1 h; refresh žeton
+  // dobimo le ob prvem soglasju (access_type=offline + prompt=consent).
+  accessToken  String?   @db.Text
+  refreshToken String?   @db.Text
+  expiresAt    DateTime?
+
+  scope        String? // kaj je uporabnik dejansko dovolil
+  accountEmail String? // kateri Google račun je povezan (povratna info)
+
+  connectedAt   DateTime  @default(now())
+  lastSyncAt    DateTime?
+  lastSyncError String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

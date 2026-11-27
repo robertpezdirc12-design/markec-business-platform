@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth/auth"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
+import { exportAppointmentAfterResponse } from "@/lib/calendar/sync-appointment"
 import {
   AvailableStaffMember,
   TimeSlot,
@@ -1390,6 +1391,10 @@ export async function createAppointment(
     revalidatePath("/my-appointments")
     revalidatePath("/dashboard")
 
+    // GOOGLE KOLEDAR: nov termin se izvozi takoj (neblokirajoče).
+    // Brez povezave je to ena poceni poizvedba in nič drugega.
+    exportAppointmentAfterResponse(appointment.id)
+
     // Return success with appointment ID
     return {
       success: true,
@@ -1583,6 +1588,9 @@ export async function cancelAppointment(appointmentId: string) {
     if (!cancelled) {
       return { success: false, error: "Termin ni več v stanju, ki bi ga bilo mogoče odpovedati." }
     }
+
+    // GOOGLE KOLEDAR: odpoved odstrani tudi dogodek iz koledarja.
+    exportAppointmentAfterResponse(appointmentId)
 
     // #99: push lastniku (odpoved stranke) — neblokirajoče, po commitu.
     if (appointment.organizationId) {
@@ -2049,6 +2057,9 @@ export async function updateAppointmentStatus(
   revalidatePath("/dashboard")
   revalidatePath("/dashboard/appointments")
 
+  // GOOGLE KOLEDAR: status spremeni tudi dogodek (preklic ga odstrani).
+  exportAppointmentAfterResponse(id)
+
   return {
     ...appointment,
     totalPrice: appointment.totalPrice.toNumber(),
@@ -2262,6 +2273,9 @@ export async function rescheduleAppointment(
 
   revalidatePath("/my-appointments")
   revalidatePath("/dashboard/appointments")
+
+  // GOOGLE KOLEDAR: prestavljen termin se v koledarju popravi takoj.
+  exportAppointmentAfterResponse(appointmentId)
 
   const customerEmail = appointment.customer?.email || appointment.guestEmail
   const customerName =

@@ -173,7 +173,7 @@ export function PublicNavbar({ org, cta, availableSections, walkInEnabled, nav, 
             <Link
               key={link.href}
               href={link.href}
-              className={`text-sm font-medium transition-all px-2.5 py-1.5 rounded-md xl:px-3 xl:py-2 ${
+              className={`inline-flex min-h-11 items-center text-sm font-medium transition-colors px-2.5 rounded-md xl:px-3 ${
                 isActive(link)
                   ? "text-primary-foreground bg-primary shadow-sm"
                   : "text-foreground/70 hover:text-primary-text hover:bg-primary/10"
@@ -281,16 +281,17 @@ export function PublicNavbar({ org, cta, availableSections, walkInEnabled, nav, 
           {showCart && <NavCartButton />}
           <button
             ref={mobileMenuToggleRef}
-            className="text-foreground/70 hover:text-primary-text transition-colors p-2 -mr-2"
+            type="button"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-foreground/70 hover:text-primary-text transition-colors -mr-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label={t.public.toggleMenu}
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-nav"
           >
             {mobileMenuOpen ? (
-              <CloseIcon size={24} weight="bold" />
+              <CloseIcon size={24} weight="bold" aria-hidden="true" />
             ) : (
-              <MenuIcon size={24} weight="bold" />
+              <MenuIcon size={24} weight="bold" aria-hidden="true" />
             )}
           </button>
         </div>
@@ -309,7 +310,7 @@ export function PublicNavbar({ org, cta, availableSections, walkInEnabled, nav, 
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`text-sm font-medium transition-all px-3 py-2.5 rounded-md text-center sm:text-left ${
+                  className={`inline-flex min-h-11 items-center justify-center sm:justify-start text-sm font-medium transition-colors px-3 rounded-md text-center sm:text-left ${
                     isActive(link)
                       ? "text-primary-foreground bg-primary shadow-sm"
                       : "text-foreground/70 hover:text-primary-text hover:bg-primary/10"

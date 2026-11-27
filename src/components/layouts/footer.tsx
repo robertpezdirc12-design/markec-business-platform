@@ -163,26 +163,26 @@ const Footer = async () => {
                     href={link.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group border-primary/30 bg-primary/5 text-muted-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground hover:shadow-primary/30 relative flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-sm transition-all duration-500 ease-out hover:-translate-y-1 hover:scale-110 hover:shadow-lg"
+                    className="group border-primary/30 bg-primary/5 text-muted-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground hover:shadow-primary/30 relative flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-sm transition duration-500 ease-out hover:-translate-y-1 hover:scale-110 hover:shadow-lg"
                     aria-label={link.label}
                   >
                     {link.key === "instagram" && (
                       <svg
-                        className="h-5 w-5 transition-all duration-500 ease-out"
+                        className="h-5 w-5 transition duration-500 ease-out"
                         viewBox="0 0 24 24"
                       >
                         <path
-                          className="fill-current transition-all duration-500 ease-out"
+                          className="fill-current transition duration-500 ease-out"
                           d="M16 3H8C5.243 3 3 5.243 3 8v8c0 2.757 2.243 5 5 5h8c2.757 0 5-2.243 5-5V8c0-2.757-2.243-5-5-5zm3 13c0 1.654-1.346 3-3 3H8c-1.654 0-3-1.346-3-3V8c0-1.654 1.346-3 3-3h8c1.654 0 3 1.346 3 3v8z"
                         />
                         <circle
-                          className="fill-current transition-all duration-500 ease-out"
+                          className="fill-current transition duration-500 ease-out"
                           cx="12"
                           cy="12"
                           r="3"
                         />
                         <circle
-                          className="fill-current transition-all duration-500 ease-out"
+                          className="fill-current transition duration-500 ease-out"
                           cx="17.5"
                           cy="6.5"
                           r=".5"
@@ -191,7 +191,7 @@ const Footer = async () => {
                     )}
                     {link.key === "facebook" && (
                       <svg
-                        className="h-5 w-5 fill-current transition-all duration-500 ease-out"
+                        className="h-5 w-5 fill-current transition duration-500 ease-out"
                         viewBox="0 0 24 24"
                       >
                         <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" />

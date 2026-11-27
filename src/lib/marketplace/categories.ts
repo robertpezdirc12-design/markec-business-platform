@@ -26,6 +26,8 @@
 export interface MarketplaceCategory {
   slug: string
   label: string
+  /** Angleška oznaka za /en naslovnico; slovenska ostane kanonična. */
+  labelEn: string
   icon: string
   /** Id-ji dejavnosti, ki sodijo v to kategorijo. */
   verticals: string[]
@@ -37,6 +39,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
   {
     slug: "frizerski-saloni",
     label: "Frizerski saloni",
+    labelEn: "Hair salons",
     icon: "✂️",
     verticals: ["frizer"],
     description: "Striženje, barvanje in nega las.",
@@ -44,6 +47,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
   {
     slug: "brivci",
     label: "Brivci",
+    labelEn: "Barbers",
     icon: "💈",
     verticals: ["barber"],
     description: "Moško striženje, britje in urejanje brade.",
@@ -51,6 +55,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
   {
     slug: "kozmeticni-saloni",
     label: "Kozmetični saloni",
+    labelEn: "Beauty salons",
     icon: "💅",
     verticals: ["cosmetica", "beauty"],
     description: "Nega obraza, tretmaji in lepotne storitve.",
@@ -58,6 +63,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
   {
     slug: "nohti",
     label: "Nohti",
+    labelEn: "Nails",
     icon: "💅",
     verticals: ["nails"],
     description: "Manikura, pedikura in oblikovanje nohtov.",
@@ -65,6 +71,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
   {
     slug: "masazni-saloni",
     label: "Masažni saloni",
+    labelEn: "Massage salons",
     icon: "💆",
     verticals: ["massage"],
     description: "Sprostitvene in terapevtske masaže.",
@@ -72,6 +79,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
   {
     slug: "depilacija",
     label: "Depilacija",
+    labelEn: "Hair removal",
     icon: "🌸",
     verticals: ["epilation"],
     description: "Trajno in klasično odstranjevanje dlak.",
@@ -79,6 +87,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
   {
     slug: "siviljstvo",
     label: "Šiviljstvo in atelje",
+    labelEn: "Tailoring and atelier",
     icon: "🧵",
     verticals: ["seamstress"],
     description: "Popravila, krajšanja in šivanje po meri.",
@@ -86,6 +95,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
   {
     slug: "oblacilne-delavnice",
     label: "Oblačilne delavnice",
+    labelEn: "Garment workshops",
     icon: "👗",
     verticals: ["apparel"],
     description: "Oblačila po meri in serijska proizvodnja.",
@@ -93,6 +103,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
   {
     slug: "tetovirni-studii",
     label: "Tetovirni studii",
+    labelEn: "Tattoo studios",
     icon: "🖋️",
     verticals: ["tattoo-studio"],
     description: "Tetoviranje in pirsing po terminih.",
@@ -100,6 +111,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
   {
     slug: "avtoservis",
     label: "Avtoservis in vulkanizer",
+    labelEn: "Car service and tyres",
     icon: "🔧",
     verticals: ["mehanik", "tire-service"],
     description: "Servis vozil, menjava pnevmatik in popravila.",
@@ -107,6 +119,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
   {
     slug: "cebelarstvo",
     label: "Čebelarstvo",
+    labelEn: "Beekeeping",
     icon: "🍯",
     verticals: ["beekeeping"],
     description: "Med, čebelji izdelki in pridelava.",
@@ -114,6 +127,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
   {
     slug: "drugo",
     label: "Drugo",
+    labelEn: "Other",
     icon: "🏪",
     verticals: ["generic"],
     description: "Podjetja z drugimi ali splošnimi storitvami.",
@@ -122,8 +136,34 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
 
 const BY_SLUG = new Map(MARKETPLACE_CATEGORIES.map((c) => [c.slug, c]))
 
+/**
+ * Kategorije, ki jih naslovnica izpostavi pod iskalnikom.
+ *
+ * Namerno RAZLIČNE panoge (ne samo lepota): platforma trži 36 dejavnosti,
+ * prvi vtis pa je bil "salon". Vsaka povezava vodi na kanonično stran
+ * /kategorije/<slug>, ki res obstaja — prej je čip peljal na
+ * /podjetja?kategorija=<poljuben niz>, kar je znalo vrniti 0 zadetkov.
+ *
+ * Slug MORA obstajati v registru; varuje tests/marketplace-categories.test.ts.
+ */
+export const FEATURED_CATEGORY_SLUGS = [
+  "frizerski-saloni",
+  "kozmeticni-saloni",
+  "siviljstvo",
+  "avtoservis",
+  "tetovirni-studii",
+  "cebelarstvo",
+]
+
 export function getMarketplaceCategory(slug: string): MarketplaceCategory | null {
   return BY_SLUG.get(slug) ?? null
+}
+
+/** Izpostavljene kategorije (v vrstnem redu seznama); neznani slugi izpadejo. */
+export function getFeaturedCategories(): MarketplaceCategory[] {
+  return FEATURED_CATEGORY_SLUGS.map((slug) => BY_SLUG.get(slug)).filter(
+    (category): category is MarketplaceCategory => Boolean(category)
+  )
 }
 
 /**

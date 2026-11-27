@@ -101,7 +101,7 @@ export function HeroSection({
               <Link
                 key={cat.slug}
                 href={`/podjetja?kategorija=${encodeURIComponent(cat.name)}`}
-                className="flex min-h-11 items-center gap-2 rounded-full border bg-background/80 px-4 py-2 text-sm transition-all hover:border-primary hover:bg-primary/5 hover:shadow-md"
+                className="flex min-h-11 items-center gap-2 rounded-full border bg-background/80 px-4 py-2 text-sm transition hover:border-primary hover:bg-primary/5 hover:shadow-md"
               >
                 <span>{cat.icon}</span>
                 <span>{cat.name}</span>

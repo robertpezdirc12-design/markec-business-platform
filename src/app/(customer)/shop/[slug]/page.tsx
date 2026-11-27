@@ -194,7 +194,7 @@ const ProductDetails = async ({ params }: ProductDetailsProps) => {
                 {product.images.map((image, index) => (
                   <div
                     key={index}
-                    className="relative h-20 w-20 shrink-0 cursor-pointer overflow-hidden rounded-lg border-2 border-border/50 transition-all hover:border-primary"
+                    className="relative h-20 w-20 shrink-0 cursor-pointer overflow-hidden rounded-lg border-2 border-border/50 transition hover:border-primary"
                   >
                     <Image
                       src={image}

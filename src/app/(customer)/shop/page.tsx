@@ -206,7 +206,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
             return (
               <Card
                 key={product.id}
-                className="group border-primary/10 overflow-hidden transition-all duration-300 hover:shadow-xl"
+                className="group border-primary/10 overflow-hidden transition duration-300 hover:shadow-xl"
               >
                 <CardHeader className="p-0">
                   {/* Product Image */}

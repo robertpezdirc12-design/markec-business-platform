@@ -79,7 +79,7 @@ function BusinessCard({ business }: { business: Business }) {
   const services = business.serviceItems ?? []
   return (
     <Link href={`/s/${business.slug}`}>
-      <Card className="group overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+      <Card className="group overflow-hidden transition duration-300 hover:shadow-xl hover:-translate-y-1">
         {/* Image */}
         <div className="relative aspect-[4/3] overflow-hidden">
           <Image

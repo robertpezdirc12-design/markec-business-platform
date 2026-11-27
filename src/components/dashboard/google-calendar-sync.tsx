@@ -1,258 +1,271 @@
 "use client"
 
 // ============================================================
-// GOOGLE CALENDAR SYNC (Fresha-inspired 2026-11-15)
-// Two-way sync with Google Calendar.
-// Import/export appointments, conflict resolution.
+// GOOGLE KOLEDAR — KARTICA V NASTAVITVAH (resnična povezava)
+//
+// Prej je bila to predogledna kartica: gumbi so prikazali "povezano"
+// in "5 terminov posodobljenih", v resnici pa ni bilo ne OAuth toka
+// ne shrambe žetonov. Zdaj je povezava RESNIČNA (src/lib/calendar/*),
+// zato kartica ne obljublja ničesar, česar ne zmore:
+//
+//  * gumb "Poveži" vodi na /api/integrations/google/calendar/connect
+//    (strežniška OAuth preusmeritev, brez skrivnosti v brskalniku),
+//  * "Sinhroniziraj zdaj" izvozi termine v Google (MARKEC → Google),
+//  * uvoz iz Googla NI podprt — to kartica pove, namesto da bi
+//    ponujala stikalo za "dvosmerno",
+//  * brez strežniških poverilnic se prikaže "Ni nastavljeno" in
+//    NAVODILO, kaj nastaviti — ne gumb, ki ne bi deloval.
 // ============================================================
 
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { toast } from "sonner"
 import {
   CalendarIcon,
   CheckCircleIcon,
-  
-  ArrowRightIcon,
-  ArrowLeftIcon,
+  CloseIcon,
+  WarningCircleIcon,
 } from "@/components/icons"
 import { ArrowsClockwise as RefreshIcon } from "@phosphor-icons/react/dist/ssr"
+import type { CalendarStatus } from "@/lib/calendar/connection"
+import { disconnectCalendar, syncCalendar } from "@/app/actions/calendar"
 
 interface GoogleCalendarSyncProps {
-  isConnected?: boolean
-  lastSyncAt?: string | null
-  syncDirection?: "import" | "export" | "both"
-  autoSync?: boolean
-  conflictResolution?: "prefer-google" | "prefer-markec" | "manual"
+  status: CalendarStatus
+  /** Koda iz `?calendar=` po vrnitvi iz Googla (connected, denied, …). */
+  notice?: string | null
 }
 
-export function GoogleCalendarSync({
-  isConnected = false,
-  lastSyncAt,
-  syncDirection = "both",
-  autoSync = true,
-  conflictResolution = "manual",
-}: GoogleCalendarSyncProps) {
-  const [connected, setConnected] = useState(isConnected)
+const NOTICES: Record<string, { tone: "ok" | "error"; text: string }> = {
+  connected: { tone: "ok", text: "Google Calendar je povezan. Kliknite »Sinhroniziraj zdaj«, da se obstoječi termini izvozijo; novi se izvažajo samodejno." },
+  denied: { tone: "error", text: "Povezava je bila preklicana v Googlu — nič ni bilo spremenjeno." },
+  state: { tone: "error", text: "Povezava je potekla ali je bila prekinjena. Poskusite znova." },
+  failed: { tone: "error", text: "Povezave z Googlom ni bilo mogoče dokončati. Poskusite znova." },
+  scope: { tone: "error", text: "Google ni dovolil dostopa do koledarja. Ob ponovnem poskusu potrdite dostop do dogodkov." },
+  permission: { tone: "error", text: "Za povezavo koledarja potrebujete dovoljenje za urejanje nastavitev." },
+  "no-org": { tone: "error", text: "Podjetje ni bilo prepoznano. Osvežite stran in poskusite znova." },
+  session: { tone: "error", text: "Prijava je med povezovanjem potekla. Prijavite se in poskusite znova." },
+  unconfigured: { tone: "error", text: "Google Calendar na strežniku ni nastavljen (manjkajo poverilnice)." },
+}
+
+function formatWhen(iso: string | null): string {
+  if (!iso) return "še ni sinhronizirano"
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return "še ni sinhronizirano"
+  return date.toLocaleString("sl-SI", { dateStyle: "medium", timeStyle: "short" })
+}
+
+export function GoogleCalendarSync({ status, notice }: GoogleCalendarSyncProps) {
   const [syncing, setSyncing] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
-  const [direction, setDirection] = useState(syncDirection)
-  const [autoSyncEnabled, setAutoSyncEnabled] = useState(autoSync)
-  const [conflictMode, setConflictMode] = useState(conflictResolution)
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false)
+  // Sporočilo iz naslova (calendar=...) ostane v URL-ju; uporabnik ga
+  // mora zapreti, sicer bi viselo do naslednje navigacije.
+  const [bannerDismissed, setBannerDismissed] = useState(false)
 
-  const handleConnect = async () => {
-    // In real app, this would trigger Google OAuth flow
-    toast.info("Odpiranje Google prijave...")
-    
-    // Simulate connection
-    setTimeout(() => {
-      setConnected(true)
-      toast.success("Google Calendar povezan!")
-    }, 1500)
-  }
-
-  const handleDisconnect = () => {
-    setConnected(false)
-    toast.success("Google Calendar odklopljen")
-  }
+  const connected = status.connected
+  const configured = status.configured
+  const banner = notice ? NOTICES[notice] : undefined
 
   const handleSync = async () => {
     setSyncing(true)
-    
-    // Simulate sync
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    
-    setSyncing(false)
-    toast.success("Sinhronizacija uspešna! 5 terminov posodobljenih.")
+    try {
+      const result = await syncCalendar()
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      const { created, updated, removed } = result.summary
+      if (created + updated + removed === 0) {
+        toast.success("Vse je že usklajeno — ni bilo česa izvoziti.")
+        return
+      }
+      const parts = [
+        created > 0 ? `${created} novih` : null,
+        updated > 0 ? `${updated} posodobljenih` : null,
+        removed > 0 ? `${removed} odstranjenih` : null,
+      ].filter(Boolean)
+      toast.success(`Izvoz končan: ${parts.join(", ")}.`)
+    } catch {
+      toast.error("Izvoz ni uspel. Poskusite znova.")
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  const handleDisconnect = async () => {
+    setConfirmDisconnect(false)
+    try {
+      const result = await disconnectCalendar()
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      toast.success(result.message)
+    } catch {
+      toast.error("Odklop ni uspel. Poskusite znova.")
+    }
   }
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <CardTitle className="flex items-center gap-2">
               <CalendarIcon size={20} />
               Google Calendar
             </CardTitle>
-            <CardDescription>
-              Sinhronizacija terminov z Google Koledarjem.
-            </CardDescription>
+            <CardDescription>Termini se samodejno izvažajo v vaš Google Koledar.</CardDescription>
           </div>
-          {connected && (
-            <Badge variant="outline" className="text-green-600">
+          {!configured ? (
+            <Badge variant="outline" className="text-muted-foreground">
+              Ni nastavljeno
+            </Badge>
+          ) : connected ? (
+            <Badge variant="outline" className="text-success">
               <CheckCircleIcon size={12} className="mr-1" />
               Povezano
             </Badge>
+          ) : (
+            <Badge variant="outline">Ni povezano</Badge>
           )}
         </div>
       </CardHeader>
       <CardContent>
-        {!connected ? (
-          /* Not connected state */
+        {banner && !bannerDismissed && (
+          <div
+            // napaka je za bralnike zaslona alarm, ne zgolj obvestilo
+            role={banner.tone === "ok" ? "status" : "alert"}
+            className={
+              banner.tone === "ok"
+                ? "border-border bg-muted/40 mb-4 flex items-start gap-2 rounded-lg border p-3 text-xs leading-relaxed"
+                : "border-destructive/40 bg-destructive/5 text-destructive mb-4 flex items-start gap-2 rounded-lg border p-3 text-xs leading-relaxed"
+            }
+          >
+            {banner.tone === "ok" ? (
+              <CheckCircleIcon size={14} className="mt-0.5 shrink-0" />
+            ) : (
+              <WarningCircleIcon size={14} className="mt-0.5 shrink-0" />
+            )}
+            <p className="flex-1">{banner.text}</p>
+            <button
+              type="button"
+              onClick={() => setBannerDismissed(true)}
+              aria-label="Zapri obvestilo"
+              className="hover:bg-background/60 -m-1 shrink-0 rounded p-1 transition-colors"
+            >
+              <CloseIcon size={12} />
+            </button>
+          </div>
+        )}
+
+        {!configured ? (
+          <div className="space-y-3">
+            <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+              Povezava je pripravljena, a na strežniku še ni nastavljena. Lastnik
+              platforme mora v okolje dodati <code className="text-foreground">GOOGLE_CALENDAR_CLIENT_ID</code>{" "}
+              in <code className="text-foreground">GOOGLE_CALENDAR_CLIENT_SECRET</code> (ali
+              uporabiti obstoječa <code className="text-foreground">AUTH_GOOGLE_*</code>) ter v
+              Google Cloud dodati preusmeritveni naslov{" "}
+              <code className="text-foreground">/api/integrations/google/calendar/callback</code>.
+            </p>
+          </div>
+        ) : !connected ? (
           <div className="space-y-4">
             <div className="rounded-lg border border-dashed p-6 text-center">
-              <CalendarIcon size={48} className="mx-auto mb-4 text-muted-foreground" />
+              <CalendarIcon size={48} className="text-muted-foreground mx-auto mb-4" />
               <h3 className="mb-2 font-semibold">Povežite Google Calendar</h3>
-              <p className="mb-4 text-sm text-muted-foreground">
-                Sinhronizirajte termine med MARKEC in Google Koledarjem.
+              <p className="text-muted-foreground mb-4 text-sm">
+                Ko povežete, se novi in prestavljeni termini izvozijo samodejno.
               </p>
-              <Button onClick={handleConnect}>
-                <CalendarIcon size={16} className="mr-2" />
-                Poveži Google Calendar
+              {/* Navaden <a>: to je strežniška preusmeritev na Google,
+                  ne odjemalska akcija — zato brez fetch/JS. */}
+              <Button asChild>
+                <a href="/api/integrations/google/calendar/connect">
+                  <CalendarIcon size={16} className="mr-2" />
+                  Poveži Google Calendar
+                </a>
               </Button>
             </div>
 
-            {/* Benefits */}
             <div className="space-y-2">
-              <h4 className="text-sm font-medium">Zakaj povezati?</h4>
-              <ul className="space-y-1 text-sm text-muted-foreground">
+              <h4 className="text-sm font-medium">Kaj povezava naredi</h4>
+              <ul className="text-muted-foreground space-y-1 text-sm">
                 <li className="flex items-center gap-2">
-                  <CheckCircleIcon size={14} className="text-green-500" />
-                  Avtomatska sinhronizacija terminov
+                  <CheckCircleIcon size={14} className="text-success" />
+                  Nov in prestavljen termin se izvozi samodejno
                 </li>
                 <li className="flex items-center gap-2">
-                  <CheckCircleIcon size={14} className="text-green-500" />
-                  Vidite termine v mobilnem koledarju
+                  <CheckCircleIcon size={14} className="text-success" />
+                  Preklican termin iz koledarja izgine
                 </li>
                 <li className="flex items-center gap-2">
-                  <CheckCircleIcon size={14} className="text-green-500" />
-                  Opomniki iz Googla
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircleIcon size={14} className="text-green-500" />
-                  Dvosmerna sinhronizacija
+                  <CheckCircleIcon size={14} className="text-success" />
+                  Termine vidite tudi v mobilnem koledarju
                 </li>
               </ul>
+              <p className="text-muted-foreground text-xs">
+                Smer je enosmerna: MARKEC → Google. Termini, ki jih vstavite
+                neposredno v Google, se v MARKEC ne uvozijo.
+              </p>
             </div>
           </div>
         ) : (
-          /* Connected state */
-          <div className="space-y-6">
-            {/* Sync status */}
-            <div className="flex items-center justify-between rounded-lg border p-4">
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-                  <CheckCircleIcon size={20} className="text-green-600" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success/10">
+                  <CheckCircleIcon size={20} className="text-success" />
                 </div>
                 <div>
-                  <p className="font-medium">Google Calendar povezan</p>
-                  <p className="text-sm text-muted-foreground">
-                    {lastSyncAt
-                      ? `Zadnja sinhronizacija: ${lastSyncAt}`
-                      : "Še ni sinhronizirano"}
+                  <p className="font-medium">
+                    {status.accountEmail ?? "Google Calendar povezan"}
+                  </p>
+                  <p className="text-muted-foreground text-sm">
+                    Zadnja sinhronizacija: {formatWhen(status.lastSyncAt)}
                   </p>
                 </div>
               </div>
-              <Button
-                variant="outline"
-                onClick={handleSync}
-                disabled={syncing}
-              >
+              <Button onClick={handleSync} disabled={syncing}>
                 <RefreshIcon size={16} className={`mr-2 ${syncing ? "animate-spin" : ""}`} />
-                {syncing ? "Sinhroniziram..." : "Sinhroniziraj zdaj"}
+                {syncing ? "Izvažam…" : "Sinhroniziraj zdaj"}
               </Button>
             </div>
 
-            {/* Sync direction */}
-            <div>
-              <h4 className="mb-3 text-sm font-medium">Smer sinhronizacije</h4>
-              <div className="grid grid-cols-3 gap-3">
-                <button
-                  onClick={() => setDirection("import")}
-                  className={`rounded-lg border p-3 text-center transition-colors ${
-                    direction === "import"
-                      ? "border-primary bg-primary/5"
-                      : "hover:bg-muted"
-                  }`}
-                >
-                  <ArrowLeftIcon size={20} className="mx-auto mb-2 text-blue-500" />
-                  <p className="text-sm font-medium">Samo uvoz</p>
-                  <p className="text-xs text-muted-foreground">Google → MARKEC</p>
-                </button>
-                <button
-                  onClick={() => setDirection("export")}
-                  className={`rounded-lg border p-3 text-center transition-colors ${
-                    direction === "export"
-                      ? "border-primary bg-primary/5"
-                      : "hover:bg-muted"
-                  }`}
-                >
-                  <ArrowRightIcon size={20} className="mx-auto mb-2 text-green-500" />
-                  <p className="text-sm font-medium">Samo izvoz</p>
-                  <p className="text-xs text-muted-foreground">MARKEC → Google</p>
-                </button>
-                <button
-                  onClick={() => setDirection("both")}
-                  className={`rounded-lg border p-3 text-center transition-colors ${
-                    direction === "both"
-                      ? "border-primary bg-primary/5"
-                      : "hover:bg-muted"
-                  }`}
-                >
-                  <RefreshIcon size={20} className="mx-auto mb-2 text-purple-500" />
-                  <p className="text-sm font-medium">Dvosmerno</p>
-                  <p className="text-xs text-muted-foreground">Obe smeri</p>
-                </button>
-              </div>
-            </div>
+            {status.lastSyncError && (
+              <p
+                role="alert"
+                className="border-destructive/40 bg-destructive/5 text-destructive flex items-start gap-2 rounded-lg border p-3 text-xs leading-relaxed"
+              >
+                <WarningCircleIcon size={16} className="mt-0.5 shrink-0" />
+                Zadnji izvoz ni uspel v celoti: {status.lastSyncError}
+              </p>
+            )}
 
-            {/* Auto sync */}
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div>
-                <p className="font-medium">Samodejna sinhronizacija</p>
-                <p className="text-sm text-muted-foreground">
-                  Sinhroniziraj vsakih 15 minut
-                </p>
-              </div>
-              <Switch
-                checked={autoSyncEnabled}
-                onCheckedChange={setAutoSyncEnabled}
-              />
-            </div>
-
-            {/* Conflict resolution */}
-            <div>
-              <h4 className="mb-3 text-sm font-medium">Reševanje konfliktov</h4>
-              <Select value={conflictMode} onValueChange={(v) => setConflictMode(v as "manual" | "prefer-google" | "prefer-markec")}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="prefer-google">Preferiraj Google</SelectItem>
-                  <SelectItem value="prefer-markec">Preferiraj MARKEC</SelectItem>
-                  <SelectItem value="manual">Ročno reševanje</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Kaj storiti, ko se termin spremeni v obeh sistemih?
+            <div className="text-muted-foreground space-y-1 text-xs">
+              <p>
+                Termini se izvažajo samodejno ob rezervaciji, prestavitvi in
+                preklicu. Gumb »Sinhroniziraj zdaj« je za prvo polnjenje in
+                popravke (npr. ko v Googlu kaj ročno spremenite).
+              </p>
+              <p>
+                Zajeti so termini od včeraj do 18 mesecev naprej.
+              </p>
+              <p>
+                Uvoz iz Googla ni podprt — termine, ki jih vstavite v Google, v
+                MARKEC vnesite ročno.
               </p>
             </div>
 
-            {/* Settings button */}
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowSettings(true)}>
-                Napredne nastavitve
-              </Button>
-              <Button variant="destructive" onClick={handleDisconnect}>
+            <div>
+              <Button
+                variant="outline"
+                className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => setConfirmDisconnect(true)}
+              >
                 Odklopi
               </Button>
             </div>
@@ -260,75 +273,16 @@ export function GoogleCalendarSync({
         )}
       </CardContent>
 
-      {/* Settings Dialog */}
-      <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Napredne nastavitve</DialogTitle>
-            <DialogDescription>
-              Prilagodite sinhronizacijo z Google Koledarjem.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Koledar za sinhronizacijo</label>
-              <Select defaultValue="primary">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="primary">Primarni koledar</SelectItem>
-                  <SelectItem value="work">Delovni koledar</SelectItem>
-                  <SelectItem value="personal">Osebni koledar</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Barva terminov</label>
-              <Select defaultValue="default">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="default">Privzeta</SelectItem>
-                  <SelectItem value="blue">Modra</SelectItem>
-                  <SelectItem value="green">Zelena</SelectItem>
-                  <SelectItem value="purple">Vijolična</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Opomniki</label>
-              <Select defaultValue="15">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10 minut prej</SelectItem>
-                  <SelectItem value="15">15 minut prej</SelectItem>
-                  <SelectItem value="30">30 minut prej</SelectItem>
-                  <SelectItem value="60">1 uro prej</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSettings(false)}>
-              Prekliči
-            </Button>
-            <Button onClick={() => {
-              setShowSettings(false)
-              toast.success("Nastavitve shranjene")
-            }}>
-              Shrani
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={confirmDisconnect}
+        onOpenChange={setConfirmDisconnect}
+        title="Odklopim Google Calendar?"
+        description="MARKEC ne bo več izvažal terminov v ta koledar. Dogodki, ki so že v koledarju, ostanejo; žetoni za dostop se izbrišejo."
+        confirmLabel="Odklopi"
+        cancelLabel="Prekliči"
+        variant="destructive"
+        onConfirm={handleDisconnect}
+      />
     </Card>
   )
 }

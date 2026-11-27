@@ -46,7 +46,7 @@ export function StaffStep({
                   onClick={() => onSelectStaff(staff.id)}
                   aria-pressed={isSelected}
                   className={cn(
-                    "group relative overflow-hidden rounded-xl border-2 text-left transition-all",
+                    "group relative overflow-hidden rounded-xl border-2 text-left transition",
                     isSelected
                       ? "border-primary bg-primary/5 shadow-md"
                       : "border-border bg-card hover:border-primary/40 hover:shadow-sm"

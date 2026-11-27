@@ -602,7 +602,7 @@ function BasicSection({
               aria-pressed={draft.palette === p.key}
               onClick={() => setField("palette", p.key)}
               className={cn(
-                "h-10 w-10 rounded-full border transition-all",
+                "h-10 w-10 rounded-full border transition",
                 draft.palette === p.key
                   ? "ring-2 ring-primary ring-offset-1"
                   : "border-transparent hover:border-border/50"
@@ -665,7 +665,7 @@ function CapabilitiesSection({
             <div
               key={cap.key}
               className={cn(
-                "flex flex-col items-center gap-2 rounded-lg border p-3 transition-all cursor-pointer",
+                "flex flex-col items-center gap-2 rounded-lg border p-3 transition cursor-pointer",
                 stateColors[current],
                 "hover:border-primary/50"
               )}
@@ -1019,7 +1019,7 @@ function CtaSection({
               aria-pressed={active}
               onClick={() => setField("ctaMode", mode.key)}
               className={cn(
-                "flex items-center gap-3 rounded-lg border p-3 transition-all",
+                "flex items-center gap-3 rounded-lg border p-3 transition",
                 active
                   ? "border-primary bg-primary/5"
                   : "border-transparent hover:border-border/50"

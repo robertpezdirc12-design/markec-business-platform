@@ -144,10 +144,12 @@ export function RegisterForm() {
                 placeholder="John Doe"
                 disabled={isSubmitting}
                 autoComplete="name"
+                aria-invalid={errors.name ? true : undefined}
+                aria-describedby={errors.name ? "name-error" : undefined}
                 {...register("name")}
               />
               {errors.name && (
-                <p className="text-destructive text-sm">
+                <p id="name-error" role="alert" className="text-destructive text-sm">
                   {errors.name.message}
                 </p>
               )}
@@ -161,10 +163,13 @@ export function RegisterForm() {
                 placeholder="john@example.com"
                 disabled={isSubmitting}
                 autoComplete="email"
+                spellCheck={false}
+                aria-invalid={errors.email ? true : undefined}
+                aria-describedby={errors.email ? "email-error" : undefined}
                 {...register("email")}
               />
               {errors.email && (
-                <p className="text-destructive text-sm">
+                <p id="email-error" role="alert" className="text-destructive text-sm">
                   {errors.email.message}
                 </p>
               )}
@@ -182,18 +187,21 @@ export function RegisterForm() {
                 autoComplete="off"
                 autoCapitalize="none"
                 autoCorrect="off"
+                spellCheck={false}
+                aria-invalid={errors.username ? true : undefined}
+                aria-describedby={
+                  errors.username ? "username-error username-hint" : "username-hint"
+                }
                 {...register("username")}
               />
               {errors.username && (
-                <p className="text-destructive text-sm">
+                <p id="username-error" role="alert" className="text-destructive text-sm">
                   {errors.username.message}
                 </p>
               )}
-              {!errors.username && (
-                <p className="text-muted-foreground text-xs">
-                  {t.auth.register.usernameHint}
-                </p>
-              )}
+              <p id="username-hint" className="text-muted-foreground text-xs">
+                {t.auth.register.usernameHint}
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -203,10 +211,12 @@ export function RegisterForm() {
                 type="password"
                 disabled={isSubmitting}
                 autoComplete="new-password"
+                aria-invalid={errors.password ? true : undefined}
+                aria-describedby={errors.password ? "password-error" : undefined}
                 {...register("password")}
               />
               {errors.password && (
-                <p className="text-destructive text-sm">
+                <p id="password-error" role="alert" className="text-destructive text-sm">
                   {errors.password.message}
                 </p>
               )}
@@ -219,10 +229,18 @@ export function RegisterForm() {
                 type="password"
                 disabled={isSubmitting}
                 autoComplete="new-password"
+                aria-invalid={errors.confirmPassword ? true : undefined}
+                aria-describedby={
+                  errors.confirmPassword ? "confirmPassword-error" : undefined
+                }
                 {...register("confirmPassword")}
               />
               {errors.confirmPassword && (
-                <p className="text-destructive text-sm">
+                <p
+                  id="confirmPassword-error"
+                  role="alert"
+                  className="text-destructive text-sm"
+                >
                   {errors.confirmPassword.message}
                 </p>
               )}

@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Great_Vibes, Poppins, Playfair_Display, Cormorant_Garamond, Oswald, Montserrat, Inter, Lora } from "next/font/google"
 import { SessionProvider } from "@/components/providers/session-provider"
 import { ThemeProvider } from "@/components/providers/theme-provider"
@@ -109,6 +109,23 @@ async function resolveBrandOrg(): Promise<Organization | null> {
     return null
   } catch {
     return null
+  }
+}
+
+// Naslovna vrstica mobilnega brskalnika (theme-color) je del videza
+// strani: platforma je kremna, zato naj bo tudi pas nad stranjo.
+// Najemnikom je NE vsiljujemo — njihova paleta je lahko povsem
+// drugačna in napačna barva je slabša od privzete. Zato vrednost
+// dobijo le platformne strani (brez podpisane najemniške domene).
+export async function generateViewport(): Promise<Viewport> {
+  const org = await resolveBrandOrg()
+  if (org && (await getTrustedOrgSlug())) return {}
+  return {
+    themeColor: [
+      // Enaki vrednosti kot --background v globals.css (light/dark).
+      { media: "(prefers-color-scheme: light)", color: "#FDFBFA" },
+      { media: "(prefers-color-scheme: dark)", color: "#100E0F" },
+    ],
   }
 }
 

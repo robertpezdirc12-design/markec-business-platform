@@ -102,7 +102,7 @@ export function HowItWorksSection({
             return (
               <li
                 key={step.title}
-                className="border-primary/20 from-primary/5 hover:border-primary/30 group relative rounded-lg border bg-linear-to-br to-transparent p-6 transition-all hover:shadow-lg"
+                className="border-primary/20 from-primary/5 hover:border-primary/30 group relative rounded-lg border bg-linear-to-br to-transparent p-6 transition hover:shadow-lg"
               >
                 <div className="mb-4 flex items-center justify-between">
                   <span

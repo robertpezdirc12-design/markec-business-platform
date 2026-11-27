@@ -381,7 +381,7 @@ export function BookingSummaryCard({
                 ? "button"
                 : "submit"
             }
-            className="w-full text-base shadow-lg transition-all hover:scale-105"
+            className="w-full text-base shadow-lg transition hover:scale-105"
             size="lg"
             disabled={submitting}
             onClick={

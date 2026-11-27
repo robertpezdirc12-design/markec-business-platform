@@ -74,7 +74,7 @@ export function MobileSearch() {
         method="get"
         inert={!open}
         className={
-          "absolute inset-x-0 top-full z-40 bg-background px-4 py-4 shadow-lg transition-all duration-200 ease-out motion-reduce:transition-none " +
+          "absolute inset-x-0 top-full z-40 bg-background px-4 py-4 shadow-lg transition-[max-height,opacity,border-color] duration-200 ease-out motion-reduce:transition-none " +
           (open
             ? "max-h-80 border-b border-border opacity-100"
             : "pointer-events-none max-h-0 overflow-hidden border-b border-transparent opacity-0")

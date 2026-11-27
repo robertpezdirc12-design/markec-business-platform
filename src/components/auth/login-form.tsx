@@ -151,8 +151,8 @@ export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: 
         // the session cookie server-side.
         router.push(multiTarget)
       }
-    } catch (error) {
-      console.log("Login error:", error)
+    } catch {
+      // Podrobnosti napake ne izpisujemo v konzolo brskalnika (PII/higiena).
       toast.error(t.auth.login.toast.loginFailed, {
         description: t.auth.login.toast.somethingWrong,
       })
@@ -200,12 +200,12 @@ export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: 
                   }}
                 >
                   <GoogleIcon className="mr-2 h-5 w-5" />
-                  Nadaljuj z Google
+                  {t.auth.continueWithGoogle}
                 </Button>
                 <div className="relative my-2">
                   <Separator />
                   <span className="bg-card text-muted-foreground absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-2 text-xs">
-                    ali z e-pošto
+                    {t.auth.orEmail}
                   </span>
                 </div>
               </>
@@ -220,10 +220,13 @@ export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: 
                 autoComplete="username"
                 autoCapitalize="none"
                 autoCorrect="off"
+                spellCheck={false}
+                aria-invalid={errors.login ? true : undefined}
+                aria-describedby={errors.login ? "login-error" : undefined}
                 {...register("login")}
               />
               {errors.login && (
-                <p className="text-destructive text-sm">
+                <p id="login-error" role="alert" className="text-destructive text-sm">
                   {errors.login.message}
                 </p>
               )}
@@ -244,10 +247,12 @@ export function LoginForm({ orgName, orgLogo, orgSlug, googleEnabled = false }: 
                 type="password"
                 disabled={isSubmitting}
                 autoComplete="current-password"
+                aria-invalid={errors.password ? true : undefined}
+                aria-describedby={errors.password ? "password-error" : undefined}
                 {...register("password")}
               />
               {errors.password && (
-                <p className="text-destructive text-sm">
+                <p id="password-error" role="alert" className="text-destructive text-sm">
                   {errors.password.message}
                 </p>
               )}

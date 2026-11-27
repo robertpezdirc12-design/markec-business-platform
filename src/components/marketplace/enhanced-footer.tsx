@@ -72,7 +72,7 @@ export function EnhancedFooter() {
                     href={APP_STORE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover:border-primary bg-background flex items-center gap-2 rounded-lg border px-4 py-2 transition-all hover:shadow-md"
+                    className="hover:border-primary bg-background flex items-center gap-2 rounded-lg border px-4 py-2 transition hover:shadow-md"
                   >
                     <svg
                       width="20"
@@ -96,7 +96,7 @@ export function EnhancedFooter() {
                     href={PLAY_STORE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover:border-primary bg-background flex items-center gap-2 rounded-lg border px-4 py-2 transition-all hover:shadow-md"
+                    className="hover:border-primary bg-background flex items-center gap-2 rounded-lg border px-4 py-2 transition hover:shadow-md"
                   >
                     <svg
                       width="20"

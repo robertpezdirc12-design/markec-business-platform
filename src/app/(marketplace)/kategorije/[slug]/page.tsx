@@ -109,7 +109,7 @@ export default async function MarketplaceCategoryPage({
               <Link
                 key={c.slug}
                 href={`/kategorije/${c.slug}`}
-                className="bg-background hover:border-primary hover:bg-primary/5 flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all"
+                className="bg-background hover:border-primary hover:bg-primary/5 flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition"
               >
                 <span aria-hidden="true">{c.icon}</span>
                 <span>{c.label}</span>

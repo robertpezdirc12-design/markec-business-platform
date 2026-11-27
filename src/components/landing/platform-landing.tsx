@@ -12,11 +12,16 @@ import {
   Search,
   ShoppingBag,
   Sparkles,
+  TriangleAlert,
+  Hourglass,
+  FileX,
 } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { Button } from "@/components/ui/button"
 import { DemoTourButton } from "@/components/landing/demo-tour"
+import { HeroPreview } from "@/components/landing/hero-preview"
 import { PLANS } from "@/lib/plans/registry"
+import { getFeaturedCategories } from "@/lib/marketplace/categories"
 import {
   landingSl,
   landingEn,
@@ -44,6 +49,11 @@ import type { Locale } from "@/lib/i18n/config"
 // ============================================================
 
 const MODULE_ICONS = [CalendarDays, ShoppingBag, PencilLine, Languages]
+
+/** Ikone za "Zakaj podjetniki obupajo" — prej emoji, ki jih bralnik prebere
+ *  kot "warning sign". Zdaj prave ikone z aria-hidden, v skladu s preostalo
+ *  stranjo. */
+const PROBLEM_ICONS = [TriangleAlert, Hourglass, FileX]
 
 export function PlatformLanding({
   locale,
@@ -122,7 +132,7 @@ export function PlatformLanding({
               href="/pricing"
               className="hover:text-foreground flex min-h-9 items-center whitespace-nowrap"
             >
-              Cene
+              {t.nav.pricing}
             </Link>
           </nav>
           <span className="flex-1" />
@@ -163,7 +173,7 @@ export function PlatformLanding({
                 href="/pricing"
                 className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm"
               >
-                {isEn ? "Pricing" : "Cene"}
+                {t.nav.pricing}
               </Link>
               <Link
                 href={dashboardHref ?? "/login"}
@@ -213,7 +223,9 @@ export function PlatformLanding({
         </div>
       </header>
 
-      <main>
+      {/* <main> zagotavlja lupina ((public)/layout za "/", en/page za "/en").
+          Gnezden <main> je neveljaven landmark — bralnik zaslona bi objavil dva. */}
+      <div>
         {/* Hero — premium gradient + animated social proof + dual CTAs */}
         <section className="relative overflow-hidden">
           {/* Gradient Background */}
@@ -224,8 +236,8 @@ export function PlatformLanding({
           <div className="bg-primary/10 absolute -top-32 -left-32 h-96 w-96 rounded-full blur-3xl" />
           <div className="bg-accent/10 absolute top-1/4 -right-32 h-96 w-96 rounded-full blur-3xl" />
 
-          <div className="relative container mx-auto px-4 py-16 md:py-24">
-            <div className="lg:max-w-3xl">
+          <div className="relative container mx-auto grid items-center gap-12 px-4 py-12 md:py-20 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] lg:gap-14">
+            <div className="min-w-0 max-w-2xl">
               {/* Badge */}
               <p className="text-primary-text border-border bg-background/80 mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium backdrop-blur-sm">
                 <Sparkles className="size-4" aria-hidden="true" />
@@ -233,7 +245,7 @@ export function PlatformLanding({
               </p>
 
               {/* Headline */}
-              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
+              <h1 className="text-4xl font-bold tracking-tight text-balance sm:text-5xl md:text-6xl lg:text-5xl xl:text-6xl">
                 {t.hero.h1Lead}{" "}
                 <span className="from-primary to-accent bg-linear-to-r bg-clip-text text-transparent">
                   {t.hero.h1Accent}
@@ -251,11 +263,19 @@ export function PlatformLanding({
               </p>
 
               {/* CTAs */}
-              <div className="mt-8 flex flex-wrap items-center gap-4">
-                <Button asChild size="lg" className="min-h-12 shadow-lg">
+              {/* Na 360 px je "whitespace-nowrap" gumba postavil
+                  min-content celotnega heroja na 354 px → stolpec je bil
+                  širši od zaslona in besedilo se je odrezalo. Zato na
+                  mobilnem gumbe zložimo v polno širino in dovolimo prelom. */}
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+                <Button
+                  asChild
+                  size="lg"
+                  className="min-h-12 w-full whitespace-normal shadow-lg sm:w-auto"
+                >
                   <Link href="/start">
                     {t.hero.cta}
-                    <ArrowRight className="ml-2 size-5" aria-hidden="true" />
+                    <ArrowRight className="ml-2 size-5 shrink-0" aria-hidden="true" />
                   </Link>
                 </Button>
                 {t.examples.demo ? (
@@ -265,7 +285,7 @@ export function PlatformLanding({
                     label={t.examples.demo.label}
                     stepsRaw={t.examples.demo.steps}
                     variant="outline"
-                    className="min-h-12"
+                    className="min-h-12 w-full sm:w-auto"
                   />
                 ) : null}
               </div>
@@ -277,6 +297,12 @@ export function PlatformLanding({
 
               {/* No invented ratings or customer counts. Verified proof is
                   shown only when it comes from the database. */}
+            </div>
+
+            {/* Produktna vizualija: na 1280 px je bila desna polovica
+                prazna, hero pa je bil en sam stolpec širine 768. */}
+            <div className="order-last min-w-0 lg:order-none">
+              <HeroPreview mock={t.mock} />
             </div>
           </div>
         </section>
@@ -303,15 +329,12 @@ export function PlatformLanding({
           <div className="container mx-auto px-4">
             <div className="mx-auto max-w-3xl text-center">
               <p className="text-primary-text text-xs font-semibold tracking-wider uppercase">
-                Išči storitve
+                {t.discovery.eyebrow}
               </p>
-              <h2 className="mt-3 text-2xl font-bold sm:text-3xl">
-                Rezervirajte lokalne storitve samoskrbe
+              <h2 className="mt-3 text-2xl font-bold text-balance sm:text-3xl">
+                {t.discovery.title}
               </h2>
-              <p className="text-muted-foreground mt-2">
-                Odkrijte najbolje ocenjene salone, brivce in lepotne
-                strokovnjake.
-              </p>
+              <p className="text-muted-foreground mt-2">{t.discovery.lead}</p>
             </div>
 
             {/* Search Bar — real query, no dead inputs. */}
@@ -325,14 +348,8 @@ export function PlatformLanding({
                 <input
                   type="text"
                   name="q"
-                  aria-label={
-                    isEn ? "Service or business" : "Storitev ali podjetje"
-                  }
-                  placeholder={
-                    isEn
-                      ? "What are you looking for?"
-                      : "Kaj iščete? (striženje, masaža...)"
-                  }
+                  aria-label={t.discovery.searchAria}
+                  placeholder={t.discovery.searchPlaceholder}
                   className="min-w-0 flex-1 rounded-md bg-transparent text-base outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                 />
               </label>
@@ -341,8 +358,8 @@ export function PlatformLanding({
                 <input
                   type="text"
                   name="location"
-                  aria-label={isEn ? "Location" : "Kraj"}
-                  placeholder={isEn ? "Location" : "Kraj"}
+                  aria-label={t.discovery.location}
+                  placeholder={t.discovery.location}
                   className="w-full min-w-0 rounded-md bg-transparent text-base outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                 />
               </label>
@@ -351,28 +368,21 @@ export function PlatformLanding({
                 size="lg"
                 className="w-full rounded-xl px-8 sm:w-auto"
               >
-                {isEn ? "Search" : "Išči"}
+                {t.discovery.submit}
               </Button>
             </form>
 
             {/* Quick links */}
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              {[
-                "Frizerski saloni",
-                "Kozmetika",
-                "Masaža",
-                "Brivci",
-                "Nohti",
-                "Wellness",
-              ].map((category) => (
-                <Link
-                  key={category}
-                  href={`/podjetja?kategorija=${encodeURIComponent(category)}`}
-                  className="text-muted-foreground hover:border-primary hover:text-foreground inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm transition-colors"
-                >
-                  {category}
-                </Link>
-              ))}
+              {getFeaturedCategories().map((category) => (
+                  <Link
+                    key={category.slug}
+                    href={`/kategorije/${category.slug}`}
+                    className="text-muted-foreground hover:border-primary hover:text-foreground inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm transition-colors"
+                  >
+                    {isEn ? category.labelEn : category.label}
+                  </Link>
+                ))}
             </div>
 
             {/* CTA to marketplace */}
@@ -381,7 +391,7 @@ export function PlatformLanding({
                 href="/podjetja"
                 className="text-primary-text hover:underline inline-flex min-h-11 items-center text-sm font-medium"
               >
-                Razišči vsa podjetja →
+                {t.discovery.all} →
               </Link>
             </div>
           </div>
@@ -399,20 +409,23 @@ export function PlatformLanding({
 
           {/* Problem cards */}
           <ul className="mx-auto mt-10 grid max-w-5xl gap-5 md:grid-cols-3">
-            {t.problem.cards.map((card, i) => (
-              <li
-                key={card.title}
-                className="border-border/60 bg-card group rounded-xl border p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
-              >
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-red-50">
-                  <span className="text-2xl">{["⚠️", "⏳", "📭"][i]}</span>
-                </div>
-                <h3 className="text-lg font-semibold">{card.title}</h3>
-                <p className="text-muted-foreground mt-2 text-sm">
-                  {card.body}
-                </p>
-              </li>
-            ))}
+            {t.problem.cards.map((card, i) => {
+              const ProblemIcon = PROBLEM_ICONS[i] ?? TriangleAlert
+              return (
+                <li
+                  key={card.title}
+                  className="border-border/60 bg-card group rounded-xl border p-6 shadow-sm transition-[transform,box-shadow] hover:-translate-y-1 hover:shadow-md"
+                >
+                  <div className="bg-destructive/10 text-destructive mb-4 flex size-12 items-center justify-center rounded-xl">
+                    <ProblemIcon className="size-6" aria-hidden="true" />
+                  </div>
+                  <h3 className="text-lg font-semibold">{card.title}</h3>
+                  <p className="text-muted-foreground mt-2 text-sm">
+                    {card.body}
+                  </p>
+                </li>
+              )
+            })}
           </ul>
 
           {/* Module cards */}
@@ -422,7 +435,7 @@ export function PlatformLanding({
               return (
                 <li
                   key={mod.title}
-                  className="border-border/60 bg-card group rounded-xl border p-5 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
+                  className="border-border/60 bg-card group rounded-xl border p-5 shadow-sm transition-[transform,box-shadow] hover:-translate-y-1 hover:shadow-md"
                 >
                   <span className="bg-primary/10 text-primary-text mb-4 flex size-10 items-center justify-center rounded-xl transition-transform group-hover:scale-110">
                     <Icon className="size-5" aria-hidden="true" />
@@ -464,7 +477,7 @@ export function PlatformLanding({
                 >
                   <Link
                     href={`/start?vertical=${item.vertical}`}
-                    className="border-border/60 bg-card group hover:border-primary/40 flex h-full flex-col overflow-hidden rounded-xl border shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl"
+                    className="border-border/60 bg-card group hover:border-primary/40 flex h-full flex-col overflow-hidden rounded-xl border shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
                   >
                     <div className="relative aspect-video overflow-hidden">
                       <Image
@@ -476,7 +489,7 @@ export function PlatformLanding({
                       />
                       {/* Overlay on hover */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                      <div className="absolute right-3 bottom-3 left-3 translate-y-2 opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100">
+                      <div className="absolute right-3 bottom-3 left-3 translate-y-2 opacity-0 transition group-hover:translate-y-0 group-hover:opacity-100">
                         <span className="text-foreground inline-flex items-center gap-1 rounded-full bg-white/90 px-3 py-1 text-xs font-medium">
                           Začni zdaj →
                         </span>
@@ -551,7 +564,7 @@ export function PlatformLanding({
                   className={
                     plan.id === "pro"
                       ? "border-primary bg-card relative flex flex-col rounded-2xl border-2 p-8 shadow-xl"
-                      : "border-border/60 bg-card flex flex-col rounded-2xl border p-8 shadow-sm transition-all hover:shadow-md"
+                      : "border-border/60 bg-card flex flex-col rounded-2xl border p-8 shadow-sm transition hover:shadow-md"
                   }
                 >
                   {plan.id === "pro" && (
@@ -678,7 +691,7 @@ export function PlatformLanding({
             </div>
           </div>
         </section>
-      </main>
+      </div>
 
       <footer className="border-border/40 bg-muted/20 border-t py-10">
         <div className="container mx-auto px-4">

@@ -94,6 +94,8 @@ export const projectsSl = {
   saveTask: "Shrani nalogo",
   editTask: "Uredi nalogo",
   deleteTask: "Izbriši",
+  deleteTaskConfirm: (title: string) =>
+    `Naloga »${title}« bo trajno izbrisana. Tega ni mogoče razveljaviti.`,
   noTasks: "Ni še nalog. Dodajte prvo s klikom na „Dodaj nalogo“.",
   tasksDoneCount: "zaključenih nalog",
   taskOverdue: "po roku",
@@ -204,6 +206,8 @@ export const projectsEn: ProjectsDict = {
   saveTask: "Save task",
   editTask: "Edit task",
   deleteTask: "Delete",
+  deleteTaskConfirm: (title: string) =>
+    `Task “${title}” will be permanently deleted. This cannot be undone.`,
   noTasks: "No tasks yet. Add the first one with “Add task”.",
   tasksDoneCount: "tasks done",
   taskOverdue: "past due",

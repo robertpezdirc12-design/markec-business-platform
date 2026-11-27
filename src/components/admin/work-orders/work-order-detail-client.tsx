@@ -500,8 +500,19 @@ export function WorkOrderDetailClient({
               <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {photos.map((p) => (
                   <li key={p.id} className="overflow-hidden rounded-md border">
+                    {/* next/image tu ne prinese ničesar: v next.config.ts je
+                        images.unoptimized = true (brez /_next/image proxyja),
+                        zato bi izrisal enak <img>. Kar manjka, je leno
+                        nalaganje — fotografij v seznamu ne vlečemo vseh
+                        takoj ob odprtju kartice. */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.url} alt={p.caption ?? ""} className="h-32 w-full object-cover" />
+                    <img
+                      src={p.url}
+                      alt={p.caption ?? ""}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-32 w-full object-cover"
+                    />
                     <div className="space-y-1 p-2 text-xs">
                       {p.stageName && <p className="font-medium">{p.stageName}</p>}
                       {p.caption && <p className="text-muted-foreground">{p.caption}</p>}

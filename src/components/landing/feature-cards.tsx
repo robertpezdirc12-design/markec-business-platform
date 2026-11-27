@@ -69,15 +69,15 @@ export function FeatureCards({ title, subtitle, items }: FeatureCardsProps) {
               key={`${item.title}-${index}`}
               className={
                 index === 1
-                  ? "border-primary/30 from-primary/8 hover:border-primary/40 group bg-linear-to-br to-transparent transition-all hover:shadow-xl"
-                  : "border-primary/20 from-primary/5 hover:border-primary/30 group bg-linear-to-br to-transparent transition-all hover:shadow-lg"
+                  ? "border-primary/30 from-primary/8 hover:border-primary/40 group bg-linear-to-br to-transparent transition hover:shadow-xl"
+                  : "border-primary/20 from-primary/5 hover:border-primary/30 group bg-linear-to-br to-transparent transition hover:shadow-lg"
               }
             >
               <CardHeader>
                 <div
                   className={
                     index === 1
-                      ? "from-primary to-primary/80 ring-accent/30 group-hover:shadow-accent/30 mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-linear-to-br shadow-md ring-2 transition-all"
+                      ? "from-primary to-primary/80 ring-accent/30 group-hover:shadow-accent/30 mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-linear-to-br shadow-md ring-2 transition"
                       : "from-primary to-primary/80 group-hover:shadow-accent/20 mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-linear-to-br shadow-md transition-shadow"
                   }
                 >

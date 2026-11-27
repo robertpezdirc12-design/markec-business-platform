@@ -27,11 +27,11 @@ export default async function EditUserPage({ params }: EditUserPageProps) {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link href={`/dashboard/users/${id}`}>
-          <Button variant="ghost" size="icon">
-            <ArrowLeftIcon size={20} />
-          </Button>
-        </Link>
+        <Button variant="ghost" size="icon" asChild>
+          <Link href={`/dashboard/users/${id}`} aria-label={t.common.actions.back}>
+            <ArrowLeftIcon size={20} aria-hidden="true" />
+          </Link>
+        </Button>
         <div className="flex items-center gap-4">
           {user.image ? (
             <div className="relative h-12 w-12 overflow-hidden rounded-full">

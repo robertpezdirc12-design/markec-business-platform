@@ -297,7 +297,7 @@ export function DemoTour({ open, onOpenChange, vertical, accent, stepsRaw }: Dem
                     className="flex h-6 w-7 items-center justify-center rounded-md"
                   >
                     <span
-                      className="block h-1.5 rounded-full transition-all"
+                      className="block h-1.5 rounded-full transition-[width,background-color]"
                       style={{
                         width: i === index ? "1.25rem" : "0.5rem",
                         backgroundColor: i === index ? accent : "rgba(255,255,255,0.35)",
@@ -350,7 +350,7 @@ export function DemoTour({ open, onOpenChange, vertical, accent, stepsRaw }: Dem
         <div className="h-1 w-full bg-white/10">
           <div
             key={index}
-            className="h-full transition-all"
+            className="h-full transition-[width]"
             style={{ backgroundColor: accent }}
           />
         </div>

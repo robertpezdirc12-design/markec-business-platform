@@ -244,5 +244,7 @@ describe("#73 — root metadata + hygiene", () => {
       }
     }
     expect(offending).toEqual([])
-  })
+    // Pregled vseh testnih datotek je na Windowsu z antivirusnim pregledom
+    // počasnejši od privzetih 5 s; assertions ostanejo enake.
+  }, 30_000)
 })

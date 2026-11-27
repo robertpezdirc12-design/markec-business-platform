@@ -18,6 +18,7 @@ import { PublicationCard } from "@/components/dashboard/publication-card"
 import { DomainsCard } from "@/components/dashboard/domains-card"
 import { SettingsTabs } from "@/components/dashboard/settings-tabs"
 import { GoogleCalendarSync } from "@/components/dashboard/google-calendar-sync"
+import { DISCONNECTED_STATUS, getConnection, toStatus } from "@/lib/calendar/connection"
 import { ContentManager } from "@/components/dashboard/content/content-manager"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getServerI18n } from "@/lib/i18n/server"
@@ -32,7 +33,7 @@ import { getSessionEffectiveProfile } from "@/lib/profiles/session"
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ billing?: string; tab?: string }>
+  searchParams: Promise<{ billing?: string; tab?: string; calendar?: string }>
 }) {
   // Custom roles (G8): server-side page guard
   await requirePagePermission("settings.manage")
@@ -49,6 +50,13 @@ export default async function SettingsPage({
   // Billing read model depends on the resolved tenant — one extra
   // sequential read after the parallel block above.
   const _billing = org ? await loadBillingOverview(org.id) : null
+
+  // GOOGLE KOLEDAR: stanje povezave bere STRAN (ne odjemalec), zato
+  // kartica ob nalaganju ne more lagati. Brez organizacije ostane
+  // privzeto "nepovezano".
+  const calendarStatus = org
+    ? toStatus(await getConnection(org.id))
+    : DISCONNECTED_STATUS
 
   // #54: booking rules are dead UI for profiles without appointments —
   // the same capability gate the public site applies to /booking.
@@ -85,6 +93,8 @@ export default async function SettingsPage({
           />
           {/* #99: push obvestila lastniku (nov termin, odpoved) */}
           <PushCard />
+          {/* Izvoz terminov v lastnikov Google Koledar (dvostransko soglasje). */}
+          <GoogleCalendarSync status={calendarStatus} notice={params.calendar ?? null} />
         </div>
       }
       website={
@@ -117,9 +127,6 @@ export default async function SettingsPage({
           />
           {/* E4-2b: owner-supplied analytics (GA4) — optional, honest default = no script. */}
           <AnalyticsIntegrationCard initialValue={settings.analyticsMeasurementId ?? null} />
-          
-          {/* Google Calendar Sync */}
-          <GoogleCalendarSync />
         </div>
       }
     />

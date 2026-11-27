@@ -215,7 +215,7 @@ export function DateTimeStep({
                           aria-checked={checked}
                           onClick={() => onToggleAddon(addon.id)}
                           className={cn(
-                            "focus-visible:ring-ring rounded-full border px-4 py-1.5 text-sm transition-all focus-visible:ring-2 focus-visible:outline-none",
+                            "focus-visible:ring-ring rounded-full border px-4 py-1.5 text-sm transition focus-visible:ring-2 focus-visible:outline-none",
                             checked
                               ? "border-primary bg-primary/5 ring-primary/30 ring-2"
                               : "hover:border-primary/40"

@@ -99,11 +99,13 @@ export default async function UserDetailsPage({ params }: PageProps) {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/users">
-            <Button variant="ghost" size="icon">
-              <ArrowLeftIcon size={20} />
-            </Button>
-          </Link>
+          {/* asChild: <a> okoli <button> je neveljaven HTML in podvoji
+              dostopno ime — gumb prenese slog na povezavo. */}
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/dashboard/users" aria-label={t.common.actions.back}>
+              <ArrowLeftIcon size={20} aria-hidden="true" />
+            </Link>
+          </Button>
           <div>
             <h1 className="text-3xl font-bold">{t.users.userDetails}</h1>
             <p className="text-muted-foreground">

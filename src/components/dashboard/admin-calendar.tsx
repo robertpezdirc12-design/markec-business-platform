@@ -148,14 +148,24 @@ export function AdminCalendar({ appointments }: AdminCalendarProps) {
       {/* Calendar Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => navigate("prev")}>
-            <CaretLeftIcon size={16} />
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Prejšnje obdobje"
+            onClick={() => navigate("prev")}
+          >
+            <CaretLeftIcon size={16} aria-hidden="true" />
           </Button>
           <Button variant="outline" onClick={() => navigate("today")}>
             Danes
           </Button>
-          <Button variant="outline" size="icon" onClick={() => navigate("next")}>
-            <CaretRightIcon size={16} />
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Naslednje obdobje"
+            onClick={() => navigate("next")}
+          >
+            <CaretRightIcon size={16} aria-hidden="true" />
           </Button>
           
           {/* Date range display */}

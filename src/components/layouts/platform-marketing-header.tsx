@@ -148,7 +148,7 @@ export function PlatformMarketingHeader() {
         aria-label="Mobilna navigacija"
         inert={!mobileOpen}
         className={cn(
-          "absolute inset-x-0 top-full z-40 overflow-hidden bg-background shadow-lg transition-all duration-200 ease-out md:hidden motion-reduce:transition-none",
+          "absolute inset-x-0 top-full z-40 overflow-hidden bg-background shadow-lg transition-[max-height,opacity,border-color] duration-200 ease-out md:hidden motion-reduce:transition-none",
           mobileOpen
             ? "max-h-96 border-b border-border opacity-100"
             : "max-h-0 border-b border-transparent opacity-0"

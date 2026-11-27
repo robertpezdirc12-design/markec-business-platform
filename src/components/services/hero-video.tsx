@@ -35,11 +35,14 @@ export function HeroVideo({ videoUrl, posterUrl }: HeroVideoProps) {
     () => true
   )
 
+  // Save-Data (Chrome/Edge) ni v standardnem lib.dom — tipiziramo lokalno
+  // namesto `as any`, da ohranimo strict TypeScript brez luknje v tipih.
   const saveData =
     typeof navigator !== "undefined" &&
-    "connection" in navigator &&
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Boolean((navigator as any).connection?.saveData)
+    Boolean(
+      (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
+        ?.saveData
+    )
 
   const togglePlay = () => {
     const video = videoRef.current

@@ -62,5 +62,19 @@ export default async function EnglishLandingPage() {
     session?.user?.role === "ADMIN" || session?.user?.role === "STAFF"
       ? "/dashboard"
       : null
-  return <PlatformLanding locale="en" dashboardHref={dashboardHref} />
+  // /en ni v skupini (public), zato lupina tam ne doda <main>. Landmark +
+  // skip link zagotovimo tukaj (sicer stran nima glavne vsebine za bralnik).
+  return (
+    <>
+      <a
+        href="#main"
+        className="bg-background text-foreground sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-100 focus:rounded-md focus:px-4 focus:py-2 focus:shadow-lg focus:outline-hidden focus:ring-2 focus:ring-primary"
+      >
+        Skip to content
+      </a>
+      <main id="main" tabIndex={-1}>
+        <PlatformLanding locale="en" dashboardHref={dashboardHref} />
+      </main>
+    </>
+  )
 }

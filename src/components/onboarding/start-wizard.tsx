@@ -867,7 +867,7 @@ export function StartWizard({
                         aria-pressed={isSelected}
                         onClick={() => setPalette(p.id)}
                         className={cn(
-                          "flex h-11 w-full items-center justify-center rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                          "flex h-11 w-full items-center justify-center rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                           isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background"
                         )}
                       >

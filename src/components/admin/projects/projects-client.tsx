@@ -390,7 +390,7 @@ export function ProjectsClient({ projects, stats, linkOptions, labels }: Project
                         <div className="flex min-w-24 items-center gap-2">
                           <div className="bg-muted h-2 flex-1 overflow-hidden rounded-full">
                             <div
-                              className="bg-primary h-full rounded-full transition-all"
+                              className="bg-primary h-full rounded-full transition-[width]"
                               style={{ width: `${p.progress.pct}%` }}
                             />
                           </div>

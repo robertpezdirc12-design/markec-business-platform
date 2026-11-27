@@ -292,7 +292,7 @@ export function HomeContent({
                   <Link
                     key={service.id}
                     href={toHref(`/services/${service.slug}`)}
-                    className="group border-primary/10 hover:shadow-primary/10 hover:border-primary/30 w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.67rem)] xl:w-[calc(20%-0.8rem)] relative overflow-hidden rounded-lg border shadow-sm transition-all duration-500 hover:shadow-xl"
+                    className="group border-primary/10 hover:shadow-primary/10 hover:border-primary/30 w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.67rem)] xl:w-[calc(20%-0.8rem)] relative overflow-hidden rounded-lg border shadow-sm transition duration-500 hover:shadow-xl"
                   >
                     <div className="relative h-80 overflow-hidden">
                       {service.imageUrl ? (
@@ -324,7 +324,7 @@ export function HomeContent({
                               </span>
                             )}
                           </div>
-                          <div className="mt-4 translate-y-2 transform opacity-0 transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100">
+                          <div className="mt-4 translate-y-2 transform opacity-0 transition duration-500 group-hover:translate-y-0 group-hover:opacity-100">
                             <div className="text-accent-text border-accent/50 hover:border-accent inline-flex items-center border-b-2 pb-1 text-sm font-medium">
                               {serviceCtaLabel}
                               <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -433,7 +433,7 @@ export function HomeContent({
                     href={toHref(`/staff/${staff.name.toLowerCase().replace(/\s+/g, "-")}`)}
                     className="group w-full sm:w-[calc(50%-0.75rem)] lg:w-[calc(25%-1.125rem)]"
                   >
-                    <div className="border-primary/10 hover:border-primary/30 overflow-hidden rounded-xl border bg-card shadow-sm transition-all duration-300 hover:shadow-xl">
+                    <div className="border-primary/10 hover:border-primary/30 overflow-hidden rounded-xl border bg-card shadow-sm transition duration-300 hover:shadow-xl">
                       <div className="relative aspect-3/4 overflow-hidden">
                         <StaffAvatar
                           image={staff.image}
@@ -524,7 +524,7 @@ export function HomeContent({
               // tenant prefix is applied (bare "/booking" otherwise falls back
               // to the default tenant under /s/{slug}).
               href={toHref(ctaSectionHref ?? content.cta.buttonHref)}
-              className="from-primary to-primary/90 border-accent/30 group border-2 bg-linear-to-r text-white shadow-2xl transition-all duration-300 hover:scale-105 hover:opacity-90"
+              className="from-primary to-primary/90 border-accent/30 group border-2 bg-linear-to-r text-white shadow-2xl transition duration-300 hover:scale-105 hover:opacity-90"
             >
               {content.cta.buttonLabel}
             </CTAButton>

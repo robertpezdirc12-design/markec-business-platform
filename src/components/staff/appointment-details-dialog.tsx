@@ -1,4 +1,5 @@
 "use client"
+import { useState } from "react"
 import { useFormatPrice } from "@/lib/currency"
 
 import {
@@ -96,6 +97,9 @@ export function AppointmentDetailsDialog({
   isPending = false,
 }: AppointmentDetailsDialogProps) {
   const fmt = useFormatPrice()
+  // "Ni se pojavil" je nepovratno dejanje (pošlje obvestilo stranki, vpliva
+  // na statistiko in no-show pravila), zato ne sme iti na en sam klik.
+  const [confirmNoShow, setConfirmNoShow] = useState(false)
   if (!appointment) return null
 
   const customerEmail =
@@ -226,7 +230,7 @@ export function AppointmentDetailsDialog({
                 {appointment.services.map((item, index) => (
                   <div
                     key={index}
-                    className="bg-linear-to-r from-muted/50 to-muted/30 border-border/30 flex items-center justify-between rounded-xl border p-3 transition-all hover:from-muted/70 hover:to-muted/50 sm:p-4"
+                    className="bg-linear-to-r from-muted/50 to-muted/30 border-border/30 flex items-center justify-between rounded-xl border p-3 transition hover:from-muted/70 hover:to-muted/50 sm:p-4"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium sm:text-base">
@@ -292,22 +296,57 @@ export function AppointmentDetailsDialog({
                   <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
                     <Button
                       variant="default"
-                      className="h-11 flex-1 text-sm shadow-md transition-all hover:shadow-lg sm:h-12 sm:text-base"
+                      className="h-11 flex-1 text-sm shadow-md transition hover:shadow-lg sm:h-12 sm:text-base"
                       disabled={isPending}
                       onClick={() => onMarkComplete?.(appointment.id)}
                     >
                       <CheckCircleIcon size={18} className="mr-2" />
                       Označi kot zaključeno
                     </Button>
-                    <Button
-                      variant="destructive"
-                      className="h-11 flex-1 text-sm shadow-md transition-all hover:shadow-lg sm:h-12 sm:text-base"
-                      disabled={isPending}
-                      onClick={() => onMarkNoShow?.(appointment.id)}
-                    >
-                      <XCircleIcon size={18} className="mr-2" />
-                      Ni se pojavil
-                    </Button>
+                    {confirmNoShow ? (
+                      <div
+                        role="alert"
+                        className="border-destructive/30 bg-destructive/5 flex-1 rounded-xl border p-3"
+                      >
+                        <p className="text-sm font-medium">
+                          Označim, da se stranka ni pojavila?
+                        </p>
+                        <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                          Stranka prejme obvestilo, termin se šteje v
+                          statistiko neprihodov. Prekličete lahko le ročno.
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={isPending}
+                            onClick={() => {
+                              setConfirmNoShow(false)
+                              onMarkNoShow?.(appointment.id)
+                            }}
+                          >
+                            Da, ni se pojavil
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setConfirmNoShow(false)}
+                          >
+                            Prekliči
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="destructive"
+                        className="h-11 flex-1 text-sm shadow-md transition hover:shadow-lg sm:h-12 sm:text-base"
+                        disabled={isPending}
+                        onClick={() => setConfirmNoShow(true)}
+                      >
+                        <XCircleIcon size={18} className="mr-2" />
+                        Ni se pojavil
+                      </Button>
+                    )}
                   </div>
                 </div>
               </>
