@@ -89,7 +89,7 @@ async function main() {
   }
 
   await prisma.$disconnect()
-  console.log("Done. Open https://markec-business-platform.robert-pezdirc12.workers.dev/s/salon-lina-frizer to test.")
+  console.log("Done. Open https://rcbeautysalon-phi.vercel.app/s/salon-lina-frizer to test.")
 }
 
 main().catch(e => { console.error(e); process.exit(1) })

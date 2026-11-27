@@ -37,7 +37,7 @@ Ob zahtevku /podjetja:
 | `src/data/marketplace-snapshot.json` | Generirani podatki + `generatedAt`. Committan je prazen fallback. |
 | `src/lib/marketplace/snapshot.ts` | Branje snapshot-a, filtriranje `?q=` / `?location=`, razdelitev v Recommend/Popular/New, oznaka starosti. |
 | `src/app/(marketplace)/podjetja/page.tsx` | Ne kliče več akcij iz `app/actions/marketplace.ts`. Ostane `force-dynamic`, da `searchParams` delujejo. |
-| `scripts/build-smart.mjs` | Pred OpenNext buildom pokliče generator, dokler je `DATABASE_URL` še na voljo. |
+| `scripts/build.mjs` | Build korak (`pnpm build`) pred `next build` pokliče generator, dokler je `DATABASE_URL` še na voljo. |
 
 ## Poštenost podatkov
 

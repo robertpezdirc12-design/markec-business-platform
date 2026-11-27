@@ -123,9 +123,8 @@ describe("#99 struktura: SW, akcije, sprožilci, cron", () => {
     expect(cron).not.toContain("15 min")
     // Timer je Vercel cron (2026-11-17: Vercel je primarni deployer).
     expect(read("vercel.json")).toContain("0 3 * * *")
-    // Cloudflare NE sme imeti svojega triggerja — dvojni dnevni tek ne sme
+    // V repozitoriju ni drugega schedulerja — dvojni dnevni tek ne sme
     // obstajati (podvojeni opomniki/marketing).
-    expect(read("wrangler.jsonc")).not.toContain('"crons"')
   })
 
   it("UI: kartica v nastavitvah je poštena brez ključev; SW registracija tiha", () => {

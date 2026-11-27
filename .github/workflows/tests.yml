@@ -141,7 +141,7 @@ jobs:
         run: pnpm prisma generate
 
       # Same google-fonts flake as the deploy workflow (vercel/next.js#99114).
-      - name: Build with OpenNext
+      - name: Build
         run: |
           for attempt in 1 2 3; do
             echo "### Build attempt $attempt"
@@ -151,7 +151,7 @@ jobs:
             fi
             if [ "$attempt" -lt 3 ]; then
               echo "::warning::Build attempt $attempt failed — cleaning and retrying"
-              rm -rf .next .open-next
+              rm -rf .next
             fi
           done
           echo "::error::Build failed after 3 attempts"
@@ -160,8 +160,8 @@ jobs:
           DATABASE_URL: postgresql://fake:fake@localhost:5432/fake?schema=public
           NEXTAUTH_SECRET: test-secret-not-real
           AUTH_SECRET: test-secret-not-real
-          NEXT_PUBLIC_APP_URL: https://markec-business-platform.robert-pezdirc12.workers.dev
-          NEXTAUTH_URL: https://markec-business-platform.robert-pezdirc12.workers.dev
+          NEXT_PUBLIC_APP_URL: https://rcbeautysalon-phi.vercel.app
+          NEXTAUTH_URL: https://rcbeautysalon-phi.vercel.app
           # Public build-time value (cloud name, not a secret) — inlined into the
           # client bundle; keep the build-check representative of the real build.
           NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ${{ secrets.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME }}

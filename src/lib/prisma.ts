@@ -49,7 +49,8 @@ let serverSingletonClient: PrismaClient | undefined
  * obseg živi med zahtevami in en sam client je priporočeni vzorec
  * (ponovna uporaba povezav namesto novega pool-a na vsako zahtevo).
  *
- * Zaznava: `RUNTIME=workers` (wrangler.jsonc vars) ali UA, ki ga
+ * Zaznava: `RUNTIME=workers` (zastavica iz časa Workers deploymenta,
+ * danes ni več nastavljena) ali UA, ki ga
  * postavi Workers runtime. Funkcija je čista, da jo je mogoče testirati.
  */
 export function isWorkersRuntime(

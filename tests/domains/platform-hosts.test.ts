@@ -48,11 +48,11 @@ describe("getPlatformHostsFromEnv", () => {
 
   it("obstoječe vire (NEXT_PUBLIC_APP_URL / NEXTAUTH_URL / VERCEL_URL) ohrani", () => {
     clearEnv()
-    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://markec-business-platform.robert-pezdirc12.workers.dev")
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://rcbeautysalon-phi.vercel.app")
     vi.stubEnv("NEXTAUTH_URL", "https://markec.si")
     vi.stubEnv("VERCEL_URL", "markec-business-platform-abc123.vercel.app")
     expect(getPlatformHostsFromEnv()).toEqual([
-      "markec-business-platform.robert-pezdirc12.workers.dev",
+      "rcbeautysalon-phi.vercel.app",
       "markec.si",
       "markec-business-platform-abc123.vercel.app",
     ])

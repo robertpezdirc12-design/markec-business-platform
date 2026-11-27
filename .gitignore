@@ -67,10 +67,6 @@ docs/PR142-*
 
 # Agentski skills (lokalna konfiguracija, ni del repozitorija)
 .agents/
-.open-next/
-
-# Cloudflare/Miniflare lokalno stanje (sqlite cache) — ne sodi v git
-.wrangler/
 
 # Faza 2 (2026-11-18): diagnostični / QA artefakti (pregledano)
 *diag-*
@@ -90,7 +86,6 @@ _unused*
 qa-shots/
 scripts/qa-*
 scripts/tmp**
-.wrangler/state/
 
 # local lint/diagnostic artifacts
 _remain.json
