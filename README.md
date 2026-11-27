@@ -254,7 +254,7 @@ Workflow [`.github/workflows/tests.yml`](.github/workflows/tests.yml) na `push`/
 
 - **Vercel + Neon (trenutna produkcijska postavitev):** povezava z repozitorijem, PostgreSQL na Neonu.
 - **Webhook endpoint:** `https://<domena>/api/webhooks/stripe`
-- **Cloudflare build skripte:** `build:cf`, `build:cloudflare`, `preview:cloudflare`, `deploy:cloudflare` (OpenNext + Wrangler) — glej `wrangler.jsonc`, `open-next.config.ts` in workflow-e.
+- **Build:** `pnpm build` → `scripts/build.mjs` (prisma generate → migracije → marketplace snapshot → `next build`). Edini deploy cilj je Vercel.
 - **DB izolacija preview/production:** operativni priročnik v [docs/DEPLOYMENT-DB-ISOLATION.md](docs/DEPLOYMENT-DB-ISOLATION.md).
 
 > Po spremembi odvisnosti vedno posodobi `pnpm-lock.yaml` z `pnpm install`, sicer lahko build pade z `ERR_PNPM_OUTDATED_LOCKFILE`.

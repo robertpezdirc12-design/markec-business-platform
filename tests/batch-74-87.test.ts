@@ -31,13 +31,8 @@ describe("P1 #76: scheduler exists and is safe", () => {
     expect(raw).toContain("/api/cron/tick")
     // #76 follow-up: the schedule is daily at 03:00 UTC.
     expect(raw).toContain("0 3 * * *")
-    // The route itself is the thing under test; worker.js keeps the
-    // equivalent `scheduled` handler (inert without a triggers block).
-    const worker = read("worker.js")
-    expect(worker).toContain("/api/cron/tick")
-    expect(worker).toContain("CRON_SECRET")
-    // Exactly one scheduler: Cloudflare must not declare triggers.
-    expect(read("wrangler.jsonc")).not.toContain('"crons"')
+    // The route itself is the thing under test; Vercel owns the only system
+    // timer — the repository has no second scheduler.
   })
 
   it("cron route refuses requests without a valid Bearer CRON_SECRET", () => {

@@ -42,11 +42,7 @@ Pričakovano: **200 pri vseh**, brez `Error 1102`, brez 500 na `/api/auth/sessio
 
 ### F0.1 — Odpravi 503 / Error 1102
 
-- Vir: `Worker exceeded CPU time limit`, Workers Free 10 ms.
-- Ukrep: zamenjaj gostovanje po odločitvi iz razdelka 2.
-- Ne pozabi: `wrangler.jsonc` ima že `AUTH_TRUST_HOST=true`; `NEXTAUTH_URL` in `NEXT_PUBLIC_APP_URL` sta bindinga, ne navadni `vars`.
-- `scripts/build-smart.mjs` že skrije `.env`, `.env.local`, `.env.production` pred OpenNext buildom — **ohrani to**.
-- `.open-next/cloudflare/next-env.mjs` mora ostati brez secretov.
+- **Zastarelo (2026-11-27):** Cloudflare Workers deployment je odstranjen iz repozitorija. Edini deploy cilj je Vercel: `pnpm build` → `scripts/build.mjs` → `next build`. `wrangler.jsonc`, `open-next.config.ts`, `worker.js` in celotna `.open-next` veriga ne obstajajo več.
 - Koristni ukazi:
 
 ```bash
